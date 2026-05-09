@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "91181989163",
+    "project_id": "facebaby-afc41",
+    "storage_bucket": "facebaby-afc41.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:91181989163:android:5f4ca3cf26c344677c596e",
+        "android_client_info": {
+          "package_name": "com.example.facebaby_flutter"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "91181989163-qgmmg1kcbqgimie8g9i7aj23ttup72r9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.facebaby_flutter",
+            "certificate_hash": "43519140df25c49f253262c023a5bc5d1aafa532"
+          }
+        },
+        {
+          "client_id": "91181989163-f76eh355cm8i29q23knbil93tseig8hv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBpkPL8Sa5DWQUCwccwgJm9Gdz_oRC-z8w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "91181989163-f76eh355cm8i29q23knbil93tseig8hv.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "91181989163-efp3pbook64nhht7gsqbes7duvjuq7nt.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.facebabyFlutter"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

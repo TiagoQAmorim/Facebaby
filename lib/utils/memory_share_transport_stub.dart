@@ -1,0 +1,5 @@
+import 'dart:typed_data';
+
+Future<void> shareTempBytes(Uint8List data, String fileName, String mimeType) async {
+  throw UnsupportedError('Partilhar ficheiro só está disponível na app (Android/iOS/desktop).');
+}

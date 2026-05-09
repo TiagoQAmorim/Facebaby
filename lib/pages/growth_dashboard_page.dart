@@ -1,0 +1,1035 @@
+import 'dart:async' show unawaited;
+import 'dart:math' as math;
+
+import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
+
+import '../controllers/current_baby_controller.dart';
+import '../i18n/app_i18n.dart';
+import '../services/app_database.dart';
+import '../services/firebase/growth_cloud_sync.dart';
+import '../services/firebase/firestore_service.dart';
+import '../services/growth_events.dart';
+import '../services/home_prefs.dart';
+import '../services/measurement_units_prefs.dart';
+import '../utils/measurement_format.dart';
+
+/// Tabs Peso / Altura / Cabeça / Resumo com cartões Ao nascer · Atual · Mudar e gráfico por métrica.
+class GrowthDashboardPage extends StatefulWidget {
+  final String appBarTitle;
+
+  const GrowthDashboardPage({super.key, required this.appBarTitle});
+
+  @override
+  State<GrowthDashboardPage> createState() => _GrowthDashboardPageState();
+}
+
+class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTickerProviderStateMixin {
+  static const _accent = Color(0xFF00C4CC);
+
+  /// Só os N registos mais recentes entram na linha do gráfico (por `measured_at`).
+  static const _growthChartMaxRecords = 15;
+
+  late final TabController _tabController;
+  final _currentBaby = CurrentBabyController.instance;
+
+  List<Map<String, Object?>> _weight = const [];
+  List<Map<String, Object?>> _height = const [];
+  List<Map<String, Object?>> _head = const [];
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
+    _currentBaby.addListener(_onBabyChanged);
+    _reload();
+  }
+
+  @override
+  void dispose() {
+    _currentBaby.removeListener(_onBabyChanged);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _onBabyChanged() => _reload();
+
+  Future<void> _reload() async {
+    final bid = _currentBaby.currentBabyId;
+    if (bid == null) {
+      if (mounted) {
+        setState(() {
+          _weight = const [];
+          _height = const [];
+          _head = const [];
+          _loading = false;
+        });
+      }
+      return;
+    }
+    if (mounted) setState(() => _loading = true);
+    final db = AppDatabase.instance;
+    final w = await db.listGrowthRecords(babyId: bid, kind: 'weight');
+    final h = await db.listGrowthRecords(babyId: bid, kind: 'height');
+    final hd = await db.listGrowthRecords(babyId: bid, kind: 'head');
+    if (!mounted) return;
+    setState(() {
+      _weight = w;
+      _height = h;
+      _head = hd;
+      _loading = false;
+    });
+  }
+
+  DateTime? _tryParseIso(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    return DateTime.tryParse(raw);
+  }
+
+  String _fmtDateDdMmYy(DateTime dt) =>
+      '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+
+  String _fmtAxisX(DateTime dt, {required double spanDays}) {
+    final dd = dt.day.toString().padLeft(2, '0');
+    final mm = dt.month.toString().padLeft(2, '0');
+    if (spanDays <= 14) return dd;
+    if (spanDays <= 90) return '$dd/$mm';
+    return '$mm/${(dt.year % 100).toString().padLeft(2, '0')}';
+  }
+
+  double? _birthBaseline(String kind, Map<String, Object?>? baby) {
+    if (baby == null) return null;
+    switch (kind) {
+      case 'weight':
+        return (baby['weight_kg'] as num?)?.toDouble();
+      case 'height':
+        return (baby['height_cm'] as num?)?.toDouble();
+      default:
+        return null;
+    }
+  }
+
+  double? _latestValue(List<Map<String, Object?>> rows) {
+    if (rows.isEmpty) return null;
+    return (rows.first['value'] as num?)?.toDouble();
+  }
+
+  String? _latestDateRaw(List<Map<String, Object?>> rows) =>
+      rows.isEmpty ? null : rows.first['measured_at'] as String?;
+
+  List<Map<String, Object?>> _asc(List<Map<String, Object?>> rows) {
+    final copy = [...rows];
+    copy.sort((a, b) {
+      final am = a['measured_at'] as String? ?? '';
+      final bm = b['measured_at'] as String? ?? '';
+      return am.compareTo(bm);
+    });
+    return copy;
+  }
+
+  /// Mais recentes primeiro (lista edição/remoção).
+  List<Map<String, Object?>> _desc(List<Map<String, Object?>> rows) {
+    final copy = [...rows];
+    copy.sort((a, b) {
+      final am = a['measured_at'] as String? ?? '';
+      final bm = b['measured_at'] as String? ?? '';
+      return bm.compareTo(am);
+    });
+    return copy;
+  }
+
+  DateTime _measuredDateTime(Map<String, Object?> row) =>
+      _tryParseIso(row['measured_at'] as String?) ?? DateTime.now();
+
+  int? _growthRowId(Map<String, Object?> row) => (row['id'] as num?)?.toInt();
+
+  String _metricShortLabel(S s, String kind) {
+    switch (kind) {
+      case 'weight':
+        return s.labelWeight;
+      case 'height':
+        return s.labelHeight;
+      default:
+        return s.labelHead;
+    }
+  }
+
+  String _formatMeasurement(String kind, double? v) {
+    if (kind == 'weight') {
+      return MeasurementFormat.weight(v, decimalsKg: 2);
+    }
+    final decimals = kind == 'head' ? 1 : 0;
+    return MeasurementFormat.length(v, decimalsCm: decimals);
+  }
+
+  String _formatDelta(String kind, double? baseline, double? current) {
+    if (baseline == null || current == null) return '—';
+    final d = current - baseline;
+    final sign = d > 0 ? '+' : (d < 0 ? '' : '');
+    if (kind == 'weight') {
+      final absStr = MeasurementFormat.weight(d.abs(), decimalsKg: 2);
+      return '$sign$absStr';
+    }
+    final decimals = kind == 'head' ? 1 : 0;
+    final absStr = MeasurementFormat.length(d.abs(), decimalsCm: decimals);
+    return '$sign$absStr';
+  }
+
+  String _displayBabyName(Map<String, Object?>? row, S s) {
+    final n = (row?['name'] as String?)?.trim();
+    return (n == null || n.isEmpty) ? s.baby : n;
+  }
+
+  Future<void> _showAddSheet(S s, String kind) async {
+    final bid = _currentBaby.currentBabyId;
+    if (bid == null) return;
+    final label = _metricShortLabel(s, kind);
+    final unit = kind == 'weight'
+        ? (switch (MeasurementUnitsPrefs.weight.value) {
+            WeightUnit.kg => 'kg',
+            WeightUnit.lb => 'lb',
+            WeightUnit.st => 'st',
+          })
+        : (switch (MeasurementUnitsPrefs.length.value) {
+            LengthUnit.cm => 'cm',
+            LengthUnit.inch => 'pol',
+          });
+    var rawValue = '';
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheet) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 22,
+                right: 22,
+                top: 20,
+                bottom: MediaQuery.viewInsetsOf(ctx).bottom + 22,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(label, style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 12),
+                  TextField(
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    autofocus: true,
+                    onChanged: (v) => setSheet(() => rawValue = v),
+                    decoration: InputDecoration(
+                      labelText: '$label ($unit)',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _accent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    onPressed: () async {
+                      final raw = rawValue.trim();
+                      final parsed = kind == 'weight'
+                          ? MeasurementFormat.parseWeightToKg(raw)
+                          : MeasurementFormat.parseLengthToCm(raw);
+                      if (parsed == null || parsed <= 0) {
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(s.invalidGrowthValue(label))));
+                        }
+                        return;
+                      }
+                      final newId = await AppDatabase.instance.insertGrowthRecord(babyId: bid, kind: kind, value: parsed);
+                      GrowthCloudSync.pushLocalSoon(localBabyId: bid, localGrowthId: newId);
+                      GrowthEvents.ping();
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.growthSaved(label))));
+                      await _reload();
+                    },
+                    child: Text(s.add),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _showEditGrowthSheet(S s, String kind, Map<String, Object?> row) async {
+    final bid = _currentBaby.currentBabyId;
+    final id = _growthRowId(row);
+    if (bid == null || id == null) return;
+    final label = _metricShortLabel(s, kind);
+    final currentV = (row['value'] as num?)?.toDouble() ?? 0;
+    final unit = kind == 'weight'
+        ? (switch (MeasurementUnitsPrefs.weight.value) {
+            WeightUnit.kg => 'kg',
+            WeightUnit.lb => 'lb',
+            WeightUnit.st => 'st',
+          })
+        : (switch (MeasurementUnitsPrefs.length.value) {
+            LengthUnit.cm => 'cm',
+            LengthUnit.inch => 'pol',
+          });
+    final initialValueText = kind == 'weight'
+        ? (switch (MeasurementUnitsPrefs.weight.value) {
+            WeightUnit.kg => currentV,
+            WeightUnit.lb => currentV * 2.2046226218,
+            WeightUnit.st => (currentV * 2.2046226218) / 14.0,
+          })
+            .toStringAsFixed(2)
+            .replaceAll('.', ',')
+        : (switch (MeasurementUnitsPrefs.length.value) {
+            LengthUnit.cm => currentV,
+            LengthUnit.inch => currentV / 2.54,
+          })
+            .toStringAsFixed(kind == 'head' ? 1 : 0)
+            .replaceAll('.', ',');
+    final initialMeasured = _measuredDateTime(row);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return _EditGrowthSheetBody(
+          accent: _accent,
+          strings: s,
+          kind: kind,
+          babyId: bid,
+          recordId: id,
+          label: label,
+          unit: unit,
+          initialValueText: initialValueText,
+          initialMeasuredAt: initialMeasured,
+          onSaved: () {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.growthSaved(label))));
+            unawaited(_reload());
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmDeleteGrowth(S s, String kind, Map<String, Object?> row) async {
+    final bid = _currentBaby.currentBabyId;
+    final id = _growthRowId(row);
+    if (bid == null || id == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.delete),
+        content: Text(s.confirmDelete),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.cancel)),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(s.delete),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      final cloudId = (row['cloud_id'] as String?)?.trim();
+      final n = await AppDatabase.instance.deleteGrowthRecord(id: id, babyId: bid);
+      if (!mounted) return;
+      if (n > 0) {
+        GrowthEvents.ping();
+        if (cloudId != null && cloudId.isNotEmpty) {
+          try {
+            await FirestoreService.instance.deleteEvent(cloudId);
+          } catch (_) {}
+        }
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.deletedOk)));
+        await _reload();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${s.deleteFail} $e')));
+      }
+    }
+  }
+
+  Widget _growthHistoryList(S s, String kind, List<Map<String, Object?>> rows) {
+    if (rows.isEmpty) return const SizedBox.shrink();
+    final label = _metricShortLabel(s, kind);
+    final items = _desc(rows);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 22),
+        Text(s.growthHistoryTitle(label), style: TextStyle(color: Colors.black.withAlpha(150), fontWeight: FontWeight.w900, fontSize: 14)),
+        const SizedBox(height: 10),
+        ...items.map((row) {
+          final id = _growthRowId(row);
+          final dt = _measuredDateTime(row);
+          final v = (row['value'] as num?)?.toDouble();
+          return Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            elevation: 0,
+            color: const Color(0xFFF5F6F8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: Colors.black.withAlpha(14))),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              title: Text(_formatMeasurement(kind, v), style: const TextStyle(fontWeight: FontWeight.w800)),
+              subtitle: Text(_fmtDateDdMmYy(dt), style: TextStyle(color: Colors.black.withAlpha(130), fontWeight: FontWeight.w600)),
+              trailing: id == null
+                  ? null
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: s.edit,
+                          onPressed: () => _showEditGrowthSheet(s, kind, row),
+                          icon: Icon(Icons.edit_outlined, color: _accent.withAlpha(220)),
+                        ),
+                        IconButton(
+                          tooltip: s.delete,
+                          onPressed: () => _confirmDeleteGrowth(s, kind, row),
+                          icon: Icon(Icons.delete_outline, color: Colors.red.withAlpha(200)),
+                        ),
+                      ],
+                    ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  String _ctaLabel(S s, int idx) {
+    switch (idx) {
+      case 0:
+        return s.growthAddWeight;
+      case 1:
+        return s.growthAddHeight;
+      case 2:
+        return s.growthAddHead;
+      default:
+        return '';
+    }
+  }
+
+  Widget _summaryCard({
+    required String title,
+    required String value,
+    required Color titleColor,
+    String? subtitle,
+  }) {
+    return Expanded(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xFFECEFF1),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: TextStyle(color: titleColor, fontWeight: FontWeight.w700, fontSize: 12)),
+              const Divider(height: 14),
+              Text(
+                value,
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: -0.4),
+              ),
+              if (subtitle != null && subtitle.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(subtitle, style: TextStyle(color: titleColor.withAlpha(180), fontSize: 11)),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _cardsRow(String kind, List<Map<String, Object?>> rows, S s) {
+    final baby = _currentBaby.currentBabyRow;
+    final muted = Colors.black.withAlpha(140);
+    final baseline = _birthBaseline(kind, baby);
+    final current = _latestValue(rows);
+    final birthRaw = baby?['birth_date'] as String?;
+    final birthDt = _tryParseIso(birthRaw);
+    final birthSub = birthDt == null ? (birthRaw?.isNotEmpty == true ? birthRaw! : '') : _fmtDateDdMmYy(birthDt);
+
+    final currentRaw = _latestDateRaw(rows);
+    final curDt = _tryParseIso(currentRaw);
+    final curSub =
+        rows.isEmpty ? '' : (curDt == null ? (currentRaw ?? '') : _fmtDateDdMmYy(curDt));
+
+    final deltaStr = _formatDelta(kind, baseline, current);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _summaryCard(title: s.growthAtBirth, subtitle: birthSub.isEmpty ? null : birthSub, value: _formatMeasurement(kind, baseline), titleColor: muted),
+        const SizedBox(width: 8),
+        _summaryCard(title: s.growthCardCurrent, subtitle: curSub.isEmpty ? null : curSub, value: _formatMeasurement(kind, current), titleColor: muted),
+        const SizedBox(width: 8),
+        _summaryCard(title: s.growthCardChange, subtitle: null, value: deltaStr, titleColor: muted),
+      ],
+    );
+  }
+
+  /// Eixo X = dias desde a meia-noite da data de nascimento (se existir), senão da primeira medição.
+  static double _growthXDays(DateTime anchorMidnight, DateTime measured) =>
+      measured.difference(anchorMidnight).inMilliseconds / Duration.millisecondsPerDay;
+
+  static DateTime _dateOnlyLocal(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  double _growthChartVerticalInterval(double minY, double maxY) {
+    final span = math.max(maxY - minY, 1e-6);
+    final approx = span / 4;
+    if (approx <= 0.05) return 0.05;
+    if (approx <= 0.1) return 0.1;
+    if (approx <= 0.25) return 0.25;
+    if (approx <= 0.5) return 0.5;
+    if (approx <= 1) return 1;
+    if (approx <= 2) return 2;
+    if (approx <= 5) return 5;
+    if (approx <= 10) return 10;
+    if (approx <= 20) return 20;
+    return (approx / 10).ceilToDouble() * 10;
+  }
+
+  String _growthAxisYLabel(String kind, double v, {required bool deltaMode, required double spanY}) {
+    String comma(String s) => s.replaceAll('.', ',');
+    if (!deltaMode) {
+      if (kind == 'weight') {
+        if (spanY >= 2.5) return comma(v.toStringAsFixed(1));
+        return comma(v.toStringAsFixed(2));
+      }
+      if (kind == 'head') {
+        if (spanY >= 3) return comma(v.toStringAsFixed(0));
+        return comma(v.toStringAsFixed(1));
+      }
+      // height (cm): sem decimais
+      return '${v.round()}';
+    }
+    if (v == 0) {
+      if (kind == 'weight') return comma('0.00');
+      if (kind == 'head') return comma('0.0');
+      return '0';
+    }
+    final t = kind == 'weight'
+        ? (spanY >= 2.5 ? v.toStringAsFixed(1) : v.toStringAsFixed(2))
+        : kind == 'head'
+            ? (spanY >= 3 ? v.toStringAsFixed(0) : v.toStringAsFixed(1))
+            : v.round().toString();
+    final prefix = v > 0 ? '+' : '';
+    return prefix + comma(t);
+  }
+
+  double _growthChartBottomInterval(double minX, double maxX) {
+    final span = math.max(maxX - minX, 1);
+    final approx = span / 4;
+    if (approx <= 1) return 1;
+    if (approx <= 2) return 2;
+    if (approx <= 5) return 5;
+    if (approx <= 10) return 10;
+    if (approx <= 14) return 14;
+    return (approx / 7).ceilToDouble() * 7;
+  }
+
+  Widget _growthLineChart(String kind, List<Map<String, Object?>> rows, String metricTitle) {
+    final s = S.of(context);
+    final ascFull = _asc(rows);
+    if (ascFull.isEmpty) {
+      return SizedBox(
+        height: 200,
+        child: Center(child: Text(s.growthEmpty(metricTitle), style: TextStyle(color: Colors.black.withAlpha(140)))),
+      );
+    }
+    final asc = ascFull.length <= _growthChartMaxRecords
+        ? ascFull
+        : ascFull.sublist(ascFull.length - _growthChartMaxRecords);
+
+    final baby = _currentBaby.currentBabyRow;
+    final birthRaw = baby?['birth_date'] as String?;
+    final birthDt = _tryParseIso(birthRaw);
+    final anchor = birthDt != null ? _dateOnlyLocal(birthDt) : _dateOnlyLocal(_measuredDateTime(asc.first));
+
+    final b0 = _birthBaseline(kind, baby);
+    final deltaMode = (kind == 'weight' || kind == 'height') && b0 != null;
+    final double refY = switch ((deltaMode, b0)) {
+      (true, final double v) => v,
+      _ => 0.0,
+    };
+
+    final spots = <FlSpot>[];
+    final xLabels = <DateTime>[];
+    for (final row in asc) {
+      final dt = _measuredDateTime(row);
+      final raw = (row['value'] as num?)?.toDouble() ?? 0;
+      final y = deltaMode ? (raw - refY) : raw;
+      // Eixo X sequencial (0..N-1) para evitar quebra por datas repetidas/mesmo dia.
+      spots.add(FlSpot(spots.length.toDouble(), y));
+      xLabels.add(dt);
+    }
+
+    if (deltaMode) {
+      final hasOrigin = spots.any((p) => p.x <= 1e-3 && p.y.abs() <= 1e-6);
+      if (!hasOrigin && spots.isNotEmpty && spots.first.x >= 0.9) {
+        spots.insert(0, const FlSpot(0, 0));
+        xLabels.insert(0, anchor);
+      }
+    }
+
+    var minY = double.infinity;
+    var maxY = double.negativeInfinity;
+    var minSpotX = double.infinity;
+    var maxSpotX = double.negativeInfinity;
+    for (final p in spots) {
+      minSpotX = math.min(minSpotX, p.x);
+      maxSpotX = math.max(maxSpotX, p.x);
+      minY = math.min(minY, p.y);
+      maxY = math.max(maxY, p.y);
+    }
+
+    if (deltaMode) {
+      minY = math.min(minY, 0);
+      maxY = math.max(maxY, 0);
+    }
+
+    double padSpan;
+    if (minY == maxY) {
+      padSpan = 1;
+      minY -= padSpan * 0.5;
+      maxY += padSpan * 0.5;
+    } else {
+      padSpan = (maxY - minY) * 0.14;
+      minY -= padSpan;
+      maxY += padSpan;
+    }
+
+    final xSpanNatural = math.max(maxSpotX - minSpotX, 0);
+    late final double chartMinX;
+    late final double chartMaxX;
+    if (spots.length <= 1) {
+      final mid = maxSpotX;
+      final half = math.max(xSpanNatural * 0.5 + 3, 3.5);
+      chartMinX = math.max(0, mid - half);
+      chartMaxX = mid + half;
+    } else {
+      final xPad = math.max(xSpanNatural * 0.06, 0.35);
+      chartMinX = math.max(0, minSpotX - xPad);
+      chartMaxX = maxSpotX + xPad;
+    }
+
+    final bottomInterval = _growthChartBottomInterval(chartMinX, chartMaxX);
+    final verticalInterval = _growthChartVerticalInterval(minY, maxY);
+    final showBottom = spots.length >= 2 || (chartMaxX - chartMinX) >= 1;
+    final spanY = maxY - minY;
+
+    // Span real de tempo (em dias) só para decidir quão curto é o label (dd vs dd/mm vs mm/aa).
+    final double timeSpanDays = xLabels.length <= 1
+        ? 0
+        : math.max(0.0, _growthXDays(_dateOnlyLocal(xLabels.first), _dateOnlyLocal(xLabels.last)));
+
+    final leftReserved = deltaMode && kind == 'weight' ? 44.0 : 40.0;
+
+    final chart = AspectRatio(
+      aspectRatio: 1.65,
+      child: Padding(
+        padding: const EdgeInsets.only(right: 8, top: 10),
+        child: LineChart(
+          LineChartData(
+            clipData: const FlClipData.all(),
+            minX: chartMinX,
+            maxX: chartMaxX,
+            minY: minY,
+            maxY: maxY,
+            gridData: FlGridData(
+              show: true,
+              drawVerticalLine: true,
+              verticalInterval: bottomInterval,
+              horizontalInterval: verticalInterval,
+              getDrawingHorizontalLine: (_) => const FlLine(color: Color(0x22000000), strokeWidth: 1),
+              getDrawingVerticalLine: (_) => const FlLine(color: Color(0x22000000), strokeWidth: 1),
+            ),
+            borderData: FlBorderData(show: false),
+            titlesData: FlTitlesData(
+              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: leftReserved,
+                  interval: verticalInterval,
+                  getTitlesWidget: (v, _) => Text(
+                    _growthAxisYLabel(kind, v, deltaMode: deltaMode, spanY: spanY),
+                    style: TextStyle(fontSize: 10, color: Colors.black.withAlpha(140)),
+                  ),
+                ),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: showBottom,
+                  interval: bottomInterval,
+                  getTitlesWidget: (v, _) {
+                    final idx = v.round();
+                    if (idx < 0 || idx >= xLabels.length) {
+                      return const SizedBox.shrink();
+                    }
+                    // Evita spam: só mostra quando o tick cai bem perto do inteiro.
+                    if ((v - idx).abs() > 0.06) return const SizedBox.shrink();
+                    final labelDt = xLabels[idx];
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        _fmtAxisX(labelDt, spanDays: timeSpanDays),
+                        style: TextStyle(fontSize: 9, color: Colors.black.withAlpha(120)),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            lineBarsData: [
+              LineChartBarData(
+                spots: spots,
+                // fl_chart smoothing precisa de ≥3 pontos; com 1–2 a spline pode ficar fora dos limites/clipping.
+                isCurved: spots.length >= 3,
+                curveSmoothness: 0.35,
+                preventCurveOverShooting: spots.length >= 3,
+                color: _accent,
+                barWidth: 2.8,
+                dotData: const FlDotData(show: true),
+                belowBarData: BarAreaData(
+                  show: true,
+                  gradient: LinearGradient(
+                    colors: [_accent.withAlpha(90), _accent.withAlpha(16)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (!deltaMode) return chart;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        chart,
+        Padding(
+          padding: const EdgeInsets.only(top: 6, right: 8),
+          child: Text(
+            s.growthChartDeltaHint,
+            style: TextStyle(fontSize: 10, height: 1.25, color: Colors.black.withAlpha(120)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _metricScroll(String kind, List<Map<String, Object?>> rows, S s) {
+    final name = _displayBabyName(_currentBaby.currentBabyRow, s);
+    final metric = _metricShortLabel(s, kind);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 110),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _cardsRow(kind, rows, s),
+          const SizedBox(height: 18),
+          Text(s.growthChartCaption(name, metric), style: TextStyle(color: Colors.black.withAlpha(130), fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          _growthLineChart(kind, rows, metric),
+          _growthHistoryList(s, kind, rows),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryScroll(S s) {
+    final name = _displayBabyName(_currentBaby.currentBabyRow, s);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 110),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(s.growthSummaryIntro, style: TextStyle(color: Colors.black.withAlpha(130), height: 1.35)),
+          const SizedBox(height: 20),
+          Text(s.labelWeight.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900)),
+          const SizedBox(height: 10),
+          _cardsRow('weight', _weight, s),
+          const SizedBox(height: 12),
+          Text(s.growthChartCaption(name, s.labelWeight), style: TextStyle(color: Colors.black.withAlpha(120), fontSize: 13)),
+          _growthLineChart('weight', _weight, s.labelWeight),
+          _growthHistoryList(s, 'weight', _weight),
+          const SizedBox(height: 28),
+          Text(s.labelHeight.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900)),
+          const SizedBox(height: 10),
+          _cardsRow('height', _height, s),
+          const SizedBox(height: 12),
+          Text(s.growthChartCaption(name, s.labelHeight), style: TextStyle(color: Colors.black.withAlpha(120), fontSize: 13)),
+          _growthLineChart('height', _height, s.labelHeight),
+          _growthHistoryList(s, 'height', _height),
+          const SizedBox(height: 28),
+          Text(s.labelHead.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900)),
+          const SizedBox(height: 10),
+          _cardsRow('head', _head, s),
+          const SizedBox(height: 12),
+          Text(s.growthChartCaption(name, s.labelHead), style: TextStyle(color: Colors.black.withAlpha(120), fontSize: 13)),
+          _growthLineChart('head', _head, s.labelHead),
+          _growthHistoryList(s, 'head', _head),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    final bid = _currentBaby.currentBabyId;
+
+    if (bid == null) {
+      return Scaffold(
+        appBar: AppBar(title: Text(widget.appBarTitle)),
+        body: Center(
+          child: Padding(padding: const EdgeInsets.all(24), child: Text(s.feedingNoBabyHint, textAlign: TextAlign.center)),
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.appBarTitle)),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Material(
+            color: Theme.of(context).colorScheme.surface,
+            child: TabBar(
+              controller: _tabController,
+              isScrollable: false,
+              labelColor: _accent,
+              unselectedLabelColor: Colors.black.withAlpha(120),
+              indicatorColor: _accent,
+              indicatorWeight: 3,
+              tabs: [
+                Tab(text: s.growthTabWeight.toUpperCase()),
+                Tab(text: s.growthTabHeight.toUpperCase()),
+                Tab(text: s.growthTabHead.toUpperCase()),
+                Tab(text: s.growthTabSummary.toUpperCase()),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 4, 8, 2),
+            child: ValueListenableBuilder<bool>(
+              valueListenable: HomePrefs.growthHealthAlertsEnabled,
+              builder: (context, enabled, _) {
+                return SwitchListTile.adaptive(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                  dense: true,
+                  secondary: Icon(Icons.notifications_active_outlined, color: _accent.withAlpha(220)),
+                  title: Text(s.healthGrowthToggleAlerts, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                  subtitle: Text(s.healthGrowthToggleAlertsSubtitle, style: TextStyle(fontSize: 12, color: Colors.black.withAlpha(130))),
+                  value: enabled,
+                  activeThumbColor: _accent,
+                  onChanged: (v) => HomePrefs.setGrowthHealthAlertsEnabled(v),
+                );
+              },
+            ),
+          ),
+          Expanded(
+            child: _loading && _weight.isEmpty && _height.isEmpty && _head.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _metricScroll('weight', _weight, s),
+                      _metricScroll('height', _height, s),
+                      _metricScroll('head', _head, s),
+                      _summaryScroll(s),
+                    ],
+                  ),
+          ),
+          if (!_loading && _tabController.index != 3)
+            Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 14 + MediaQuery.paddingOf(context).bottom),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _accent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                  ),
+                  onPressed: () {
+                    const kinds = ['weight', 'height', 'head'];
+                    _showAddSheet(s, kinds[_tabController.index]);
+                  },
+                  child: Text(
+                    _ctaLabel(s, _tabController.index).toUpperCase(),
+                    style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.8),
+                  ),
+                ),
+              ),
+            ),
+          if (!_loading && _tabController.index == 3)
+            SizedBox(height: MediaQuery.paddingOf(context).bottom + 8),
+        ],
+      ),
+    );
+  }
+}
+
+/// Folha "editar registo": o [TextEditingController] tem de viver num [State] para
+/// [dispose] correr depois da [TextField] sair da árvore (evita `_dependents.isEmpty`).
+class _EditGrowthSheetBody extends StatefulWidget {
+  final Color accent;
+  final S strings;
+  final String kind;
+  final int babyId;
+  final int recordId;
+  final String label;
+  final String unit;
+  final String initialValueText;
+  final DateTime initialMeasuredAt;
+  final VoidCallback onSaved;
+
+  const _EditGrowthSheetBody({
+    required this.accent,
+    required this.strings,
+    required this.kind,
+    required this.babyId,
+    required this.recordId,
+    required this.label,
+    required this.unit,
+    required this.initialValueText,
+    required this.initialMeasuredAt,
+    required this.onSaved,
+  });
+
+  @override
+  State<_EditGrowthSheetBody> createState() => _EditGrowthSheetBodyState();
+}
+
+class _EditGrowthSheetBodyState extends State<_EditGrowthSheetBody> {
+  late final TextEditingController _valueCtrl;
+  late DateTime _picked;
+
+  static String _fmtDateDdMmYy(DateTime dt) =>
+      '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+
+  @override
+  void initState() {
+    super.initState();
+    _valueCtrl = TextEditingController(text: widget.initialValueText);
+    _picked = widget.initialMeasuredAt;
+  }
+
+  @override
+  void dispose() {
+    _valueCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final d = await showDatePicker(
+      context: context,
+      initialDate: DateTime(_picked.year, _picked.month, _picked.day),
+      firstDate: DateTime(_picked.year - 6),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+    );
+    if (d != null) {
+      setState(() {
+        _picked = DateTime(d.year, d.month, d.day, _picked.hour, _picked.minute);
+      });
+    }
+  }
+
+  Future<void> _save() async {
+    final s = widget.strings;
+    final raw = _valueCtrl.text.trim();
+    final parsed = widget.kind == 'weight'
+        ? MeasurementFormat.parseWeightToKg(raw)
+        : MeasurementFormat.parseLengthToCm(raw);
+    if (parsed == null || parsed <= 0) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.invalidGrowthValue(widget.label))));
+      }
+      return;
+    }
+    await AppDatabase.instance.updateGrowthRecord(
+      id: widget.recordId,
+      babyId: widget.babyId,
+      value: parsed,
+      measuredAt: _picked,
+    );
+    GrowthCloudSync.pushLocalSoon(localBabyId: widget.babyId, localGrowthId: widget.recordId);
+    GrowthEvents.ping();
+    if (mounted) Navigator.pop(context);
+    widget.onSaved();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.strings;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 22,
+        right: 22,
+        top: 20,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 22,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            '${s.edit} — ${widget.label}',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            controller: _valueCtrl,
+            decoration: InputDecoration(
+              labelText: '${widget.label} (${widget.unit})',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.calendar_today_outlined),
+            title: Text(s.viewCalendar),
+            subtitle: Text(_fmtDateDdMmYy(_picked)),
+            onTap: _pickDate,
+          ),
+          const SizedBox(height: 18),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: widget.accent,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            onPressed: _save,
+            child: Text(s.saveRecord),
+          ),
+        ],
+      ),
+    );
+  }
+}

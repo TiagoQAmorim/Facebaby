@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>91181989163-efp3pbook64nhht7gsqbes7duvjuq7nt.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.91181989163-efp3pbook64nhht7gsqbes7duvjuq7nt</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>91181989163-qgmmg1kcbqgimie8g9i7aj23ttup72r9.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyDsnuG6BTKXf0ZKss5q-cOsfUS2Z_C-mh0</string>
+	<key>GCM_SENDER_ID</key>
+	<string>91181989163</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.example.facebabyFlutter</string>
+	<key>PROJECT_ID</key>
+	<string>facebaby-afc41</string>
+	<key>STORAGE_BUCKET</key>
+	<string>facebaby-afc41.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:91181989163:ios:fca6ab95507293657c596e</string>
+</dict>
+</plist>
