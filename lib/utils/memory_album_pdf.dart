@@ -67,6 +67,42 @@ Uint8List _resizeForPdf(Uint8List raw) {
 
 PdfColor _c(double r, double g, double b) => PdfColor(r, g, b);
 
+/// Formato livro de fotos ~24×19 cm (largura × altura), comum em álbuns impressos.
+PdfPageFormat _memoryAlbumBookPageFormat() =>
+    PdfPageFormat(24 * PdfPageFormat.cm, 19 * PdfPageFormat.cm, marginAll: 0);
+
+/// Rodapé com número da página (ex.: `2 / 15`).
+pw.Widget _albumPageNumberFooter(int pageIndex, int totalPages) {
+  return pw.Text(
+    '$pageIndex / $totalPages',
+    textAlign: pw.TextAlign.center,
+    style: pw.TextStyle(
+      fontSize: 8.5,
+      color: PdfColor.fromInt(0xFF6E6E6E),
+      letterSpacing: 0.2,
+    ),
+  );
+}
+
+pw.Widget _albumPageStackWithFooter({
+  required pw.Widget background,
+  required int pageIndex,
+  required int totalPages,
+}) {
+  return pw.Stack(
+    fit: pw.StackFit.expand,
+    children: [
+      background,
+      pw.Positioned(
+        left: 0,
+        right: 0,
+        bottom: 10,
+        child: _albumPageNumberFooter(pageIndex, totalPages),
+      ),
+    ],
+  );
+}
+
 /// Captura o mesmo layout que o PDF individual ([MemoryShareCard]) em PNG.
 Future<Uint8List> _captureMemoryShareCardPng({
   required BuildContext context,
@@ -122,14 +158,7 @@ Future<Uint8List> _captureMemoryShareCardPng({
 /// PDF: capa em arte scrapbook + páginas [MemoryShareCard] + folha em branco.
 const String _memoryAlbumCoverAsset = 'assets/memories/memory_album_cover.png';
 
-/// Fator >1 amplia a arte em relação à folha A4 (clip centrado), ficando um pouco maior
-/// que a área útil das páginas interiores (que têm margem extra no PDF).
-///
-/// Nota: a arte da capa já inclui bordas. Para não cortar lateralmente no PDF,
-/// mantemos a escala em 1.0 e usamos `contain` na imagem.
-const double _memoryAlbumCoverBleedScale = 1.0;
-
-/// Capa “álbum físico” em arte fixa (A4); personalização do nome na faixa inferior.
+/// Capa com arte fixa; imagem em [BoxFit.contain] para caber em ~24×19 cm sem cortes.
 pw.Widget _memoryAlbumCoverPage(
   pw.MemoryImage coverImage,
   MemoryAlbumPdfStrings strings,
@@ -140,17 +169,15 @@ pw.Widget _memoryAlbumCoverPage(
   final tag = strings.coverTagline.replaceAll('{name}', babyName);
   const brown = PdfColor(0.42, 0.32, 0.26);
 
-  final coverLayer = pw.Transform.scale(
-    scale: _memoryAlbumCoverBleedScale,
-    alignment: pw.Alignment.center,
-    child: pw.SizedBox(
-      width: pageW,
-      height: pageH,
-      child: pw.Image(
-        coverImage,
-        fit: pw.BoxFit.contain,
-        alignment: pw.Alignment.center,
-      ),
+  /// Margem lateral para a arte não encostar ao corte da impressão.
+  const edgeInset = 14.0;
+
+  final coverLayer = pw.Padding(
+    padding: const pw.EdgeInsets.symmetric(horizontal: edgeInset, vertical: 10),
+    child: pw.Image(
+      coverImage,
+      fit: pw.BoxFit.contain,
+      alignment: pw.Alignment.center,
     ),
   );
 
@@ -161,17 +188,11 @@ pw.Widget _memoryAlbumCoverPage(
     child: pw.Stack(
       fit: pw.StackFit.expand,
       children: [
-        pw.ClipRect(
-          child: pw.SizedBox(
-            width: pageW,
-            height: pageH,
-            child: coverLayer,
-          ),
-        ),
+        pw.Center(child: coverLayer),
         pw.Positioned(
           left: 28,
           right: 28,
-          bottom: 26,
+          bottom: 44,
           child: pw.Container(
             padding: const pw.EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             decoration: pw.BoxDecoration(
@@ -303,7 +324,8 @@ Future<Uint8List> buildMemoryAlbumMemoryBookPdf({
   required List<MemoryAlbumPageInput> pages,
 }) async {
   final doc = pw.Document();
-  const a4 = PdfPageFormat.a4;
+  final bookFmt = _memoryAlbumBookPageFormat();
+  final totalPages = 1 + pages.length + 1;
 
   pw.MemoryImage? coverImg;
   pw.MemoryImage? logoImg;
@@ -313,34 +335,43 @@ Future<Uint8List> buildMemoryAlbumMemoryBookPdf({
     logoImg = pw.MemoryImage((await rootBundle.load('assets/logo.png')).buffer.asUint8List());
   }
 
-  // ——— Capa: arte dedicada (scrapbook 3D) em tela cheia A4, com faixa para o nome. ———
+  // ——— Capa ~24×19 cm; arte em contain + faixa do nome acima do rodapé com número de página. ———
   doc.addPage(
     pw.Page(
-      pageFormat: a4,
+      pageFormat: bookFmt,
       margin: pw.EdgeInsets.zero,
       build: (pdfContext) {
         final pageW = pdfContext.page.pageFormat.width;
         final pageH = pdfContext.page.pageFormat.height;
         final cover = coverImg;
+        late final pw.Widget inner;
         if (cover != null) {
-          return _memoryAlbumCoverPage(cover, strings, babyName, pageW, pageH);
+          inner = _memoryAlbumCoverPage(cover, strings, babyName, pageW, pageH);
+        } else {
+          final logo = logoImg;
+          if (logo == null) {
+            inner = pw.Container(
+              width: pageW,
+              height: pageH,
+              color: PdfColors.white,
+              child: pw.Center(child: pw.Text(strings.coverMainTitle)),
+            );
+          } else {
+            inner = _fallbackCoverPage(strings, babyName, logo, pageW, pageH);
+          }
         }
-        final logo = logoImg;
-        if (logo == null) {
-          return pw.Container(
-            width: pageW,
-            height: pageH,
-            color: PdfColors.white,
-            child: pw.Center(child: pw.Text(strings.coverMainTitle)),
-          );
-        }
-        return _fallbackCoverPage(strings, babyName, logo, pageW, pageH);
+        return _albumPageStackWithFooter(
+          background: inner,
+          pageIndex: 1,
+          totalPages: totalPages,
+        );
       },
     ),
   );
 
   // ——— Páginas: mesma composição que “PDF (uma página)” no detalhe. ———
-  for (final p in pages) {
+  for (var i = 0; i < pages.length; i++) {
+    final p = pages[i];
     final imgBytes = await _imageBytesForMemory(p.memory);
     if (!context.mounted) {
       throw StateError('Exportação do álbum interrompida.');
@@ -357,19 +388,26 @@ Future<Uint8List> buildMemoryAlbumMemoryBookPdf({
       throw StateError('Exportação do álbum interrompida.');
     }
     final jpg = encodePngBytesToJpg(png, quality: 88);
+    final pageIndex = i + 2;
     doc.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.a4,
+        pageFormat: bookFmt,
         margin: pw.EdgeInsets.zero,
         build: (ctx) {
           final w = ctx.page.pageFormat.width;
           final h = ctx.page.pageFormat.height;
           final image = pw.MemoryImage(jpg);
-          return pw.Container(
+          final sheet = pw.Container(
             width: w,
             height: h,
             color: kMemoryPdfAlbumPageBg,
+            padding: const pw.EdgeInsets.fromLTRB(12, 8, 12, 22),
             child: pw.Center(child: pw.Image(image, fit: pw.BoxFit.contain)),
+          );
+          return _albumPageStackWithFooter(
+            background: sheet,
+            pageIndex: pageIndex,
+            totalPages: totalPages,
           );
         },
       ),
@@ -378,9 +416,13 @@ Future<Uint8List> buildMemoryAlbumMemoryBookPdf({
 
   doc.addPage(
     pw.Page(
-      pageFormat: PdfPageFormat.a4,
+      pageFormat: bookFmt,
       margin: pw.EdgeInsets.zero,
-      build: (_) => pw.Container(color: kMemoryPdfAlbumPageBg),
+      build: (_) => _albumPageStackWithFooter(
+        background: pw.Container(color: kMemoryPdfAlbumPageBg),
+        pageIndex: totalPages,
+        totalPages: totalPages,
+      ),
     ),
   );
 

@@ -1,14 +1,15 @@
 import 'dart:async' show Completer, unawaited;
 import 'dart:convert' show base64Decode;
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../app_database.dart';
+import '../premium/premium_service.dart';
 import 'firestore_service.dart';
 import 'profile_cloud_sync.dart';
 import 'storage_service.dart';
+import 'weekly_photo_public_sync.dart';
 
 class MemoryCloudSync {
   MemoryCloudSync._();
@@ -29,6 +30,7 @@ class MemoryCloudSync {
 
   static Future<void> pushBadgeMemory({required int localBabyId, required String badgeId}) async {
     if (!_authed || kIsWeb) return;
+    if (!PremiumService.instance.isPremium) return;
     final gateKey = '$localBabyId::$badgeId';
     final previous = _pushInFlight[gateKey];
     if (previous != null) {
@@ -62,6 +64,12 @@ class MemoryCloudSync {
           );
       if (row.isEmpty) return;
 
+      DateTime? parseOptIso(Object? v) {
+        final s = (v as String?)?.trim();
+        if (s == null || s.isEmpty) return null;
+        return DateTime.tryParse(s);
+      }
+
       // Large base64 photos can exceed Firestore document size. We upload to Storage and
       // store only the URL in Firestore to guarantee persistence across reinstalls.
       String? photoUrl;
@@ -91,6 +99,13 @@ class MemoryCloudSync {
             moodAtMoment: (row['mood_at_moment'] as String?)?.toString(),
             motherNotes: (row['mother_notes'] as String?)?.toString(),
             isFavorite: ((row['is_favorite'] as int?) ?? 0) == 1,
+            isPublic: ((row['is_public'] as int?) ?? 0) == 1,
+            publicEnabledAt: parseOptIso(row['public_enabled_at']),
+            publicDisabledAt: parseOptIso(row['public_disabled_at']),
+            eligibleForWeeklyPhoto: ((row['eligible_weekly_photo'] as int?) ?? 0) == 1,
+            weeklyPhotoWinner: ((row['weekly_photo_winner'] as int?) ?? 0) == 1,
+            weeklyPhotoWeekId: (row['weekly_photo_week_id'] as String?)?.trim(),
+            showBabyFirstNameWhenPublic: ((row['show_baby_name_public'] as int?) ?? 1) == 1,
           );
         } catch (e) {
           debugPrint('MemoryCloudSync.uploadMemoryPhoto failed: $e');
@@ -109,6 +124,11 @@ class MemoryCloudSync {
         'mood_at_moment': row['mood_at_moment'],
         'mother_notes': row['mother_notes'],
         'is_favorite': ((row['is_favorite'] as int?) ?? 0) == 1,
+        'is_public': ((row['is_public'] as int?) ?? 0) == 1,
+        'public_enabled_at': row['public_enabled_at'],
+        'public_disabled_at': row['public_disabled_at'],
+        'eligible_weekly_photo': ((row['eligible_weekly_photo'] as int?) ?? 0) == 1,
+        'show_baby_name_public': ((row['show_baby_name_public'] as int?) ?? 1) == 1,
       };
       final uploadedUrl = photoUrl?.trim();
       final existingLocalUrl = (row['photo_path'] as String?)?.trim();
@@ -126,6 +146,8 @@ class MemoryCloudSync {
         badgeId: badgeId,
         data: merge,
       );
+
+      await WeeklyPhotoPublicSync.syncBadgeMemory(localBabyId: localBabyId, badgeId: badgeId);
     } catch (e, st) {
       debugPrint('MemoryCloudSync.pushBadgeMemory failed: $e\n$st');
       rethrow;

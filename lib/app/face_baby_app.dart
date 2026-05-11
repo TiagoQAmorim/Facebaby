@@ -8,6 +8,7 @@ import '../utils/portal_layout.dart';
 import '../widgets/loading_scope.dart';
 import '../widgets/loading_navigator_observer.dart';
 import '../pages/auth/auth_gate.dart';
+import '../providers/premium_provider.dart';
 
 class FaceBabyApp extends StatelessWidget {
   const FaceBabyApp({super.key});
@@ -73,7 +74,9 @@ class FaceBabyApp extends StatelessWidget {
               }
               return supported.first;
             },
-            home: const AuthGate(child: LoadingScope(child: AppGate())),
+            home: PremiumScope(
+              child: const AuthGate(child: LoadingScope(child: AppGate())),
+            ),
           );
         },
       ),

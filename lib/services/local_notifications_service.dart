@@ -302,7 +302,8 @@ class LocalNotificationsService {
   }) async {
     if (kIsWeb) return;
     try {
-      final uid = FirebaseAuth.instance.currentUser?.uid ?? 'anonymous';
+      final raw = FirebaseAuth.instance.currentUser?.uid ?? 'anonymous';
+      final uid = raw.trim().isEmpty ? 'anonymous' : raw.trim();
       await AppDatabase.instance.insertNotificationLog(
         notifId: notifId,
         uid: uid,
@@ -312,7 +313,9 @@ class LocalNotificationsService {
         kind: kind,
         occurredAt: occurredAt,
       );
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('LocalNotificationsService._persistNotificationLog failed: $e\n$st');
+    }
   }
 
   Future<void> cancelNotificationIds(Iterable<int> ids) async {

@@ -1,15 +1,21 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../../controllers/current_baby_controller.dart';
 import '../../controllers/memory_controller.dart';
 import '../../i18n/app_i18n.dart';
+import '../../services/premium/feature_access.dart';
+import '../../services/premium/premium_constants.dart';
+import '../../services/premium/premium_service.dart';
 import '../../models/memory_badge.dart';
 import '../../services/app_database.dart';
 import '../../services/memory_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/memory_album_pdf.dart';
 import '../../utils/memory_share_transport.dart';
+import '../premium/premium_paywall_screen.dart';
 import '../../utils/portal_layout.dart';
 import '../../widgets/card_box.dart';
 import '../../widgets/memories/memory_grid.dart';
@@ -45,11 +51,67 @@ class _MemoriesPageState extends State<MemoriesPage> with AutomaticKeepAliveClie
     controller.loadForBaby(currentBaby.currentBabyId);
   }
 
+  Future<void> _showAlbumPdfActions(Uint8List pdfBytes, String fileName) async {
+    final s = S.of(context);
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                s.memoriesAlbumPdfReadyTitle,
+                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 14),
+              FilledButton.icon(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  await shareTempBytes(pdfBytes, fileName, 'application/pdf');
+                },
+                icon: const Icon(Icons.ios_share_rounded),
+                label: Text(s.memoriesAlbumShareAction),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  try {
+                    await savePdfBytes(pdfBytes, fileName);
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.memoriesAlbumSavedSnack)));
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('${s.memoriesAlbumSaveFailedSnack} ($e)')),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.download_rounded),
+                label: Text(s.memoriesAlbumSaveAction),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _exportMemoryAlbum(List<MemoryBadge> badges) async {
     final babyId = currentBaby.currentBabyId;
     final babyRow = currentBaby.currentBabyRow;
     if (!mounted || babyId == null || babyRow == null) return;
     final s = S.of(context);
+
+    if (!FeatureAccess.canGenerateMemoryBook) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.plusSnackLockedFeature)));
+      await openPremiumPaywall(context);
+      return;
+    }
 
     final filled = _filledCount(badges);
     if (filled == 0) {
@@ -113,7 +175,9 @@ class _MemoriesPageState extends State<MemoriesPage> with AutomaticKeepAliveClie
         pages: pages,
       );
       final stamp = DateTime.now().toIso8601String().replaceAll(':', '').split('.').first;
-      await shareTempBytes(pdfBytes, 'facebaby_album_$stamp.pdf', 'application/pdf');
+      final fileName = 'facebaby_album_$stamp.pdf';
+      if (!mounted) return;
+      await _showAlbumPdfActions(pdfBytes, fileName);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -154,7 +218,7 @@ class _MemoriesPageState extends State<MemoriesPage> with AutomaticKeepAliveClie
     final badges = MemoryBadgesCatalog.all();
 
     return AnimatedBuilder(
-      animation: Listenable.merge([controller, currentBaby]),
+      animation: Listenable.merge([controller, currentBaby, PremiumService.instance]),
       builder: (context, _) {
         final tint = AppTheme.backdropTintForSex(
           ((babyRow?['sex'] as String?)?.trim().toUpperCase() == 'M') ? 'M' : 'F',
@@ -195,6 +259,9 @@ class _MemoriesPageState extends State<MemoriesPage> with AutomaticKeepAliveClie
                   total: total,
                   progressLabel: s.memoriesProgressSaved(filled, total),
                   cheerEmpty: filled == 0 ? s.memoriesCheerEmpty : null,
+                  freePlanCaption: PremiumService.instance.isPremium
+                      ? null
+                      : s.plusMemoryCounterFree(filled, PremiumConstants.freeMemoryMomentsMax),
                 ),
               ],
               if (babyId != null && babyRow != null && !controller.loading && controller.error == null) ...[
@@ -402,6 +469,7 @@ class _MemoriesProgressBanner extends StatelessWidget {
   final int total;
   final String progressLabel;
   final String? cheerEmpty;
+  final String? freePlanCaption;
 
   const _MemoriesProgressBanner({
     required this.tint,
@@ -409,6 +477,7 @@ class _MemoriesProgressBanner extends StatelessWidget {
     required this.total,
     required this.progressLabel,
     this.cheerEmpty,
+    this.freePlanCaption,
   });
 
   @override
@@ -498,6 +567,18 @@ class _MemoriesProgressBanner extends StatelessWidget {
               ),
             ),
           ),
+          if (freePlanCaption != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              freePlanCaption!,
+              style: TextStyle(
+                fontSize: portalSp(context, 12.5),
+                fontWeight: FontWeight.w700,
+                height: 1.35,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          ],
           if (cheerEmpty != null) ...[
             const SizedBox(height: 10),
             Row(

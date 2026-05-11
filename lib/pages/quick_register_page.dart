@@ -7,6 +7,7 @@ import 'diaper_page.dart';
 import 'feeding_hub_page.dart';
 import 'growth_register_page.dart';
 import 'health_hub_page.dart';
+import 'reports/reports_hub_page.dart';
 import 'sleep_page.dart';
 
 class QuickRegisterPage extends StatefulWidget {
@@ -94,6 +95,13 @@ class _QuickRegisterPageState extends State<QuickRegisterPage> with AutomaticKee
               title: s.shortcutSleep,
               color: AppTheme.primary,
               onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SleepPage())),
+            ),
+            const SizedBox(height: 10),
+            _RegisterRow(
+              icon: Icons.insert_chart_outlined,
+              title: s.reportsTitle,
+              color: AppTheme.textPrimary,
+              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ReportsHubPage())),
             ),
           ],
         ],

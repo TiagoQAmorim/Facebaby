@@ -5,6 +5,7 @@ import '../i18n/app_i18n.dart';
 import '../theme/app_theme.dart';
 import '../services/firebase/account_deletion_service.dart';
 import '../services/firebase/auth_service.dart';
+import '../services/premium/premium_service.dart';
 import '../widgets/card_box.dart';
 import '../utils/portal_layout.dart';
 import '../widgets/language_picker.dart';
@@ -13,6 +14,75 @@ import 'alerts_settings_page.dart';
 import 'contact_page.dart';
 import 'mother_profile_page.dart';
 import 'units_settings_page.dart';
+import 'privacy_policy_page.dart';
+import 'reports/reports_hub_page.dart';
+import 'terms_of_use_page.dart';
+import 'premium/premium_paywall_screen.dart';
+
+/// Confirmação explícita (palavra em inglês, igual para todos os idiomas da app).
+const _kAccountDeleteConfirmWord = 'delete';
+
+Future<bool> _promptTypeDeleteToConfirmWord(BuildContext ctx, S s) async {
+  final controller = TextEditingController();
+  try {
+    final result = await showDialog<bool>(
+      context: ctx,
+      barrierDismissible: false,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setLocalState) {
+            final matches = controller.text.trim().toLowerCase() == _kAccountDeleteConfirmWord;
+            return AlertDialog(
+              title: Text(s.deleteAccountTypeWordTitle),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(s.deleteAccountTypeWordInstruction),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: controller,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      textInputAction: TextInputAction.done,
+                      decoration: InputDecoration(
+                        labelText: s.deleteAccountTypeWordFieldLabel,
+                        border: const OutlineInputBorder(),
+                      ),
+                      onChanged: (_) => setLocalState(() {}),
+                      onSubmitted: (_) {
+                        final okSubmit = controller.text.trim().toLowerCase() == _kAccountDeleteConfirmWord;
+                        if (okSubmit && dialogCtx.mounted) Navigator.of(dialogCtx).pop(true);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogCtx).pop(false),
+                  child: Text(s.cancel),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF3B30),
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: matches ? () => Navigator.of(dialogCtx).pop(true) : null,
+                  child: Text(s.deleteAccountConfirm),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    return result == true;
+  } finally {
+    controller.dispose();
+  }
+}
 
 String _userVisibleDeleteError(Object e) {
   if (e is FirebaseAuthException) {
@@ -148,6 +218,10 @@ class SettingsPage extends StatelessWidget {
     if (ok != true) return;
     if (!context.mounted) return;
 
+    final confirmWord = await _promptTypeDeleteToConfirmWord(context, s);
+    if (confirmWord != true) return;
+    if (!context.mounted) return;
+
     Future<void> onSuccessUx() async {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.deleteAccountSuccess)));
@@ -194,6 +268,64 @@ class SettingsPage extends StatelessWidget {
         children: [
           Text(s.settingsTitle, style: TextStyle(fontSize: portalSp(context, 28), fontWeight: FontWeight.w900, height: 1.15)),
           const SizedBox(height: 18),
+          ListenableBuilder(
+            listenable: PremiumService.instance,
+            builder: (context, _) {
+              final plus = PremiumService.instance.isPremium;
+              final accent = Color.lerp(AppTheme.primaryPurple, AppTheme.primaryPink, 0.4)!;
+              return CardBox(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.favorite_rounded, color: accent, size: 26),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            s.settingsPlusCardTitle,
+                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: portalSp(context, 17), color: accent),
+                          ),
+                        ),
+                        if (plus)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: accent.withAlpha(36),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              'PLUS',
+                              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: accent),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      plus ? s.settingsPlusCardBodyActive : s.settingsPlusCardBodyFree,
+                      style: TextStyle(fontSize: portalSp(context, 13.5), height: 1.45, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () => openPremiumPaywall(context),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: accent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: Text(plus ? s.settingsPlusManageCta : s.settingsPlusUpgradeCta, style: const TextStyle(fontWeight: FontWeight.w800)),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 18),
           _SettingsTile(
             icon: Icons.settings_rounded,
             title: s.unitsTitle,
@@ -214,6 +346,13 @@ class SettingsPage extends StatelessWidget {
             ),
           ),
           _SettingsTile(
+            icon: Icons.insert_chart_outlined,
+            title: s.reportsTitle,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const ReportsHubPage()),
+            ),
+          ),
+          _SettingsTile(
             icon: Icons.mail_outline,
             title: s.contactTitle,
             onTap: () => Navigator.of(context).push(
@@ -225,6 +364,20 @@ class SettingsPage extends StatelessWidget {
             title: s.language,
             onTap: () => showLanguagePicker(context),
           ),
+          _SettingsTile(
+            icon: Icons.description_outlined,
+            title: s.settingsTermsOfUse,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const TermsOfUsePage()),
+            ),
+          ),
+          _SettingsTile(
+            icon: Icons.privacy_tip_outlined,
+            title: s.settingsPrivacyPolicy,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const PrivacyPolicyPage()),
+            ),
+          ),
           const SizedBox(height: 18),
           Text(
             s.settingsSoonTitle,
@@ -232,10 +385,6 @@ class SettingsPage extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _SettingsTile(icon: Icons.star_rate_rounded, title: s.settingsRateUs, enabled: false, badge: s.settingsSoonBadge),
-          _SettingsTile(icon: Icons.description_outlined, title: s.settingsTermsOfUse, enabled: false, badge: s.settingsSoonBadge),
-          _SettingsTile(icon: Icons.privacy_tip_outlined, title: s.settingsPrivacyPolicy, enabled: false, badge: s.settingsSoonBadge),
-          _SettingsTile(icon: Icons.favorite_border_rounded, title: s.settingsSpecialThanks, enabled: false, badge: s.settingsSoonBadge),
-          _SettingsTile(icon: Icons.share_outlined, title: s.settingsTellFriend, enabled: false, badge: s.settingsSoonBadge),
           const SizedBox(height: 8),
           _DangerSettingsTile(
             icon: Icons.delete_forever_rounded,

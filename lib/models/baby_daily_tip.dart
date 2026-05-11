@@ -7,6 +7,8 @@ class BabyDailyTip {
   final String text;
   /// Tradução opcional (ex.: inglês em `text_en`).
   final String? textEn;
+  /// Tradução opcional em espanhol (`text_es` em `baby_daily_tips_500.json`).
+  final String? textEs;
 
   const BabyDailyTip({
     required this.id,
@@ -15,10 +17,12 @@ class BabyDailyTip {
     required this.maxAgeMonths,
     required this.text,
     this.textEn,
+    this.textEs,
   });
 
   factory BabyDailyTip.fromJson(Map<String, dynamic> json) {
     final en = json['text_en'] as String?;
+    final es = json['text_es'] as String?;
     return BabyDailyTip(
       id: json['id'] as String? ?? '',
       phaseKey: json['phaseKey'] as String? ?? '',
@@ -26,6 +30,7 @@ class BabyDailyTip {
       maxAgeMonths: (json['maxAgeMonths'] as num?)?.round() ?? 0,
       text: json['text'] as String? ?? '',
       textEn: (en != null && en.trim().isNotEmpty) ? en.trim() : null,
+      textEs: (es != null && es.trim().isNotEmpty) ? es.trim() : null,
     );
   }
 }

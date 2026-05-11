@@ -8,6 +8,7 @@ import 'app/face_baby_app.dart';
 import 'app/app_locale.dart';
 import 'firebase_options.dart';
 import 'services/notification_timezone.dart';
+import 'services/premium/premium_service.dart';
 import 'utils/platform_info.dart';
 
 Future<void> main() async {
@@ -22,6 +23,8 @@ Future<void> main() async {
   }
 
   await kAppLanguage.loadInitialLocale();
+
+  await PremiumService.instance.initialize();
 
   if (kIsWeb) {
     databaseFactory = databaseFactoryFfiWebBasicWebWorker;

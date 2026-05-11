@@ -14,7 +14,7 @@ import '../services/home_prefs.dart';
 import '../services/measurement_units_prefs.dart';
 import '../utils/measurement_format.dart';
 
-/// Tabs Peso / Altura / Cabeça / Resumo com cartões Ao nascer · Atual · Mudar e gráfico por métrica.
+/// Tabs Peso / Altura / Resumo com cartões Ao nascer · Atual · Mudar e gráfico por métrica.
 class GrowthDashboardPage extends StatefulWidget {
   final String appBarTitle;
 
@@ -35,13 +35,12 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
 
   List<Map<String, Object?>> _weight = const [];
   List<Map<String, Object?>> _height = const [];
-  List<Map<String, Object?>> _head = const [];
   bool _loading = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       if (mounted) setState(() {});
     });
@@ -65,7 +64,6 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
         setState(() {
           _weight = const [];
           _height = const [];
-          _head = const [];
           _loading = false;
         });
       }
@@ -75,12 +73,10 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
     final db = AppDatabase.instance;
     final w = await db.listGrowthRecords(babyId: bid, kind: 'weight');
     final h = await db.listGrowthRecords(babyId: bid, kind: 'height');
-    final hd = await db.listGrowthRecords(babyId: bid, kind: 'head');
     if (!mounted) return;
     setState(() {
       _weight = w;
       _height = h;
-      _head = hd;
       _loading = false;
     });
   }
@@ -154,7 +150,7 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
       case 'height':
         return s.labelHeight;
       default:
-        return s.labelHead;
+        return kind;
     }
   }
 
@@ -414,8 +410,6 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
         return s.growthAddWeight;
       case 1:
         return s.growthAddHeight;
-      case 2:
-        return s.growthAddHead;
       default:
         return '';
     }
@@ -783,14 +777,6 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
           Text(s.growthChartCaption(name, s.labelHeight), style: TextStyle(color: Colors.black.withAlpha(120), fontSize: 13)),
           _growthLineChart('height', _height, s.labelHeight),
           _growthHistoryList(s, 'height', _height),
-          const SizedBox(height: 28),
-          Text(s.labelHead.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900)),
-          const SizedBox(height: 10),
-          _cardsRow('head', _head, s),
-          const SizedBox(height: 12),
-          Text(s.growthChartCaption(name, s.labelHead), style: TextStyle(color: Colors.black.withAlpha(120), fontSize: 13)),
-          _growthLineChart('head', _head, s.labelHead),
-          _growthHistoryList(s, 'head', _head),
         ],
       ),
     );
@@ -827,7 +813,6 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
               tabs: [
                 Tab(text: s.growthTabWeight.toUpperCase()),
                 Tab(text: s.growthTabHeight.toUpperCase()),
-                Tab(text: s.growthTabHead.toUpperCase()),
                 Tab(text: s.growthTabSummary.toUpperCase()),
               ],
             ),
@@ -851,19 +836,18 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
             ),
           ),
           Expanded(
-            child: _loading && _weight.isEmpty && _height.isEmpty && _head.isEmpty
+            child: _loading && _weight.isEmpty && _height.isEmpty
                 ? const Center(child: CircularProgressIndicator())
                 : TabBarView(
                     controller: _tabController,
                     children: [
                       _metricScroll('weight', _weight, s),
                       _metricScroll('height', _height, s),
-                      _metricScroll('head', _head, s),
                       _summaryScroll(s),
                     ],
                   ),
           ),
-          if (!_loading && _tabController.index != 3)
+          if (!_loading && _tabController.index != 2)
             Padding(
               padding: EdgeInsets.fromLTRB(20, 0, 20, 14 + MediaQuery.paddingOf(context).bottom),
               child: SizedBox(
@@ -876,7 +860,7 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
                     padding: const EdgeInsets.symmetric(vertical: 18),
                   ),
                   onPressed: () {
-                    const kinds = ['weight', 'height', 'head'];
+                    const kinds = ['weight', 'height'];
                     _showAddSheet(s, kinds[_tabController.index]);
                   },
                   child: Text(
@@ -886,7 +870,7 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
                 ),
               ),
             ),
-          if (!_loading && _tabController.index == 3)
+          if (!_loading && _tabController.index == 2)
             SizedBox(height: MediaQuery.paddingOf(context).bottom + 8),
         ],
       ),

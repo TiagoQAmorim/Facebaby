@@ -8,8 +8,11 @@ import '../models/memory_badge.dart';
 import 'development_leaps_translated.dart';
 
 // Common languages across Play Store / App Store audiences.
-// (We keep pt/en/es plus: fr, de, it, hi, id, ja, ko, ru, tr, zh)
+// (PT/EN/ES/FR/DE/IT/JA/KO/ZH no seletor; hi/id/ru/tr mantidos no enum por dados legados.)
 enum AppLang { pt, en, es, fr, de, it, hi, id, ja, ko, ru, tr, zh }
+
+/// Idiomas não mostrados em Definições › Idioma (strings nas maps mantêm-se).
+const Set<AppLang> kAppLangHiddenFromPicker = {AppLang.hi, AppLang.id, AppLang.ru, AppLang.tr};
 
 class AppLanguageController extends ChangeNotifier {
   static const _prefKey = 'facebaby_app_lang_v1';
@@ -28,9 +31,13 @@ class AppLanguageController extends ChangeNotifier {
     if (saved != null) {
       for (final v in AppLang.values) {
         if (v.name == saved) {
-          if (_lang != v) {
-            _lang = v;
+          final use = kAppLangHiddenFromPicker.contains(v) ? AppLang.en : v;
+          if (_lang != use) {
+            _lang = use;
             notifyListeners();
+          }
+          if (use != v) {
+            unawaited(_persistLang());
           }
           return;
         }
@@ -46,37 +53,23 @@ class AppLanguageController extends ChangeNotifier {
 
   static AppLang appLangFromDeviceLocale(Locale locale) {
     final code = locale.languageCode.toLowerCase();
-    switch (code) {
-      case 'pt':
-        return AppLang.pt;
-      case 'en':
-        return AppLang.en;
-      case 'es':
-        return AppLang.es;
-      case 'fr':
-        return AppLang.fr;
-      case 'de':
-        return AppLang.de;
-      case 'it':
-        return AppLang.it;
-      case 'hi':
-        return AppLang.hi;
-      case 'id':
-        return AppLang.id;
-      case 'ja':
-        return AppLang.ja;
-      case 'ko':
-        return AppLang.ko;
-      case 'ru':
-        return AppLang.ru;
-      case 'tr':
-        return AppLang.tr;
-      case 'zh':
-      case 'cmn':
-        return AppLang.zh;
-      default:
-        return AppLang.en;
-    }
+    final AppLang resolved = switch (code) {
+      'pt' => AppLang.pt,
+      'en' => AppLang.en,
+      'es' => AppLang.es,
+      'fr' => AppLang.fr,
+      'de' => AppLang.de,
+      'it' => AppLang.it,
+      'hi' => AppLang.hi,
+      'id' => AppLang.id,
+      'ja' => AppLang.ja,
+      'ko' => AppLang.ko,
+      'ru' => AppLang.ru,
+      'tr' => AppLang.tr,
+      'zh' || 'cmn' => AppLang.zh,
+      _ => AppLang.en,
+    };
+    return kAppLangHiddenFromPicker.contains(resolved) ? AppLang.en : resolved;
   }
 
   Locale get locale {
@@ -111,8 +104,9 @@ class AppLanguageController extends ChangeNotifier {
   }
 
   void setLang(AppLang lang) {
-    if (_lang == lang) return;
-    _lang = lang;
+    final use = kAppLangHiddenFromPicker.contains(lang) ? AppLang.en : lang;
+    if (_lang == use) return;
+    _lang = use;
     notifyListeners();
     unawaited(_persistLang());
   }
@@ -179,6 +173,331 @@ class S {
 
   String get reportsTitle => _t('reportsTitle');
   String get reportsSubtitle => _t('reportsSubtitle');
+  String get reportsHubAnchorLabel => _t('reportsHubAnchorLabel');
+  String get reportsHubPickDayTooltip => _t('reportsHubPickDayTooltip');
+  String get reportsHubSectionTitle => _t('reportsHubSectionTitle');
+  String get reportStubComingSoon => _t('reportStubComingSoon');
+  String get reportListDaily => _t('reportListDaily');
+  String get reportListDailySub => _t('reportListDailySub');
+  String get reportListWeekly => _t('reportListWeekly');
+  String get reportListWeeklySub => _t('reportListWeeklySub');
+  String get reportListMonthly => _t('reportListMonthly');
+  String get reportListMonthlySub => _t('reportListMonthlySub');
+  String get reportListSleepAdv => _t('reportListSleepAdv');
+  String get reportListSleepAdvSub => _t('reportListSleepAdvSub');
+  String get reportListPediatric => _t('reportListPediatric');
+  String get reportListPediatricSub => _t('reportListPediatricSub');
+  String get reportListDevelopment => _t('reportListDevelopment');
+  String get reportListDevelopmentSub => _t('reportListDevelopmentSub');
+
+  String get plusBrandTitle => _t('plusBrandTitle');
+  String get plusSheetHero => _t('plusSheetHero');
+  String get plusSheetPriceLabel => _t('plusSheetPriceLabel');
+  String get plusSheetBullets => _t('plusSheetBullets');
+  String get plusCtaSubscribe => _t('plusCtaSubscribe');
+  String get plusCtaRestore => _t('plusCtaRestore');
+  String get plusCtaLater => _t('plusCtaLater');
+  String get plusSheetFootnote => _t('plusSheetFootnote');
+  String get plusWelcomeSnack => _t('plusWelcomeSnack');
+  String get plusPurchaseUnavailableSnack => _t('plusPurchaseUnavailableSnack');
+  String plusPurchaseSkuNotFoundSnack(String productId) =>
+      _t('plusPurchaseSkuNotFoundSnack').replaceAll('{id}', productId);
+  String get plusPurchaseBillingLaunchFailedSnack => _t('plusPurchaseBillingLaunchFailedSnack');
+  String plusPaywallSkuMissingHint(String productId) =>
+      _t('plusPaywallSkuMissingHint').replaceAll('{id}', productId);
+  String get plusRestoreOkSnack => _t('plusRestoreOkSnack');
+  String get plusRestoreEmptySnack => _t('plusRestoreEmptySnack');
+  String get plusSnackLockedFeature => _t('plusSnackLockedFeature');
+  String get plusMemoryLimitSnack => _t('plusMemoryLimitSnack');
+  String get plusReportsLockedHint => _t('plusReportsLockedHint');
+  String get plusExportLockedHint => _t('plusExportLockedHint');
+  String get settingsPlusCardTitle => _t('settingsPlusCardTitle');
+  String get settingsPlusCardBodyFree => _t('settingsPlusCardBodyFree');
+  String get settingsPlusCardBodyActive => _t('settingsPlusCardBodyActive');
+  String get settingsPlusUpgradeCta => _t('settingsPlusUpgradeCta');
+  String get settingsPlusManageCta => _t('settingsPlusManageCta');
+  String plusMemoryCounterFree(int filled, int max) =>
+      _t('plusMemoryCounterFree').replaceAll('{n}', '$filled').replaceAll('{max}', '$max');
+
+  String get plusLifetimePaymentBadge => _t('plusLifetimePaymentBadge');
+  String get plusNoMonthlyBadge => _t('plusNoMonthlyBadge');
+  String get plusPremiumActiveTitle => _t('plusPremiumActiveTitle');
+  String get plusPremiumActiveBody => _t('plusPremiumActiveBody');
+  String get plusPurchaseErrorSnack => _t('plusPurchaseErrorSnack');
+  String get plusDoneClose => _t('plusDoneClose');
+
+  String get reportDailyScreenTitle => _t('reportDailyScreenTitle');
+  String get reportDayDetailsTitle => _t('reportDayDetailsTitle');
+  String get reportDailyPickDayTooltip => _t('reportDailyPickDayTooltip');
+  String get reportDailySubtitleSleepQuality => _t('reportDailySubtitleSleepQuality');
+  String get reportDailySubtitleTotalSleep => _t('reportDailySubtitleTotalSleep');
+  String get reportDailySubtitleLongestStretch => _t('reportDailySubtitleLongestStretch');
+  String get reportDailySubtitleFeedTotal => _t('reportDailySubtitleFeedTotal');
+  String get reportDailySubtitleFeedAvg => _t('reportDailySubtitleFeedAvg');
+  String get reportDailySubtitleFeedLast => _t('reportDailySubtitleFeedLast');
+  String get reportDailySubtitleDiaperTotal => _t('reportDailySubtitleDiaperTotal');
+  String get reportDailySubtitleDiaperWet => _t('reportDailySubtitleDiaperWet');
+  String get reportDailySubtitleDiaperDirty => _t('reportDailySubtitleDiaperDirty');
+  String get reportDailySubtitleMoodMajority => _t('reportDailySubtitleMoodMajority');
+  String get reportDailySubtitleMoodIrrit => _t('reportDailySubtitleMoodIrrit');
+  String get reportDailySubtitleWeightLast => _t('reportDailySubtitleWeightLast');
+  String get reportSleepQualityGood => _t('reportSleepQualityGood');
+  String get reportSleepQualityOk => _t('reportSleepQualityOk');
+  String get reportSleepQualityBad => _t('reportSleepQualityBad');
+  String get reportSleepQualityMixed => _t('reportSleepQualityMixed');
+  String get reportVsYesterdayShort => _t('reportVsYesterdayShort');
+  String get reportVsYesterdayNA => _t('reportVsYesterdayNA');
+  String reportVsYesterdayPct(String pct) => _t('reportVsYesterdayPct').replaceAll('{pct}', pct);
+  String get reportLongestStretchHint => _t('reportLongestStretchHint');
+  String get reportNapsLabel => _t('reportNapsLabel');
+  String get reportTotalSmallLabel => _t('reportTotalSmallLabel');
+  String get reportComparedAgeLabel => _t('reportComparedAgeLabel');
+  String get reportBenchmarkAbove => _t('reportBenchmarkAbove');
+  String get reportBenchmarkNear => _t('reportBenchmarkNear');
+  String get reportBenchmarkBelow => _t('reportBenchmarkBelow');
+  String get reportIrritLow => _t('reportIrritLow');
+  String get reportIrritMedium => _t('reportIrritMedium');
+  String get reportIrritHigh => _t('reportIrritHigh');
+  String get reportIrritUnknown => _t('reportIrritUnknown');
+  String get reportTabSleep => _t('reportTabSleep');
+  String get reportTabFeedings => _t('reportTabFeedings');
+  String get reportTabDiapers => _t('reportTabDiapers');
+  String get reportTabMood => _t('reportTabMood');
+  String get reportAiInsightsTitle => _t('reportAiInsightsTitle');
+  String get reportTimelineTitle => _t('reportTimelineTitle');
+  String get reportShareSoon => _t('reportShareSoon');
+  String get reportFeedingChartCaption => _t('reportFeedingChartCaption');
+  String get reportSleepChartCaption => _t('reportSleepChartCaption');
+  String get reportNoDataHint => _t('reportNoDataHint');
+  String get reportInsightSleepAgeGood => _t('reportInsightSleepAgeGood');
+  String get reportInsightSleepAgeLow => _t('reportInsightSleepAgeLow');
+  String get reportInsightFeedsOften => _t('reportInsightFeedsOften');
+  String get reportInsightDiapersFrequent => _t('reportInsightDiapersFrequent');
+  String reportInsightMoodLine(String mood) => _t('reportInsightMoodLine').replaceAll('{mood}', mood);
+
+  String get reportWeeklyScreenTitle => _t('reportWeeklyScreenTitle');
+  String get reportWeekDetailsTitle => _t('reportWeekDetailsTitle');
+  String get reportWeeklyPickWeekTooltip => _t('reportWeeklyPickWeekTooltip');
+  String get reportWeeklySummaryTitle => _t('reportWeeklySummaryTitle');
+  String get reportWeeklyTrendsTitle => _t('reportWeeklyTrendsTitle');
+  String get reportWeeklySeeFullDetails => _t('reportWeeklySeeFullDetails');
+  String reportWeeklyPartialWeekHint(String weekday) =>
+      _t('reportWeeklyPartialWeekHint').replaceAll('{weekday}', weekday);
+  String get reportWeeklyFutureWeekHint => _t('reportWeeklyFutureWeekHint');
+  String get reportWeeklyLoadErrorPrefix => _t('reportWeeklyLoadErrorPrefix');
+  String get reportWeeklyToneCalm => _t('reportWeeklyToneCalm');
+  String get reportWeeklyToneActive => _t('reportWeeklyToneActive');
+  String get reportWeeklySleepUnknown => _t('reportWeeklySleepUnknown');
+  String get reportWeeklySleepStableShort => _t('reportWeeklySleepStableShort');
+  String reportWeeklySleepUp(int pct) => _t('reportWeeklySleepUp').replaceAll('{pct}', '$pct');
+  String reportWeeklySleepDown(int pct) => _t('reportWeeklySleepDown').replaceAll('{pct}', '$pct');
+  String get reportWeeklyFeedStableLine => _t('reportWeeklyFeedStableLine');
+  String reportWeeklyFeedUp(int pct) => _t('reportWeeklyFeedUp').replaceAll('{pct}', '$pct');
+  String reportWeeklyFeedDown(int pct) => _t('reportWeeklyFeedDown').replaceAll('{pct}', '$pct');
+  String reportWeeklyHeroTemplate(String name, String tone, String sleep, String feed) => _t('reportWeeklyHeroTemplate')
+      .replaceAll('{name}', name)
+      .replaceAll('{tone}', tone)
+      .replaceAll('{sleep}', sleep)
+      .replaceAll('{feed}', feed);
+  String get reportWeeklyTrendLabelImproved => _t('reportWeeklyTrendLabelImproved');
+  String get reportWeeklyTrendLabelWorse => _t('reportWeeklyTrendLabelWorse');
+  String get reportWeeklyTrendLabelStable => _t('reportWeeklyTrendLabelStable');
+  String get reportWeeklyTrendLabelUnknown => _t('reportWeeklyTrendLabelUnknown');
+  String get reportWeeklyTrendLabelEvolving => _t('reportWeeklyTrendLabelEvolving');
+  String get reportWeeklyTrendLabelIncreased => _t('reportWeeklyTrendLabelIncreased');
+  String get reportWeeklyTrendNA => _t('reportWeeklyTrendNA');
+  String get reportWeeklyHighlightSleep => _t('reportWeeklyHighlightSleep');
+  String get reportWeeklyHighlightFeedingStable => _t('reportWeeklyHighlightFeedingStable');
+  String get reportWeeklyHighlightDiaperUp => _t('reportWeeklyHighlightDiaperUp');
+  String get reportWeeklyHighlightWeight => _t('reportWeeklyHighlightWeight');
+  String get reportWeeklyHighlightGeneric => _t('reportWeeklyHighlightGeneric');
+  String reportWeeklyAvgFeedsDay(String avg) => _t('reportWeeklyAvgFeedsDay').replaceAll('{avg}', avg);
+  String reportWeeklyAvgDiapersDay(String avg) => _t('reportWeeklyAvgDiapersDay').replaceAll('{avg}', avg);
+  String get reportWeeklySleepHoursChartTitle => _t('reportWeeklySleepHoursChartTitle');
+  String get reportWeeklyAvgWeekLabel => _t('reportWeeklyAvgWeekLabel');
+  String get reportWeeklyVsPrevWeekShort => _t('reportWeeklyVsPrevWeekShort');
+  String get reportWeeklyInsightsCardTitle => _t('reportWeeklyInsightsCardTitle');
+  String get reportWeeklyPatternsTitle => _t('reportWeeklyPatternsTitle');
+  String get reportWeeklySeeAllAnalyses => _t('reportWeeklySeeAllAnalyses');
+  String get reportWeeklyHeatmapSoon => _t('reportWeeklyHeatmapSoon');
+  String get reportWeeklyFeedChartCaption => _t('reportWeeklyFeedChartCaption');
+  String get reportWeeklyDiaperChartCaption => _t('reportWeeklyDiaperChartCaption');
+  String get reportWeeklyPatternWeekend => _t('reportWeeklyPatternWeekend');
+  String get reportWeeklyPatternFeedingDown => _t('reportWeeklyPatternFeedingDown');
+  String get reportWeeklyPatternDefault => _t('reportWeeklyPatternDefault');
+  String get reportWeeklyInsightSleepNeutral => _t('reportWeeklyInsightSleepNeutral');
+  String get reportWeeklyInsightSleepBetter => _t('reportWeeklyInsightSleepBetter');
+  String get reportWeeklyInsightSleepLess => _t('reportWeeklyInsightSleepLess');
+  String reportWeeklyInsightTemplate(String name, String sleep) =>
+      _t('reportWeeklyInsightTemplate').replaceAll('{name}', name).replaceAll('{sleep}', sleep);
+
+  String get reportMonthlyScreenTitle => _t('reportMonthlyScreenTitle');
+  String get reportMonthlyAvgWeight => _t('reportMonthlyAvgWeight');
+  String get reportMonthlyAvgHeight => _t('reportMonthlyAvgHeight');
+  String get reportMonthlyGrowthChartEmpty => _t('reportMonthlyGrowthChartEmpty');
+  String get reportMonthlySleepSection => _t('reportMonthlySleepSection');
+  String get reportMonthlySleepAvg => _t('reportMonthlySleepAvg');
+  String get reportMonthlyVsPrevMonth => _t('reportMonthlyVsPrevMonth');
+  String get reportMonthlyBestWeeks => _t('reportMonthlyBestWeeks');
+  String get reportMonthlySleepTrendUp => _t('reportMonthlySleepTrendUp');
+  String get reportMonthlySleepTrendDown => _t('reportMonthlySleepTrendDown');
+  String get reportMonthlySleepTrendStable => _t('reportMonthlySleepTrendStable');
+  String get reportMonthlySleepTrendUnknown => _t('reportMonthlySleepTrendUnknown');
+  String get reportMonthlyFeedingSection => _t('reportMonthlyFeedingSection');
+  String get reportMonthlyFeedFreq => _t('reportMonthlyFeedFreq');
+  String get reportMonthlySleepExplain => _t('reportMonthlySleepExplain');
+  String get reportMonthlyFeedingExplain => _t('reportMonthlyFeedingExplain');
+  String get reportMonthlyPredominantHours => _t('reportMonthlyPredominantHours');
+  String get reportMonthlyMilestonesTitle => _t('reportMonthlyMilestonesTitle');
+  String get reportMonthlyMilestonesEmpty => _t('reportMonthlyMilestonesEmpty');
+  String get reportMonthlyMilestoneConsultationDefault => _t('reportMonthlyMilestoneConsultationDefault');
+  String get reportMonthlyMemoriesTitle => _t('reportMonthlyMemoriesTitle');
+  String get reportMonthlySeeAllMemories => _t('reportMonthlySeeAllMemories');
+  String get reportMonthlyMemoriesEmpty => _t('reportMonthlyMemoriesEmpty');
+  String get reportMonthlyVideosHint => _t('reportMonthlyVideosHint');
+
+  String get reportSleepAdvScreenTitle => _t('reportSleepAdvScreenTitle');
+  String get reportSleepAdvScoreTitle => _t('reportSleepAdvScoreTitle');
+  String get reportSleepAdvMetricsTitle => _t('reportSleepAdvMetricsTitle');
+  String get reportSleepAdvEfficiency => _t('reportSleepAdvEfficiency');
+  String reportSleepAdvVsPrevPct(int pct) =>
+      _t('reportSleepAdvVsPrevPct').replaceAll('{pct}', pct >= 0 ? '+$pct' : '$pct');
+  String get reportSleepAdvOnset => _t('reportSleepAdvOnset');
+  String get reportSleepAdvAwakenings => _t('reportSleepAdvAwakenings');
+  String reportSleepAdvAwakeningsTotal(int n) => _t('reportSleepAdvAwakeningsTotal').replaceAll('{n}', '$n');
+  String get reportSleepAdvLongest => _t('reportSleepAdvLongest');
+  String get reportSleepAdvAvgDailySleep => _t('reportSleepAdvAvgDailySleep');
+  String get reportSleepAdvIdealTitle => _t('reportSleepAdvIdealTitle');
+  String get reportSleepAdvIdealFooter => _t('reportSleepAdvIdealFooter');
+  String get reportSleepAdvSeeFullAnalysis => _t('reportSleepAdvSeeFullAnalysis');
+  String get reportSleepAdvChartsSection => _t('reportSleepAdvChartsSection');
+  String get reportSleepAdvChartsSleepTrend => _t('reportSleepAdvChartsSleepTrend');
+  String get reportSleepAdvChartsCompare => _t('reportSleepAdvChartsCompare');
+  String get reportSleepAdvChartsDistribution => _t('reportSleepAdvChartsDistribution');
+  String get reportSleepAdvChartsBars => _t('reportSleepAdvChartsBars');
+  String get reportSleepAdvDayPhase => _t('reportSleepAdvDayPhase');
+  String get reportSleepAdvNightPhase => _t('reportSleepAdvNightPhase');
+  String get reportSleepAdvDistributionEmpty => _t('reportSleepAdvDistributionEmpty');
+  String get reportSleepAdvLegendThisWeek => _t('reportSleepAdvLegendThisWeek');
+  String get reportSleepAdvLegendPrevWeek => _t('reportSleepAdvLegendPrevWeek');
+  String get reportSleepAdvScoreBreakdown => _t('reportSleepAdvScoreBreakdown');
+  String reportSleepAdvBreakdownLine(int e, int s, int a, int c) => _t('reportSleepAdvBreakdownLine')
+      .replaceAll('{e}', '$e')
+      .replaceAll('{s}', '$s')
+      .replaceAll('{a}', '$a')
+      .replaceAll('{c}', '$c');
+  String get reportSleepAdvNotEnoughData => _t('reportSleepAdvNotEnoughData');
+  String get reportSleepAdvStatusExcellent => _t('reportSleepAdvStatusExcellent');
+  String get reportSleepAdvStatusGood => _t('reportSleepAdvStatusGood');
+  String get reportSleepAdvStatusRegular => _t('reportSleepAdvStatusRegular');
+  String get reportSleepAdvStatusPoor => _t('reportSleepAdvStatusPoor');
+  String get reportSleepAdvBadgeVeryGood => _t('reportSleepAdvBadgeVeryGood');
+  String get reportSleepAdvBadgeGood => _t('reportSleepAdvBadgeGood');
+  String get reportSleepAdvBadgeOk => _t('reportSleepAdvBadgeOk');
+  String get reportSleepAdvBadgeAttention => _t('reportSleepAdvBadgeAttention');
+  String get reportSleepAdvBadgeIdeal => _t('reportSleepAdvBadgeIdeal');
+  String get reportSleepAdvBadgeUnknown => _t('reportSleepAdvBadgeUnknown');
+  String get reportSleepAdvBadgeLow => _t('reportSleepAdvBadgeLow');
+  String get reportSleepAdvBadgeModerate => _t('reportSleepAdvBadgeModerate');
+  String get reportSleepAdvBadgeHigh => _t('reportSleepAdvBadgeHigh');
+
+  String get reportPediatricScreenTitle => _t('reportPediatricScreenTitle');
+  String get reportPediatricPeriodPrefix => _t('reportPediatricPeriodPrefix');
+  String get reportPediatricFilterHint => _t('reportPediatricFilterHint');
+  String get reportPediatricDateFrom => _t('reportPediatricDateFrom');
+  String get reportPediatricDateTo => _t('reportPediatricDateTo');
+  String get reportPediatricPickRange => _t('reportPediatricPickRange');
+  String get reportPediatricFilterMaxDaysHint => _t('reportPediatricFilterMaxDaysHint');
+  String get reportPediatricSectionGeneral => _t('reportPediatricSectionGeneral');
+  String get reportPediatricSectionSummary => _t('reportPediatricSectionSummary');
+  String get reportPediatricSectionSleep => _t('reportPediatricSectionSleep');
+  String get reportPediatricSectionFeeding => _t('reportPediatricSectionFeeding');
+  String get reportPediatricSectionSymptoms => _t('reportPediatricSectionSymptoms');
+  String get reportPediatricSectionObservations => _t('reportPediatricSectionObservations');
+  String get reportPediatricLabelName => _t('reportPediatricLabelName');
+  String get reportPediatricLabelAge => _t('reportPediatricLabelAge');
+  String get reportPediatricLabelBirth => _t('reportPediatricLabelBirth');
+  String get reportPediatricLabelWeightCurrent => _t('reportPediatricLabelWeightCurrent');
+  String get reportPediatricLabelHeight => _t('reportPediatricLabelHeight');
+  String get reportPediatricWeightStart => _t('reportPediatricWeightStart');
+  String get reportPediatricWeightEnd => _t('reportPediatricWeightEnd');
+  String get reportPediatricWeightGain => _t('reportPediatricWeightGain');
+  String get reportPediatricAvgFeeds => _t('reportPediatricAvgFeeds');
+  String get reportPediatricAvgSleep => _t('reportPediatricAvgSleep');
+  String get reportPediatricAvgDiapers => _t('reportPediatricAvgDiapers');
+  String get reportPediatricFeverEpisodes => _t('reportPediatricFeverEpisodes');
+  String get reportPediatricFeverNote => _t('reportPediatricFeverNote');
+  String get reportPediatricFeverFootnote => _t('reportPediatricFeverFootnote');
+  String get reportPediatricVaccines => _t('reportPediatricVaccines');
+  String get reportPediatricMedications => _t('reportPediatricMedications');
+  String get reportPediatricSleepAvgDaily => _t('reportPediatricSleepAvgDaily');
+  String get reportPediatricSleepAwakenings => _t('reportPediatricSleepAwakenings');
+  String get reportPediatricSleepPattern => _t('reportPediatricSleepPattern');
+  String get reportPediatricSleepPatternStable => _t('reportPediatricSleepPatternStable');
+  String get reportPediatricSleepPatternModerate => _t('reportPediatricSleepPatternModerate');
+  String get reportPediatricSleepPatternFragmented => _t('reportPediatricSleepPatternFragmented');
+  String get reportPediatricSleepLongest => _t('reportPediatricSleepLongest');
+  String get reportPediatricFeedingBreast => _t('reportPediatricFeedingBreast');
+  String get reportPediatricFeedingFormula => _t('reportPediatricFeedingFormula');
+  String get reportPediatricFeedingSolid => _t('reportPediatricFeedingSolid');
+  String get reportPediatricFeedingSessions => _t('reportPediatricFeedingSessions');
+  String get reportPediatricFeedingAvgDur => _t('reportPediatricFeedingAvgDur');
+  String get reportPediatricSymptomReflux => _t('reportPediatricSymptomReflux');
+  String get reportPediatricSymptomColic => _t('reportPediatricSymptomColic');
+  String get reportPediatricSymptomIrrit => _t('reportPediatricSymptomIrrit');
+  String get reportPediatricSymptomCrying => _t('reportPediatricSymptomCrying');
+  String get reportPediatricSymptomPain => _t('reportPediatricSymptomPain');
+  String get reportPediatricStructuredSymptoms => _t('reportPediatricStructuredSymptoms');
+  String get reportPediatricStructuredSymptomsEmpty => _t('reportPediatricStructuredSymptomsEmpty');
+  String get reportPediatricIrritHigh => _t('reportPediatricIrritHigh');
+  String get reportPediatricIrritMedium => _t('reportPediatricIrritMedium');
+  String get reportPediatricIrritLow => _t('reportPediatricIrritLow');
+  String get reportPediatricIrritUnknown => _t('reportPediatricIrritUnknown');
+  String get reportPediatricYes => _t('reportPediatricYes');
+  String get reportPediatricNo => _t('reportPediatricNo');
+  String get reportPediatricNa => _t('reportPediatricNa');
+  String get reportPediatricJournalNote => _t('reportPediatricJournalNote');
+  String get reportPediatricJournalNoteHint => _t('reportPediatricJournalNoteHint');
+  String get reportPediatricObsHint => _t('reportPediatricObsHint');
+  String get reportPediatricBtnShare => _t('reportPediatricBtnShare');
+  String get reportPediatricBtnExportPdf => _t('reportPediatricBtnExportPdf');
+  String get reportPediatricBtnPrint => _t('reportPediatricBtnPrint');
+  String get reportPediatricBtnEmail => _t('reportPediatricBtnEmail');
+  String get reportPediatricBtnWhatsApp => _t('reportPediatricBtnWhatsApp');
+  String get reportPediatricScreenFootnote => _t('reportPediatricScreenFootnote');
+  String get reportPediatricNone => _t('reportPediatricNone');
+  String get reportPediatricPdfTitle => _t('reportPediatricPdfTitle');
+  String get reportPediatricPdfPeriod => _t('reportPediatricPdfPeriod');
+  String get reportPediatricPdfFooter => _t('reportPediatricPdfFooter');
+  String get reportPediatricFeverDisclaimerShort => _t('reportPediatricFeverDisclaimerShort');
+
+  String get reportDevScreenTitle => _t('reportDevScreenTitle');
+  String get reportDevSubtitle => _t('reportDevSubtitle');
+  String get reportDevScoreTitle => _t('reportDevScoreTitle');
+  String get reportDevScoreStatusOnTrack => _t('reportDevScoreStatusOnTrack');
+  String get reportDevScoreStatusWatch => _t('reportDevScoreStatusWatch');
+  String get reportDevScoreStatusEarly => _t('reportDevScoreStatusEarly');
+  String get reportDevSectionMotor => _t('reportDevSectionMotor');
+  String get reportDevSectionCognitive => _t('reportDevSectionCognitive');
+  String get reportDevSectionSocial => _t('reportDevSectionSocial');
+  String get reportDevAchieved => _t('reportDevAchieved');
+  String get reportDevGrowing => _t('reportDevGrowing');
+  String get reportDevInsightTitle => _t('reportDevInsightTitle');
+  String get reportDevSeeAllMarcos => _t('reportDevSeeAllMarcos');
+  String get reportDevFootnote => _t('reportDevFootnote');
+  String get reportDevNeedBirth => _t('reportDevNeedBirth');
+  String devReportMilestoneLabel(String id) {
+    final k = 'devReport_$id';
+    final v = _t(k);
+    return v == k ? id : v;
+  }
+
+  String get devReportInsightNewborn => _t('devReportInsightNewborn');
+  String get devReportInsightOnTrack => _t('devReportInsightOnTrack');
+  String get devReportInsightVariety => _t('devReportInsightVariety');
+  String get devReportInsightPatience => _t('devReportInsightPatience');
+  String get devReportInsightBalanced => _t('devReportInsightBalanced');
+
   String get growth => _t('growth');
   String get pediatricReport => _t('pediatricReport');
   String get pediatricReportDesc => _t('pediatricReportDesc');
@@ -195,6 +514,11 @@ class S {
   String get memoriesAlbumGenerating => _t('memoriesAlbumGenerating');
   String get memoriesAlbumNeedFilled => _t('memoriesAlbumNeedFilled');
   String get memoriesAlbumError => _t('memoriesAlbumError');
+  String get memoriesAlbumPdfReadyTitle => _t('memoriesAlbumPdfReadyTitle');
+  String get memoriesAlbumShareAction => _t('memoriesAlbumShareAction');
+  String get memoriesAlbumSaveAction => _t('memoriesAlbumSaveAction');
+  String get memoriesAlbumSavedSnack => _t('memoriesAlbumSavedSnack');
+  String get memoriesAlbumSaveFailedSnack => _t('memoriesAlbumSaveFailedSnack');
   String get memoriesAlbumCoverMain => _t('memoriesAlbumCoverMain');
   String memoriesAlbumCoverTagline(String name) =>
       _t('memoriesAlbumCoverTagline').replaceAll('{name}', name);
@@ -205,6 +529,9 @@ class S {
   String memoryBadgeMonthsMany(int n) => _t('memoryBadgeMonthsMany').replaceAll('{n}', '$n');
   String get memoryBadgeYearOne => _t('memoryBadgeYearOne');
   String memoryBadgeYearsMany(int n) => _t('memoryBadgeYearsMany').replaceAll('{n}', '$n');
+  /// Rótulo curto sob o número nos selos mensais na grelha (ex.: «mes» / «meses»).
+  String get memoryBadgeMonthUnitSingular => _t('memoryBadgeMonthUnitSingular');
+  String get memoryBadgeMonthUnitPlural => _t('memoryBadgeMonthUnitPlural');
 
   /// Título do selo no Livro de memórias para o idioma atual.
   String memoryBadgeTitle(MemoryBadge badge) {
@@ -235,6 +562,7 @@ class S {
   String get settingsSoonBadge => _t('settingsSoonBadge');
   String get settingsRateUs => _t('settingsRateUs');
   String get settingsTermsOfUse => _t('settingsTermsOfUse');
+  String get termsLoadError => _t('termsLoadError');
   String get settingsPrivacyPolicy => _t('settingsPrivacyPolicy');
   String get settingsSpecialThanks => _t('settingsSpecialThanks');
   String get settingsTellFriend => _t('settingsTellFriend');
@@ -268,6 +596,9 @@ class S {
   String get authSignIn => _t('authSignIn');
   String get authSigningIn => _t('authSigningIn');
   String get authSignInGoogle => _t('authSignInGoogle');
+  String get authSignInApple => _t('authSignInApple');
+  String get authSignInEmail => _t('authSignInEmail');
+  String get authAppleSignInPlaceholder => _t('authAppleSignInPlaceholder');
   String get authCreateAccount => _t('authCreateAccount');
   String get authForgotDialogTitle => _t('authForgotDialogTitle');
   String get authForgotDialogBody => _t('authForgotDialogBody');
@@ -294,6 +625,8 @@ class S {
   String get authErrInvalidCredential => _t('authErrInvalidCredential');
   String get authErrCredentialsGeneric => _t('authErrCredentialsGeneric');
   String get authErrGoogleConfigAndroid => _t('authErrGoogleConfigAndroid');
+  String get authErrAppleFailed => _t('authErrAppleFailed');
+  String get authErrAppleUnavailable => _t('authErrAppleUnavailable');
   String get authErrLoginCancelled => _t('authErrLoginCancelled');
   String get authErrUnexpected => _t('authErrUnexpected');
 
@@ -332,6 +665,12 @@ class S {
         s.contains('SIGN_IN_CANCELED')) {
       return authErrLoginCancelled;
     }
+    if (s.contains('APPLE_UNAVAILABLE_PLATFORM')) {
+      return authErrAppleUnavailable;
+    }
+    if (s.contains('APPLE_MISSING_ID_TOKEN') || s.contains('APPLE_AUTH_FAILED')) {
+      return authErrAppleFailed;
+    }
     return '$authErrUnexpected\n$s';
   }
 
@@ -368,6 +707,9 @@ class S {
   String get deleteAccountReauthGoogle => _t('deleteAccountReauthGoogle');
   String get deleteAccountReauthContinue => _t('deleteAccountReauthContinue');
   String get deleteAccountReauthCantPassword => _t('deleteAccountReauthCantPassword');
+  String get deleteAccountTypeWordTitle => _t('deleteAccountTypeWordTitle');
+  String get deleteAccountTypeWordInstruction => _t('deleteAccountTypeWordInstruction');
+  String get deleteAccountTypeWordFieldLabel => _t('deleteAccountTypeWordFieldLabel');
   String get homeBabyBannerForecastSleep => _t('homeBabyBannerForecastSleep');
   String get homeBabyBannerForecastWake => _t('homeBabyBannerForecastWake');
   String get homeBabyBannerForecastSubtitleSleep => _t('homeBabyBannerForecastSubtitleSleep');
@@ -406,6 +748,32 @@ class S {
   String get memoryShareButton => _t('memoryShareButton');
   String get memoryFavoriteButton => _t('memoryFavoriteButton');
   String get memoryFavoritedButton => _t('memoryFavoritedButton');
+  String get weeklyPhotoPublicExplainer => _t('weeklyPhotoPublicExplainer');
+  String get weeklyPhotoPublicOff => _t('weeklyPhotoPublicOff');
+  String get weeklyPhotoPublicOn => _t('weeklyPhotoPublicOn');
+  String get weeklyPhotoPublicNeedPhoto => _t('weeklyPhotoPublicNeedPhoto');
+  String get weeklyPhotoConfirmTitle => _t('weeklyPhotoConfirmTitle');
+  String get weeklyPhotoConfirmBody => _t('weeklyPhotoConfirmBody');
+  String get weeklyPhotoConfirmCancel => _t('weeklyPhotoConfirmCancel');
+  String get weeklyPhotoConfirmOk => _t('weeklyPhotoConfirmOk');
+  String get weeklyPhotoParticipatingBadge => _t('weeklyPhotoParticipatingBadge');
+  String get weeklyPhotoWinnerBadge => _t('weeklyPhotoWinnerBadge');
+  String get weeklyPhotoShowBabyFirstName => _t('weeklyPhotoShowBabyFirstName');
+  String get weeklyPhotoDisclaimerFooter => _t('weeklyPhotoDisclaimerFooter');
+  String get weeklyPhotoSectionTitle => _t('weeklyPhotoSectionTitleFemale');
+  String get weeklyPhotoSectionTitleMale => _t('weeklyPhotoSectionTitleMale');
+  String get weeklyPhotoSectionTitleFemale => _t('weeklyPhotoSectionTitleFemale');
+  String weeklyPhotoSectionTitleForBabySex(String? sex) {
+    final sx = sex?.trim().toUpperCase();
+    if (sx == 'M') return _t('weeklyPhotoSectionTitleMale');
+    return _t('weeklyPhotoSectionTitleFemale');
+  }
+
+  String get weeklyPhotoSectionSubtitle => _t('weeklyPhotoSectionSubtitle');
+  String get weeklyPhotoViewMemory => _t('weeklyPhotoViewMemory');
+  String get weeklyPhotoBabyFallback => _t('weeklyPhotoBabyFallback');
+  String get weeklyPhotoDisclaimerShort => _t('weeklyPhotoDisclaimerShort');
+  String get weeklyPhotoPublicDetailAppBar => _t('weeklyPhotoPublicDetailAppBar');
   String get memoryEditTitle => _t('memoryEditTitle');
   String get memoryNewTitle => _t('memoryNewTitle');
   String get memoryMomNotesFieldLabel => _t('memoryMomNotesFieldLabel');
@@ -638,8 +1006,34 @@ class S {
   String get vaccineReminderNotifTitle => _t('vaccineReminderNotifTitle');
   String vaccineReminderNotifBody(String name) => _t('vaccineReminderNotifBody').replaceAll('{name}', name);
   String get homeBannerChipVaccine => _t('homeBannerChipVaccine');
+  String get vaccDueConfirmCheckbox => _t('vaccDueConfirmCheckbox');
+  String get vaccDueSavedOk => _t('vaccDueSavedOk');
+  String get vaccDuePickTitle => _t('vaccDuePickTitle');
   String get healthHubConsultations => _t('healthHubConsultations');
   String get healthHubConsultationsSub => _t('healthHubConsultationsSub');
+  String get healthHubSymptomReports => _t('healthHubSymptomReports');
+  String get healthHubSymptomReportsSub => _t('healthHubSymptomReportsSub');
+  String get symptomReportTitle => _t('symptomReportTitle');
+  String get symptomReportEmpty => _t('symptomReportEmpty');
+  String get symptomReportNew => _t('symptomReportNew');
+  String get symptomReportSave => _t('symptomReportSave');
+  String get symptomReportOccurredAt => _t('symptomReportOccurredAt');
+  String get symptomReportPickDateTime => _t('symptomReportPickDateTime');
+  String get symptomReportMedication => _t('symptomReportMedication');
+  String get symptomReportMedicationHint => _t('symptomReportMedicationHint');
+  String get symptomReportFever => _t('symptomReportFever');
+  String get symptomReportTemp => _t('symptomReportTemp');
+  String get symptomReportTempHint => _t('symptomReportTempHint');
+  String get symptomReportCrying => _t('symptomReportCrying');
+  String get symptomReportPain => _t('symptomReportPain');
+  String get symptomReportColic => _t('symptomReportColic');
+  String get symptomReportReflux => _t('symptomReportReflux');
+  String get symptomReportOther => _t('symptomReportOther');
+  String get symptomReportOtherHint => _t('symptomReportOtherHint');
+  String get symptomReportValidationNeedOne => _t('symptomReportValidationNeedOne');
+  String get symptomReportValidationFeverTemp => _t('symptomReportValidationFeverTemp');
+  String get symptomReportDeleteTitle => _t('symptomReportDeleteTitle');
+  String get symptomReportDeleteBody => _t('symptomReportDeleteBody');
   String get consultationsTitle => _t('consultationsTitle');
   String get consultationsIntro => _t('consultationsIntro');
   String get consultationsSoonTitle => _t('consultationsSoonTitle');
@@ -1089,9 +1483,349 @@ const Map<AppLang, Map<String, String>> _strings = {
     'saveRecord': 'Salvar registro',
     'reportsTitle': 'Relatórios',
     'reportsSubtitle': 'Resumo para a mamãe e para o pediatra.',
+    'reportsHubAnchorLabel': 'Referência',
+    'reportsHubPickDayTooltip': 'Escolher dia de referência para os relatórios',
+    'reportsHubSectionTitle': 'Relatórios disponíveis',
+    'reportStubComingSoon':
+        'Este relatório será atualizado automaticamente com os dados da app para o período indicado. Detalhes de layout e métricas serão definidos a seguir.',
+    'reportListDaily': 'Relatório diário',
+    'reportListDailySub': 'Resumo e detalhes do dia selecionado',
+    'reportListWeekly': 'Relatório semanal',
+    'reportListWeeklySub': 'Resumo e detalhes da semana que contém o dia selecionado',
+    'reportListMonthly': 'Relatório mensal',
+    'reportListMonthlySub': 'Agregados do mês do dia selecionado',
+    'reportListSleepAdv': 'Relatório avançado de sono',
+    'reportListSleepAdvSub': 'Padrões e métricas de sono',
+    'reportListPediatric': 'Relatório Pediátrico',
+    'reportListPediatricSub': 'PDF e dados para consulta médica',
+    'reportListDevelopment': 'Relatório de desenvolvimento',
+    'reportListDevelopmentSub': 'Marcos e saltos do desenvolvimento',
+    'plusBrandTitle': 'FaceBaby Premium',
+    'plusSheetHero':
+        'Um único gesto para sempre: PDFs lindos, o livro de recordações, mais fotos na mural, backup na nuvem e aquele acompanhamento que faz o dia da mamãe mais leve.',
+    'plusSheetPriceLabel': 'Pagamento único',
+    'plusSheetBullets':
+        '• Relatórios em PDF (sono, rotina, crescimento)\n• Livro de recordações em PDF\n• Exportar badges (PNG / PDF)\n• Backup em nuvem entre telemóveis\n• Mais memórias e fotos\n• Insights inteligentes nos relatórios\n• Relatório para o pediatra\n• Estatísticas avançadas\n• Temas premium do livro',
+    'plusCtaSubscribe': 'Desbloquear para sempre',
+    'plusCtaRestore': 'Restaurar compras',
+    'plusCtaLater': 'Agora não',
+    'plusSheetFootnote':
+        'Compra única processada pela Google Play ou pela App Store. Nas definições da conta pode restaurar noutro telemóvel.',
+    'plusWelcomeSnack': 'Obrigada por confiar no FaceBaby Premium — as memórias do bebé ficam ainda mais seguras.',
+    'plusPurchaseUnavailableSnack':
+        'Não foi possível iniciar a compra. Confirme o produto nas lojas ou tente mais tarde.',
+    'plusPurchaseSkuNotFoundSnack':
+        'A Google Play não devolveu o produto "{id}". No Play Console crie um produto in-app gerido activo com este ID exacto (Monetizar → Produtos in-app), ou use --dart-define=FACEBABY_PREMIUM_SKU=… no build para igualar ao ID da loja.',
+    'plusPurchaseBillingLaunchFailedSnack':
+        'Não foi possível abrir o pagamento na Google Play. Instale a app pela faixa de teste interno/fechado (ou loja), use uma conta de teste licenciada e tente de novo.',
+    'plusPaywallSkuMissingHint':
+        'Ainda sem preço da loja para "{id}". Confirme o produto activo na Play Console ou aguarde sincronização (pode demorar algumas horas).',
+    'plusRestoreOkSnack': 'Compras restauradas com sucesso.',
+    'plusRestoreEmptySnack': 'Não encontrámos uma compra anterior nesta conta.',
+    'plusSnackLockedFeature': 'Incluído no FaceBaby Premium.',
+    'plusMemoryLimitSnack':
+        'No plano gratuito pode guardar até {max} momentos com foto ou texto. O Premium abre espaço para muito mais memórias.',
+    'plusReportsLockedHint': 'Relatório FaceBaby Premium',
+    'plusExportLockedHint': 'Exportação FaceBaby Premium',
+    'plusLifetimePaymentBadge': 'Pagamento único',
+    'plusNoMonthlyBadge': 'Sem mensalidade',
+    'plusPremiumActiveTitle': 'Obrigada pelo Premium',
+    'plusPremiumActiveBody':
+        'Tens todas as funções premium ativas para sempre neste dispositivo. Restaura compras noutro telemóvel quando precisares.',
+    'plusPurchaseErrorSnack': 'Algo correu mal. Tenta de novo ou usa Restaurar compras.',
+    'plusDoneClose': 'Fechar',
+    'settingsPlusCardTitle': 'FaceBaby Premium',
+    'settingsPlusCardBodyFree':
+        'PDFs, livro de recordações, mais fotos, backup na nuvem, relatório ao pediatra e estatísticas avançadas — um único pagamento.',
+    'settingsPlusCardBodyActive': 'Tem o FaceBaby Premium ativo — obrigada por apoiar o projeto.',
+    'settingsPlusUpgradeCta': 'Desbloquear Premium',
+    'settingsPlusManageCta': 'Ver Premium',
+    'plusMemoryCounterFree': '{n} de {max} momentos no plano gratuito',
+    'reportDailyScreenTitle': 'Relatório Diário',
+    'reportDayDetailsTitle': 'Detalhes do Dia',
+    'reportDailyPickDayTooltip': 'Escolher dia',
+    'reportDailySubtitleSleepQuality': 'Qualidade do sono',
+    'reportDailySubtitleTotalSleep': 'Total dormido',
+    'reportDailySubtitleLongestStretch': 'Maior período contínuo',
+    'reportDailySubtitleFeedTotal': 'Total de mamadas',
+    'reportDailySubtitleFeedAvg': 'Duração média',
+    'reportDailySubtitleFeedLast': 'Última mamada',
+    'reportDailySubtitleDiaperTotal': 'Total de trocas',
+    'reportDailySubtitleDiaperWet': 'Fraldas molhadas',
+    'reportDailySubtitleDiaperDirty': 'Fraldas sujas',
+    'reportDailySubtitleMoodMajority': 'Maioria do dia',
+    'reportDailySubtitleMoodIrrit': 'Irritabilidade',
+    'reportDailySubtitleWeightLast': 'Última medição',
+    'reportSleepQualityGood': 'Boa',
+    'reportSleepQualityOk': 'Ok',
+    'reportSleepQualityBad': 'Frágil',
+    'reportSleepQualityMixed': 'Variável',
+    'reportVsYesterdayShort': 'vs ontem',
+    'reportVsYesterdayNA': '—',
+    'reportVsYesterdayPct': '{pct}%',
+    'reportLongestStretchHint': '{start} – {end}',
+    'reportNapsLabel': 'Sonecas',
+    'reportTotalSmallLabel': 'Total',
+    'reportComparedAgeLabel': 'Comparado à média da idade',
+    'reportBenchmarkAbove': 'Acima da média',
+    'reportBenchmarkNear': 'Próximo da média',
+    'reportBenchmarkBelow': 'Abaixo da média',
+    'reportIrritLow': 'Baixa',
+    'reportIrritMedium': 'Moderada',
+    'reportIrritHigh': 'Alta',
+    'reportIrritUnknown': 'Sem dados',
+    'reportTabSleep': 'Sono',
+    'reportTabFeedings': 'Mamadas',
+    'reportTabDiapers': 'Fraldas',
+    'reportTabMood': 'Humor',
+    'reportAiInsightsTitle': 'Insights',
+    'reportTimelineTitle': 'Timeline do dia',
+    'reportShareSoon': 'Partilhar (em breve)',
+    'reportFeedingChartCaption': 'Mamadas por hora',
+    'reportSleepChartCaption': 'Sono por hora',
+    'reportNoDataHint': 'Sem registos suficientes para esta métrica.',
+    'reportInsightSleepAgeGood':
+        'O sono total está próximo do esperado para a idade — bom sinal de descanso recuperador.',
+    'reportInsightSleepAgeLow':
+        'O sono ficou abaixo do típico para a idade; observe sinais de cansaço e rotina à noite.',
+    'reportInsightFeedsOften':
+        'Muitas mamadas ao longo do dia — comum em fases de salto ou hidratação; registe duração para ver médias.',
+    'reportInsightDiapersFrequent':
+        'Várias trocas de fralda — pode indicar hidratação ok ou irritação de pele; vale observar o tipo (xixi/cocô).',
+    'reportInsightMoodLine': 'Humor predominante registrado nas memórias: {mood}.',
+    'reportWeeklyScreenTitle': 'Relatório Semanal',
+    'reportWeekDetailsTitle': 'Detalhes da Semana',
+    'reportWeeklyPickWeekTooltip': 'Escolher semana (qualquer dia)',
+    'reportWeeklySummaryTitle': 'Resumo da Semana',
+    'reportWeeklyTrendsTitle': 'Tendências',
+    'reportWeeklySeeFullDetails': 'Ver relatório completo',
+    'reportWeeklyPartialWeekHint': 'Médias e tendências: segunda a {weekday} (semana até agora).',
+    'reportWeeklyFutureWeekHint':
+        'Esta semana ainda não começou no calendário — escolhe outra semana ou volta quando houver dias registados.',
+    'reportWeeklyLoadErrorPrefix': 'Não foi possível carregar o relatório:',
+    'reportWeeklyToneCalm': 'tranquila',
+    'reportWeeklyToneActive': 'movimentada',
+    'reportWeeklySleepUnknown': 'Sem dados suficientes para comparar o sono entre semanas.',
+    'reportWeeklySleepStableShort': 'O sono manteve-se estável face à semana anterior.',
+    'reportWeeklySleepUp': 'O sono melhorou cerca de {pct}% face à semana anterior.',
+    'reportWeeklySleepDown': 'O sono reduziu cerca de {pct}% face à semana anterior.',
+    'reportWeeklyFeedStableLine': 'As mamadas mantiveram-se regulares.',
+    'reportWeeklyFeedUp': 'As mamadas aumentaram cerca de {pct}% na média diária.',
+    'reportWeeklyFeedDown': 'As mamadas diminuíram cerca de {pct}% na média diária.',
+    'reportWeeklyHeroTemplate': '{name} teve uma semana {tone}! {sleep} {feed}',
+    'reportWeeklyTrendLabelImproved': 'Melhorou',
+    'reportWeeklyTrendLabelWorse': 'Piorou',
+    'reportWeeklyTrendLabelStable': 'Estável',
+    'reportWeeklyTrendLabelUnknown': '—',
+    'reportWeeklyTrendLabelEvolving': 'Evoluindo',
+    'reportWeeklyTrendLabelIncreased': 'Aumentou',
+    'reportWeeklyTrendNA': '—',
+    'reportWeeklyHighlightSleep': 'Destaque positivo: sono mais recuperador esta semana.',
+    'reportWeeklyHighlightFeedingStable': 'Destaque positivo: ritmo de alimentação consistente.',
+    'reportWeeklyHighlightDiaperUp': 'Destaque: mais trocas — hidratação ou digestão mais ativa.',
+    'reportWeeklyHighlightWeight': 'Destaque positivo: ganho de peso.',
+    'reportWeeklyHighlightGeneric': 'Continue a registar para tendências mais claras.',
+    'reportWeeklyAvgFeedsDay': 'Média diária: {avg} mamadas.',
+    'reportWeeklyAvgDiapersDay': 'Média diária: {avg} trocas.',
+    'reportWeeklySleepHoursChartTitle': 'Horas de sono por dia',
+    'reportWeeklyAvgWeekLabel': 'Média da semana',
+    'reportWeeklyVsPrevWeekShort': 'vs semana anterior',
+    'reportWeeklyInsightsCardTitle': 'Insights da IA',
+    'reportWeeklyPatternsTitle': 'Padrões detectados',
+    'reportWeeklySeeAllAnalyses': 'Ver todas as análises',
+    'reportWeeklyHeatmapSoon': 'Mapa de calor horário (opcional) disponível em breve.',
+    'reportWeeklyFeedChartCaption': 'Mamadas por dia',
+    'reportWeeklyDiaperChartCaption': 'Trocas por dia',
+    'reportWeeklyPatternWeekend': 'Ao fim de semana o sono tende a alongar um pouco.',
+    'reportWeeklyPatternFeedingDown': 'Menos mamadas na média — comum quando os intervalos aumentam.',
+    'reportWeeklyPatternDefault': 'Padrão semanal dentro do esperado — ajuste conforme o ritmo do bebê.',
+    'reportWeeklyInsightSleepNeutral': 'O sono foi semelhante ao da semana anterior.',
+    'reportWeeklyInsightSleepBetter': 'Há mais horas de sono do que na semana passada — bom sinal.',
+    'reportWeeklyInsightSleepLess': 'O sono total ficou abaixo da semana anterior — vale observar o descanso à noite.',
+    'reportWeeklyInsightTemplate': '{name}: {sleep}',
+    'reportMonthlyScreenTitle': 'Relatório Mensal',
+    'reportMonthlyAvgWeight': 'Peso médio',
+    'reportMonthlyAvgHeight': 'Altura média',
+    'reportMonthlyGrowthChartEmpty': 'Adicione pelo menos dois registos de peso no mês para ver o gráfico.',
+    'reportMonthlySleepSection': 'Sono',
+    'reportMonthlySleepAvg': 'Média mensal (por dia)',
+    'reportMonthlyVsPrevMonth': 'vs mês anterior',
+    'reportMonthlyBestWeeks': 'Semanas com mais sono',
+    'reportMonthlySleepTrendUp': 'Tendência geral: mais sono recuperador este mês.',
+    'reportMonthlySleepTrendDown': 'Tendência geral: menos sono total que no mês anterior — vale acompanhar.',
+    'reportMonthlySleepTrendStable': 'Tendência geral: sono estável ao longo do mês.',
+    'reportMonthlySleepTrendUnknown': 'Sem dados suficientes para comparar com o mês anterior.',
+    'reportMonthlySleepExplain':
+        'A média de sono por dia soma todo o tempo registado em cada dia civil do mês e divide pelo número de dias desse mês (sessões contadas pelo horário de fim). A percentagem compara essa média com a do mês anterior. «Semanas com mais sono» mostra até duas semanas (segunda a domingo) em que o total de sono foi maior.',
+    'reportMonthlyFeedingSection': 'Alimentação',
+    'reportMonthlyFeedFreq': 'Frequência média (mamadas/dia)',
+    'reportMonthlyFeedingExplain':
+        'A frequência média é o total de mamadas ao peito ou à mamadeira registadas no mês dividido pelos dias do calendário desse mês (inclui dias sem registo). Alimentação sólida não entra nesta contagem. Os horários são até três faixas horárias em que mais mamadas terminaram neste mês.',
+    'reportMonthlyPredominantHours': 'Horários predominantes (fim da mamada)',
+    'reportMonthlyMilestonesTitle': 'Marcos do mês',
+    'reportMonthlyMilestonesEmpty': 'Sem vacinas, consultas ou memórias com selo neste mês.',
+    'reportMonthlyMilestoneConsultationDefault': 'Consulta',
+    'reportMonthlyMemoriesTitle': 'Memórias do mês',
+    'reportMonthlySeeAllMemories': 'Ver todas',
+    'reportMonthlyMemoriesEmpty': 'Sem fotos registadas nas memórias deste mês.',
+    'reportMonthlyVideosHint': 'Vídeos aparecem quando existirem nos momentos guardados.',
+    'reportSleepAdvScreenTitle': 'Relatório de Sono',
+    'reportSleepAdvScoreTitle': 'Score de Sono',
+    'reportSleepAdvMetricsTitle': 'Métricas da semana',
+    'reportSleepAdvEfficiency': 'Eficiência do sono',
+    'reportSleepAdvVsPrevPct': 'Variação da eficiência: {pct}% (vs semana anterior)',
+    'reportSleepAdvOnset': 'Tempo até o primeiro sono da noite',
+    'reportSleepAdvAwakenings': 'Despertares por noite (média)',
+    'reportSleepAdvAwakeningsTotal': 'Soma de despertares na semana: {n}',
+    'reportSleepAdvLongest': 'Maior período contínuo',
+    'reportSleepAdvAvgDailySleep': 'Média de sono por dia',
+    'reportSleepAdvIdealTitle': 'Melhor horário para adormecer',
+    'reportSleepAdvIdealFooter': 'Janela estimada a partir dos teus registos (não é aconselhamento médico).',
+    'reportSleepAdvSeeFullAnalysis': 'Ver análise completa',
+    'reportSleepAdvChartsSection': 'Sessão sono',
+    'reportSleepAdvChartsSleepTrend': 'Ritmo do sono (esta semana)',
+    'reportSleepAdvChartsCompare': 'Comparação com a semana anterior',
+    'reportSleepAdvChartsDistribution': 'Dia e noite (soma da semana)',
+    'reportSleepAdvChartsBars': 'Volume de sono: esta semana vs anterior',
+    'reportSleepAdvDayPhase': 'Sono diurno (6h–18h)',
+    'reportSleepAdvNightPhase': 'Sono noturno (18h–6h)',
+    'reportSleepAdvDistributionEmpty': 'Sem dados para repartir.',
+    'reportSleepAdvLegendThisWeek': 'Esta semana',
+    'reportSleepAdvLegendPrevWeek': 'Semana anterior',
+    'reportSleepAdvScoreBreakdown': 'O que o score reflete',
+    'reportSleepAdvBreakdownLine':
+        'Eficiência: {e} pts • Tramos longos: {s} pts • Despertares: {a} pts • Regularidade: {c} pts (indicativos).',
+    'reportSleepAdvNotEnoughData': 'Ainda há poucos registos esta semana — os valores são orientativos.',
+    'reportSleepAdvStatusExcellent': 'Excelente',
+    'reportSleepAdvStatusGood': 'Bom',
+    'reportSleepAdvStatusRegular': 'Regular',
+    'reportSleepAdvStatusPoor': 'Frágil',
+    'reportSleepAdvBadgeVeryGood': 'Muito bom',
+    'reportSleepAdvBadgeGood': 'Boa',
+    'reportSleepAdvBadgeOk': 'Moderado',
+    'reportSleepAdvBadgeAttention': 'Acompanhar',
+    'reportSleepAdvBadgeIdeal': 'Ideal',
+    'reportSleepAdvBadgeUnknown': 'Sem dados',
+    'reportSleepAdvBadgeLow': 'Baixo',
+    'reportSleepAdvBadgeModerate': 'Moderado',
+    'reportSleepAdvBadgeHigh': 'Elevado',
+    'reportPediatricScreenTitle': 'Relatório Pediátrico',
+    'reportPediatricPeriodPrefix': 'Período:',
+    'reportPediatricFilterHint': 'Período do relatório',
+    'reportPediatricDateFrom': 'De',
+    'reportPediatricDateTo': 'Até',
+    'reportPediatricPickRange': 'Escolher datas',
+    'reportPediatricFilterMaxDaysHint': 'Toque para alterar. Intervalos muito longos são limitados a 366 dias.',
+    'reportPediatricSectionGeneral': 'Informações gerais',
+    'reportPediatricSectionSummary': 'Resumo do período',
+    'reportPediatricSectionSleep': 'Sono',
+    'reportPediatricSectionFeeding': 'Alimentação',
+    'reportPediatricSectionSymptoms': 'Sintomas e registos',
+    'reportPediatricSectionObservations': 'Observações dos pais',
+    'reportPediatricLabelName': 'Nome',
+    'reportPediatricLabelAge': 'Idade',
+    'reportPediatricLabelBirth': 'Data de nascimento',
+    'reportPediatricLabelWeightCurrent': 'Peso (último no período)',
+    'reportPediatricLabelHeight': 'Altura',
+    'reportPediatricWeightStart': 'Peso inicial (período)',
+    'reportPediatricWeightEnd': 'Peso final (período)',
+    'reportPediatricWeightGain': 'Variação de peso',
+    'reportPediatricAvgFeeds': 'Mamadas/refeições por dia (média)',
+    'reportPediatricAvgSleep': 'Sono por dia (média)',
+    'reportPediatricAvgDiapers': 'Trocas de fralda por dia (média)',
+    'reportPediatricFeverEpisodes': 'Episódios de febre (registo estruturado)',
+    'reportPediatricFeverNote': 'Nota',
+    'reportPediatricFeverFootnote':
+        'Contagem a partir dos relatos estruturados em Saúde › Relatar sintoma (com temperatura quando aplicável).',
+    'reportPediatricVaccines': 'Vacinas aplicadas no período',
+    'reportPediatricMedications': 'Medicamentos (relatos e palavras-chave nas notas)',
+    'reportPediatricSleepAvgDaily': 'Média diária de sono',
+    'reportPediatricSleepAwakenings': 'Despertares noturnos (média)',
+    'reportPediatricSleepPattern': 'Padrão geral do sono',
+    'reportPediatricSleepPatternStable': 'Predominantemente contínuo',
+    'reportPediatricSleepPatternModerate': 'Intermédio',
+    'reportPediatricSleepPatternFragmented': 'Mais fragmentado',
+    'reportPediatricSleepLongest': 'Maior período contínuo',
+    'reportPediatricFeedingBreast': 'Aleitamento',
+    'reportPediatricFeedingFormula': 'Fórmula',
+    'reportPediatricFeedingSolid': 'Alimentação sólida',
+    'reportPediatricFeedingSessions': 'sessões',
+    'reportPediatricFeedingAvgDur': 'duração média',
+    'reportPediatricSymptomReflux': 'Refluxo (diários ou relatos)',
+    'reportPediatricSymptomColic': 'Cólicas (diários ou relatos)',
+    'reportPediatricSymptomIrrit': 'Irritabilidade (humores)',
+    'reportPediatricIrritHigh': 'Mais perceptível',
+    'reportPediatricIrritMedium': 'Moderada',
+    'reportPediatricIrritLow': 'Pouco perceptível',
+    'reportPediatricIrritUnknown': 'Sem dados',
+    'reportPediatricYes': 'Sim',
+    'reportPediatricNo': 'Não',
+    'reportPediatricNa': '—',
+    'reportPediatricJournalNote': 'Diários do dia',
+    'reportPediatricJournalNoteHint': 'Deteção por palavras nos textos livres.',
+    'reportPediatricObsHint':
+        'Observações para a consulta: sintomas, medicamentos, comportamentos diferentes…',
+    'reportPediatricBtnShare': 'Compartilhar',
+    'reportPediatricBtnExportPdf': 'Exportar PDF',
+    'reportPediatricBtnPrint': 'Imprimir',
+    'reportPediatricBtnEmail': 'E-mail',
+    'reportPediatricBtnWhatsApp': 'WhatsApp',
+    'reportPediatricScreenFootnote':
+        'Documento informativo a partir dos registos locais. Não substitui avaliação clínica.',
+    'reportPediatricNone': 'Nenhum',
+    'reportPediatricPdfTitle': 'Relatório pediátrico — FaceBaby',
+    'reportPediatricPdfPeriod': 'Período:',
+    'reportPediatricPdfFooter':
+        'Gerado na app FaceBaby. Conteúdo limitado ao registado neste dispositivo (modo offline disponível).',
+    'reportPediatricFeverDisclaimerShort': '0',
+    'reportPediatricSymptomCrying': 'Choro sem causa aparente (relatos)',
+    'reportPediatricSymptomPain': 'Dor (relatos)',
+    'reportPediatricStructuredSymptoms': 'Relatos de sintomas (data e hora)',
+    'reportPediatricStructuredSymptomsEmpty': 'Nenhum relato estruturado neste período.',
+    'reportDevScreenTitle': 'Desenvolvimento',
+    'reportDevSubtitle': 'Marcos orientativos para acompanhar com calma.',
+    'reportDevScoreTitle': 'Score de desenvolvimento',
+    'reportDevScoreStatusOnTrack': 'Dentro do esperado',
+    'reportDevScoreStatusWatch': 'Há espaço para novas descobertas',
+    'reportDevScoreStatusEarly': 'No seu ritmo — com tempo para florescer',
+    'reportDevSectionMotor': 'Desenvolvimento motor',
+    'reportDevSectionCognitive': 'Desenvolvimento cognitivo',
+    'reportDevSectionSocial': 'Desenvolvimento social',
+    'reportDevAchieved': 'Alcançado',
+    'reportDevGrowing': 'A desenvolver',
+    'reportDevInsightTitle': 'Insights',
+    'reportDevSeeAllMarcos': 'Ver todos os marcos',
+    'reportDevFootnote':
+        'Marcos são orientações gerais; cada bebé tem o seu tempo. Em dúvida, converse com o pediatra.',
+    'reportDevNeedBirth': 'Adiciona a data de nascimento do bebé para ver este relatório.',
+    'devReport_motor_head': 'Sustenta a cabeça',
+    'devReport_motor_roll': 'Rola (ex.: de bruços para costas)',
+    'devReport_motor_sit': 'Senta (com ou sem apoio)',
+    'devReport_motor_crawl': 'Engatinha ou desloca-se em quatro apoios',
+    'devReport_motor_walk': 'Dá passos / anda com apoio',
+    'devReport_cog_faces': 'Reconhece rostos familiares',
+    'devReport_cog_sounds': 'Responde a sons e vozes',
+    'devReport_cog_track': 'Acompanha objetos com o olhar',
+    'devReport_cog_babble': 'Balbucia ou vocaliza',
+    'devReport_cog_visual': 'Contacto visual na brincadeira',
+    'devReport_soc_smile': 'Sorriso social',
+    'devReport_soc_emotion_resp': 'Resposta emocional aos cuidadores',
+    'devReport_soc_family': 'Interação com familiares próximos',
+    'devReport_soc_emotion_react': 'Reações emocionais às situações',
+    'devReportInsightNewborn':
+        'Nos primeiros dias o mais importante é vínculo e segurança — cada pequeno sinal conta.',
+    'devReportInsightOnTrack':
+        'O desenvolvimento registado está compatível com padrões esperados para a faixa etária.',
+    'devReportInsightVariety':
+        'É natural haver variação entre marcos — alguns aparecem um pouco antes ou depois.',
+    'devReportInsightPatience':
+        'Ainda há marcos por explorar: tummy time calmo, conversas e brincadeiras sem pressa ajudam muito.',
+    'devReportInsightBalanced':
+        'Celebra as pequenas conquistas; o carinho e a rotina gentil são o melhor estímulo.',
     'growth': 'Crescimento',
-    'pediatricReport': 'Relatório pediátrico',
-    'pediatricReportDesc': 'Gere um PDF com peso, sono, alimentação, fraldas, vacinas, consultas e observações.',
+    'pediatricReport': 'Relatório Pediátrico',
+    'pediatricReportDesc':
+        'Gere um PDF com peso, sono, alimentação, fraldas, vacinas, sintomas relatados em Saúde, consultas e observações.',
     'generatePdf': 'Gerar PDF',
     'memoriesTitle': 'Livro de memórias',
     'memoriesSubtitle': 'Momentos importantes para transformar em recordações.',
@@ -1104,6 +1838,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoriesAlbumGenerating': 'A gerar o seu álbum…',
     'memoriesAlbumNeedFilled': 'Preencha pelo menos um momento no álbum para gerar o PDF.',
     'memoriesAlbumError': 'Não foi possível gerar o PDF.',
+    'memoriesAlbumPdfReadyTitle': 'PDF do álbum pronto',
+    'memoriesAlbumShareAction': 'Partilhar…',
+    'memoriesAlbumSaveAction': 'Guardar / download',
+    'memoriesAlbumSavedSnack': 'PDF guardado no telemóvel.',
+    'memoriesAlbumSaveFailedSnack': 'Não foi possível guardar o PDF.',
     'memoriesAlbumCoverMain': 'Livro de recordação',
     'memoriesAlbumCoverTagline': 'Momentos especiais com {name}',
     'memoriesAlbumFooter': 'Gerado com FaceBaby',
@@ -1112,6 +1851,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoryBadgeMonthsMany': '{n} meses',
     'memoryBadgeYearOne': '1 ano',
     'memoryBadgeYearsMany': '{n} anos',
+    'memoryBadgeMonthUnitSingular': 'mês',
+    'memoryBadgeMonthUnitPlural': 'meses',
     'badge_arrived_home': 'Cheguei em casa',
     'badge_first_smile': 'Primeiro sorriso',
     'badge_first_feeding': 'Primeira Amamentação',
@@ -1178,6 +1919,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'settingsSoonBadge': 'Em breve',
     'settingsRateUs': 'Avalie-nos',
     'settingsTermsOfUse': 'Termos de uso',
+    'termsLoadError': 'Não foi possível carregar os termos.',
     'settingsPrivacyPolicy': 'Política de privacidade',
     'settingsSpecialThanks': 'Agradecimentos especiais',
     'settingsTellFriend': 'Conte a um amigo',
@@ -1209,6 +1951,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'authSignIn': 'Entrar',
     'authSigningIn': 'Entrando...',
     'authSignInGoogle': 'Entrar com Google',
+    'authSignInApple': 'Entrar com Apple',
+    'authSignInEmail': 'Entrar com e-mail',
+    'authAppleSignInPlaceholder': 'Apple Sign-In ainda será configurado.',
     'authCreateAccount': 'Criar conta',
     'authForgotDialogTitle': 'Esqueci minha senha',
     'authForgotDialogBody': 'Vamos enviar um link para redefinir sua senha.',
@@ -1241,6 +1986,9 @@ const Map<AppLang, Map<String, String>> _strings = {
             '3) Em Autenticação → Google → ative.\n'
             '4) Baixe de novo o google-services.json em android/app/.',
     'authErrLoginCancelled': 'Login cancelado.',
+    'authErrAppleFailed':
+        'Não foi possível entrar com a Apple. Tente novamente ou use outro método.',
+    'authErrAppleUnavailable': 'Entrar com a Apple só está disponível no iPhone ou iPad.',
     'authErrUnexpected': 'Ocorreu um erro inesperado.',
     'vaccinesTitle': 'Vacinas',
     'vaccinesSubtitle': 'Adicione vacinas, datas e próximas doses.',
@@ -1275,6 +2023,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'deleteAccountReauthContinue': 'Confirmar palavra-passe',
     'deleteAccountReauthCantPassword':
         'Use o botão com o mesmo método de login (ex.: Google) que usou ao criar a conta.',
+    'deleteAccountTypeWordTitle': 'Confirmação final',
+    'deleteAccountTypeWordInstruction':
+        'Para apagar a conta de forma permanente, digite a palavra delete exatamente como mostrado, no campo abaixo.',
+    'deleteAccountTypeWordFieldLabel': 'delete',
     'homeBabyBannerForecastSleep': 'Previsão de dormir',
     'homeBabyBannerForecastWake': 'Previsão de acordar',
     'homeBabyBannerForecastSubtitleSleep': 'Sinais de sono detectados\ncom base no horário atual',
@@ -1310,6 +2062,29 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoryShareButton': 'Compartilhar',
     'memoryFavoriteButton': 'Favoritar',
     'memoryFavoritedButton': 'Favoritado',
+    'weeklyPhotoPublicExplainer':
+        'Ao marcar como público, esta foto poderá participar da Foto da Semana e poderá ser vista por outras mães dentro do FaceBaby.',
+    'weeklyPhotoPublicOff': 'Privado',
+    'weeklyPhotoPublicOn': 'Público',
+    'weeklyPhotoPublicNeedPhoto': 'Adicione uma foto para marcar esta memória como pública.',
+    'weeklyPhotoConfirmTitle': 'Tornar esta memória pública?',
+    'weeklyPhotoConfirmBody':
+        'Esta foto poderá ser escolhida como Foto da Semana e exibida para outras mães no app. Você pode remover essa opção quando quiser.',
+    'weeklyPhotoConfirmCancel': 'Cancelar',
+    'weeklyPhotoConfirmOk': 'Tornar pública',
+    'weeklyPhotoParticipatingBadge': 'Participando da Foto da Semana',
+    'weeklyPhotoWinnerBadge': 'Esta memória foi escolhida como Foto da Semana 💜',
+    'weeklyPhotoShowBabyFirstName': 'Mostrar primeiro nome do bebê no mural público',
+    'weeklyPhotoDisclaimerFooter':
+        'Somente fotos marcadas como públicas participam. Você pode remover a opção a qualquer momento.',
+    'weeklyPhotoSectionTitleMale': 'Príncipe da Semana',
+    'weeklyPhotoSectionTitleFemale': 'Princesa da Semana',
+    'weeklyPhotoSectionSubtitle': 'Uma memória especial compartilhada por uma mãe do FaceBaby.',
+    'weeklyPhotoViewMemory': 'Ver memória',
+    'weeklyPhotoBabyFallback': 'Um bebê FaceBaby',
+    'weeklyPhotoDisclaimerShort':
+        'Somente fotos marcadas como públicas participam. Você pode remover a opção a qualquer momento.',
+    'weeklyPhotoPublicDetailAppBar': 'Memória da semana',
     'memoryEditTitle': 'Editar memória',
     'memoryNewTitle': 'Nova memória',
     'memoryMomNotesFieldLabel': 'Observações da mamãe',
@@ -1453,7 +2228,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'growthAddWeight': 'Adicionar peso',
     'growthAddHeight': 'Adicionar altura',
     'growthAddHead': 'Adicionar cabeça',
-    'growthSummaryIntro': 'Visão geral de peso, altura e perímetro da cabeça.',
+    'growthSummaryIntro': 'Visão geral de peso e altura.',
     'growthChartCaption': '{name} — {metric}',
     'growthChartDeltaHint':
         'Eixo vertical: variação em relação ao valor ao nascer (0 = ao nascer).',
@@ -1483,8 +2258,34 @@ const Map<AppLang, Map<String, String>> _strings = {
     'vaccineReminderNotifTitle': 'Vacina',
     'vaccineReminderNotifBody': 'Hoje é dia da vacina: {name}.',
     'homeBannerChipVaccine': 'Vacina hoje',
+    'vaccDueConfirmCheckbox': 'Confirmo que esta dose já foi aplicada.',
+    'vaccDueSavedOk': 'Vacina registada como aplicada.',
+    'vaccDuePickTitle': 'Vacinas previstas hoje',
     'healthHubConsultations': 'Consultas',
     'healthHubConsultationsSub': 'Pediatra e retornos',
+    'healthHubSymptomReports': 'Relatar sintoma',
+    'healthHubSymptomReportsSub': 'Febre, cólicas, medicamentos e outros — integrados no relatório pediátrico',
+    'symptomReportTitle': 'Relatar sintoma',
+    'symptomReportEmpty': 'Ainda não há relatos. Toque em + para registar.',
+    'symptomReportNew': 'Novo relato',
+    'symptomReportSave': 'Guardar',
+    'symptomReportOccurredAt': 'Data e hora',
+    'symptomReportPickDateTime': 'Alterar data e hora',
+    'symptomReportMedication': 'Medicamentos tomados',
+    'symptomReportMedicationHint': 'Nome ou nota breve',
+    'symptomReportFever': 'Febre',
+    'symptomReportTemp': 'Temperatura',
+    'symptomReportTempHint': 'Conforme as unidades definidas nas preferências',
+    'symptomReportCrying': 'Choro sem causa aparente',
+    'symptomReportPain': 'Dor',
+    'symptomReportColic': 'Cólicas',
+    'symptomReportReflux': 'Refluxo',
+    'symptomReportOther': 'Outro',
+    'symptomReportOtherHint': 'Breve descrição',
+    'symptomReportValidationNeedOne': 'Seleccione pelo menos um sintoma ou preencha um campo.',
+    'symptomReportValidationFeverTemp': 'Indique a temperatura quando marcar febre.',
+    'symptomReportDeleteTitle': 'Eliminar relato?',
+    'symptomReportDeleteBody': 'Esta acção não pode ser desfeita.',
     'consultationsTitle': 'Consultas',
     'consultationsIntro': 'Registe consultas com data e hora; aparecem no resumo do dia na Home.',
     'consultationsSoonTitle': 'Em breve',
@@ -2230,9 +3031,348 @@ const Map<AppLang, Map<String, String>> _strings = {
     'saveRecord': 'Save log',
     'reportsTitle': 'Reports',
     'reportsSubtitle': 'A summary for Mom and the pediatrician.',
+    'reportsHubAnchorLabel': 'Reference',
+    'reportsHubPickDayTooltip': 'Choose reference day for reports',
+    'reportsHubSectionTitle': 'Available reports',
+    'reportStubComingSoon':
+        'This report will update automatically from your app data for the selected period. Layout and metrics will be specified next.',
+    'reportListDaily': 'Daily report',
+    'reportListDailySub': 'Summary and details for the selected day',
+    'reportListWeekly': 'Weekly report',
+    'reportListWeeklySub': 'Summary and details for the week containing the selected day',
+    'reportListMonthly': 'Monthly report',
+    'reportListMonthlySub': 'Monthly aggregates for the month of the selected day',
+    'reportListSleepAdv': 'Advanced sleep report',
+    'reportListSleepAdvSub': 'Sleep patterns and metrics',
+    'reportListPediatric': 'Pediatric report',
+    'reportListPediatricSub': 'PDF and data for medical visits',
+    'reportListDevelopment': 'Development report',
+    'reportListDevelopmentSub': 'Milestones and leaps',
+    'plusBrandTitle': 'FaceBaby Premium',
+    'plusSheetHero':
+        'One gentle unlock forever: beautiful PDFs, the keepsake book, more photos on your wall, cloud backup, and supportive insights for Mom.',
+    'plusSheetPriceLabel': 'One-time payment',
+    'plusSheetBullets':
+        '• PDF reports (sleep, routine, growth)\n• Keepsake book PDF\n• Export badges (PNG / PDF)\n• Cloud backup across devices\n• More memories & photos\n• Smart insights in reports\n• Pediatrician report\n• Advanced statistics\n• Premium book themes',
+    'plusCtaSubscribe': 'Unlock forever',
+    'plusCtaRestore': 'Restore purchases',
+    'plusCtaLater': 'Not now',
+    'plusSheetFootnote':
+        'One-time purchase processed by Google Play or the App Store. Restore from account settings on a new phone.',
+    'plusWelcomeSnack': 'Welcome to FaceBaby Premium — thank you for cherishing these memories together.',
+    'plusPurchaseUnavailableSnack':
+        'Could not start purchase. Check the store listing or try again later.',
+    'plusPurchaseSkuNotFoundSnack':
+        'Google Play did not return product "{id}". Create an active managed in-app product with this exact Product ID (Monetize → In-app products), or build with --dart-define=FACEBABY_PREMIUM_SKU=… to match your store ID.',
+    'plusPurchaseBillingLaunchFailedSnack':
+        'Could not open Google Play billing. Install the app from an internal/closed testing track (or production), use a licensed test account, and try again.',
+    'plusPaywallSkuMissingHint':
+        'Store price not loaded yet for "{id}". Confirm the product is active in Play Console or wait for sync (can take a few hours).',
+    'plusRestoreOkSnack': 'Purchases restored.',
+    'plusRestoreEmptySnack': 'No previous purchase found for this account.',
+    'plusSnackLockedFeature': 'Included in FaceBaby Premium.',
+    'plusMemoryLimitSnack':
+        'On the free plan you can save up to {max} moments with a photo or note. Premium opens room for many more.',
+    'plusReportsLockedHint': 'FaceBaby Premium report',
+    'plusExportLockedHint': 'FaceBaby Premium export',
+    'plusLifetimePaymentBadge': 'One-time payment',
+    'plusNoMonthlyBadge': 'No subscription',
+    'plusPremiumActiveTitle': 'Thank you for Premium',
+    'plusPremiumActiveBody':
+        'All premium features are unlocked forever on this device. Restore purchases when you switch phones.',
+    'plusPurchaseErrorSnack': 'Something went wrong. Try again or tap Restore purchases.',
+    'plusDoneClose': 'Close',
+    'settingsPlusCardTitle': 'FaceBaby Premium',
+    'settingsPlusCardBodyFree':
+        'PDFs, keepsake book, more photos, cloud backup, pediatric report & advanced stats — single payment.',
+    'settingsPlusCardBodyActive': 'FaceBaby Premium is active — thank you for your support.',
+    'settingsPlusUpgradeCta': 'Unlock Premium',
+    'settingsPlusManageCta': 'View Premium',
+    'plusMemoryCounterFree': '{n} of {max} moments on the free plan',
+    'reportDailyScreenTitle': 'Daily report',
+    'reportDayDetailsTitle': 'Day details',
+    'reportDailyPickDayTooltip': 'Choose day',
+    'reportDailySubtitleSleepQuality': 'Sleep quality',
+    'reportDailySubtitleTotalSleep': 'Total sleep',
+    'reportDailySubtitleLongestStretch': 'Longest stretch',
+    'reportDailySubtitleFeedTotal': 'Total feeds',
+    'reportDailySubtitleFeedAvg': 'Average duration',
+    'reportDailySubtitleFeedLast': 'Last feed',
+    'reportDailySubtitleDiaperTotal': 'Total changes',
+    'reportDailySubtitleDiaperWet': 'Wet diapers',
+    'reportDailySubtitleDiaperDirty': 'Dirty diapers',
+    'reportDailySubtitleMoodMajority': 'Most of the day',
+    'reportDailySubtitleMoodIrrit': 'Irritability',
+    'reportDailySubtitleWeightLast': 'Latest measurement',
+    'reportSleepQualityGood': 'Good',
+    'reportSleepQualityOk': 'OK',
+    'reportSleepQualityBad': 'Poor',
+    'reportSleepQualityMixed': 'Mixed',
+    'reportVsYesterdayShort': 'vs yesterday',
+    'reportVsYesterdayNA': '—',
+    'reportVsYesterdayPct': '{pct}%',
+    'reportLongestStretchHint': '{start} – {end}',
+    'reportNapsLabel': 'Naps',
+    'reportTotalSmallLabel': 'Total',
+    'reportComparedAgeLabel': 'Compared to age average',
+    'reportBenchmarkAbove': 'Above average',
+    'reportBenchmarkNear': 'Near average',
+    'reportBenchmarkBelow': 'Below average',
+    'reportIrritLow': 'Low',
+    'reportIrritMedium': 'Moderate',
+    'reportIrritHigh': 'High',
+    'reportIrritUnknown': 'No data',
+    'reportTabSleep': 'Sleep',
+    'reportTabFeedings': 'Feeds',
+    'reportTabDiapers': 'Diapers',
+    'reportTabMood': 'Mood',
+    'reportAiInsightsTitle': 'Insights',
+    'reportTimelineTitle': 'Day timeline',
+    'reportShareSoon': 'Share (soon)',
+    'reportFeedingChartCaption': 'Feeds by hour',
+    'reportSleepChartCaption': 'Sleep by hour',
+    'reportNoDataHint': 'Not enough logged data for this metric.',
+    'reportInsightSleepAgeGood':
+        'Total sleep is close to what is typical for this age — a good sign of restorative rest.',
+    'reportInsightSleepAgeLow':
+        'Sleep came in below the usual range for this age; watch for tired cues and bedtime rhythm.',
+    'reportInsightFeedsOften':
+        'Many feeds across the day — common during growth spurts; logging duration helps spot averages.',
+    'reportInsightDiapersFrequent':
+        'Frequent diaper changes — hydration may be fine or skin may need care; note wet vs dirty patterns.',
+    'reportInsightMoodLine': 'Predominant mood saved in memories: {mood}.',
+    'reportWeeklyScreenTitle': 'Weekly report',
+    'reportWeekDetailsTitle': 'Week details',
+    'reportWeeklyPickWeekTooltip': 'Pick a week (any day in that week)',
+    'reportWeeklySummaryTitle': 'Week summary',
+    'reportWeeklyTrendsTitle': 'Trends',
+    'reportWeeklySeeFullDetails': 'View full report',
+    'reportWeeklyPartialWeekHint': 'Averages and trends: Monday through {weekday} (week to date).',
+    'reportWeeklyFutureWeekHint':
+        "This week hasn't started on the calendar yet — pick another week, or come back when there are logged days.",
+    'reportWeeklyLoadErrorPrefix': 'Could not load the report:',
+    'reportWeeklyToneCalm': 'calm',
+    'reportWeeklyToneActive': 'busy',
+    'reportWeeklySleepUnknown': 'Not enough sleep data to compare weeks.',
+    'reportWeeklySleepStableShort': 'Sleep stayed stable vs last week.',
+    'reportWeeklySleepUp': 'Sleep improved by about {pct}% vs last week.',
+    'reportWeeklySleepDown': 'Sleep dropped by about {pct}% vs last week.',
+    'reportWeeklyFeedStableLine': 'Feeds stayed steady.',
+    'reportWeeklyFeedUp': 'Daily feeds increased by about {pct}% on average.',
+    'reportWeeklyFeedDown': 'Daily feeds decreased by about {pct}% on average.',
+    'reportWeeklyHeroTemplate': '{name} had a {tone} week! {sleep} {feed}',
+    'reportWeeklyTrendLabelImproved': 'Improved',
+    'reportWeeklyTrendLabelWorse': 'Worse',
+    'reportWeeklyTrendLabelStable': 'Stable',
+    'reportWeeklyTrendLabelUnknown': '—',
+    'reportWeeklyTrendLabelEvolving': 'Growing',
+    'reportWeeklyTrendLabelIncreased': 'Increased',
+    'reportWeeklyTrendNA': '—',
+    'reportWeeklyHighlightSleep': 'Positive: more restorative sleep this week.',
+    'reportWeeklyHighlightFeedingStable': 'Positive: steady feeding rhythm.',
+    'reportWeeklyHighlightDiaperUp': 'Note: more changes — hydration or digestion may be more active.',
+    'reportWeeklyHighlightWeight': 'Positive: healthy weight gain.',
+    'reportWeeklyHighlightGeneric': 'Keep logging for clearer trends.',
+    'reportWeeklyAvgFeedsDay': 'Daily average: {avg} feeds.',
+    'reportWeeklyAvgDiapersDay': 'Daily average: {avg} changes.',
+    'reportWeeklySleepHoursChartTitle': 'Sleep hours per day',
+    'reportWeeklyAvgWeekLabel': 'Weekly average',
+    'reportWeeklyVsPrevWeekShort': 'vs previous week',
+    'reportWeeklyInsightsCardTitle': 'AI insights',
+    'reportWeeklyPatternsTitle': 'Patterns spotted',
+    'reportWeeklySeeAllAnalyses': 'See all analyses',
+    'reportWeeklyHeatmapSoon': 'Optional hourly heatmap coming soon.',
+    'reportWeeklyFeedChartCaption': 'Feeds per day',
+    'reportWeeklyDiaperChartCaption': 'Changes per day',
+    'reportWeeklyPatternWeekend': 'Sleep tends to stretch a bit on weekends.',
+    'reportWeeklyPatternFeedingDown': 'Fewer feeds on average — common when intervals widen.',
+    'reportWeeklyPatternDefault': 'Weekly pattern looks steady — adjust routines as needed.',
+    'reportWeeklyInsightSleepNeutral': 'Sleep was similar to last week.',
+    'reportWeeklyInsightSleepBetter': 'More sleep than last week — a good sign.',
+    'reportWeeklyInsightSleepLess': 'Total sleep dipped vs last week — worth watching nights.',
+    'reportWeeklyInsightTemplate': '{name}: {sleep}',
+    'reportMonthlyScreenTitle': 'Monthly report',
+    'reportMonthlyAvgWeight': 'Average weight',
+    'reportMonthlyAvgHeight': 'Average height',
+    'reportMonthlyGrowthChartEmpty': 'Add at least two weight logs this month to see the chart.',
+    'reportMonthlySleepSection': 'Sleep',
+    'reportMonthlySleepAvg': 'Monthly average (per day)',
+    'reportMonthlyVsPrevMonth': 'vs previous month',
+    'reportMonthlyBestWeeks': 'Weeks with the most sleep',
+    'reportMonthlySleepTrendUp': 'Overall trend: more restorative sleep this month.',
+    'reportMonthlySleepTrendDown': 'Overall trend: less total sleep than last month — worth watching.',
+    'reportMonthlySleepTrendStable': 'Overall trend: steady sleep through the month.',
+    'reportMonthlySleepTrendUnknown': 'Not enough data to compare with last month.',
+    'reportMonthlySleepExplain':
+        'Average sleep per day adds up every logged sleep session by calendar day this month and divides by the number of days in the month (sessions counted by end time). The percentage compares that average with the previous month. “Weeks with the most sleep” highlights up to two Monday–Sunday weeks with the highest total sleep.',
+    'reportMonthlyFeedingSection': 'Feeding',
+    'reportMonthlyFeedFreq': 'Average frequency (feeds/day)',
+    'reportMonthlyFeedingExplain':
+        'Average frequency is total breast or bottle feeds logged this month divided by the number of calendar days in that month (days with no logs still count). Solid feeds are not included. The times are up to three clock hours when the most feeds ended this month.',
+    'reportMonthlyPredominantHours': 'Most common times (feed ended)',
+    'reportMonthlyMilestonesTitle': 'Milestones this month',
+    'reportMonthlyMilestonesEmpty': 'No vaccines, visits or badge memories this month.',
+    'reportMonthlyMilestoneConsultationDefault': 'Visit',
+    'reportMonthlyMemoriesTitle': 'Memories this month',
+    'reportMonthlySeeAllMemories': 'See all',
+    'reportMonthlyMemoriesEmpty': 'No photos in memories for this month.',
+    'reportMonthlyVideosHint': 'Videos will appear when saved in your moments.',
+    'reportSleepAdvScreenTitle': 'Sleep report',
+    'reportSleepAdvScoreTitle': 'Sleep score',
+    'reportSleepAdvMetricsTitle': 'Weekly metrics',
+    'reportSleepAdvEfficiency': 'Sleep efficiency',
+    'reportSleepAdvVsPrevPct': 'Efficiency change: {pct}% (vs previous week)',
+    'reportSleepAdvOnset': 'Time until first night sleep',
+    'reportSleepAdvAwakenings': 'Awakenings per night (avg.)',
+    'reportSleepAdvAwakeningsTotal': 'Awakenings this week: {n}',
+    'reportSleepAdvLongest': 'Longest continuous sleep',
+    'reportSleepAdvAvgDailySleep': 'Average sleep per day',
+    'reportSleepAdvIdealTitle': 'Best time to fall asleep',
+    'reportSleepAdvIdealFooter': 'Window estimated from your logs (not medical advice).',
+    'reportSleepAdvSeeFullAnalysis': 'See full analysis',
+    'reportSleepAdvChartsSection': 'Sleep session',
+    'reportSleepAdvChartsSleepTrend': 'Sleep rhythm (this week)',
+    'reportSleepAdvChartsCompare': 'Compared with last week',
+    'reportSleepAdvChartsDistribution': 'Day vs night (week total)',
+    'reportSleepAdvChartsBars': 'Sleep volume: this week vs last',
+    'reportSleepAdvDayPhase': 'Day sleep (6am–6pm)',
+    'reportSleepAdvNightPhase': 'Night sleep (6pm–6am)',
+    'reportSleepAdvDistributionEmpty': 'Not enough data to split.',
+    'reportSleepAdvLegendThisWeek': 'This week',
+    'reportSleepAdvLegendPrevWeek': 'Last week',
+    'reportSleepAdvScoreBreakdown': 'What the score reflects',
+    'reportSleepAdvBreakdownLine':
+        'Efficiency: {e} pts • Long stretches: {s} pts • Wake-ups: {a} pts • Steadiness: {c} pts (indicative).',
+    'reportSleepAdvNotEnoughData': 'Still few entries this week — numbers are indicative.',
+    'reportSleepAdvStatusExcellent': 'Excellent',
+    'reportSleepAdvStatusGood': 'Good',
+    'reportSleepAdvStatusRegular': 'Fair',
+    'reportSleepAdvStatusPoor': 'Low',
+    'reportSleepAdvBadgeVeryGood': 'Very good',
+    'reportSleepAdvBadgeGood': 'Good',
+    'reportSleepAdvBadgeOk': 'Moderate',
+    'reportSleepAdvBadgeAttention': 'Watch',
+    'reportSleepAdvBadgeIdeal': 'Ideal',
+    'reportSleepAdvBadgeUnknown': 'No data',
+    'reportSleepAdvBadgeLow': 'Low',
+    'reportSleepAdvBadgeModerate': 'Moderate',
+    'reportSleepAdvBadgeHigh': 'High',
+    'reportPediatricScreenTitle': 'Pediatric clinical report',
+    'reportPediatricPeriodPrefix': 'Period:',
+    'reportPediatricFilterHint': 'Report period',
+    'reportPediatricDateFrom': 'From',
+    'reportPediatricDateTo': 'To',
+    'reportPediatricPickRange': 'Choose dates',
+    'reportPediatricFilterMaxDaysHint': 'Tap to change. Very long ranges are limited to 366 days.',
+    'reportPediatricSectionGeneral': 'General information',
+    'reportPediatricSectionSummary': 'Period summary',
+    'reportPediatricSectionSleep': 'Sleep',
+    'reportPediatricSectionFeeding': 'Feeding',
+    'reportPediatricSectionSymptoms': 'Symptoms & logs',
+    'reportPediatricSectionObservations': 'Parent observations',
+    'reportPediatricLabelName': 'Name',
+    'reportPediatricLabelAge': 'Age',
+    'reportPediatricLabelBirth': 'Date of birth',
+    'reportPediatricLabelWeightCurrent': 'Weight (latest in period)',
+    'reportPediatricLabelHeight': 'Height',
+    'reportPediatricWeightStart': 'Starting weight (period)',
+    'reportPediatricWeightEnd': 'Ending weight (period)',
+    'reportPediatricWeightGain': 'Weight change',
+    'reportPediatricAvgFeeds': 'Feeds/meals per day (avg.)',
+    'reportPediatricAvgSleep': 'Sleep per day (avg.)',
+    'reportPediatricAvgDiapers': 'Diaper changes per day (avg.)',
+    'reportPediatricFeverEpisodes': 'Fever episodes (structured)',
+    'reportPediatricFeverNote': 'Note',
+    'reportPediatricFeverFootnote':
+        'Counted from structured symptom logs (Health › Report symptom), with temperature when provided.',
+    'reportPediatricVaccines': 'Vaccines given in period',
+    'reportPediatricMedications': 'Medications (structured logs & keywords in notes)',
+    'reportPediatricSleepAvgDaily': 'Average daily sleep',
+    'reportPediatricSleepAwakenings': 'Night awakenings (avg.)',
+    'reportPediatricSleepPattern': 'Overall sleep pattern',
+    'reportPediatricSleepPatternStable': 'Mostly continuous',
+    'reportPediatricSleepPatternModerate': 'Moderate',
+    'reportPediatricSleepPatternFragmented': 'More fragmented',
+    'reportPediatricSleepLongest': 'Longest continuous sleep',
+    'reportPediatricFeedingBreast': 'Breastfeeding',
+    'reportPediatricFeedingFormula': 'Formula',
+    'reportPediatricFeedingSolid': 'Solid foods',
+    'reportPediatricFeedingSessions': 'sessions',
+    'reportPediatricFeedingAvgDur': 'avg. duration',
+    'reportPediatricSymptomReflux': 'Reflux (journals or structured logs)',
+    'reportPediatricSymptomColic': 'Colic (journals or structured logs)',
+    'reportPediatricSymptomIrrit': 'Irritability (moods)',
+    'reportPediatricIrritHigh': 'More noticeable',
+    'reportPediatricIrritMedium': 'Moderate',
+    'reportPediatricIrritLow': 'Mild',
+    'reportPediatricIrritUnknown': 'No data',
+    'reportPediatricYes': 'Yes',
+    'reportPediatricNo': 'No',
+    'reportPediatricNa': '—',
+    'reportPediatricJournalNote': 'Daily journals',
+    'reportPediatricJournalNoteHint': 'Keyword detection in free text.',
+    'reportPediatricObsHint': 'Notes for the visit: symptoms, meds, behaviour changes…',
+    'reportPediatricBtnShare': 'Share',
+    'reportPediatricBtnExportPdf': 'Export PDF',
+    'reportPediatricBtnPrint': 'Print',
+    'reportPediatricBtnEmail': 'Email',
+    'reportPediatricBtnWhatsApp': 'WhatsApp',
+    'reportPediatricScreenFootnote':
+        'Informational summary from local logs. Not a substitute for clinical assessment.',
+    'reportPediatricNone': 'None',
+    'reportPediatricPdfTitle': 'Pediatric clinical report — FaceBaby',
+    'reportPediatricPdfPeriod': 'Period:',
+    'reportPediatricPdfFooter':
+        'Generated in FaceBaby. Content limited to data stored on this device (offline-friendly).',
+    'reportPediatricFeverDisclaimerShort': '0',
+    'reportPediatricSymptomCrying': 'Unexplained crying (structured logs)',
+    'reportPediatricSymptomPain': 'Pain (structured logs)',
+    'reportPediatricStructuredSymptoms': 'Structured symptom logs (date & time)',
+    'reportPediatricStructuredSymptomsEmpty': 'No structured symptom logs this period.',
+    'reportDevScreenTitle': 'Development',
+    'reportDevSubtitle': 'Gentle milestones to follow at your own pace.',
+    'reportDevScoreTitle': 'Development score',
+    'reportDevScoreStatusOnTrack': 'Within the expected range',
+    'reportDevScoreStatusWatch': 'Room for new skills to bloom',
+    'reportDevScoreStatusEarly': 'Growing at their own lovely pace',
+    'reportDevSectionMotor': 'Motor development',
+    'reportDevSectionCognitive': 'Cognitive development',
+    'reportDevSectionSocial': 'Social & emotional',
+    'reportDevAchieved': 'On track',
+    'reportDevGrowing': 'Emerging',
+    'reportDevInsightTitle': 'Gentle insight',
+    'reportDevSeeAllMarcos': 'See all milestones',
+    'reportDevFootnote':
+        'Milestones are general guides; every baby is different. When unsure, ask your pediatrician.',
+    'reportDevNeedBirth': 'Add your baby’s birth date to see this report.',
+    'devReport_motor_head': 'Holds head up',
+    'devReport_motor_roll': 'Rolls (e.g. tummy to back)',
+    'devReport_motor_sit': 'Sits (with or without support)',
+    'devReport_motor_crawl': 'Crawls or moves on hands and knees',
+    'devReport_motor_walk': 'Takes steps / walks with support',
+    'devReport_cog_faces': 'Recognises familiar faces',
+    'devReport_cog_sounds': 'Responds to sounds and voices',
+    'devReport_cog_track': 'Follows objects with eyes',
+    'devReport_cog_babble': 'Babbles or vocalises',
+    'devReport_cog_visual': 'Keeps eye contact in play',
+    'devReport_soc_smile': 'Social smile',
+    'devReport_soc_emotion_resp': 'Emotional responses to caregivers',
+    'devReport_soc_family': 'Interaction with close family',
+    'devReport_soc_emotion_react': 'Emotional reactions to situations',
+    'devReportInsightNewborn':
+        'In the first days, bonding and safety matter most — every tiny cue counts.',
+    'devReportInsightOnTrack':
+        'What we see here fits common patterns for babies around this age.',
+    'devReportInsightVariety':
+        'It’s normal for skills to arrive a little earlier or later.',
+    'devReportInsightPatience':
+        'Some milestones are still unfolding — calm tummy time, chat and gentle play all help.',
+    'devReportInsightBalanced':
+        'Celebrate small wins; warmth and gentle routines are powerful stimulation.',
     'growth': 'Growth',
-    'pediatricReport': 'Pediatric report',
-    'pediatricReportDesc': 'Generate a PDF with weight, sleep, feeding, diapers, vaccines, appointments and notes.',
+    'pediatricReport': 'Pediatric clinical report',
+    'pediatricReportDesc':
+        'Generate a PDF with weight, sleep, feeding, diapers, vaccines, symptom logs from Health, appointments and notes.',
     'generatePdf': 'Generate PDF',
     'memoriesTitle': 'Memory book',
     'memoriesSubtitle': 'Important moments to keep forever.',
@@ -2245,6 +3385,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoriesAlbumGenerating': 'Creating your album…',
     'memoriesAlbumNeedFilled': 'Fill in at least one moment in the album to generate the PDF.',
     'memoriesAlbumError': 'Could not generate the PDF.',
+    'memoriesAlbumPdfReadyTitle': 'Album PDF ready',
+    'memoriesAlbumShareAction': 'Share…',
+    'memoriesAlbumSaveAction': 'Save / download',
+    'memoriesAlbumSavedSnack': 'PDF saved on your device.',
+    'memoriesAlbumSaveFailedSnack': 'Could not save the PDF.',
     'memoriesAlbumCoverMain': 'Keepsake memory book',
     'memoriesAlbumCoverTagline': 'Special moments with {name}',
     'memoriesAlbumFooter': 'Made with FaceBaby',
@@ -2253,6 +3398,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoryBadgeMonthsMany': '{n} months',
     'memoryBadgeYearOne': '1 year',
     'memoryBadgeYearsMany': '{n} years',
+    'memoryBadgeMonthUnitSingular': 'month',
+    'memoryBadgeMonthUnitPlural': 'months',
     'badge_arrived_home': 'Home at last',
     'badge_first_smile': 'First smile',
     'badge_first_feeding': 'First feeding',
@@ -2319,6 +3466,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'settingsSoonBadge': 'Soon',
     'settingsRateUs': 'Rate us',
     'settingsTermsOfUse': 'Terms of use',
+    'termsLoadError': 'Could not load the terms.',
     'settingsPrivacyPolicy': 'Privacy policy',
     'settingsSpecialThanks': 'Special thanks',
     'settingsTellFriend': 'Tell a friend',
@@ -2350,6 +3498,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'authSignIn': 'Sign in',
     'authSigningIn': 'Signing in...',
     'authSignInGoogle': 'Sign in with Google',
+    'authSignInApple': 'Sign in with Apple',
+    'authSignInEmail': 'Sign in with email',
+    'authAppleSignInPlaceholder': 'Apple Sign-In will be configured later.',
     'authCreateAccount': 'Create account',
     'authForgotDialogTitle': 'Forgot password',
     'authForgotDialogBody': "We'll email you a link to reset your password.",
@@ -2382,6 +3533,8 @@ const Map<AppLang, Map<String, String>> _strings = {
             '3) Authentication → enable Google provider.\n'
             '4) Download google-services.json again into android/app/.',
     'authErrLoginCancelled': 'Sign-in cancelled.',
+    'authErrAppleFailed': 'Could not sign in with Apple. Try again or use another method.',
+    'authErrAppleUnavailable': 'Sign in with Apple is only available on iPhone or iPad.',
     'authErrUnexpected': 'Something went wrong.',
     'vaccinesTitle': 'Vaccines',
     'vaccinesSubtitle': 'Add vaccines, dates and next doses.',
@@ -2416,6 +3569,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'deleteAccountReauthContinue': 'Confirm password',
     'deleteAccountReauthCantPassword':
         'Use the button for the sign-in provider you originally used (e.g. Google).',
+    'deleteAccountTypeWordTitle': 'Final confirmation',
+    'deleteAccountTypeWordInstruction':
+        'To permanently delete your account, type the word delete exactly as shown in the field below.',
+    'deleteAccountTypeWordFieldLabel': 'delete',
     'homeBabyBannerForecastSleep': 'Sleep forecast',
     'homeBabyBannerForecastWake': 'Wake-up forecast',
     'homeBabyBannerForecastSubtitleSleep': 'Sleep cues detected\nbased on the current time',
@@ -2451,6 +3608,29 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoryShareButton': 'Share',
     'memoryFavoriteButton': 'Favorite',
     'memoryFavoritedButton': 'Favorited',
+    'weeklyPhotoPublicExplainer':
+        'When you mark this as public, the photo may enter Photo of the Week and be seen by other moms in FaceBaby.',
+    'weeklyPhotoPublicOff': 'Private',
+    'weeklyPhotoPublicOn': 'Public',
+    'weeklyPhotoPublicNeedPhoto': 'Add a photo before marking this memory public.',
+    'weeklyPhotoConfirmTitle': 'Make this memory public?',
+    'weeklyPhotoConfirmBody':
+        'This photo may be picked as Photo of the Week and shown to other moms in the app. You can turn this off anytime.',
+    'weeklyPhotoConfirmCancel': 'Cancel',
+    'weeklyPhotoConfirmOk': 'Make public',
+    'weeklyPhotoParticipatingBadge': 'Entered for Photo of the Week',
+    'weeklyPhotoWinnerBadge': 'This memory was chosen as Photo of the Week 💜',
+    'weeklyPhotoShowBabyFirstName': "Show baby's first name on the public gallery",
+    'weeklyPhotoDisclaimerFooter':
+        'Only photos marked public participate. You can remove this anytime.',
+    'weeklyPhotoSectionTitleMale': 'Prince of the Week',
+    'weeklyPhotoSectionTitleFemale': 'Princess of the Week',
+    'weeklyPhotoSectionSubtitle': 'A special memory shared by a FaceBaby mom.',
+    'weeklyPhotoViewMemory': 'View memory',
+    'weeklyPhotoBabyFallback': 'A FaceBaby baby',
+    'weeklyPhotoDisclaimerShort':
+        'Only photos marked public participate. You can remove this anytime.',
+    'weeklyPhotoPublicDetailAppBar': 'Weekly memory',
     'memoryEditTitle': 'Edit memory',
     'memoryNewTitle': 'New memory',
     'memoryMomNotesFieldLabel': "Mom's notes",
@@ -2592,7 +3772,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'growthAddWeight': 'Add weight',
     'growthAddHeight': 'Add height',
     'growthAddHead': 'Add head',
-    'growthSummaryIntro': 'Overview of weight, height and head circumference.',
+    'growthSummaryIntro': 'Overview of weight and height.',
     'growthChartCaption': '{name} — {metric}',
     'growthChartDeltaHint': 'Vertical axis: change from the at-birth value (0 = at birth).',
     'growthHistoryTitle': '{label} (history)',
@@ -2620,8 +3800,34 @@ const Map<AppLang, Map<String, String>> _strings = {
     'vaccineReminderNotifTitle': 'Vaccine',
     'vaccineReminderNotifBody': 'Vaccine due today: {name}.',
     'homeBannerChipVaccine': 'Vaccine today',
+    'vaccDueConfirmCheckbox': 'I confirm this dose has been given.',
+    'vaccDueSavedOk': 'Vaccine marked as administered.',
+    'vaccDuePickTitle': 'Vaccines due today',
     'healthHubConsultations': 'Checkups',
     'healthHubConsultationsSub': 'Pediatrician and follow-ups',
+    'healthHubSymptomReports': 'Report symptom',
+    'healthHubSymptomReportsSub': 'Fever, colic, medications and more — included in the pediatric report',
+    'symptomReportTitle': 'Report symptom',
+    'symptomReportEmpty': 'No entries yet. Tap + to add one.',
+    'symptomReportNew': 'New entry',
+    'symptomReportSave': 'Save',
+    'symptomReportOccurredAt': 'Date & time',
+    'symptomReportPickDateTime': 'Change date & time',
+    'symptomReportMedication': 'Medications taken',
+    'symptomReportMedicationHint': 'Name or short note',
+    'symptomReportFever': 'Fever',
+    'symptomReportTemp': 'Temperature',
+    'symptomReportTempHint': 'Uses your preferred units from Settings',
+    'symptomReportCrying': 'Unexplained crying',
+    'symptomReportPain': 'Pain',
+    'symptomReportColic': 'Colic',
+    'symptomReportReflux': 'Reflux',
+    'symptomReportOther': 'Other',
+    'symptomReportOtherHint': 'Short description',
+    'symptomReportValidationNeedOne': 'Select at least one symptom or fill a field.',
+    'symptomReportValidationFeverTemp': 'Enter temperature when fever is checked.',
+    'symptomReportDeleteTitle': 'Delete entry?',
+    'symptomReportDeleteBody': 'This cannot be undone.',
     'consultationsTitle': 'Checkups',
     'consultationsIntro': 'Log visits with date and time; they show in the Home day summary.',
     'consultationsSoonTitle': 'Coming soon',
@@ -3398,7 +4604,108 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportsSubtitle': 'Resumen para mamá y el pediatra.',
     'growth': 'Crecimiento',
     'pediatricReport': 'Informe pediátrico',
-    'pediatricReportDesc': 'Genera un PDF con peso, sueño, alimentación, pañales, vacunas, citas y notas.',
+    'pediatricReportDesc':
+        'Genera un PDF con peso, sueño, alimentación, pañales, vacunas, síntomas registrados en Salud, citas y notas.',
+    'reportListPediatric': 'Informe para el pediatra',
+    'reportListPediatricSub': 'PDF y datos para la consulta médica',
+    'healthHubSymptomReports': 'Registrar síntoma',
+    'healthHubSymptomReportsSub':
+        'Fiebre, cólicas, medicamentos y más — incluidos en el informe pediátrico',
+    'symptomReportTitle': 'Registrar síntoma',
+    'symptomReportEmpty': 'Aún no hay registros. Pulsa + para añadir.',
+    'symptomReportNew': 'Nuevo registro',
+    'symptomReportSave': 'Guardar',
+    'symptomReportOccurredAt': 'Fecha y hora',
+    'symptomReportPickDateTime': 'Cambiar fecha y hora',
+    'symptomReportMedication': 'Medicamentos tomados',
+    'symptomReportMedicationHint': 'Nombre o nota breve',
+    'symptomReportFever': 'Fiebre',
+    'symptomReportTemp': 'Temperatura',
+    'symptomReportTempHint': 'Según las unidades de Ajustes',
+    'symptomReportCrying': 'Llanto sin causa aparente',
+    'symptomReportPain': 'Dolor',
+    'symptomReportColic': 'Cólicas',
+    'symptomReportReflux': 'Reflujo',
+    'symptomReportOther': 'Otro',
+    'symptomReportOtherHint': 'Breve descripción',
+    'symptomReportValidationNeedOne': 'Selecciona al menos un síntoma o rellena un campo.',
+    'symptomReportValidationFeverTemp': 'Indica la temperatura si marcas fiebre.',
+    'symptomReportDeleteTitle': '¿Eliminar registro?',
+    'symptomReportDeleteBody': 'Esta acción no se puede deshacer.',
+    'reportPediatricScreenTitle': 'Informe pediátrico',
+    'reportPediatricPeriodPrefix': 'Periodo:',
+    'reportPediatricFilterHint': 'Periodo del informe',
+    'reportPediatricDateFrom': 'Desde',
+    'reportPediatricDateTo': 'Hasta',
+    'reportPediatricPickRange': 'Elegir fechas',
+    'reportPediatricFilterMaxDaysHint':
+        'Toca para cambiar. Los intervalos muy largos están limitados a 366 días.',
+    'reportPediatricSectionGeneral': 'Información general',
+    'reportPediatricSectionSummary': 'Resumen del periodo',
+    'reportPediatricSectionSleep': 'Sueño',
+    'reportPediatricSectionFeeding': 'Alimentación',
+    'reportPediatricSectionSymptoms': 'Síntomas y registros',
+    'reportPediatricSectionObservations': 'Observaciones de los padres',
+    'reportPediatricLabelName': 'Nombre',
+    'reportPediatricLabelAge': 'Edad',
+    'reportPediatricLabelBirth': 'Fecha de nacimiento',
+    'reportPediatricLabelWeightCurrent': 'Peso (último del periodo)',
+    'reportPediatricLabelHeight': 'Altura',
+    'reportPediatricWeightStart': 'Peso inicial (periodo)',
+    'reportPediatricWeightEnd': 'Peso final (periodo)',
+    'reportPediatricWeightGain': 'Cambio de peso',
+    'reportPediatricAvgFeeds': 'Tomas/comidas por día (media)',
+    'reportPediatricAvgSleep': 'Sueño por día (media)',
+    'reportPediatricAvgDiapers': 'Cambios de pañal por día (media)',
+    'reportPediatricFeverEpisodes': 'Episodios de fiebre (registro estructurado)',
+    'reportPediatricFeverNote': 'Nota',
+    'reportPediatricFeverFootnote':
+        'Recuento desde registros estructurados en Salud › Registrar síntoma (con temperatura si aplica).',
+    'reportPediatricVaccines': 'Vacunas administradas en el periodo',
+    'reportPediatricMedications': 'Medicamentos (registros y palabras clave en notas)',
+    'reportPediatricSleepAvgDaily': 'Promedio diario de sueño',
+    'reportPediatricSleepAwakenings': 'Despertares nocturnos (media)',
+    'reportPediatricSleepPattern': 'Patrón general del sueño',
+    'reportPediatricSleepPatternStable': 'Sobre todo continuo',
+    'reportPediatricSleepPatternModerate': 'Intermedio',
+    'reportPediatricSleepPatternFragmented': 'Más fragmentado',
+    'reportPediatricSleepLongest': 'Mayor período continuo de sueño',
+    'reportPediatricFeedingBreast': 'Lactancia',
+    'reportPediatricFeedingFormula': 'Fórmula',
+    'reportPediatricFeedingSolid': 'Sólidos',
+    'reportPediatricFeedingSessions': 'sesiones',
+    'reportPediatricFeedingAvgDur': 'duración media',
+    'reportPediatricSymptomReflux': 'Reflujo (diarios o registros)',
+    'reportPediatricSymptomColic': 'Cólicas (diarios o registros)',
+    'reportPediatricSymptomIrrit': 'Irritabilidad (estados de ánimo)',
+    'reportPediatricIrritHigh': 'Más perceptible',
+    'reportPediatricIrritMedium': 'Moderada',
+    'reportPediatricIrritLow': 'Leve',
+    'reportPediatricIrritUnknown': 'Sin datos',
+    'reportPediatricYes': 'Sí',
+    'reportPediatricNo': 'No',
+    'reportPediatricNa': '—',
+    'reportPediatricJournalNote': 'Diarios del día',
+    'reportPediatricJournalNoteHint': 'Detección por palabras en texto libre.',
+    'reportPediatricObsHint':
+        'Notas para la consulta: síntomas, medicamentos, cambios de comportamiento…',
+    'reportPediatricBtnShare': 'Compartir',
+    'reportPediatricBtnExportPdf': 'Exportar PDF',
+    'reportPediatricBtnPrint': 'Imprimir',
+    'reportPediatricBtnEmail': 'Correo',
+    'reportPediatricBtnWhatsApp': 'WhatsApp',
+    'reportPediatricScreenFootnote':
+        'Resumen informativo a partir de registros locales. No sustituye la valoración clínica.',
+    'reportPediatricNone': 'Ninguno',
+    'reportPediatricPdfTitle': 'Informe pediátrico — FaceBaby',
+    'reportPediatricPdfPeriod': 'Periodo:',
+    'reportPediatricPdfFooter':
+        'Generado en FaceBaby. Contenido limitado a los datos en este dispositivo (modo sin conexión).',
+    'reportPediatricFeverDisclaimerShort': '0',
+    'reportPediatricSymptomCrying': 'Llanto sin causa aparente (registros)',
+    'reportPediatricSymptomPain': 'Dolor (registros)',
+    'reportPediatricStructuredSymptoms': 'Registros de síntomas (fecha y hora)',
+    'reportPediatricStructuredSymptomsEmpty': 'No hay registros estructurados en este periodo.',
     'generatePdf': 'Generar PDF',
     'memoriesTitle': 'Libro de recuerdos',
     'memoriesSubtitle': 'Momentos importantes para guardar para siempre.',
@@ -3409,14 +4716,96 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoriesAlbumGenerating': 'Generando su álbum…',
     'memoriesAlbumNeedFilled': 'Complete al menos un momento en el álbum para generar el PDF.',
     'memoriesAlbumError': 'No se pudo generar el PDF.',
+    'memoriesAlbumPdfReadyTitle': 'PDF del álbum listo',
+    'memoriesAlbumShareAction': 'Compartir…',
+    'memoriesAlbumSaveAction': 'Guardar / descargar',
+    'memoriesAlbumSavedSnack': 'PDF guardado en el dispositivo.',
+    'memoriesAlbumSaveFailedSnack': 'No se pudo guardar el PDF.',
     'memoriesAlbumCoverMain': 'Libro de recuerdos',
     'memoriesAlbumCoverTagline': 'Momentos especiales con {name}',
     'memoriesAlbumFooter': 'Creado con FaceBaby',
+    'memoryBadgeMonthOne': '1 mes',
+    'memoryBadgeMonthsMany': '{n} meses',
+    'memoryBadgeYearOne': '1 año',
+    'memoryBadgeYearsMany': '{n} años',
+    'memoryBadgeMonthUnitSingular': 'mes',
+    'memoryBadgeMonthUnitPlural': 'meses',
+    'badge_arrived_home': 'Llegué a casa',
+    'badge_first_smile': 'Primera sonrisa',
+    'badge_first_feeding': 'Primera alimentación',
+    'badge_sleeping': 'Durmiendo',
+    'badge_bath_time': 'Hora del baño',
+    'badge_going_out': 'De paseo',
+    'badge_first_laugh': 'Primera risa',
+    'badge_found_hands': 'Descubrió sus manos',
+    'badge_lifted_head': 'Levantó la cabeza',
+    'badge_at_park': 'En el parque',
+    'badge_first_hug': 'Primer abrazo',
+    'badge_first_foods': 'Primeros alimentos',
+    'badge_first_bath': 'Primer baño',
+    'badge_crib_sleep': 'Primera siesta en la cuna',
+    'badge_first_diaper_change': 'Primer cambio de pañal',
+    'badge_first_burp': 'Primer eructo',
+    'badge_first_mom_cuddle': 'Primer regazo de mamá',
+    'badge_first_dad_cuddle': 'Primer regazo de papá',
+    'badge_first_pediatrician': 'Primera visita al pediatra',
+    'badge_first_vaccine': 'Primera vacuna',
+    'badge_first_car_ride': 'Primer paseo en coche',
+    'badge_first_stroller_ride': 'Primer paseo en carrito',
+    'badge_favorite_toy': 'Primer juguete favorito',
+    'badge_first_night_home': 'Primera noche en casa',
+    'badge_first_giggle': 'Primera risita',
+    'badge_sun_bath': 'Primer baño de sol',
+    'badge_first_christmas': 'Primera Navidad',
+    'badge_first_new_year': 'Primera Nochevieja',
+    'badge_first_mothers_day': 'Primer Día de la Madre',
+    'badge_first_fathers_day': 'Primer Día del Padre',
+    'badge_first_tooth': 'Primer diente',
+    'badge_first_puree': 'Primer puré',
+    'badge_sat_alone': 'Se sentó solo/a',
+    'badge_crawled': 'Gateó',
+    'badge_stood_up': 'Se puso de pie',
+    'badge_first_steps': 'Primeros pasos',
+    'badge_first_word': 'Primera palabra',
+    'badge_favorite_song': 'Primera canción favorita',
+    'badge_first_trip': 'Primer viaje',
+    'badge_family_birthday': 'Primer cumpleaños en familia',
+    'badge_first_beach': 'Primera playa',
+    'badge_first_pool': 'Primera piscina',
+    'badge_first_haircut': 'Primer corte de pelo',
+    'badge_first_shoes': 'Primeros zapatitos',
+    'badge_special_outfit': 'Outfit especial',
+    'badge_first_friend': 'Primer amigo',
+    'badge_first_party': 'Primera fiesta',
+    'badge_first_cartoon': 'Primer dibujo animado',
+    'badge_first_book': 'Primer libro',
+    'badge_special_free': 'Momento especial libre',
     'addMemory': 'Agregar recuerdo',
     'settingsTitle': 'Más',
     'registerMotherBaby': 'Registro (mamá y bebé)',
     'vaccinesCard': 'Vacunas (cartilla)',
     'language': 'Idioma',
+    'unitsTitle': 'Unidades de medida',
+    'unitsIntro':
+        'Elige cómo quieres ver las medidas. Empezamos con un valor por defecto según la región de tu dispositivo.',
+    'unitsLengthTitle': 'Unidad de longitud',
+    'unitsLengthSubtitle': 'Altura, perímetro y medidas en general.',
+    'unitsWeightTitle': 'Unidad de peso',
+    'unitsWeightSubtitle': 'Peso del bebé y registros relacionados.',
+    'unitsLiquidTitle': 'Unidad de líquidos',
+    'unitsLiquidSubtitle': 'Volumen (p. ej., biberón y otros).',
+    'unitsTempTitle': 'Unidad de temperatura',
+    'unitsTempSubtitle': 'Temperatura corporal y ambiente.',
+    'unitsOptCm': 'cm',
+    'unitsOptInch': 'in',
+    'unitsOptKg': 'kg',
+    'unitsOptLb': 'lb',
+    'unitsOptSt': 'st',
+    'unitsOptMl': 'ml',
+    'unitsOptUkFloz': 'uk fl oz',
+    'unitsOptUsFloz': 'us fl oz',
+    'unitsOptC': '°C',
+    'unitsOptF': '°F',
     'settingsSoonTitle': 'Próximamente',
     'settingsSoonBadge': 'Pronto',
     'settingsRateUs': 'Califícanos',
@@ -3464,6 +4853,9 @@ const Map<AppLang, Map<String, String>> _strings = {
             '3) Autenticación → activa Google.\n'
             '4) Vuelve a descargar google-services.json en android/app/.',
     'authErrLoginCancelled': 'Inicio de sesión cancelado.',
+    'authErrAppleFailed':
+        'No se pudo iniciar sesión con Apple. Inténtalo de nuevo u otro método.',
+    'authErrAppleUnavailable': 'Iniciar sesión con Apple solo está disponible en iPhone o iPad.',
     'authErrUnexpected': 'Ocurrió un error inesperado.',
     'vaccinesTitle': 'Vacunas',
     'vaccinesSubtitle': 'Agrega vacunas, fechas y próximas dosis.',
@@ -3590,6 +4982,32 @@ const Map<AppLang, Map<String, String>> _strings = {
     'summaryLastFeed': 'Última a las {time}',
     'summaryLastSleep': 'Último a las {time}',
     'exampleCard': 'Ejemplo de cartilla:',
+    'reportMonthlyScreenTitle': 'Informe mensual',
+    'reportMonthlyAvgWeight': 'Peso medio',
+    'reportMonthlyAvgHeight': 'Altura media',
+    'reportMonthlyGrowthChartEmpty': 'Añade al menos dos registros de peso este mes para ver el gráfico.',
+    'reportMonthlySleepSection': 'Sueño',
+    'reportMonthlySleepAvg': 'Media mensual (por día)',
+    'reportMonthlyVsPrevMonth': 'vs mes anterior',
+    'reportMonthlyBestWeeks': 'Semanas con más sueño',
+    'reportMonthlySleepTrendUp': 'Tendencia general: más sueño reparador este mes.',
+    'reportMonthlySleepTrendDown': 'Tendencia general: menos sueño total que el mes pasado — conviene vigilar.',
+    'reportMonthlySleepTrendStable': 'Tendencia general: sueño estable durante el mes.',
+    'reportMonthlySleepTrendUnknown': 'No hay datos suficientes para comparar con el mes anterior.',
+    'reportMonthlySleepExplain':
+        'La media de sueño por día suma todas las sesiones registradas por día civil del mes y divide entre el número de días de ese mes (sesiones contadas por hora de fin). El porcentaje compara esa media con la del mes anterior. «Semanas con más sueño» muestra hasta dos semanas (lunes a domingo) con mayor sueño total.',
+    'reportMonthlyFeedingSection': 'Alimentación',
+    'reportMonthlyFeedFreq': 'Frecuencia media (tomas/día)',
+    'reportMonthlyFeedingExplain':
+        'La frecuencia media es el total de tomas al pecho o biberón registradas en el mes dividido entre los días del calendario de ese mes (incluye días sin registro). La comida sólida no entra en este recuento. Los horarios son hasta tres franjas en las que más tomas terminaron este mes.',
+    'reportMonthlyPredominantHours': 'Horarios predominantes (fin de la toma)',
+    'reportMonthlyMilestonesTitle': 'Hitos del mes',
+    'reportMonthlyMilestonesEmpty': 'Sin vacunas, consultas o recuerdos con insignia este mes.',
+    'reportMonthlyMilestoneConsultationDefault': 'Consulta',
+    'reportMonthlyMemoriesTitle': 'Recuerdos del mes',
+    'reportMonthlySeeAllMemories': 'Ver todas',
+    'reportMonthlyMemoriesEmpty': 'Sin fotos en los recuerdos de este mes.',
+    'reportMonthlyVideosHint': 'Los vídeos aparecerán cuando existan en los momentos guardados.',
   },
   AppLang.fr: {
     'appName': 'FaceBaby',
@@ -3615,8 +5033,111 @@ const Map<AppLang, Map<String, String>> _strings = {
     'growth': 'Croissance',
     'pediatricReport': 'Rapport pédiatrique',
     'pediatricReportDesc':
-        "Générez un PDF avec le poids, le sommeil, l'alimentation, les couches, les vaccins, les rendez-vous et les notes.",
+        "Générez un PDF avec le poids, le sommeil, l'alimentation, les couches, les vaccins, les symptômes enregistrés dans Santé, les rendez-vous et les notes.",
+    'reportListPediatric': 'Rapport pour le pédiatre',
+    'reportListPediatricSub': 'PDF et données pour la consultation',
+    'healthHubSymptomReports': 'Signaler un symptôme',
+    'healthHubSymptomReportsSub':
+        'Fièvre, coliques, médicaments et plus — inclus dans le rapport pédiatrique',
+    'symptomReportTitle': 'Signaler un symptôme',
+    'symptomReportEmpty': 'Aucune entrée pour le moment. Touchez + pour ajouter.',
+    'symptomReportNew': 'Nouvelle entrée',
+    'symptomReportSave': 'Enregistrer',
+    'symptomReportOccurredAt': 'Date et heure',
+    'symptomReportPickDateTime': 'Modifier date et heure',
+    'symptomReportMedication': 'Médicaments pris',
+    'symptomReportMedicationHint': 'Nom ou courte note',
+    'symptomReportFever': 'Fièvre',
+    'symptomReportTemp': 'Température',
+    'symptomReportTempHint': 'Selon vos unités dans Réglages',
+    'symptomReportCrying': 'Pleurs sans cause apparente',
+    'symptomReportPain': 'Douleur',
+    'symptomReportColic': 'Coliques',
+    'symptomReportReflux': 'Reflux',
+    'symptomReportOther': 'Autre',
+    'symptomReportOtherHint': 'Brève description',
+    'symptomReportValidationNeedOne': 'Sélectionnez au moins un symptôme ou remplissez un champ.',
+    'symptomReportValidationFeverTemp': 'Indiquez la température si la fièvre est cochée.',
+    'symptomReportDeleteTitle': 'Supprimer l’entrée ?',
+    'symptomReportDeleteBody': 'Cette action est irréversible.',
+    'reportPediatricScreenTitle': 'Rapport pédiatrique',
+    'reportPediatricPeriodPrefix': 'Période :',
+    'reportPediatricFilterHint': 'Période du rapport',
+    'reportPediatricDateFrom': 'Du',
+    'reportPediatricDateTo': 'Au',
+    'reportPediatricPickRange': 'Choisir les dates',
+    'reportPediatricFilterMaxDaysHint':
+        'Touchez pour modifier. Les plages très longues sont limitées à 366 jours.',
+    'reportPediatricSectionGeneral': 'Informations générales',
+    'reportPediatricSectionSummary': 'Résumé de la période',
+    'reportPediatricSectionSleep': 'Sommeil',
+    'reportPediatricSectionFeeding': 'Alimentation',
+    'reportPediatricSectionSymptoms': 'Symptômes et suivis',
+    'reportPediatricSectionObservations': 'Observations des parents',
+    'reportPediatricLabelName': 'Nom',
+    'reportPediatricLabelAge': 'Âge',
+    'reportPediatricLabelBirth': 'Date de naissance',
+    'reportPediatricLabelWeightCurrent': 'Poids (dernier dans la période)',
+    'reportPediatricLabelHeight': 'Taille',
+    'reportPediatricWeightStart': 'Poids initial (période)',
+    'reportPediatricWeightEnd': 'Poids final (période)',
+    'reportPediatricWeightGain': 'Variation de poids',
+    'reportPediatricAvgFeeds': 'Tétées/repas par jour (moy.)',
+    'reportPediatricAvgSleep': 'Sommeil par jour (moy.)',
+    'reportPediatricAvgDiapers': 'Changes par jour (moy.)',
+    'reportPediatricFeverEpisodes': 'Épisodes de fièvre (suivi structuré)',
+    'reportPediatricFeverNote': 'Note',
+    'reportPediatricFeverFootnote':
+        'Comptage à partir des suivis structurés dans Santé › Signaler un symptôme (température si fournie).',
+    'reportPediatricVaccines': 'Vaccins administrés durant la période',
+    'reportPediatricMedications': 'Médicaments (suivis et mots-clés dans les notes)',
+    'reportPediatricSleepAvgDaily': 'Sommeil quotidien moyen',
+    'reportPediatricSleepAwakenings': 'Réveils nocturnes (moy.)',
+    'reportPediatricSleepPattern': 'Schéma global du sommeil',
+    'reportPediatricSleepPatternStable': 'Plutôt continu',
+    'reportPediatricSleepPatternModerate': 'Intermédiaire',
+    'reportPediatricSleepPatternFragmented': 'Plus fragmenté',
+    'reportPediatricSleepLongest': 'Plus long sommeil continu',
+    'reportPediatricFeedingBreast': 'Allaitement',
+    'reportPediatricFeedingFormula': 'Lait infantile',
+    'reportPediatricFeedingSolid': 'Aliments solides',
+    'reportPediatricFeedingSessions': 'sessions',
+    'reportPediatricFeedingAvgDur': 'durée moyenne',
+    'reportPediatricSymptomReflux': 'Reflux (journaux ou suivis)',
+    'reportPediatricSymptomColic': 'Coliques (journaux ou suivis)',
+    'reportPediatricSymptomIrrit': 'Irritabilité (humeurs)',
+    'reportPediatricIrritHigh': 'Plus marquée',
+    'reportPediatricIrritMedium': 'Modérée',
+    'reportPediatricIrritLow': 'Légère',
+    'reportPediatricIrritUnknown': 'Pas de données',
+    'reportPediatricYes': 'Oui',
+    'reportPediatricNo': 'Non',
+    'reportPediatricNa': '—',
+    'reportPediatricJournalNote': 'Journaux du jour',
+    'reportPediatricJournalNoteHint': 'Détection par mots-clés dans le texte libre.',
+    'reportPediatricObsHint':
+        'Notes pour la consultation : symptômes, médicaments, changements de comportement…',
+    'reportPediatricBtnShare': 'Partager',
+    'reportPediatricBtnExportPdf': 'Exporter PDF',
+    'reportPediatricBtnPrint': 'Imprimer',
+    'reportPediatricBtnEmail': 'E-mail',
+    'reportPediatricBtnWhatsApp': 'WhatsApp',
+    'reportPediatricScreenFootnote':
+        'Résumé informatif à partir des données locales. Ne remplace pas un avis médical.',
+    'reportPediatricNone': 'Aucun',
+    'reportPediatricPdfTitle': 'Rapport pédiatrique — FaceBaby',
+    'reportPediatricPdfPeriod': 'Période :',
+    'reportPediatricPdfFooter':
+        'Généré dans FaceBaby. Contenu limité aux données stockées sur cet appareil (hors ligne possible).',
+    'reportPediatricFeverDisclaimerShort': '0',
+    'reportPediatricSymptomCrying': 'Pleurs sans cause apparente (suivis)',
+    'reportPediatricSymptomPain': 'Douleur (suivis)',
+    'reportPediatricStructuredSymptoms': 'Suivis de symptômes (date et heure)',
+    'reportPediatricStructuredSymptomsEmpty': 'Aucun suivi structuré sur cette période.',
     'generatePdf': 'Générer PDF',
+    'reportMonthlyMilestonesTitle': 'Jalons du mois',
+    'reportMonthlyMilestonesEmpty': 'Aucun vaccin, consultation ou souvenir avec badge ce mois-ci.',
+    'reportMonthlyMilestoneConsultationDefault': 'Consultation',
     'memoriesTitle': 'Livre de souvenirs',
     'memoriesSubtitle': 'Des moments importants à garder.',
     'addMemory': 'Ajouter un souvenir',
@@ -3624,6 +5145,27 @@ const Map<AppLang, Map<String, String>> _strings = {
     'registerMotherBaby': 'Inscription (maman & bébé)',
     'vaccinesCard': 'Vaccins (carnet)',
     'language': 'Langue',
+    'unitsTitle': 'Unités de mesure',
+    'unitsIntro':
+        'Choisissez comment afficher les mesures. Nous commençons par une valeur par défaut selon la région de votre appareil.',
+    'unitsLengthTitle': 'Unité de longueur',
+    'unitsLengthSubtitle': 'Taille, périmètre et mesures en général.',
+    'unitsWeightTitle': 'Unité de poids',
+    'unitsWeightSubtitle': 'Poids de bébé et relevés associés.',
+    'unitsLiquidTitle': 'Unité de liquides',
+    'unitsLiquidSubtitle': 'Volume (ex. : biberon et autres).',
+    'unitsTempTitle': 'Unité de température',
+    'unitsTempSubtitle': 'Température corporelle et ambiante.',
+    'unitsOptCm': 'cm',
+    'unitsOptInch': 'in',
+    'unitsOptKg': 'kg',
+    'unitsOptLb': 'lb',
+    'unitsOptSt': 'st',
+    'unitsOptMl': 'ml',
+    'unitsOptUkFloz': 'uk fl oz',
+    'unitsOptUsFloz': 'us fl oz',
+    'unitsOptC': '°C',
+    'unitsOptF': '°F',
     'settingsSoonTitle': 'Bientôt',
     'settingsSoonBadge': 'Bientôt',
     'settingsRateUs': 'Notez-nous',
@@ -3779,8 +5321,112 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportsSubtitle': 'Zusammenfassung für Mama und Kinderarzt.',
     'growth': 'Wachstum',
     'pediatricReport': 'Kinderarztbericht',
-    'pediatricReportDesc': 'PDF mit Gewicht, Schlaf, Ernährung, Windeln, Impfungen, Terminen und Notizen erstellen.',
+    'pediatricReportDesc':
+        'PDF mit Gewicht, Schlaf, Ernährung, Windeln, Impfungen, in „Gesundheit“ erfassten Symptomen, Terminen und Notizen erstellen.',
+    'reportListPediatric': 'Bericht für den Kinderarzt',
+    'reportListPediatricSub': 'PDF und Daten für den Arztbesuch',
+    'healthHubSymptomReports': 'Symptom melden',
+    'healthHubSymptomReportsSub':
+        'Fieber, Koliken, Medikamente u. a. — im Kinderarztbericht enthalten',
+    'symptomReportTitle': 'Symptom melden',
+    'symptomReportEmpty': 'Noch keine Einträge. Tippe auf + zum Hinzufügen.',
+    'symptomReportNew': 'Neuer Eintrag',
+    'symptomReportSave': 'Speichern',
+    'symptomReportOccurredAt': 'Datum und Uhrzeit',
+    'symptomReportPickDateTime': 'Datum und Uhrzeit ändern',
+    'symptomReportMedication': 'Eingenommene Medikamente',
+    'symptomReportMedicationHint': 'Name oder kurze Notiz',
+    'symptomReportFever': 'Fieber',
+    'symptomReportTemp': 'Temperatur',
+    'symptomReportTempHint': 'Entsprechend deinen Einheiten in den Einstellungen',
+    'symptomReportCrying': 'Weinen ohne erkennbare Ursache',
+    'symptomReportPain': 'Schmerzen',
+    'symptomReportColic': 'Koliken',
+    'symptomReportReflux': 'Reflux',
+    'symptomReportOther': 'Sonstiges',
+    'symptomReportOtherHint': 'Kurze Beschreibung',
+    'symptomReportValidationNeedOne': 'Wähle mindestens ein Symptom oder fülle ein Feld aus.',
+    'symptomReportValidationFeverTemp': 'Gib die Temperatur an, wenn Fieber aktiviert ist.',
+    'symptomReportDeleteTitle': 'Eintrag löschen?',
+    'symptomReportDeleteBody': 'Das kann nicht rückgängig gemacht werden.',
+    'reportPediatricScreenTitle': 'Kinderarztbericht',
+    'reportPediatricPeriodPrefix': 'Zeitraum:',
+    'reportPediatricFilterHint': 'Berichtszeitraum',
+    'reportPediatricDateFrom': 'Von',
+    'reportPediatricDateTo': 'Bis',
+    'reportPediatricPickRange': 'Daten wählen',
+    'reportPediatricFilterMaxDaysHint':
+        'Zum Ändern tippen. Sehr lange Zeiträume sind auf 366 Tage begrenzt.',
+    'reportPediatricSectionGeneral': 'Allgemeine Angaben',
+    'reportPediatricSectionSummary': 'Zusammenfassung des Zeitraums',
+    'reportPediatricSectionSleep': 'Schlaf',
+    'reportPediatricSectionFeeding': 'Ernährung',
+    'reportPediatricSectionSymptoms': 'Symptome und Einträge',
+    'reportPediatricSectionObservations': 'Elternbeobachtungen',
+    'reportPediatricLabelName': 'Name',
+    'reportPediatricLabelAge': 'Alter',
+    'reportPediatricLabelBirth': 'Geburtsdatum',
+    'reportPediatricLabelWeightCurrent': 'Gewicht (letztes im Zeitraum)',
+    'reportPediatricLabelHeight': 'Größe',
+    'reportPediatricWeightStart': 'Startgewicht (Zeitraum)',
+    'reportPediatricWeightEnd': 'Endgewicht (Zeitraum)',
+    'reportPediatricWeightGain': 'Gewichtsänderung',
+    'reportPediatricAvgFeeds': 'Mahlzeiten pro Tag (Ø)',
+    'reportPediatricAvgSleep': 'Schlaf pro Tag (Ø)',
+    'reportPediatricAvgDiapers': 'Windelwechsel pro Tag (Ø)',
+    'reportPediatricFeverEpisodes': 'Fieberepisoden (strukturiert)',
+    'reportPediatricFeverNote': 'Hinweis',
+    'reportPediatricFeverFootnote':
+        'Zählung aus strukturierten Einträgen unter Gesundheit › Symptom melden (mit Temperatur, falls angegeben).',
+    'reportPediatricVaccines': 'Impfungen im Zeitraum',
+    'reportPediatricMedications': 'Medikamente (strukturierte Einträge & Stichworte in Notizen)',
+    'reportPediatricSleepAvgDaily': 'Durchschnittlicher Tageschlaf',
+    'reportPediatricSleepAwakenings': 'Nächtliches Aufwachen (Ø)',
+    'reportPediatricSleepPattern': 'Schlafmuster insgesamt',
+    'reportPediatricSleepPatternStable': 'Überwiegend durchgehend',
+    'reportPediatricSleepPatternModerate': 'Mittel',
+    'reportPediatricSleepPatternFragmented': 'Stärker unterbrochen',
+    'reportPediatricSleepLongest': 'Längster durchgehender Schlaf',
+    'reportPediatricFeedingBreast': 'Stillen',
+    'reportPediatricFeedingFormula': 'Pre-Nahrung',
+    'reportPediatricFeedingSolid': 'Beikost',
+    'reportPediatricFeedingSessions': 'Sessions',
+    'reportPediatricFeedingAvgDur': 'Ø-Dauer',
+    'reportPediatricSymptomReflux': 'Reflux (Tagebuch oder strukturiert)',
+    'reportPediatricSymptomColic': 'Koliken (Tagebuch oder strukturiert)',
+    'reportPediatricSymptomIrrit': 'Reizbarkeit (Stimmungen)',
+    'reportPediatricIrritHigh': 'Deutlicher',
+    'reportPediatricIrritMedium': 'Mittel',
+    'reportPediatricIrritLow': 'Gering',
+    'reportPediatricIrritUnknown': 'Keine Daten',
+    'reportPediatricYes': 'Ja',
+    'reportPediatricNo': 'Nein',
+    'reportPediatricNa': '—',
+    'reportPediatricJournalNote': 'Tagebucheinträge',
+    'reportPediatricJournalNoteHint': 'Erkennung per Stichwort im Freitext.',
+    'reportPediatricObsHint':
+        'Notizen zum Termin: Symptome, Medikamente, Verhaltensänderungen …',
+    'reportPediatricBtnShare': 'Teilen',
+    'reportPediatricBtnExportPdf': 'PDF exportieren',
+    'reportPediatricBtnPrint': 'Drucken',
+    'reportPediatricBtnEmail': 'E-Mail',
+    'reportPediatricBtnWhatsApp': 'WhatsApp',
+    'reportPediatricScreenFootnote':
+        'Informative Zusammenfassung aus lokalen Daten. Kein Ersatz für eine ärztliche Bewertung.',
+    'reportPediatricNone': 'Keine',
+    'reportPediatricPdfTitle': 'Kinderarztbericht — FaceBaby',
+    'reportPediatricPdfPeriod': 'Zeitraum:',
+    'reportPediatricPdfFooter':
+        'In FaceBaby erzeugt. Inhalt beschränkt auf Daten auf diesem Gerät (offline möglich).',
+    'reportPediatricFeverDisclaimerShort': '0',
+    'reportPediatricSymptomCrying': 'Weinen ohne Ursache (strukturiert)',
+    'reportPediatricSymptomPain': 'Schmerzen (strukturiert)',
+    'reportPediatricStructuredSymptoms': 'Strukturierte Symptomeinträge (Datum und Uhrzeit)',
+    'reportPediatricStructuredSymptomsEmpty': 'Keine strukturierten Einträge in diesem Zeitraum.',
     'generatePdf': 'PDF erstellen',
+    'reportMonthlyMilestonesTitle': 'Meilensteine des Monats',
+    'reportMonthlyMilestonesEmpty': 'Keine Impfungen, Termine oder Erinnerungen mit Abzeichen in diesem Monat.',
+    'reportMonthlyMilestoneConsultationDefault': 'Termin',
     'memoriesTitle': 'Erinnerungsbuch',
     'memoriesSubtitle': 'Wichtige Momente für später.',
     'addMemory': 'Erinnerung hinzufügen',
@@ -3852,8 +5498,112 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportsSubtitle': 'Un riepilogo per la mamma e il pediatra.',
     'growth': 'Crescita',
     'pediatricReport': 'Report pediatrico',
-    'pediatricReportDesc': 'Genera un PDF con peso, sonno, alimentazione, pannolini, vaccini, visite e note.',
+    'pediatricReportDesc':
+        'Genera un PDF con peso, sonno, alimentazione, pannolini, vaccini, sintomi registrati in Salute, visite e note.',
+    'reportListPediatric': 'Report per il pediatra',
+    'reportListPediatricSub': 'PDF e dati per la visita medica',
+    'healthHubSymptomReports': 'Segnala sintomo',
+    'healthHubSymptomReportsSub':
+        'Febbre, coliche, farmaci e altro — inclusi nel report pediatrico',
+    'symptomReportTitle': 'Segnala sintomo',
+    'symptomReportEmpty': 'Nessuna voce. Tocca + per aggiungerne una.',
+    'symptomReportNew': 'Nuova voce',
+    'symptomReportSave': 'Salva',
+    'symptomReportOccurredAt': 'Data e ora',
+    'symptomReportPickDateTime': 'Modifica data e ora',
+    'symptomReportMedication': 'Farmaci assunti',
+    'symptomReportMedicationHint': 'Nome o nota breve',
+    'symptomReportFever': 'Febbre',
+    'symptomReportTemp': 'Temperatura',
+    'symptomReportTempHint': 'Secondo le unità nelle Impostazioni',
+    'symptomReportCrying': 'Pianto senza causa apparente',
+    'symptomReportPain': 'Dolore',
+    'symptomReportColic': 'Coliche',
+    'symptomReportReflux': 'Reflusso',
+    'symptomReportOther': 'Altro',
+    'symptomReportOtherHint': 'Breve descrizione',
+    'symptomReportValidationNeedOne': 'Seleziona almeno un sintomo o compila un campo.',
+    'symptomReportValidationFeverTemp': 'Inserisci la temperatura se segni la febbre.',
+    'symptomReportDeleteTitle': 'Eliminare la voce?',
+    'symptomReportDeleteBody': 'Questa azione non può essere annullata.',
+    'reportPediatricScreenTitle': 'Report pediatrico',
+    'reportPediatricPeriodPrefix': 'Periodo:',
+    'reportPediatricFilterHint': 'Periodo del report',
+    'reportPediatricDateFrom': 'Da',
+    'reportPediatricDateTo': 'A',
+    'reportPediatricPickRange': 'Scegli date',
+    'reportPediatricFilterMaxDaysHint':
+        'Tocca per modificare. Intervalli molto lunghi sono limitati a 366 giorni.',
+    'reportPediatricSectionGeneral': 'Informazioni generali',
+    'reportPediatricSectionSummary': 'Riepilogo del periodo',
+    'reportPediatricSectionSleep': 'Sonno',
+    'reportPediatricSectionFeeding': 'Alimentazione',
+    'reportPediatricSectionSymptoms': 'Sintomi e registrazioni',
+    'reportPediatricSectionObservations': 'Osservazioni dei genitori',
+    'reportPediatricLabelName': 'Nome',
+    'reportPediatricLabelAge': 'Età',
+    'reportPediatricLabelBirth': 'Data di nascita',
+    'reportPediatricLabelWeightCurrent': 'Peso (ultimo nel periodo)',
+    'reportPediatricLabelHeight': 'Altezza',
+    'reportPediatricWeightStart': 'Peso iniziale (periodo)',
+    'reportPediatricWeightEnd': 'Peso finale (periodo)',
+    'reportPediatricWeightGain': 'Variazione di peso',
+    'reportPediatricAvgFeeds': 'Pasti/alimentazioni al giorno (media)',
+    'reportPediatricAvgSleep': 'Sonno al giorno (media)',
+    'reportPediatricAvgDiapers': 'Cambi pannolino al giorno (media)',
+    'reportPediatricFeverEpisodes': 'Episodi di febbre (registrazione strutturata)',
+    'reportPediatricFeverNote': 'Nota',
+    'reportPediatricFeverFootnote':
+        'Conteggio dalle registrazioni strutturate in Salute › Segnala sintomo (con temperatura se indicata).',
+    'reportPediatricVaccines': 'Vaccini nel periodo',
+    'reportPediatricMedications': 'Farmaci (registrazioni e parole chiave nelle note)',
+    'reportPediatricSleepAvgDaily': 'Sonno medio giornaliero',
+    'reportPediatricSleepAwakenings': 'Risvegli notturni (media)',
+    'reportPediatricSleepPattern': 'Andamento generale del sonno',
+    'reportPediatricSleepPatternStable': 'Prevalentemente continuo',
+    'reportPediatricSleepPatternModerate': 'Intermedio',
+    'reportPediatricSleepPatternFragmented': 'Più frammentato',
+    'reportPediatricSleepLongest': 'Sonno continuo più lungo',
+    'reportPediatricFeedingBreast': 'Allattamento',
+    'reportPediatricFeedingFormula': 'Formula',
+    'reportPediatricFeedingSolid': 'Solidi',
+    'reportPediatricFeedingSessions': 'sessioni',
+    'reportPediatricFeedingAvgDur': 'durata media',
+    'reportPediatricSymptomReflux': 'Reflusso (diari o registrazioni)',
+    'reportPediatricSymptomColic': 'Coliche (diari o registrazioni)',
+    'reportPediatricSymptomIrrit': 'Irritabilità (umori)',
+    'reportPediatricIrritHigh': 'Più evidente',
+    'reportPediatricIrritMedium': 'Moderata',
+    'reportPediatricIrritLow': 'Lieve',
+    'reportPediatricIrritUnknown': 'Nessun dato',
+    'reportPediatricYes': 'Sì',
+    'reportPediatricNo': 'No',
+    'reportPediatricNa': '—',
+    'reportPediatricJournalNote': 'Diari del giorno',
+    'reportPediatricJournalNoteHint': 'Rilevamento parole chiave nel testo libero.',
+    'reportPediatricObsHint':
+        'Note per la visita: sintomi, farmaci, cambiamenti di comportamento…',
+    'reportPediatricBtnShare': 'Condividi',
+    'reportPediatricBtnExportPdf': 'Esporta PDF',
+    'reportPediatricBtnPrint': 'Stampa',
+    'reportPediatricBtnEmail': 'Email',
+    'reportPediatricBtnWhatsApp': 'WhatsApp',
+    'reportPediatricScreenFootnote':
+        'Documento informativo dai dati locali. Non sostituisce una valutazione clinica.',
+    'reportPediatricNone': 'Nessuno',
+    'reportPediatricPdfTitle': 'Report pediatrico — FaceBaby',
+    'reportPediatricPdfPeriod': 'Periodo:',
+    'reportPediatricPdfFooter':
+        'Generato in FaceBaby. Contenuto limitato ai dati su questo dispositivo (anche offline).',
+    'reportPediatricFeverDisclaimerShort': '0',
+    'reportPediatricSymptomCrying': 'Pianto senza causa (registrazioni)',
+    'reportPediatricSymptomPain': 'Dolore (registrazioni)',
+    'reportPediatricStructuredSymptoms': 'Registrazioni sintomi (data e ora)',
+    'reportPediatricStructuredSymptomsEmpty': 'Nessuna registrazione strutturata in questo periodo.',
     'generatePdf': 'Genera PDF',
+    'reportMonthlyMilestonesTitle': 'Traguardi del mese',
+    'reportMonthlyMilestonesEmpty': 'Nessun vaccino, visita o ricordo con badge questo mese.',
+    'reportMonthlyMilestoneConsultationDefault': 'Visita',
     'memoriesTitle': 'Libro dei ricordi',
     'memoriesSubtitle': 'Momenti importanti da conservare.',
     'addMemory': 'Aggiungi ricordo',
@@ -3925,8 +5675,112 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportsSubtitle': 'माँ और बाल रोग विशेषज्ञ के लिए सारांश।',
     'growth': 'वृद्धि',
     'pediatricReport': 'बाल रोग रिपोर्ट',
-    'pediatricReportDesc': 'वजन, नींद, दूध/खाना, डायपर, टीके, अपॉइंटमेंट और नोट्स के साथ PDF बनाएं।',
+    'pediatricReportDesc':
+        'वजन, नींद, खाना, डायपर, टीके, स्वास्थ्य में दर्ज लक्षण, अपॉइंटमेंट और नोट्स के साथ PDF बनाएं।',
+    'reportListPediatric': 'बाल चिकित्सक के लिए रिपोर्ट',
+    'reportListPediatricSub': 'PDF और चिकित्सा विज़िट के लिए डेटा',
+    'healthHubSymptomReports': 'लक्षण दर्ज करें',
+    'healthHubSymptomReportsSub':
+        'बुखार, कोलिक, दवाएँ और अन्य — बाल रोग रिपोर्ट में शामिल',
+    'symptomReportTitle': 'लक्षण दर्ज करें',
+    'symptomReportEmpty': 'अभी कोई प्रविष्टि नहीं। जोड़ने के लिए + दबाएँ।',
+    'symptomReportNew': 'नई प्रविष्टि',
+    'symptomReportSave': 'सेव करें',
+    'symptomReportOccurredAt': 'दिनांक और समय',
+    'symptomReportPickDateTime': 'दिनांक और समय बदलें',
+    'symptomReportMedication': 'ली गई दवाइयाँ',
+    'symptomReportMedicationHint': 'नाम या छोटा विवरण',
+    'symptomReportFever': 'बुखार',
+    'symptomReportTemp': 'तापमान',
+    'symptomReportTempHint': 'सेटिंग्स में चुनी इकाइयों के अनुसार',
+    'symptomReportCrying': 'कारण के बिना रोना',
+    'symptomReportPain': 'दर्द',
+    'symptomReportColic': 'कोलिक',
+    'symptomReportReflux': 'रिफ्लक्स',
+    'symptomReportOther': 'अन्य',
+    'symptomReportOtherHint': 'संक्षिप्त विवरण',
+    'symptomReportValidationNeedOne': 'कम से कम एक लक्षण चुनें या कोई फ़ील्ड भरें।',
+    'symptomReportValidationFeverTemp': 'बुखार चिह्नित होने पर तापमान दर्ज करें।',
+    'symptomReportDeleteTitle': 'प्रविष्टि हटाएँ?',
+    'symptomReportDeleteBody': 'इसे पूर्ववत नहीं किया जा सकता।',
+    'reportPediatricScreenTitle': 'बाल रोग रिपोर्ट',
+    'reportPediatricPeriodPrefix': 'अवधि:',
+    'reportPediatricFilterHint': 'रिपोर्ट की अवधि',
+    'reportPediatricDateFrom': 'से',
+    'reportPediatricDateTo': 'तक',
+    'reportPediatricPickRange': 'तारीखें चुनें',
+    'reportPediatricFilterMaxDaysHint':
+        'बदलने के लिए टैप करें। बहुत लंबी अवधि 366 दिनों तक सीमित है।',
+    'reportPediatricSectionGeneral': 'सामान्य जानकारी',
+    'reportPediatricSectionSummary': 'अवधि का सारांश',
+    'reportPediatricSectionSleep': 'नींद',
+    'reportPediatricSectionFeeding': 'खाना',
+    'reportPediatricSectionSymptoms': 'लक्षण और रिकॉर्ड',
+    'reportPediatricSectionObservations': 'माता-पिता की टिप्पणियाँ',
+    'reportPediatricLabelName': 'नाम',
+    'reportPediatricLabelAge': 'आयु',
+    'reportPediatricLabelBirth': 'जन्म तिथि',
+    'reportPediatricLabelWeightCurrent': 'वजन (अवधि में नवीनतम)',
+    'reportPediatricLabelHeight': 'लंबाई',
+    'reportPediatricWeightStart': 'प्रारंभिक वजन (अवधि)',
+    'reportPediatricWeightEnd': 'अंतिम वजन (अवधि)',
+    'reportPediatricWeightGain': 'वजन परिवर्तन',
+    'reportPediatricAvgFeeds': 'प्रति दिन फ़ीडिंग (औसत)',
+    'reportPediatricAvgSleep': 'प्रति दिन नींद (औसत)',
+    'reportPediatricAvgDiapers': 'प्रति दिन डायपर बदलाव (औसत)',
+    'reportPediatricFeverEpisodes': 'बुखार की घटनाएँ (संरचित)',
+    'reportPediatricFeverNote': 'नोट',
+    'reportPediatricFeverFootnote':
+        'गिनती स्वास्थ्य › लक्षण दर्ज करें से संरचित प्रविष्टियों से (तापमान यदि दिया गया हो)।',
+    'reportPediatricVaccines': 'अवधि में लगे टीके',
+    'reportPediatricMedications': 'दवाइयाँ (संरचित प्रविष्टियाँ और नोट्स में कीवर्ड)',
+    'reportPediatricSleepAvgDaily': 'औसत दैनिक नींद',
+    'reportPediatricSleepAwakenings': 'रात में जागना (औसत)',
+    'reportPediatricSleepPattern': 'नींद का समग्र पैटर्न',
+    'reportPediatricSleepPatternStable': 'ज़्यादातर निरंतर',
+    'reportPediatricSleepPatternModerate': 'मध्यम',
+    'reportPediatricSleepPatternFragmented': 'अधिक टूटा हुआ',
+    'reportPediatricSleepLongest': 'सबसे लंबी निरंतर नींद',
+    'reportPediatricFeedingBreast': 'स्तनपान',
+    'reportPediatricFeedingFormula': 'फ़ॉर्मूला',
+    'reportPediatricFeedingSolid': 'ठोस भोजन',
+    'reportPediatricFeedingSessions': 'सत्र',
+    'reportPediatricFeedingAvgDur': 'औसत अवधि',
+    'reportPediatricSymptomReflux': 'रिफ्लक्स (डायरी या संरचित)',
+    'reportPediatricSymptomColic': 'कोलिक (डायरी या संरचित)',
+    'reportPediatricSymptomIrrit': 'चिड़चिड़ापन (मूड)',
+    'reportPediatricIrritHigh': 'अधिक ध्यान देने योग्य',
+    'reportPediatricIrritMedium': 'मध्यम',
+    'reportPediatricIrritLow': 'हल्का',
+    'reportPediatricIrritUnknown': 'कोई डेटा नहीं',
+    'reportPediatricYes': 'हाँ',
+    'reportPediatricNo': 'नहीं',
+    'reportPediatricNa': '—',
+    'reportPediatricJournalNote': 'दिन की डायरी',
+    'reportPediatricJournalNoteHint': 'मुक्त पाठ में कीवर्ड पहचान।',
+    'reportPediatricObsHint':
+        'विज़िट के लिए नोट्स: लक्षण, दवाइयाँ, व्यवहार में बदलाव…',
+    'reportPediatricBtnShare': 'शेयर करें',
+    'reportPediatricBtnExportPdf': 'PDF निर्यात',
+    'reportPediatricBtnPrint': 'प्रिंट',
+    'reportPediatricBtnEmail': 'ईमेल',
+    'reportPediatricBtnWhatsApp': 'WhatsApp',
+    'reportPediatricScreenFootnote':
+        'स्थानीय डेटा से सूचनात्मक सारांश। चिकित्सकीय मूल्यांकन का विकल्प नहीं।',
+    'reportPediatricNone': 'कोई नहीं',
+    'reportPediatricPdfTitle': 'बाल रोग रिपोर्ट — FaceBaby',
+    'reportPediatricPdfPeriod': 'अवधि:',
+    'reportPediatricPdfFooter':
+        'FaceBaby में बनाया गया। सामग्री इस डिवाइस पर डेटा तक सीमित (ऑफ़लाइन संभव)।',
+    'reportPediatricFeverDisclaimerShort': '0',
+    'reportPediatricSymptomCrying': 'कारण के बिना रोना (संरचित)',
+    'reportPediatricSymptomPain': 'दर्द (संरचित)',
+    'reportPediatricStructuredSymptoms': 'संरचित लक्षण प्रविष्टियाँ (दिनांक और समय)',
+    'reportPediatricStructuredSymptomsEmpty': 'इस अवधि में कोई संरचित प्रविष्टि नहीं।',
     'generatePdf': 'PDF बनाएं',
+    'reportMonthlyMilestonesTitle': 'महीने की उपलब्धियाँ',
+    'reportMonthlyMilestonesEmpty': 'इस महीने कोई टीकाकरण, परामर्श या बैज वाली यादें नहीं।',
+    'reportMonthlyMilestoneConsultationDefault': 'परामर्श',
     'memoriesTitle': 'यादों की किताब',
     'memoriesSubtitle': 'महत्वपूर्ण पलों को संजोएं।',
     'addMemory': 'याद जोड़ें',
@@ -3973,6 +5827,59 @@ const Map<AppLang, Map<String, String>> _strings = {
     'summarySleep': 'कुल नींद',
     'summaryLastFeed': 'आखिरी {time}',
     'summaryLastSleep': 'आखिरी {time}',
+    'cancel': 'रद्द करें',
+    'delete': 'हटाएँ',
+    'notificationsInboxTitle': 'सूचनाएँ',
+    'notificationsInboxSubtitle': 'पिछले 3 दिन (ऐप में दर्ज भेजी गई व निर्धारित)',
+    'notificationsEmpty': 'इस अवधि में अभी कोई सूचना दर्ज नहीं।',
+    'notificationsKindShown': 'वितरित',
+    'notificationsKindScheduled': 'निर्धारित',
+    'notificationsOpenTarget': 'खोलने के लिए टैप करें',
+    'notificationsSelectAll': 'सभी चुनें',
+    'homeTodayLabel': 'आज',
+    'homeYesterdayLabel': 'कल',
+    'homeBabyBannerForecastSleep': 'सोने का अनुमान',
+    'homeBabyBannerForecastWake': 'जागने का अनुमान',
+    'homeBabyBannerForecastSubtitleSleep': 'वर्तमान समय के आधार पर\nनींद के संकेत',
+    'homeBabyBannerForecastSubtitleWake': 'वर्तमान समय और उम्र के पैटर्न के अनुसार',
+    'homeBabyBannerEtaIn': '{d} में',
+    'homeBabyBannerLastDiaper': 'अंतिम डायपर',
+    'homeBabyBannerNoRecordsYet': 'अभी कोई रिकॉर्ड नहीं',
+    'homeBabyBannerNextBetween': 'अगला {range} के बीच',
+    'homeBabyBannerDiaperRecommendedUntil': 'सुझाया गया बदलाव {d} तक',
+    'homeBabyBannerIdealWindow': 'आदर्श खिड़की: {range}',
+    'homeConsultationScheduled': 'निर्धारित परामर्श',
+    'homeBannerChipConsultation': 'परामर्श',
+    'homeBannerChipDiaper': 'डायपर',
+    'homeBannerChipFeed': 'खिलाना',
+    'homeBannerChipSleep': 'नींद',
+    'homeBannerOverdueSleep': 'सोने का समय बीत चुका',
+    'homeBannerOverdueWake': 'जागने का समय बीत चुका',
+    'homeBannerHungry': 'भूखा',
+    'homeBannerDiaperDirty': 'गंदा हो सकता है',
+    'homeBannerExhausted': 'थका हुआ',
+    'homeBannerChipVaccine': 'आज टीका',
+    'homeConsultationBannerChip': 'परामर्श · {title} · {t}',
+    'feedingLast': 'अंतिम स्तनपान',
+    'memoriesProgressSaved': '{total} में से {filled} क्षण सहेजे',
+    'memoriesCheerEmpty': '+ वाले बैज पर टैप करके फ़ोटो और बातें जोड़ें।',
+    'feedingNoBabyHint': 'पहले बच्चा जोड़ें: अधिक > पंजीकरण (माँ और बच्चे)।',
+    'memoriesAlbumPromoTitle': 'आपकी पूरी यादों की किताब',
+    'memoriesAlbumPromoSubtitle':
+        'FaceBaby कवर, सजावटी फ़्रेम और भरे हुए सभी बैज के साथ एक सुंदर PDF डाउनलोड करें।',
+    'memoriesAlbumDownloadCta': 'एल्बम PDF डाउनलोड करें',
+    'memoriesAlbumGenerating': 'आपका एल्बम बन रहा है…',
+    'memoriesAlbumNeedFilled': 'PDF बनाने के लिए एल्बम में कम से कम एक क्षण भरें।',
+    'memoriesAlbumError': 'PDF नहीं बनाया जा सका।',
+    'memoriesAlbumPdfReadyTitle': 'एल्बम PDF तैयार',
+    'memoriesAlbumShareAction': 'शेयर करें…',
+    'memoriesAlbumSaveAction': 'सेव / डाउनलोड',
+    'memoriesAlbumSavedSnack': 'PDF डिवाइस पर सेव हो गया।',
+    'memoriesAlbumSaveFailedSnack': 'PDF सेव नहीं हो सका।',
+    'memoriesAlbumCoverMain': 'यादों की किताब',
+    'memoriesAlbumCoverTagline': '{name} के साथ खास पल',
+    'memoriesAlbumFooter': 'FaceBaby से बनाया गया',
+    'vaccNoBabies': 'अभी कोई बच्चा पंजीकृत नहीं। अधिक > पंजीकरण (माँ और बच्चा) में जाएँ।',
     'exampleCard': 'उदाहरण कार्ड:',
   },
   AppLang.id: {
@@ -3998,8 +5905,112 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportsSubtitle': 'Ringkasan untuk ibu dan dokter anak.',
     'growth': 'Pertumbuhan',
     'pediatricReport': 'Laporan dokter anak',
-    'pediatricReportDesc': 'Buat PDF dengan berat, tidur, makan, popok, vaksin, janji temu, dan catatan.',
+    'pediatricReportDesc':
+        'Buat PDF dengan berat, tidur, makan, popok, vaksin, gejala yang dicatat di Kesehatan, janji temu, dan catatan.',
+    'reportListPediatric': 'Laporan untuk dokter anak',
+    'reportListPediatricSub': 'PDF dan data untuk kunjungan medis',
+    'healthHubSymptomReports': 'Catat gejala',
+    'healthHubSymptomReportsSub':
+        'Demam, kolik, obat, dan lainnya — termasuk dalam laporan pediatri',
+    'symptomReportTitle': 'Catat gejala',
+    'symptomReportEmpty': 'Belum ada entri. Ketuk + untuk menambah.',
+    'symptomReportNew': 'Entri baru',
+    'symptomReportSave': 'Simpan',
+    'symptomReportOccurredAt': 'Tanggal & waktu',
+    'symptomReportPickDateTime': 'Ubah tanggal & waktu',
+    'symptomReportMedication': 'Obat yang diminum',
+    'symptomReportMedicationHint': 'Nama atau catatan singkat',
+    'symptomReportFever': 'Demam',
+    'symptomReportTemp': 'Suhu',
+    'symptomReportTempHint': 'Sesuai unit di Pengaturan',
+    'symptomReportCrying': 'Menangis tanpa penyebab jelas',
+    'symptomReportPain': 'Nyeri',
+    'symptomReportColic': 'Kolik',
+    'symptomReportReflux': 'Refluks',
+    'symptomReportOther': 'Lainnya',
+    'symptomReportOtherHint': 'Deskripsi singkat',
+    'symptomReportValidationNeedOne': 'Pilih setidaknya satu gejala atau isi sebuah kolom.',
+    'symptomReportValidationFeverTemp': 'Masukkan suhu jika demam dicentang.',
+    'symptomReportDeleteTitle': 'Hapus entri?',
+    'symptomReportDeleteBody': 'Tindakan ini tidak dapat dibatalkan.',
+    'reportPediatricScreenTitle': 'Laporan pediatri',
+    'reportPediatricPeriodPrefix': 'Periode:',
+    'reportPediatricFilterHint': 'Periode laporan',
+    'reportPediatricDateFrom': 'Dari',
+    'reportPediatricDateTo': 'Sampai',
+    'reportPediatricPickRange': 'Pilih tanggal',
+    'reportPediatricFilterMaxDaysHint':
+        'Ketuk untuk mengubah. Rentang sangat panjang dibatasi 366 hari.',
+    'reportPediatricSectionGeneral': 'Informasi umum',
+    'reportPediatricSectionSummary': 'Ringkasan periode',
+    'reportPediatricSectionSleep': 'Tidur',
+    'reportPediatricSectionFeeding': 'Makan',
+    'reportPediatricSectionSymptoms': 'Gejala dan catatan',
+    'reportPediatricSectionObservations': 'Observasi orang tua',
+    'reportPediatricLabelName': 'Nama',
+    'reportPediatricLabelAge': 'Usia',
+    'reportPediatricLabelBirth': 'Tanggal lahir',
+    'reportPediatricLabelWeightCurrent': 'Berat (terbaru dalam periode)',
+    'reportPediatricLabelHeight': 'Tinggi',
+    'reportPediatricWeightStart': 'Berat awal (periode)',
+    'reportPediatricWeightEnd': 'Berat akhir (periode)',
+    'reportPediatricWeightGain': 'Perubahan berat',
+    'reportPediatricAvgFeeds': 'Makan/minum per hari (rata-rata)',
+    'reportPediatricAvgSleep': 'Tidur per hari (rata-rata)',
+    'reportPediatricAvgDiapers': 'Ganti popok per hari (rata-rata)',
+    'reportPediatricFeverEpisodes': 'Episode demam (terstruktur)',
+    'reportPediatricFeverNote': 'Catatan',
+    'reportPediatricFeverFootnote':
+        'Dihitung dari catatan terstruktur di Kesehatan › Catat gejala (dengan suhu jika ada).',
+    'reportPediatricVaccines': 'Vaksin dalam periode',
+    'reportPediatricMedications': 'Obat (catatan terstruktur & kata kunci di catatan)',
+    'reportPediatricSleepAvgDaily': 'Rata-rata tidur harian',
+    'reportPediatricSleepAwakenings': 'Bangun malam (rata-rata)',
+    'reportPediatricSleepPattern': 'Pola tidur secara keseluruhan',
+    'reportPediatricSleepPatternStable': 'Mayoritas berkelanjutan',
+    'reportPediatricSleepPatternModerate': 'Sedang',
+    'reportPediatricSleepPatternFragmented': 'Lebih terfragmentasi',
+    'reportPediatricSleepLongest': 'Tidur terpanjang tanpa putus',
+    'reportPediatricFeedingBreast': 'ASI',
+    'reportPediatricFeedingFormula': 'Susu formula',
+    'reportPediatricFeedingSolid': 'Makanan padat',
+    'reportPediatricFeedingSessions': 'sesi',
+    'reportPediatricFeedingAvgDur': 'durasi rata-rata',
+    'reportPediatricSymptomReflux': 'Refluks (jurnal atau terstruktur)',
+    'reportPediatricSymptomColic': 'Kolik (jurnal atau terstruktur)',
+    'reportPediatricSymptomIrrit': 'Irritabilitas (suasana hati)',
+    'reportPediatricIrritHigh': 'Lebih terlihat',
+    'reportPediatricIrritMedium': 'Sedang',
+    'reportPediatricIrritLow': 'Ringan',
+    'reportPediatricIrritUnknown': 'Tidak ada data',
+    'reportPediatricYes': 'Ya',
+    'reportPediatricNo': 'Tidak',
+    'reportPediatricNa': '—',
+    'reportPediatricJournalNote': 'Jurnal harian',
+    'reportPediatricJournalNoteHint': 'Deteksi kata kunci dalam teks bebas.',
+    'reportPediatricObsHint':
+        'Catatan untuk kunjungan: gejala, obat, perubahan perilaku…',
+    'reportPediatricBtnShare': 'Bagikan',
+    'reportPediatricBtnExportPdf': 'Ekspor PDF',
+    'reportPediatricBtnPrint': 'Cetak',
+    'reportPediatricBtnEmail': 'Email',
+    'reportPediatricBtnWhatsApp': 'WhatsApp',
+    'reportPediatricScreenFootnote':
+        'Ringkasan informatif dari data lokal. Bukan pengganti penilaian klinis.',
+    'reportPediatricNone': 'Tidak ada',
+    'reportPediatricPdfTitle': 'Laporan pediatri — FaceBaby',
+    'reportPediatricPdfPeriod': 'Periode:',
+    'reportPediatricPdfFooter':
+        'Dibuat di FaceBaby. Konten terbatas pada data di perangkat ini (dapat offline).',
+    'reportPediatricFeverDisclaimerShort': '0',
+    'reportPediatricSymptomCrying': 'Menangis tanpa penyebab (terstruktur)',
+    'reportPediatricSymptomPain': 'Nyeri (terstruktur)',
+    'reportPediatricStructuredSymptoms': 'Catatan gejala terstruktur (tanggal & waktu)',
+    'reportPediatricStructuredSymptomsEmpty': 'Tidak ada catatan terstruktur dalam periode ini.',
     'generatePdf': 'Buat PDF',
+    'reportMonthlyMilestonesTitle': 'Pencapaian bulan ini',
+    'reportMonthlyMilestonesEmpty': 'Tidak ada vaksin, kunjungan dokter, atau kenangan dengan lencana bulan ini.',
+    'reportMonthlyMilestoneConsultationDefault': 'Kunjungan',
     'memoriesTitle': 'Buku kenangan',
     'memoriesSubtitle': 'Momen penting untuk disimpan.',
     'addMemory': 'Tambah kenangan',
@@ -4071,8 +6082,112 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportsSubtitle': 'ママと小児科医のための要約。',
     'growth': '成長',
     'pediatricReport': '小児科レポート',
-    'pediatricReportDesc': '体重、睡眠、授乳/食事、おむつ、ワクチン、受診、メモを含むPDFを生成します。',
+    'pediatricReportDesc':
+        '体重、睡眠、授乳/食事、おむつ、ワクチン、ヘルスで記録した症状、受診、メモを含むPDFを生成します。',
+    'reportListPediatric': '小児科医向けレポート',
+    'reportListPediatricSub': '診察用のPDFとデータ',
+    'healthHubSymptomReports': '症状を記録',
+    'healthHubSymptomReportsSub':
+        '発熱、疝痛、服薬など — 小児科レポートに反映',
+    'symptomReportTitle': '症状を記録',
+    'symptomReportEmpty': '記録はまだありません。「+」で追加してください。',
+    'symptomReportNew': '新しい記録',
+    'symptomReportSave': '保存',
+    'symptomReportOccurredAt': '日付と時刻',
+    'symptomReportPickDateTime': '日付と時刻を変更',
+    'symptomReportMedication': '服用した薬',
+    'symptomReportMedicationHint': '名前または短いメモ',
+    'symptomReportFever': '発熱',
+    'symptomReportTemp': '体温',
+    'symptomReportTempHint': '設定の単位に合わせます',
+    'symptomReportCrying': '原因のわからない泣き',
+    'symptomReportPain': '痛み',
+    'symptomReportColic': '疝痛',
+    'symptomReportReflux': '逆流（逆流性）',
+    'symptomReportOther': 'その他',
+    'symptomReportOtherHint': '簡潔な説明',
+    'symptomReportValidationNeedOne': '症状を1つ以上選ぶか、項目を入力してください。',
+    'symptomReportValidationFeverTemp': '発熱にチェックがあるときは体温を入力してください。',
+    'symptomReportDeleteTitle': '記録を削除しますか？',
+    'symptomReportDeleteBody': '元に戻せません。',
+    'reportPediatricScreenTitle': '小児科臨床レポート',
+    'reportPediatricPeriodPrefix': '期間:',
+    'reportPediatricFilterHint': 'レポートの期間',
+    'reportPediatricDateFrom': '開始',
+    'reportPediatricDateTo': '終了',
+    'reportPediatricPickRange': '日付を選ぶ',
+    'reportPediatricFilterMaxDaysHint':
+        'タップして変更。長すぎる期間は366日までに制限されます。',
+    'reportPediatricSectionGeneral': '基本情報',
+    'reportPediatricSectionSummary': '期間の概要',
+    'reportPediatricSectionSleep': '睡眠',
+    'reportPediatricSectionFeeding': '授乳・離乳',
+    'reportPediatricSectionSymptoms': '症状と記録',
+    'reportPediatricSectionObservations': '保護者の所見',
+    'reportPediatricLabelName': '名前',
+    'reportPediatricLabelAge': '月齢・年齢',
+    'reportPediatricLabelBirth': '生年月日',
+    'reportPediatricLabelWeightCurrent': '体重（期内の最新）',
+    'reportPediatricLabelHeight': '身長',
+    'reportPediatricWeightStart': '期間開始時の体重',
+    'reportPediatricWeightEnd': '期間終了時の体重',
+    'reportPediatricWeightGain': '体重の変化',
+    'reportPediatricAvgFeeds': '1日あたりの授乳・離乳（平均）',
+    'reportPediatricAvgSleep': '1日あたりの睡眠（平均）',
+    'reportPediatricAvgDiapers': '1日あたりのおむつ交換（平均）',
+    'reportPediatricFeverEpisodes': '発熱の記録（構造化）',
+    'reportPediatricFeverNote': '注記',
+    'reportPediatricFeverFootnote':
+        'ヘルス › 症状を記録 の構造化データから集計（体温がある場合は含む）。',
+    'reportPediatricVaccines': '期内のワクチン接種',
+    'reportPediatricMedications': '薬（構造化記録とメモのキーワード）',
+    'reportPediatricSleepAvgDaily': '1日平均の睡眠',
+    'reportPediatricSleepAwakenings': '夜間の覚醒（平均）',
+    'reportPediatricSleepPattern': '睡眠の全体的な傾向',
+    'reportPediatricSleepPatternStable': 'おおむね連続',
+    'reportPediatricSleepPatternModerate': '中程度',
+    'reportPediatricSleepPatternFragmented': 'より断片的',
+    'reportPediatricSleepLongest': '最長の連続睡眠',
+    'reportPediatricFeedingBreast': '母乳',
+    'reportPediatricFeedingFormula': 'ミルク',
+    'reportPediatricFeedingSolid': '離乳食',
+    'reportPediatricFeedingSessions': '回',
+    'reportPediatricFeedingAvgDur': '平均時間',
+    'reportPediatricSymptomReflux': '逆流（日記または構造化記録）',
+    'reportPediatricSymptomColic': '疝痛（日記または構造化記録）',
+    'reportPediatricSymptomIrrit': 'かんしゃく・機嫌（ムード）',
+    'reportPediatricIrritHigh': '気になりやすい',
+    'reportPediatricIrritMedium': '中程度',
+    'reportPediatricIrritLow': '軽い',
+    'reportPediatricIrritUnknown': 'データなし',
+    'reportPediatricYes': 'はい',
+    'reportPediatricNo': 'いいえ',
+    'reportPediatricNa': '—',
+    'reportPediatricJournalNote': 'その日の日記',
+    'reportPediatricJournalNoteHint': '自由記述からキーワード検出。',
+    'reportPediatricObsHint':
+        '受診用メモ：症状、薬、行動の変化など…',
+    'reportPediatricBtnShare': '共有',
+    'reportPediatricBtnExportPdf': 'PDFを書き出す',
+    'reportPediatricBtnPrint': '印刷',
+    'reportPediatricBtnEmail': 'メール',
+    'reportPediatricBtnWhatsApp': 'WhatsApp',
+    'reportPediatricScreenFootnote':
+        '端末の記録に基づく情報です。診断の代替にはなりません。',
+    'reportPediatricNone': 'なし',
+    'reportPediatricPdfTitle': '小児科臨床レポート — FaceBaby',
+    'reportPediatricPdfPeriod': '期間:',
+    'reportPediatricPdfFooter':
+        'FaceBabyで作成。この端末に保存されたデータのみ（オフライン可）。',
+    'reportPediatricFeverDisclaimerShort': '0',
+    'reportPediatricSymptomCrying': '原因のわからない泣き（構造化記録）',
+    'reportPediatricSymptomPain': '痛み（構造化記録）',
+    'reportPediatricStructuredSymptoms': '構造化された症状記録（日時）',
+    'reportPediatricStructuredSymptomsEmpty': 'この期間に構造化記録はありません。',
     'generatePdf': 'PDF生成',
+    'reportMonthlyMilestonesTitle': '今月のマイルストーン',
+    'reportMonthlyMilestonesEmpty': '今月はワクチン・受診・バッジ付き思い出はありません。',
+    'reportMonthlyMilestoneConsultationDefault': '受診',
     'memoriesTitle': '思い出の本',
     'memoriesSubtitle': '大切な瞬間を残そう。',
     'addMemory': '思い出を追加',
@@ -4119,6 +6234,59 @@ const Map<AppLang, Map<String, String>> _strings = {
     'summarySleep': '合計睡眠',
     'summaryLastFeed': '最後 {time}',
     'summaryLastSleep': '最後 {time}',
+    'cancel': 'キャンセル',
+    'delete': '削除',
+    'notificationsInboxTitle': '通知',
+    'notificationsInboxSubtitle': '過去3日間（アプリに記録された送信済み・予定）',
+    'notificationsEmpty': 'この期間の通知はまだありません。',
+    'notificationsKindShown': '配信済み',
+    'notificationsKindScheduled': '予定',
+    'notificationsOpenTarget': 'タップして開く',
+    'notificationsSelectAll': 'すべて選択',
+    'homeTodayLabel': '今日',
+    'homeYesterdayLabel': '昨日',
+    'homeBabyBannerForecastSleep': '睡眠の予測',
+    'homeBabyBannerForecastWake': '起床の予測',
+    'homeBabyBannerForecastSubtitleSleep': '現在時刻に基づく\n睡眠サイン',
+    'homeBabyBannerForecastSubtitleWake': '現在時刻と月齢のパターンに基づく',
+    'homeBabyBannerEtaIn': '{d}後',
+    'homeBabyBannerLastDiaper': '最後のおむつ',
+    'homeBabyBannerNoRecordsYet': 'まだ記録がありません',
+    'homeBabyBannerNextBetween': '次は {range}',
+    'homeBabyBannerDiaperRecommendedUntil': 'おすすめの交換 {d} まで',
+    'homeBabyBannerIdealWindow': '理想的な時間帯: {range}',
+    'homeConsultationScheduled': '予約済みの受診',
+    'homeBannerChipConsultation': '受診',
+    'homeBannerChipDiaper': 'おむつ',
+    'homeBannerChipFeed': '授乳',
+    'homeBannerChipSleep': '睡眠',
+    'homeBannerOverdueSleep': '寝る時間を過ぎています',
+    'homeBannerOverdueWake': '起きる時間を過ぎています',
+    'homeBannerHungry': 'お腹がすいたかも',
+    'homeBannerDiaperDirty': '汚れているかも',
+    'homeBannerExhausted': 'くたくた',
+    'homeBannerChipVaccine': '今日ワクチン',
+    'homeConsultationBannerChip': '受診 · {title} · {t}',
+    'feedingLast': '最後の授乳',
+    'memoriesProgressSaved': '{total}枚中{filled}枚を記録',
+    'memoriesCheerEmpty': '＋のついたバッジをタップして写真やエピソードを追加しましょう。',
+    'feedingNoBabyHint': '先に赤ちゃんを登録してください。「その他 > 登録（ママと赤ちゃん）」。',
+    'memoriesAlbumPromoTitle': '思い出アルバム一式',
+    'memoriesAlbumPromoSubtitle':
+        'FaceBaby表紙・装飾フレーム・埋めたバッジすべて入りのPDFをダウンロード。',
+    'memoriesAlbumDownloadCta': 'アルバムPDFをダウンロード',
+    'memoriesAlbumGenerating': 'アルバムを作成中…',
+    'memoriesAlbumNeedFilled': 'PDFを作るにはアルバムを1つ以上埋めてください。',
+    'memoriesAlbumError': 'PDFを作成できませんでした。',
+    'memoriesAlbumPdfReadyTitle': 'アルバムPDFの準備完了',
+    'memoriesAlbumShareAction': '共有…',
+    'memoriesAlbumSaveAction': '保存／ダウンロード',
+    'memoriesAlbumSavedSnack': 'PDFを端末に保存しました。',
+    'memoriesAlbumSaveFailedSnack': 'PDFを保存できませんでした。',
+    'memoriesAlbumCoverMain': '思い出の本',
+    'memoriesAlbumCoverTagline': '{name}との特別な瞬間',
+    'memoriesAlbumFooter': 'FaceBabyで作成',
+    'vaccNoBabies': 'まだ赤ちゃんが登録されていません。「その他 > 登録（ママと赤ちゃん）」へ。',
     'exampleCard': 'カード例：',
   },
   AppLang.ko: {
@@ -4144,8 +6312,112 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportsSubtitle': '엄마와 소아과 의사를 위한 요약입니다.',
     'growth': '성장',
     'pediatricReport': '소아과 리포트',
-    'pediatricReportDesc': '체중, 수면, 수유/식사, 기저귀, 예방접종, 예약, 메모가 포함된 PDF를 생성합니다.',
+    'pediatricReportDesc':
+        '체중, 수면, 수유/식사, 기저귀, 예방접종, 건강에서 기록한 증상, 예약, 메모가 포함된 PDF를 생성합니다.',
+    'reportListPediatric': '소아과 진료용 리포트',
+    'reportListPediatricSub': '진료를 위한 PDF와 데이터',
+    'healthHubSymptomReports': '증상 기록',
+    'healthHubSymptomReportsSub':
+        '열, 배앓이, 약물 등 — 소아과 리포트에 포함',
+    'symptomReportTitle': '증상 기록',
+    'symptomReportEmpty': '아직 기록이 없습니다. +를 눌러 추가하세요.',
+    'symptomReportNew': '새 기록',
+    'symptomReportSave': '저장',
+    'symptomReportOccurredAt': '날짜 및 시간',
+    'symptomReportPickDateTime': '날짜·시간 변경',
+    'symptomReportMedication': '복용한 약',
+    'symptomReportMedicationHint': '이름 또는 짧은 메모',
+    'symptomReportFever': '발열',
+    'symptomReportTemp': '체온',
+    'symptomReportTempHint': '설정의 단위를 따릅니다',
+    'symptomReportCrying': '원인 없는 울음',
+    'symptomReportPain': '통증',
+    'symptomReportColic': '복통(배앓이)',
+    'symptomReportReflux': '역류',
+    'symptomReportOther': '기타',
+    'symptomReportOtherHint': '짧은 설명',
+    'symptomReportValidationNeedOne': '증상을 하나 이상 선택하거나 항목을 입력하세요.',
+    'symptomReportValidationFeverTemp': '발열을 선택하면 체온을 입력하세요.',
+    'symptomReportDeleteTitle': '기록을 삭제할까요?',
+    'symptomReportDeleteBody': '되돌릴 수 없습니다.',
+    'reportPediatricScreenTitle': '소아과 임상 리포트',
+    'reportPediatricPeriodPrefix': '기간:',
+    'reportPediatricFilterHint': '리포트 기간',
+    'reportPediatricDateFrom': '시작',
+    'reportPediatricDateTo': '종료',
+    'reportPediatricPickRange': '날짜 선택',
+    'reportPediatricFilterMaxDaysHint':
+        '탭하여 변경. 너무 긴 기간은 최대 366일로 제한됩니다.',
+    'reportPediatricSectionGeneral': '일반 정보',
+    'reportPediatricSectionSummary': '기간 요약',
+    'reportPediatricSectionSleep': '수면',
+    'reportPediatricSectionFeeding': '수유·이유',
+    'reportPediatricSectionSymptoms': '증상 및 기록',
+    'reportPediatricSectionObservations': '보호자 관찰',
+    'reportPediatricLabelName': '이름',
+    'reportPediatricLabelAge': '나이',
+    'reportPediatricLabelBirth': '생년월일',
+    'reportPediatricLabelWeightCurrent': '체중(기간 내 최신)',
+    'reportPediatricLabelHeight': '키',
+    'reportPediatricWeightStart': '시작 체중(기간)',
+    'reportPediatricWeightEnd': '종료 체중(기간)',
+    'reportPediatricWeightGain': '체중 변화',
+    'reportPediatricAvgFeeds': '하루 수유·식사 횟수(평균)',
+    'reportPediatricAvgSleep': '하루 수면(평균)',
+    'reportPediatricAvgDiapers': '하루 기저귀 교체(평균)',
+    'reportPediatricFeverEpisodes': '발열 기록(구조화)',
+    'reportPediatricFeverNote': '참고',
+    'reportPediatricFeverFootnote':
+        '건강 › 증상 기록의 구조화된 항목으로 집계(체온이 있으면 포함).',
+    'reportPediatricVaccines': '기간 내 예방접종',
+    'reportPediatricMedications': '약물(구조화 기록 및 메모 키워드)',
+    'reportPediatricSleepAvgDaily': '하루 평균 수면',
+    'reportPediatricSleepAwakenings': '야간 깨어남(평균)',
+    'reportPediatricSleepPattern': '수면 전반 패턴',
+    'reportPediatricSleepPatternStable': '대체로 연속적',
+    'reportPediatricSleepPatternModerate': '중간',
+    'reportPediatricSleepPatternFragmented': '더 잘게 끊김',
+    'reportPediatricSleepLongest': '가장 긴 연속 수면',
+    'reportPediatricFeedingBreast': '모유',
+    'reportPediatricFeedingFormula': '분유',
+    'reportPediatricFeedingSolid': '이유식',
+    'reportPediatricFeedingSessions': '회',
+    'reportPediatricFeedingAvgDur': '평균 시간',
+    'reportPediatricSymptomReflux': '역류(일지 또는 구조화 기록)',
+    'reportPediatricSymptomColic': '배앓이(일지 또는 구조화 기록)',
+    'reportPediatricSymptomIrrit': '과민·짜증(기분)',
+    'reportPediatricIrritHigh': '눈에 띔',
+    'reportPediatricIrritMedium': '중간',
+    'reportPediatricIrritLow': '약함',
+    'reportPediatricIrritUnknown': '데이터 없음',
+    'reportPediatricYes': '예',
+    'reportPediatricNo': '아니오',
+    'reportPediatricNa': '—',
+    'reportPediatricJournalNote': '하루 일지',
+    'reportPediatricJournalNoteHint': '자유 텍스트 키워드 감지.',
+    'reportPediatricObsHint':
+        '진료 메모: 증상, 약물, 행동 변화 등…',
+    'reportPediatricBtnShare': '공유',
+    'reportPediatricBtnExportPdf': 'PDF 내보내기',
+    'reportPediatricBtnPrint': '인쇄',
+    'reportPediatricBtnEmail': '이메일',
+    'reportPediatricBtnWhatsApp': 'WhatsApp',
+    'reportPediatricScreenFootnote':
+        '기기에 저장된 기록을 바탕으로 한 정보입니다. 진료를 대체하지 않습니다.',
+    'reportPediatricNone': '없음',
+    'reportPediatricPdfTitle': '소아과 임상 리포트 — FaceBaby',
+    'reportPediatricPdfPeriod': '기간:',
+    'reportPediatricPdfFooter':
+        'FaceBaby에서 생성. 이 기기에 저장된 데이터만 포함(오프라인 가능).',
+    'reportPediatricFeverDisclaimerShort': '0',
+    'reportPediatricSymptomCrying': '원인 없는 울음(구조화 기록)',
+    'reportPediatricSymptomPain': '통증(구조화 기록)',
+    'reportPediatricStructuredSymptoms': '구조화된 증상 기록(날짜·시간)',
+    'reportPediatricStructuredSymptomsEmpty': '이 기간에 구조화된 기록이 없습니다.',
     'generatePdf': 'PDF 생성',
+    'reportMonthlyMilestonesTitle': '이번 달 이정표',
+    'reportMonthlyMilestonesEmpty': '이번 달 예방접종·진료·배지 추억이 없습니다.',
+    'reportMonthlyMilestoneConsultationDefault': '진료',
     'memoriesTitle': '추억 책',
     'memoriesSubtitle': '중요한 순간을 간직하세요.',
     'addMemory': '추억 추가',
@@ -4192,6 +6464,59 @@ const Map<AppLang, Map<String, String>> _strings = {
     'summarySleep': '총 수면',
     'summaryLastFeed': '마지막 {time}',
     'summaryLastSleep': '마지막 {time}',
+    'cancel': '취소',
+    'delete': '삭제',
+    'notificationsInboxTitle': '알림',
+    'notificationsInboxSubtitle': '최근 3일(앱에 기록된 발송·예정)',
+    'notificationsEmpty': '이 기간에 아직 알림이 없습니다.',
+    'notificationsKindShown': '발송됨',
+    'notificationsKindScheduled': '예정',
+    'notificationsOpenTarget': '탭하여 열기',
+    'notificationsSelectAll': '모두 선택',
+    'homeTodayLabel': '오늘',
+    'homeYesterdayLabel': '어제',
+    'homeBabyBannerForecastSleep': '수면 예측',
+    'homeBabyBannerForecastWake': '기상 예측',
+    'homeBabyBannerForecastSubtitleSleep': '현재 시각 기준\n수면 신호',
+    'homeBabyBannerForecastSubtitleWake': '현재 시각과 월령 패턴 기준',
+    'homeBabyBannerEtaIn': '{d} 후',
+    'homeBabyBannerLastDiaper': '마지막 기저귀',
+    'homeBabyBannerNoRecordsYet': '아직 기록 없음',
+    'homeBabyBannerNextBetween': '다음 {range} 사이',
+    'homeBabyBannerDiaperRecommendedUntil': '{d}까지 갈아주기 권장',
+    'homeBabyBannerIdealWindow': '적정 시간대: {range}',
+    'homeConsultationScheduled': '예약된 진료',
+    'homeBannerChipConsultation': '진료',
+    'homeBannerChipDiaper': '기저귀',
+    'homeBannerChipFeed': '수유',
+    'homeBannerChipSleep': '수면',
+    'homeBannerOverdueSleep': '잘 시간이 지났어요',
+    'homeBannerOverdueWake': '일어날 시간이 지났어요',
+    'homeBannerHungry': '배고플 수 있어요',
+    'homeBannerDiaperDirty': '더러울 수 있어요',
+    'homeBannerExhausted': '지쳤어요',
+    'homeBannerChipVaccine': '오늘 예방접종',
+    'homeConsultationBannerChip': '진료 · {title} · {t}',
+    'feedingLast': '마지막 수유',
+    'memoriesProgressSaved': '{total}개 중 {filled}개 순간 저장됨',
+    'memoriesCheerEmpty': '+가 있는 배지를 탭해 사진과 이야기를 추가하세요.',
+    'feedingNoBabyHint': '먼저 아기를 등록하세요. «더보기 > 등록(엄마와 아기)».',
+    'memoriesAlbumPromoTitle': '완성된 추억 앨범',
+    'memoriesAlbumPromoSubtitle':
+        'FaceBaby 표지와 장식 프레임, 채운 배지까지 담은 PDF를 내려받으세요.',
+    'memoriesAlbumDownloadCta': '앨범 PDF 받기',
+    'memoriesAlbumGenerating': '앨범 만드는 중…',
+    'memoriesAlbumNeedFilled': 'PDF를 만들려면 앨범을 하나 이상 채우세요.',
+    'memoriesAlbumError': 'PDF를 만들 수 없습니다.',
+    'memoriesAlbumPdfReadyTitle': '앨범 PDF 준비됨',
+    'memoriesAlbumShareAction': '공유…',
+    'memoriesAlbumSaveAction': '저장 / 다운로드',
+    'memoriesAlbumSavedSnack': 'PDF가 기기에 저장되었습니다.',
+    'memoriesAlbumSaveFailedSnack': 'PDF를 저장하지 못했습니다.',
+    'memoriesAlbumCoverMain': '추억 책',
+    'memoriesAlbumCoverTagline': '{name}와(과) 함께한 특별한 순간',
+    'memoriesAlbumFooter': 'FaceBaby로 제작',
+    'vaccNoBabies': '등록된 아기가 없습니다. «더보기 > 등록(엄마와 아기)»으로 이동하세요.',
     'exampleCard': '카드 예시:',
   },
   AppLang.ru: {
@@ -4217,8 +6542,112 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportsSubtitle': 'Сводка для мамы и педиатра.',
     'growth': 'Рост',
     'pediatricReport': 'Педиатрический отчёт',
-    'pediatricReportDesc': 'Сформируйте PDF с весом, сном, кормлением, подгузниками, прививками, визитами и заметками.',
+    'pediatricReportDesc':
+        'Создайте PDF с весом, сном, кормлением, подгузниками, прививками, симптомами из раздела «Здоровье», визитами и заметками.',
+    'reportListPediatric': 'Отчёт для педиатра',
+    'reportListPediatricSub': 'PDF и данные для приёма',
+    'healthHubSymptomReports': 'Записать симптом',
+    'healthHubSymptomReportsSub':
+        'Лихорадка, колики, лекарства и др. — в педиатрическом отчёте',
+    'symptomReportTitle': 'Записать симптом',
+    'symptomReportEmpty': 'Пока нет записей. Нажмите +, чтобы добавить.',
+    'symptomReportNew': 'Новая запись',
+    'symptomReportSave': 'Сохранить',
+    'symptomReportOccurredAt': 'Дата и время',
+    'symptomReportPickDateTime': 'Изменить дату и время',
+    'symptomReportMedication': 'Принятые лекарства',
+    'symptomReportMedicationHint': 'Название или краткая заметка',
+    'symptomReportFever': 'Лихорадка',
+    'symptomReportTemp': 'Температура',
+    'symptomReportTempHint': 'По единицам измерения в настройках',
+    'symptomReportCrying': 'Плач без видимой причины',
+    'symptomReportPain': 'Боль',
+    'symptomReportColic': 'Колики',
+    'symptomReportReflux': 'Рефлюкс',
+    'symptomReportOther': 'Другое',
+    'symptomReportOtherHint': 'Краткое описание',
+    'symptomReportValidationNeedOne': 'Выберите хотя бы один симптом или заполните поле.',
+    'symptomReportValidationFeverTemp': 'Укажите температуру, если отмечена лихорадка.',
+    'symptomReportDeleteTitle': 'Удалить запись?',
+    'symptomReportDeleteBody': 'Это действие нельзя отменить.',
+    'reportPediatricScreenTitle': 'Педиатрический клинический отчёт',
+    'reportPediatricPeriodPrefix': 'Период:',
+    'reportPediatricFilterHint': 'Период отчёта',
+    'reportPediatricDateFrom': 'С',
+    'reportPediatricDateTo': 'По',
+    'reportPediatricPickRange': 'Выбрать даты',
+    'reportPediatricFilterMaxDaysHint':
+        'Нажмите, чтобы изменить. Очень длинные диапазоны ограничены 366 днями.',
+    'reportPediatricSectionGeneral': 'Общая информация',
+    'reportPediatricSectionSummary': 'Сводка за период',
+    'reportPediatricSectionSleep': 'Сон',
+    'reportPediatricSectionFeeding': 'Питание',
+    'reportPediatricSectionSymptoms': 'Симптомы и записи',
+    'reportPediatricSectionObservations': 'Наблюдения родителей',
+    'reportPediatricLabelName': 'Имя',
+    'reportPediatricLabelAge': 'Возраст',
+    'reportPediatricLabelBirth': 'Дата рождения',
+    'reportPediatricLabelWeightCurrent': 'Вес (последний за период)',
+    'reportPediatricLabelHeight': 'Рост',
+    'reportPediatricWeightStart': 'Начальный вес (период)',
+    'reportPediatricWeightEnd': 'Конечный вес (период)',
+    'reportPediatricWeightGain': 'Изменение веса',
+    'reportPediatricAvgFeeds': 'Кормлений в день (сред.)',
+    'reportPediatricAvgSleep': 'Сна в день (сред.)',
+    'reportPediatricAvgDiapers': 'Смен подгузников в день (сред.)',
+    'reportPediatricFeverEpisodes': 'Эпизоды лихорадки (структурировано)',
+    'reportPediatricFeverNote': 'Примечание',
+    'reportPediatricFeverFootnote':
+        'Подсчёт из структурированных записей: Здоровье › Записать симптом (с температурой, если указана).',
+    'reportPediatricVaccines': 'Прививки за период',
+    'reportPediatricMedications': 'Лекарства (структурированные записи и ключевые слова в заметках)',
+    'reportPediatricSleepAvgDaily': 'Средний дневной сон',
+    'reportPediatricSleepAwakenings': 'Ночные пробуждения (сред.)',
+    'reportPediatricSleepPattern': 'Общий паттерн сна',
+    'reportPediatricSleepPatternStable': 'В основном непрерывный',
+    'reportPediatricSleepPatternModerate': 'Умеренный',
+    'reportPediatricSleepPatternFragmented': 'Более прерывистый',
+    'reportPediatricSleepLongest': 'Самый длинный непрерывный сон',
+    'reportPediatricFeedingBreast': 'Грудное вскармливание',
+    'reportPediatricFeedingFormula': 'Смесь',
+    'reportPediatricFeedingSolid': 'Прикорм',
+    'reportPediatricFeedingSessions': 'сеансов',
+    'reportPediatricFeedingAvgDur': 'средняя длительность',
+    'reportPediatricSymptomReflux': 'Рефлюкс (дневник или структурированные записи)',
+    'reportPediatricSymptomColic': 'Колики (дневник или структурированные записи)',
+    'reportPediatricSymptomIrrit': 'Раздражительность (настроение)',
+    'reportPediatricIrritHigh': 'Заметнее',
+    'reportPediatricIrritMedium': 'Умеренная',
+    'reportPediatricIrritLow': 'Слабая',
+    'reportPediatricIrritUnknown': 'Нет данных',
+    'reportPediatricYes': 'Да',
+    'reportPediatricNo': 'Нет',
+    'reportPediatricNa': '—',
+    'reportPediatricJournalNote': 'Дневные записи',
+    'reportPediatricJournalNoteHint': 'Поиск ключевых слов в свободном тексте.',
+    'reportPediatricObsHint':
+        'Заметки к визиту: симптомы, лекарства, изменения поведения…',
+    'reportPediatricBtnShare': 'Поделиться',
+    'reportPediatricBtnExportPdf': 'Экспорт PDF',
+    'reportPediatricBtnPrint': 'Печать',
+    'reportPediatricBtnEmail': 'Почта',
+    'reportPediatricBtnWhatsApp': 'WhatsApp',
+    'reportPediatricScreenFootnote':
+        'Информационная сводка по локальным данным. Не заменяет клиническую оценку.',
+    'reportPediatricNone': 'Нет',
+    'reportPediatricPdfTitle': 'Педиатрический клинический отчёт — FaceBaby',
+    'reportPediatricPdfPeriod': 'Период:',
+    'reportPediatricPdfFooter':
+        'Создано в FaceBaby. Только данные на этом устройстве (можно офлайн).',
+    'reportPediatricFeverDisclaimerShort': '0',
+    'reportPediatricSymptomCrying': 'Плач без причины (структурированные записи)',
+    'reportPediatricSymptomPain': 'Боль (структурированные записи)',
+    'reportPediatricStructuredSymptoms': 'Структурированные записи симптомов (дата и время)',
+    'reportPediatricStructuredSymptomsEmpty': 'За этот период нет структурированных записей.',
     'generatePdf': 'Сгенерировать PDF',
+    'reportMonthlyMilestonesTitle': 'Вехи месяца',
+    'reportMonthlyMilestonesEmpty': 'Нет прививок, визитов к врачу или воспоминаний со значком за этот месяц.',
+    'reportMonthlyMilestoneConsultationDefault': 'Приём',
     'memoriesTitle': 'Книга воспоминаний',
     'memoriesSubtitle': 'Важные моменты, чтобы сохранить их.',
     'addMemory': 'Добавить воспоминание',
@@ -4290,8 +6719,112 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportsSubtitle': 'Anne ve çocuk doktoru için özet.',
     'growth': 'Büyüme',
     'pediatricReport': 'Pediatrik rapor',
-    'pediatricReportDesc': 'Kilo, uyku, beslenme, bez, aşılar, randevular ve notlarla PDF oluşturun.',
+    'pediatricReportDesc':
+        'Kilo, uyku, beslenme, bez, aşılar, Sağlık bölümünde kaydedilen semptomlar, randevular ve notlarla PDF oluşturun.',
+    'reportListPediatric': 'Çocuk doktoru için rapor',
+    'reportListPediatricSub': 'Muayene için PDF ve veriler',
+    'healthHubSymptomReports': 'Semptom kaydet',
+    'healthHubSymptomReportsSub':
+        'Ateş, kolik, ilaçlar ve daha fazlası — pediatrik rapora dahil',
+    'symptomReportTitle': 'Semptom kaydet',
+    'symptomReportEmpty': 'Henüz kayıt yok. Eklemek için + dokunun.',
+    'symptomReportNew': 'Yeni kayıt',
+    'symptomReportSave': 'Kaydet',
+    'symptomReportOccurredAt': 'Tarih ve saat',
+    'symptomReportPickDateTime': 'Tarih ve saati değiştir',
+    'symptomReportMedication': 'Alınan ilaçlar',
+    'symptomReportMedicationHint': 'Ad veya kısa not',
+    'symptomReportFever': 'Ateş',
+    'symptomReportTemp': 'Sıcaklık',
+    'symptomReportTempHint': 'Ayarlarınızdaki birimlere göre',
+    'symptomReportCrying': 'Belirsiz ağlama',
+    'symptomReportPain': 'Ağrı',
+    'symptomReportColic': 'Kolik',
+    'symptomReportReflux': 'Reflü',
+    'symptomReportOther': 'Diğer',
+    'symptomReportOtherHint': 'Kısa açıklama',
+    'symptomReportValidationNeedOne': 'En az bir semptom seçin veya bir alan doldurun.',
+    'symptomReportValidationFeverTemp': 'Ateş işaretliyken sıcaklığı girin.',
+    'symptomReportDeleteTitle': 'Kayıt silinsin mi?',
+    'symptomReportDeleteBody': 'Bu işlem geri alınamaz.',
+    'reportPediatricScreenTitle': 'Pediatrik klinik rapor',
+    'reportPediatricPeriodPrefix': 'Dönem:',
+    'reportPediatricFilterHint': 'Rapor dönemi',
+    'reportPediatricDateFrom': 'Başlangıç',
+    'reportPediatricDateTo': 'Bitiş',
+    'reportPediatricPickRange': 'Tarih seç',
+    'reportPediatricFilterMaxDaysHint':
+        'Değiştirmek için dokunun. Çok uzun aralıklar 366 günle sınırlıdır.',
+    'reportPediatricSectionGeneral': 'Genel bilgiler',
+    'reportPediatricSectionSummary': 'Dönem özeti',
+    'reportPediatricSectionSleep': 'Uyku',
+    'reportPediatricSectionFeeding': 'Beslenme',
+    'reportPediatricSectionSymptoms': 'Semptomlar ve kayıtlar',
+    'reportPediatricSectionObservations': 'Ebeveyn gözlemleri',
+    'reportPediatricLabelName': 'Ad',
+    'reportPediatricLabelAge': 'Yaş',
+    'reportPediatricLabelBirth': 'Doğum tarihi',
+    'reportPediatricLabelWeightCurrent': 'Kilo (dönemdeki son)',
+    'reportPediatricLabelHeight': 'Boy',
+    'reportPediatricWeightStart': 'Başlangıç kilosu (dönem)',
+    'reportPediatricWeightEnd': 'Bitiş kilosu (dönem)',
+    'reportPediatricWeightGain': 'Kilo değişimi',
+    'reportPediatricAvgFeeds': 'Günlük beslenme (ortalama)',
+    'reportPediatricAvgSleep': 'Günlük uyku (ortalama)',
+    'reportPediatricAvgDiapers': 'Günlük bez değişimi (ortalama)',
+    'reportPediatricFeverEpisodes': 'Ateş epizotları (yapılandırılmış)',
+    'reportPediatricFeverNote': 'Not',
+    'reportPediatricFeverFootnote':
+        'Sağlık › Semptom kaydet altındaki yapılandırılmış kayıtlardan sayım (sıcaklık varsa).',
+    'reportPediatricVaccines': 'Dönemdeki aşılar',
+    'reportPediatricMedications': 'İlaçlar (yapılandırılmış kayıt ve notlarda anahtar kelimeler)',
+    'reportPediatricSleepAvgDaily': 'Günlük ortalama uyku',
+    'reportPediatricSleepAwakenings': 'Gece uyanmaları (ortalama)',
+    'reportPediatricSleepPattern': 'Genel uyku düzeni',
+    'reportPediatricSleepPatternStable': 'Çoğunlukla kesintisiz',
+    'reportPediatricSleepPatternModerate': 'Orta',
+    'reportPediatricSleepPatternFragmented': 'Daha parçalı',
+    'reportPediatricSleepLongest': 'En uzun kesintisiz uyku',
+    'reportPediatricFeedingBreast': 'Emzirme',
+    'reportPediatricFeedingFormula': 'Mama',
+    'reportPediatricFeedingSolid': 'Katı gıda',
+    'reportPediatricFeedingSessions': 'oturum',
+    'reportPediatricFeedingAvgDur': 'ortalama süre',
+    'reportPediatricSymptomReflux': 'Reflü (günlük veya yapılandırılmış)',
+    'reportPediatricSymptomColic': 'Kolik (günlük veya yapılandırılmış)',
+    'reportPediatricSymptomIrrit': 'Huzursuzluk (mod)',
+    'reportPediatricIrritHigh': 'Daha belirgin',
+    'reportPediatricIrritMedium': 'Orta',
+    'reportPediatricIrritLow': 'Hafif',
+    'reportPediatricIrritUnknown': 'Veri yok',
+    'reportPediatricYes': 'Evet',
+    'reportPediatricNo': 'Hayır',
+    'reportPediatricNa': '—',
+    'reportPediatricJournalNote': 'Günlük notlar',
+    'reportPediatricJournalNoteHint': 'Serbest metinde anahtar kelime algılama.',
+    'reportPediatricObsHint':
+        'Muayene için notlar: semptomlar, ilaçlar, davranış değişiklikleri…',
+    'reportPediatricBtnShare': 'Paylaş',
+    'reportPediatricBtnExportPdf': 'PDF dışa aktar',
+    'reportPediatricBtnPrint': 'Yazdır',
+    'reportPediatricBtnEmail': 'E-posta',
+    'reportPediatricBtnWhatsApp': 'WhatsApp',
+    'reportPediatricScreenFootnote':
+        'Yerel kayıtlardan bilgilendirici özet. Klinik değerlendirmenin yerini tutmaz.',
+    'reportPediatricNone': 'Yok',
+    'reportPediatricPdfTitle': 'Pediatrik klinik rapor — FaceBaby',
+    'reportPediatricPdfPeriod': 'Dönem:',
+    'reportPediatricPdfFooter':
+        'FaceBaby’de oluşturuldu. Yalnızca bu cihazdaki veriler (çevrimdışı mümkün).',
+    'reportPediatricFeverDisclaimerShort': '0',
+    'reportPediatricSymptomCrying': 'Belirsiz ağlama (yapılandırılmış)',
+    'reportPediatricSymptomPain': 'Ağrı (yapılandırılmış)',
+    'reportPediatricStructuredSymptoms': 'Yapılandırılmış semptom kayıtları (tarih ve saat)',
+    'reportPediatricStructuredSymptomsEmpty': 'Bu dönemde yapılandırılmış kayıt yok.',
     'generatePdf': 'PDF oluştur',
+    'reportMonthlyMilestonesTitle': 'Ayın kilometre taşları',
+    'reportMonthlyMilestonesEmpty': 'Bu ay aşı, muayene veya rozetli anı yok.',
+    'reportMonthlyMilestoneConsultationDefault': 'Muayene',
     'memoriesTitle': 'Anı defteri',
     'memoriesSubtitle': 'Önemli anları saklayın.',
     'addMemory': 'Anı ekle',
@@ -4363,8 +6896,112 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportsSubtitle': '给妈妈和儿科医生的总结。',
     'growth': '成长',
     'pediatricReport': '儿科报告',
-    'pediatricReportDesc': '生成包含体重、睡眠、喂养、尿布、疫苗、就诊与备注的PDF。',
+    'pediatricReportDesc':
+        '生成包含体重、睡眠、喂养、尿布、疫苗、在「健康」中记录的症状、就诊与备注的PDF。',
+    'reportListPediatric': '儿科门诊报告',
+    'reportListPediatricSub': '就诊用的PDF与数据',
+    'healthHubSymptomReports': '记录症状',
+    'healthHubSymptomReportsSub':
+        '发热、肠绞痛、用药等 — 纳入儿科报告',
+    'symptomReportTitle': '记录症状',
+    'symptomReportEmpty': '暂无记录。点按 + 添加。',
+    'symptomReportNew': '新建记录',
+    'symptomReportSave': '保存',
+    'symptomReportOccurredAt': '日期与时间',
+    'symptomReportPickDateTime': '更改日期与时间',
+    'symptomReportMedication': '已服药物',
+    'symptomReportMedicationHint': '名称或简短备注',
+    'symptomReportFever': '发热',
+    'symptomReportTemp': '体温',
+    'symptomReportTempHint': '遵循设置中的单位',
+    'symptomReportCrying': '无故哭闹',
+    'symptomReportPain': '疼痛',
+    'symptomReportColic': '肠绞痛',
+    'symptomReportReflux': '反流',
+    'symptomReportOther': '其他',
+    'symptomReportOtherHint': '简短描述',
+    'symptomReportValidationNeedOne': '请至少选择一项症状或填写字段。',
+    'symptomReportValidationFeverTemp': '勾选发热时请填写体温。',
+    'symptomReportDeleteTitle': '删除记录？',
+    'symptomReportDeleteBody': '此操作无法撤销。',
+    'reportPediatricScreenTitle': '儿科临床报告',
+    'reportPediatricPeriodPrefix': '时间段：',
+    'reportPediatricFilterHint': '报告时间段',
+    'reportPediatricDateFrom': '从',
+    'reportPediatricDateTo': '至',
+    'reportPediatricPickRange': '选择日期',
+    'reportPediatricFilterMaxDaysHint':
+        '点按更改。过长区间上限为366天。',
+    'reportPediatricSectionGeneral': '基本信息',
+    'reportPediatricSectionSummary': '时间段摘要',
+    'reportPediatricSectionSleep': '睡眠',
+    'reportPediatricSectionFeeding': '喂养',
+    'reportPediatricSectionSymptoms': '症状与记录',
+    'reportPediatricSectionObservations': '家长观察',
+    'reportPediatricLabelName': '姓名',
+    'reportPediatricLabelAge': '年龄',
+    'reportPediatricLabelBirth': '出生日期',
+    'reportPediatricLabelWeightCurrent': '体重（期内最近）',
+    'reportPediatricLabelHeight': '身高',
+    'reportPediatricWeightStart': '期初体重',
+    'reportPediatricWeightEnd': '期末体重',
+    'reportPediatricWeightGain': '体重变化',
+    'reportPediatricAvgFeeds': '每日喂养次数（平均）',
+    'reportPediatricAvgSleep': '每日睡眠（平均）',
+    'reportPediatricAvgDiapers': '每日换尿布（平均）',
+    'reportPediatricFeverEpisodes': '发热次数（结构化记录）',
+    'reportPediatricFeverNote': '说明',
+    'reportPediatricFeverFootnote':
+        '统计自「健康 › 记录症状」的结构化条目（含体温时）。',
+    'reportPediatricVaccines': '期内接种疫苗',
+    'reportPediatricMedications': '药物（结构化记录与备注关键词）',
+    'reportPediatricSleepAvgDaily': '日均睡眠',
+    'reportPediatricSleepAwakenings': '夜间醒来（平均）',
+    'reportPediatricSleepPattern': '睡眠总体模式',
+    'reportPediatricSleepPatternStable': '多为连续',
+    'reportPediatricSleepPatternModerate': '中等',
+    'reportPediatricSleepPatternFragmented': '更易间断',
+    'reportPediatricSleepLongest': '最长连续睡眠',
+    'reportPediatricFeedingBreast': '母乳',
+    'reportPediatricFeedingFormula': '配方奶',
+    'reportPediatricFeedingSolid': '辅食',
+    'reportPediatricFeedingSessions': '次',
+    'reportPediatricFeedingAvgDur': '平均时长',
+    'reportPediatricSymptomReflux': '反流（日记或结构化记录）',
+    'reportPediatricSymptomColic': '肠绞痛（日记或结构化记录）',
+    'reportPediatricSymptomIrrit': '易激惹（情绪）',
+    'reportPediatricIrritHigh': '较明显',
+    'reportPediatricIrritMedium': '中等',
+    'reportPediatricIrritLow': '较轻',
+    'reportPediatricIrritUnknown': '无数据',
+    'reportPediatricYes': '是',
+    'reportPediatricNo': '否',
+    'reportPediatricNa': '—',
+    'reportPediatricJournalNote': '当日日记',
+    'reportPediatricJournalNoteHint': '自由文本关键词检测。',
+    'reportPediatricObsHint':
+        '就诊备注：症状、用药、行为变化等…',
+    'reportPediatricBtnShare': '分享',
+    'reportPediatricBtnExportPdf': '导出PDF',
+    'reportPediatricBtnPrint': '打印',
+    'reportPediatricBtnEmail': '电子邮件',
+    'reportPediatricBtnWhatsApp': 'WhatsApp',
+    'reportPediatricScreenFootnote':
+        '基于本机记录的信息摘要，不能替代临床评估。',
+    'reportPediatricNone': '无',
+    'reportPediatricPdfTitle': '儿科临床报告 — FaceBaby',
+    'reportPediatricPdfPeriod': '时间段：',
+    'reportPediatricPdfFooter':
+        '由 FaceBaby 生成，仅限本机存储的数据（可离线）。',
+    'reportPediatricFeverDisclaimerShort': '0',
+    'reportPediatricSymptomCrying': '无故哭闹（结构化）',
+    'reportPediatricSymptomPain': '疼痛（结构化）',
+    'reportPediatricStructuredSymptoms': '结构化症状记录（日期与时间）',
+    'reportPediatricStructuredSymptomsEmpty': '本时间段无结构化记录。',
     'generatePdf': '生成PDF',
+    'reportMonthlyMilestonesTitle': '本月里程碑',
+    'reportMonthlyMilestonesEmpty': '本月尚无疫苗、就诊或带徽章的回忆。',
+    'reportMonthlyMilestoneConsultationDefault': '就诊',
     'memoriesTitle': '回忆册',
     'memoriesSubtitle': '把重要时刻保存下来。',
     'addMemory': '添加回忆',

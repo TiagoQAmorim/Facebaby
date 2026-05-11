@@ -1,8 +1,12 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../i18n/app_i18n.dart';
 import '../services/app_database.dart';
+import '../services/local_notifications_service.dart';
 import '../services/notification_nav.dart';
 import '../theme/app_theme.dart';
 import '../utils/portal_layout.dart';
@@ -25,21 +29,32 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
   void initState() {
     super.initState();
     _load();
+    if (!kIsWeb) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await LocalNotificationsService.instance.ensureCoreInitialized();
+        await LocalNotificationsService.instance.requestPermission();
+      });
+    }
   }
 
   Future<void> _load() async {
     final since = DateTime.now().subtract(const Duration(days: 3));
     try {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid == null) {
-        if (!mounted) return;
-        setState(() {
-          _rows = const [];
-          _loading = false;
-        });
-        return;
+      final rawUid = FirebaseAuth.instance.currentUser?.uid ?? 'anonymous';
+      final uid = rawUid.trim().isEmpty ? 'anonymous' : rawUid.trim();
+      List<Map<String, Object?>> rowsRaw;
+      try {
+        rowsRaw = await AppDatabase.instance
+            .listNotificationLogSince(uid: uid, since: since)
+            .timeout(
+              const Duration(seconds: 12),
+              onTimeout: () {
+                throw TimeoutException('notification_log query');
+              },
+            );
+      } on TimeoutException {
+        rowsRaw = const [];
       }
-      final rowsRaw = await AppDatabase.instance.listNotificationLogSince(uid: uid, since: since);
       final now = DateTime.now();
       // Inbox mostra o que já aconteceu (entregue/mostrado). Não antecipa agendamentos futuros
       // para não “spoilar” notificações (ex.: vacina daqui a 2 dias).
@@ -71,8 +86,8 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
   }
 
   Future<void> _deleteSelected() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
+    final rawUid = FirebaseAuth.instance.currentUser?.uid ?? 'anonymous';
+    final uid = rawUid.trim().isEmpty ? 'anonymous' : rawUid.trim();
     final ids = _selectedIds.toList(growable: false);
     if (ids.isEmpty) return;
     await AppDatabase.instance.deleteNotificationLogs(uid: uid, ids: ids);
@@ -179,7 +194,55 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
     }
     final sortedDays = groups.keys.toList()..sort((a, b) => b.compareTo(a));
 
+    final listChildren = <Widget>[];
+    if (!_loading && _rows.isNotEmpty) {
+      for (final day in sortedDays) {
+        listChildren.add(
+          Padding(
+            padding: EdgeInsets.only(bottom: 8, top: day == sortedDays.first ? 0 : 18),
+            child: Text(
+              _sectionLabel(s, day),
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: portalSp(context, 13),
+                color: AppTheme.textMuted,
+              ),
+            ),
+          ),
+        );
+        for (final row in groups[day]!) {
+          listChildren.add(
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _NotificationTile(
+                id: (row['id'] as num?)?.toInt(),
+                selectionMode: _selectionMode,
+                selectedIds: _selectedIds,
+                onSelectionChanged: () => setState(() {}),
+                onBeginSelectionRow: _beginSelectionWith,
+                occurredAt: _displayInstant(row),
+                title: (row['title'] as String?) ?? '',
+                body: (row['body'] as String?) ?? '',
+                payload: row['payload'] as String?,
+                kindLabel: _kindLabel(s, row['kind'] as String?),
+                timeHm: _timeHm,
+                openHint: s.notificationsOpenTarget,
+              ),
+            ),
+          );
+        }
+      }
+    }
+
+    final checkboxTheme = CheckboxThemeData(
+      fillColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return AppTheme.primaryPurple;
+        return null;
+      }),
+    );
+
     return Scaffold(
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: Text(s.notificationsInboxTitle),
         actions: [
@@ -197,116 +260,110 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
             ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
-          children: [
-            Text(
-              s.notificationsInboxSubtitle,
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: portalSp(context, 12),
-                color: AppTheme.textMuted,
-                height: 1.35,
-              ),
-            ),
-            if (_selectionMode && !_loading && _rows.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Material(
-                color: AppTheme.card,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: AppTheme.textMuted.withAlpha(36)),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: _toggleSelectAll,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    child: Row(
-                      children: [
-                        Checkbox.adaptive(
-                          visualDensity: VisualDensity.compact,
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          value: _selectAllCheckboxValue(),
-                          tristate: true,
-                          onChanged: (_) => _toggleSelectAll(),
-                          activeColor: AppTheme.primaryPurple,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _load,
+          color: AppTheme.primaryPurple,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        s.notificationsInboxSubtitle,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: portalSp(context, 12),
+                          color: AppTheme.textMuted,
+                          height: 1.35,
                         ),
-                        Expanded(
-                          child: Text(
-                            s.notificationsSelectAll,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: portalSp(context, 13),
-                              color: AppTheme.textPrimary,
+                      ),
+                      if (_selectionMode && !_loading && _rows.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Material(
+                          color: AppTheme.card,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: AppTheme.textMuted.withAlpha(36)),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            onTap: _toggleSelectAll,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              child: Row(
+                                children: [
+                                  Theme(
+                                    data: Theme.of(context).copyWith(checkboxTheme: checkboxTheme),
+                                    child: Checkbox.adaptive(
+                                      visualDensity: VisualDensity.compact,
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      value: _selectAllCheckboxValue(),
+                                      tristate: true,
+                                      onChanged: (_) => _toggleSelectAll(),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      s.notificationsSelectAll,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: portalSp(context, 13),
+                                        color: AppTheme.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ],
-                    ),
+                      const SizedBox(height: 14),
+                    ],
                   ),
                 ),
               ),
+              if (_loading)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppTheme.primaryPurple),
+                  ),
+                )
+              else if (_rows.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        s.notificationsEmpty,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: portalSp(context, 15),
+                          color: AppTheme.textSecondary,
+                          fontWeight: FontWeight.w600,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate(listChildren),
+                  ),
+                ),
             ],
-            const SizedBox(height: 14),
-            if (_loading)
-              SizedBox(
-                height: MediaQuery.sizeOf(context).height * 0.35,
-                child: const Center(child: CircularProgressIndicator()),
-              )
-            else if (_rows.isEmpty)
-              SizedBox(
-                height: MediaQuery.sizeOf(context).height * 0.35,
-                child: Center(
-                  child: Text(
-                    s.notificationsEmpty,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: portalSp(context, 15),
-                      color: AppTheme.textSecondary,
-                      fontWeight: FontWeight.w600,
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-              )
-            else
-              for (final day in sortedDays) ...[
-                Padding(
-                  padding: EdgeInsets.only(bottom: 8, top: day == sortedDays.first ? 0 : 18),
-                  child: Text(
-                    _sectionLabel(s, day),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: portalSp(context, 13),
-                      color: AppTheme.textMuted,
-                    ),
-                  ),
-                ),
-                for (final row in groups[day]!)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _NotificationTile(
-                      id: (row['id'] as num?)?.toInt(),
-                      selectionMode: _selectionMode,
-                      selectedIds: _selectedIds,
-                      onSelectionChanged: () => setState(() {}),
-                      onBeginSelectionRow: _beginSelectionWith,
-                      occurredAt: _displayInstant(row),
-                      title: (row['title'] as String?) ?? '',
-                      body: (row['body'] as String?) ?? '',
-                      payload: row['payload'] as String?,
-                      kindLabel: _kindLabel(s, row['kind'] as String?),
-                      timeHm: _timeHm,
-                      openHint: s.notificationsOpenTarget,
-                    ),
-                  ),
-              ],
-          ],
+          ),
         ),
       ),
     );
@@ -393,19 +450,28 @@ class _NotificationTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (selectionMode) ...[
-                    Checkbox.adaptive(
-                      value: checked,
-                      onChanged: rowId == null
-                          ? null
-                          : (v) {
-                              if (v == true) {
-                                selectedIds.add(rowId);
-                              } else if (v == false) {
-                                selectedIds.remove(rowId);
-                              }
-                              onSelectionChanged();
-                            },
-                      activeColor: AppTheme.primaryPurple,
+                    Theme(
+                      data: Theme.of(context).copyWith(
+                        checkboxTheme: CheckboxThemeData(
+                          fillColor: WidgetStateProperty.resolveWith((states) {
+                            if (states.contains(WidgetState.selected)) return AppTheme.primaryPurple;
+                            return null;
+                          }),
+                        ),
+                      ),
+                      child: Checkbox.adaptive(
+                        value: checked,
+                        onChanged: rowId == null
+                            ? null
+                            : (v) {
+                                if (v == true) {
+                                  selectedIds.add(rowId);
+                                } else if (v == false) {
+                                  selectedIds.remove(rowId);
+                                }
+                                onSelectionChanged();
+                              },
+                      ),
                     ),
                     const SizedBox(width: 6),
                   ],

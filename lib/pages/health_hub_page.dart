@@ -6,6 +6,7 @@ import '../utils/portal_layout.dart';
 import '../widgets/card_box.dart';
 import '../widgets/section_title.dart';
 import 'consultations_page.dart';
+import 'symptom_reports_page.dart';
 import 'vaccines_page.dart';
 
 class HealthHubPage extends StatelessWidget {
@@ -64,6 +65,15 @@ class HealthHubPage extends StatelessWidget {
                     title: s.healthHubConsultations,
                     subtitle: s.healthHubConsultationsSub,
                     onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ConsultationsPage())),
+                  ),
+                  const SizedBox(height: 12),
+                  _HubTile(
+                    icon: Icons.healing_outlined,
+                    color: AppTheme.green,
+                    softBg: AppTheme.softMint,
+                    title: s.healthHubSymptomReports,
+                    subtitle: s.healthHubSymptomReportsSub,
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SymptomReportsPage())),
                   ),
                 ],
               ),

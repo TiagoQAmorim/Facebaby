@@ -1,4 +1,5 @@
 import '../models/baby_memory.dart';
+import '../utils/weekly_photo_schedule.dart';
 import 'app_database.dart';
 import 'firebase/memory_cloud_sync.dart';
 
@@ -13,6 +14,15 @@ class MemoryService {
   }
 
   Future<int> upsert(BabyMemory m) async {
+    final hasPhoto =
+        (m.photoB64 != null && m.photoB64!.trim().isNotEmpty) || (m.photoUrl != null && m.photoUrl!.trim().isNotEmpty);
+    final eligible = WeeklyPhotoSchedule.showParticipatingBadge(
+      isPublic: m.isPublic,
+      hasPhoto: hasPhoto,
+      publicEnabledAt: m.publicEnabledAt,
+      now: DateTime.now(),
+    );
+
     final id = await db.upsertBabyMemory(
       babyId: m.babyId,
       badgeId: m.badgeId,
@@ -27,8 +37,14 @@ class MemoryService {
       moodAtMoment: m.moodAtMoment,
       motherNotes: m.motherNotes,
       isFavorite: m.isFavorite,
+      isPublic: m.isPublic,
+      publicEnabledAt: m.publicEnabledAt,
+      publicDisabledAt: m.publicDisabledAt,
+      eligibleForWeeklyPhoto: eligible,
+      weeklyPhotoWinner: m.weeklyPhotoWinner,
+      weeklyPhotoWeekId: m.weeklyPhotoWeekId,
+      showBabyFirstNameWhenPublic: m.showBabyFirstNameWhenPublic,
     );
-    // Login é obrigatório: só consideramos "salvo" depois de persistir na nuvem.
     await MemoryCloudSync.pushBadgeMemory(localBabyId: m.babyId, badgeId: m.badgeId);
     return id;
   }

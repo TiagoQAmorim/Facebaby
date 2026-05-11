@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../i18n/app_i18n.dart';
 import 'growth_dashboard_page.dart';
 
-/// Atalho "Crescimento": mesma dashboard de métricas (peso / altura / cabeça / resumo).
+/// Atalho "Crescimento": mesma dashboard de métricas (peso / altura / resumo).
 class GrowthRegisterPage extends StatelessWidget {
   const GrowthRegisterPage({super.key});
 

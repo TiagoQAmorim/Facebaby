@@ -4,9 +4,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:photo_view/photo_view.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../controllers/memory_controller.dart';
 import '../../i18n/app_i18n.dart';
+import '../../services/premium/feature_access.dart';
+import '../premium/premium_paywall_screen.dart';
 import '../../models/baby_memory.dart';
 import '../../models/memory_badge.dart';
 import '../../theme/app_theme.dart';
@@ -15,6 +18,7 @@ import '../../utils/memory_share_transport.dart';
 import '../../utils/memory_moment_localizations.dart';
 import '../../utils/photo_b64.dart';
 import '../../utils/portal_layout.dart';
+import '../../utils/weekly_photo_schedule.dart';
 import '../../utils/measurement_format.dart';
 import '../../widgets/memories/memory_badge_icon.dart';
 import '../../widgets/memories/memory_share_card.dart';
@@ -42,7 +46,7 @@ class MemoryDetailPage extends StatefulWidget {
 
 class _MemoryDetailPageState extends State<MemoryDetailPage> {
   late BabyMemory _memory;
-  bool _savingFavorite = false;
+  bool _savingPublic = false;
   bool _shareBusy = false;
   final GlobalKey _shareCaptureKey = GlobalKey();
 
@@ -180,16 +184,77 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
     );
   }
 
-  Future<void> _toggleFavorite() async {
-    if (_savingFavorite) return;
-    setState(() => _savingFavorite = true);
-    final updated = _memory.copyWith(isFavorite: !_memory.isFavorite);
+  Future<void> _persistPublic(BabyMemory next) async {
+    if (_savingPublic) return;
+    setState(() => _savingPublic = true);
     try {
-      await widget.controller.upsert(updated);
-      if (mounted) setState(() => _memory = updated);
+      await widget.controller.upsert(next);
+      if (mounted) setState(() => _memory = next);
     } finally {
-      if (mounted) setState(() => _savingFavorite = false);
+      if (mounted) setState(() => _savingPublic = false);
     }
+  }
+
+  Future<void> _requestPublicOff() async {
+    await _persistPublic(
+      _memory.copyWith(
+        isPublic: false,
+        publicDisabledAt: DateTime.now(),
+        eligibleForWeeklyPhoto: false,
+      ),
+    );
+  }
+
+  Future<void> _requestPublicOn() async {
+    final bytes = decodePhotoB64(_memory.photoB64);
+    final url = (_memory.photoUrl ?? '').trim();
+    final hasPhoto = bytes != null || url.isNotEmpty;
+    final s = S.of(context);
+    if (!hasPhoto) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.weeklyPhotoPublicNeedPhoto)));
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    final key = 'fb_weekly_photo_confirm_${_memory.babyId}_${_memory.badgeId}';
+    final seen = prefs.getBool(key) ?? false;
+    if (!seen) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(s.weeklyPhotoConfirmTitle),
+          content: Text(s.weeklyPhotoConfirmBody),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.weeklyPhotoConfirmCancel)),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(s.weeklyPhotoConfirmOk)),
+          ],
+        ),
+      );
+      if (ok != true) return;
+      await prefs.setBool(key, true);
+    }
+    if (!mounted) return;
+    final now = DateTime.now();
+    await _persistPublic(
+      _memory.copyWith(
+        isPublic: true,
+        publicEnabledAt: now,
+        publicDisabledAt: null,
+      ),
+    );
+  }
+
+  Future<void> _togglePublicPressed() async {
+    if (_savingPublic) return;
+    if (_memory.isPublic) {
+      await _requestPublicOff();
+    } else {
+      await _requestPublicOn();
+    }
+  }
+
+  Future<void> _setShowBabyFirstName(bool v) async {
+    await _persistPublic(_memory.copyWith(showBabyFirstNameWhenPublic: v));
   }
 
   Future<void> _openEditor() async {
@@ -220,6 +285,13 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(strings.memoryShareWebOnlyMobile)),
       );
+      return;
+    }
+
+    if (!FeatureAccess.canExportBadges) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.plusSnackLockedFeature)));
+      await openPremiumPaywall(context);
       return;
     }
 
@@ -638,6 +710,70 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
                   ),
                 ),
                 const SizedBox(height: 24),
+                if (WeeklyPhotoSchedule.showParticipatingBadge(
+                  isPublic: _memory.isPublic,
+                  hasPhoto: bytes != null || url.isNotEmpty,
+                  publicEnabledAt: _memory.publicEnabledAt,
+                  now: DateTime.now(),
+                )) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.softPurple.withAlpha(160),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.emoji_events_outlined, color: AppTheme.primaryPurple, size: 22),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            s.weeklyPhotoParticipatingBadge,
+                            style: const TextStyle(fontWeight: FontWeight.w800, height: 1.25),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (_memory.weeklyPhotoWinner) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryPink.withAlpha(55),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.celebration_rounded, color: AppTheme.primaryPink, size: 22),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            s.weeklyPhotoWinnerBadge,
+                            style: const TextStyle(fontWeight: FontWeight.w800, height: 1.25),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (!_memory.isPublic)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: Text(
+                      s.weeklyPhotoPublicExplainer,
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        height: 1.45,
+                        fontWeight: FontWeight.w600,
+                        fontSize: portalSp(context, 13.5),
+                      ),
+                    ),
+                  ),
                 Row(
                   children: [
                     Expanded(
@@ -659,23 +795,46 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: FilledButton.icon(
-                        onPressed: _savingFavorite ? null : _toggleFavorite,
+                        onPressed: _savingPublic ? null : _togglePublicPressed,
                         icon: Icon(
-                          _memory.isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                          _memory.isPublic ? Icons.public_rounded : Icons.lock_outline_rounded,
                           color: Colors.white,
                         ),
                         label: Text(
-                          _memory.isFavorite ? s.memoryFavoritedButton : s.memoryFavoriteButton,
+                          _memory.isPublic ? s.weeklyPhotoPublicOn : s.weeklyPhotoPublicOff,
                           style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white),
                         ),
                         style: FilledButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          backgroundColor: AppTheme.primaryPink,
+                          backgroundColor: AppTheme.primaryPurple,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
                         ),
                       ),
                     ),
                   ],
+                ),
+                if (_memory.isPublic) ...[
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(s.weeklyPhotoShowBabyFirstName, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    value: _memory.showBabyFirstNameWhenPublic,
+                    onChanged: _savingPublic
+                        ? null
+                        : (v) {
+                            unawaited(_setShowBabyFirstName(v));
+                          },
+                  ),
+                ],
+                const SizedBox(height: 10),
+                Text(
+                  s.weeklyPhotoDisclaimerFooter,
+                  style: TextStyle(
+                    fontSize: portalSp(context, 11.5),
+                    color: AppTheme.textMuted,
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 SizedBox(height: MediaQuery.paddingOf(context).bottom + 12),
               ],

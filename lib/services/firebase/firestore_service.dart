@@ -456,5 +456,36 @@ class FirestoreService {
   Future<List<Map<String, dynamic>>> listDailySummarySnapshots(String babyId) async {
     return _listEventsForBaby(babyId, 'daily_summary_snapshot');
   }
+
+  // ---------------- Weekly Photo / public memories (root collections) ----------------
+
+  CollectionReference<Map<String, dynamic>> _publicMemoriesCol() => _db.collection('public_memories');
+
+  CollectionReference<Map<String, dynamic>> _weeklyPhotoContestsCol() => _db.collection('weekly_photo_contests');
+
+  /// Documento sanitizado para mural / sorteio (sem dados médicos).
+  Future<void> upsertPublicMemoryDoc({
+    required String docId,
+    required Map<String, dynamic> data,
+  }) async {
+    final path = 'public_memories/$docId';
+    _log('set(merge)', path, data.keys.toList(growable: false));
+    await _publicMemoriesCol().doc(docId).set({
+      ...data,
+      'owner_uid': _uid,
+      'updated_at': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> deletePublicMemoryDoc(String docId) async {
+    final path = 'public_memories/$docId';
+    _log('delete', path);
+    await _publicMemoriesCol().doc(docId).delete();
+  }
+
+  /// Snapshot do destaque atual na Home (`spotlight_current`), preenchido pelas Cloud Functions.
+  Stream<DocumentSnapshot<Map<String, dynamic>>> weeklyPhotoSpotlightSnapshots() {
+    return _weeklyPhotoContestsCol().doc('spotlight_current').snapshots();
+  }
 }
 

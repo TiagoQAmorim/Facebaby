@@ -10,9 +10,13 @@ import '../widgets/section_title.dart';
 import '../services/firebase/vaccine_cloud_sync.dart';
 import '../services/vaccine_reminder_scheduler.dart';
 import '../services/firebase/firestore_service.dart';
+import '../widgets/vaccine_due_confirm_sheet.dart';
 
 class VaccinesPage extends StatefulWidget {
-  const VaccinesPage({super.key});
+  const VaccinesPage({super.key, this.openVaccineId});
+
+  /// Abre o fluxo de confirmação desta vacina (ex.: notificação).
+  final int? openVaccineId;
 
   @override
   State<VaccinesPage> createState() => _VaccinesPageState();
@@ -22,20 +26,50 @@ class _VaccinesPageState extends State<VaccinesPage> {
   int? _selectedBabyId;
   Future<List<Map<String, Object?>>>? _babiesFuture;
   Future<List<Map<String, Object?>>>? _vaccinesFuture;
+  bool _handledOpenPayload = false;
 
   @override
   void initState() {
     super.initState();
-    _babiesFuture = AppDatabase.instance.listBabies().then((babies) {
+    _babiesFuture = AppDatabase.instance.listBabies().then((babies) async {
       if (!mounted) return babies;
-      var changed = false;
-      if (_selectedBabyId == null && babies.isNotEmpty) {
+      if (widget.openVaccineId != null) {
+        final row = await AppDatabase.instance.getVaccineRowById(widget.openVaccineId!);
+        if (row != null && mounted) {
+          _selectedBabyId = (row['baby_id'] as num).toInt();
+          _reloadVaccines();
+        }
+      } else if (_selectedBabyId == null && babies.isNotEmpty) {
         _selectedBabyId = (babies.first['id'] as num).toInt();
         _reloadVaccines();
-        changed = true;
       }
-      if (changed) setState(() {});
+      if (mounted) setState(() {});
       return babies;
+    });
+  }
+
+  Future<void> _maybeOpenFromNotification(List<VaccineRecord> records) async {
+    final oid = widget.openVaccineId;
+    if (oid == null || _handledOpenPayload || !mounted) return;
+    VaccineRecord? found;
+    for (final x in records) {
+      if (x.id == oid) {
+        found = x;
+        break;
+      }
+    }
+    if (found == null) return;
+    final rec = found;
+    _handledOpenPayload = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final babyId = _selectedBabyId;
+      if (babyId == null) return;
+      final saved = await showVaccineDueConfirmSheet(context, record: rec, babyId: babyId);
+      if (!mounted) return;
+      if (saved == true && widget.openVaccineId != null) {
+        Navigator.of(context).maybePop();
+      }
     });
   }
 
@@ -290,6 +324,7 @@ class _VaccinesPageState extends State<VaccinesPage> {
                       }
 
                       final records = rows.map(VaccineRecord.fromRow).toList();
+                      _maybeOpenFromNotification(records);
                       return _VaccinesTable(
                         records: records,
                         onEdit: (rec) => _openVaccineSheet(edit: rec),

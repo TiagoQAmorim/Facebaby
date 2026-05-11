@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../app/app_locale.dart';
 import '../controllers/current_baby_controller.dart';
+import '../controllers/sleep_timer_controller.dart';
 import '../i18n/app_i18n.dart';
 import 'app_database.dart';
 import 'diaper_events.dart';
@@ -45,6 +46,7 @@ class ReminderMonitor {
     HomePrefs.diaperAlertsEnabled.addListener(_kick);
     HomePrefs.growthHealthAlertsEnabled.addListener(_kick);
     SleepEvents.revision.addListener(_kick);
+    SleepTimerController.instance.addListener(_kick);
 
     // Periodic check while app is open.
     _timer = Timer.periodic(const Duration(minutes: 1), (_) => _check());
@@ -66,6 +68,7 @@ class ReminderMonitor {
     HomePrefs.diaperAlertsEnabled.removeListener(_kick);
     HomePrefs.growthHealthAlertsEnabled.removeListener(_kick);
     SleepEvents.revision.removeListener(_kick);
+    SleepTimerController.instance.removeListener(_kick);
     _timer?.cancel();
     _timer = null;
   }

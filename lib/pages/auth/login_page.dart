@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../i18n/app_i18n.dart';
 import '../../services/firebase/auth_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/login_platform.dart';
 import '../../widgets/language_picker.dart';
 import 'register_page.dart';
 
@@ -33,6 +34,25 @@ class _LoginPageState extends State<LoginPage> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    await _run(() async {
+      await AuthService.instance.signInWithGoogle();
+    });
+  }
+
+  Future<void> _handleEmailSignIn() async {
+    await _run(() async {
+      if (!(_formKey.currentState?.validate() ?? false)) return;
+      await AuthService.instance.signInWithEmail(email: _email, password: _password);
+    });
+  }
+
+  Future<void> _handleAppleSignIn() async {
+    await _run(() async {
+      await AuthService.instance.signInWithApple();
+    });
   }
 
   Future<void> _forgotPassword() async {
@@ -113,7 +133,7 @@ class _LoginPageState extends State<LoginPage> {
               bgAsset,
               fit: BoxFit.cover,
               alignment: Alignment.topCenter,
-              errorBuilder: (_, __, ___) => ColoredBox(color: AppTheme.background),
+              errorBuilder: (_, __, ___) => const ColoredBox(color: AppTheme.background),
             ),
           ),
           SafeArea(
@@ -189,22 +209,22 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           const SizedBox(height: 8),
                         ],
-                        FilledButton(
-                          onPressed: _busy
-                              ? null
-                              : () => _run(() async {
-                                    if (!(_formKey.currentState?.validate() ?? false)) return;
-                                    await AuthService.instance.signInWithEmail(email: _email, password: _password);
-                                  }),
-                          child: Text(_busy ? s.authSigningIn : s.authSignIn),
-                        ),
-                        const SizedBox(height: 8),
+                        if (isIOSDevice) ...[
+                          OutlinedButton(
+                            onPressed: _busy ? null : _handleAppleSignIn,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.apple, size: 22, color: Colors.grey.shade900),
+                                const SizedBox(width: 10),
+                                Text(s.authSignInApple),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
                         OutlinedButton(
-                          onPressed: _busy
-                              ? null
-                              : () => _run(() async {
-                                    await AuthService.instance.signInWithGoogle();
-                                  }),
+                          onPressed: _busy ? null : _handleGoogleSignIn,
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -225,6 +245,11 @@ class _LoginPageState extends State<LoginPage> {
                               Text(s.authSignInGoogle),
                             ],
                           ),
+                        ),
+                        const SizedBox(height: 8),
+                        FilledButton(
+                          onPressed: _busy ? null : _handleEmailSignIn,
+                          child: Text(_busy ? s.authSigningIn : s.authSignInEmail),
                         ),
                         const SizedBox(height: 8),
                         TextButton(

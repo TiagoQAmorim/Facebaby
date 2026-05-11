@@ -2,9 +2,13 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../app/app_locale.dart';
 import '../../controllers/memory_controller.dart';
 import '../../i18n/app_i18n.dart';
+import '../../services/premium/feature_access.dart';
+import '../../services/premium/premium_constants.dart';
+import '../premium/premium_paywall_screen.dart';
 import '../../models/baby_memory.dart';
 import '../../models/memory_badge.dart';
 import '../../theme/app_theme.dart';
@@ -56,6 +60,10 @@ class _AddMemoryPageState extends State<AddMemoryPage> {
   String? _photoUrl;
   bool _saving = false;
 
+  /// Igual ao detalhe da memória: opt-in “Foto da Semana” / mural público.
+  bool _isPublic = false;
+  bool _showBabyFirstNameWhenPublic = true;
+
   bool get _isEditing => widget.initialMemory != null;
 
   /// Há bytes locais OU URL para pré-visualizar (cache / nuvem).
@@ -88,6 +96,8 @@ class _AddMemoryPageState extends State<AddMemoryPage> {
       if (h != null) _heightCtrl.text = h.toStringAsFixed(1).replaceAll('.', ',');
       _moodCtrl.text = existing.moodAtMoment ?? '';
       _notesCtrl.text = existing.motherNotes ?? '';
+      _isPublic = existing.isPublic;
+      _showBabyFirstNameWhenPublic = existing.showBabyFirstNameWhenPublic;
       return;
     }
     // Nova memória: prefill opcional com dados atuais do bebê.
@@ -144,6 +154,62 @@ class _AddMemoryPageState extends State<AddMemoryPage> {
     setState(() => _memoryDate = DateTime(d.year, d.month, d.day, t.hour, t.minute));
   }
 
+  ({DateTime? enabledAt, DateTime? disabledAt}) _publicTimestampsForSave() {
+    final prev = widget.initialMemory;
+    if (_isPublic) {
+      final enabledAt =
+          (prev?.isPublic == true) ? (prev!.publicEnabledAt ?? DateTime.now()) : DateTime.now();
+      return (enabledAt: enabledAt, disabledAt: null);
+    }
+    final enabledAt = prev?.publicEnabledAt;
+    final disabledAt = (prev?.isPublic == true) ? DateTime.now() : prev?.publicDisabledAt;
+    return (enabledAt: enabledAt, disabledAt: disabledAt);
+  }
+
+  Future<void> _requestPublicOff() async {
+    setState(() => _isPublic = false);
+  }
+
+  Future<void> _requestPublicOn() async {
+    final bytes = decodePhotoB64(_photoB64);
+    final url = (_photoUrl ?? '').trim();
+    final hasPhoto = bytes != null || url.isNotEmpty;
+    final s = S.of(context);
+    if (!hasPhoto) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.weeklyPhotoPublicNeedPhoto)));
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    final key = 'fb_weekly_photo_confirm_${widget.babyId}_${widget.badge.id}';
+    final seen = prefs.getBool(key) ?? false;
+    if (!seen) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(s.weeklyPhotoConfirmTitle),
+          content: Text(s.weeklyPhotoConfirmBody),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.weeklyPhotoConfirmCancel)),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(s.weeklyPhotoConfirmOk)),
+          ],
+        ),
+      );
+      if (ok != true) return;
+      await prefs.setBool(key, true);
+    }
+    if (!mounted) return;
+    setState(() => _isPublic = true);
+  }
+
+  Future<void> _togglePublicPressed() async {
+    if (_isPublic) {
+      await _requestPublicOff();
+    } else {
+      await _requestPublicOn();
+    }
+  }
+
   Future<void> _save() async {
     if (_saving) return;
     final hasPhoto = _hasLocalPickedB64 || _hasPhotoUrl;
@@ -151,6 +217,20 @@ class _AddMemoryPageState extends State<AddMemoryPage> {
     if (!hasPhoto && !hasText) {
       final msg = S.of(context).memorySaveNeedPhotoOrText;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      return;
+    }
+    final s = S.of(context);
+    if (!FeatureAccess.canSaveNewMemoryMoment(
+      controller: widget.controller,
+      badgeId: widget.badge.id,
+      isEditing: _isEditing,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(s.plusMemoryLimitSnack.replaceAll('{max}', '${PremiumConstants.freeMemoryMomentsMax}')),
+        ),
+      );
+      await openPremiumPaywall(context);
       return;
     }
     setState(() => _saving = true);
@@ -165,6 +245,7 @@ class _AddMemoryPageState extends State<AddMemoryPage> {
       final finalHeight = _heightCtrl.text.trim().isEmpty ? autoHeight : _parseDouble(_heightCtrl.text);
 
       final prev = widget.initialMemory;
+      final pubTs = _publicTimestampsForSave();
       // Só sobrescrever [photoUrl] / limpar b64 quando há ficheiro novo; senão preserva nuvem/cache local (linha só com URL).
       final m = BabyMemory(
         id: prev?.id,
@@ -182,6 +263,13 @@ class _AddMemoryPageState extends State<AddMemoryPage> {
         moodAtMoment: _moodCtrl.text.trim().isEmpty ? null : _moodCtrl.text.trim(),
         motherNotes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
         isFavorite: prev?.isFavorite ?? false,
+        isPublic: _isPublic,
+        publicEnabledAt: pubTs.enabledAt,
+        publicDisabledAt: pubTs.disabledAt,
+        eligibleForWeeklyPhoto: prev?.eligibleForWeeklyPhoto ?? false,
+        weeklyPhotoWinner: prev?.weeklyPhotoWinner ?? false,
+        weeklyPhotoWeekId: prev?.weeklyPhotoWeekId,
+        showBabyFirstNameWhenPublic: _showBabyFirstNameWhenPublic,
       );
       await widget.controller.upsert(m);
       if (mounted) Navigator.of(context).pop(true);
@@ -456,6 +544,62 @@ class _AddMemoryPageState extends State<AddMemoryPage> {
                         minLines: 2,
                         maxLines: 5,
                         decoration: InputDecoration(labelText: s.memoryMomNotesFieldLabel, border: const OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 18),
+                      if (!_isPublic)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Text(
+                            s.weeklyPhotoPublicExplainer,
+                            style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              height: 1.45,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13.5,
+                            ),
+                          ),
+                        ),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _saving ? null : _togglePublicPressed,
+                          icon: Icon(
+                            _isPublic ? Icons.public_rounded : Icons.lock_outline_rounded,
+                            color: Colors.white,
+                          ),
+                          label: Text(
+                            _isPublic ? s.weeklyPhotoPublicOn : s.weeklyPhotoPublicOff,
+                            style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white),
+                          ),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            backgroundColor: AppTheme.primaryPurple,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                          ),
+                        ),
+                      ),
+                      if (_isPublic) ...[
+                        const SizedBox(height: 8),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(s.weeklyPhotoShowBabyFirstName, style: const TextStyle(fontWeight: FontWeight.w700)),
+                          value: _showBabyFirstNameWhenPublic,
+                          onChanged: _saving
+                              ? null
+                              : (v) {
+                                  setState(() => _showBabyFirstNameWhenPublic = v);
+                                },
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      Text(
+                        s.weeklyPhotoDisclaimerFooter,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: AppTheme.textMuted,
+                          height: 1.35,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 14),
                       SizedBox(

@@ -1,4 +1,4 @@
-package com.example.facebaby_flutter
+package com.facebaby.app
 
 import android.app.AlarmManager
 import android.content.Context

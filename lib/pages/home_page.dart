@@ -31,6 +31,7 @@ import '../widgets/consultation_detail_sheet.dart';
 import '../widgets/language_picker.dart';
 import '../widgets/photo_avatar.dart';
 import '../widgets/section_title.dart';
+import '../widgets/weekly_photo_home_section.dart';
 import '../utils/portal_layout.dart';
 import '../app/shell_nested_nav.dart';
 import 'diaper_page.dart';
@@ -39,6 +40,7 @@ import 'growth_dashboard_page.dart';
 import 'notifications_inbox_page.dart';
 import 'sleep_page.dart';
 import 'vaccines_page.dart';
+import '../widgets/vaccine_due_confirm_sheet.dart';
 import 'development_leaps_page.dart';
 
 /// Mesmo intervalo dos lembretes de fralda (3 h 30 min).
@@ -895,7 +897,7 @@ class _HomePageState extends State<HomePage> {
                           color: AppTheme.primaryPink,
                           softBg: const Color(0xFFF4EFF2),
                           value: summaryValueTwoLines(
-                            topIcon: Icons.numbers_rounded,
+                            topIcon: Icons.format_list_numbered_rounded,
                             topText: s.summaryFeedingsCount(_summary.feedings),
                             bottomIcon: Icons.schedule_rounded,
                             bottomText: s.summaryFeedingsMinutes(_summary.feedingMinutesTotal),
@@ -996,6 +998,7 @@ class _HomePageState extends State<HomePage> {
                       ShellNestedNav.selectTab?.call(2);
                     },
                   ),
+                  const WeeklyPhotoHomeSection(),
                 ],
               ),
             ),
@@ -1419,6 +1422,50 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
     return '$wStr · $hStr · $age';
   }
 
+  String _fmtVaccDay(DateTime? d) {
+    if (d == null) return '—';
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
+
+  Future<void> _openVaccineDueFromBanner() async {
+    final due = widget.bannerVaccinesDueToday;
+    final babyId = widget.babyId;
+    if (due.isEmpty || babyId == null) return;
+    final s = S.of(context);
+    VaccineRecord? pick = due.length == 1 ? due.first : null;
+    if (pick == null) {
+      pick = await showModalBottomSheet<VaccineRecord>(
+        context: context,
+        showDragHandle: true,
+        builder: (ctx) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Text(
+                  s.vaccDuePickTitle,
+                  style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ),
+              for (final v in due)
+                ListTile(
+                  leading: const Icon(Icons.vaccines_outlined, color: AppTheme.primaryPink),
+                  title: Text(v.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: Text('${s.vaccNext} ${_fmtVaccDay(v.nextDueAt)}'),
+                  onTap: () => Navigator.pop(ctx, v),
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      );
+    }
+    if (pick == null || !mounted) return;
+    await showVaccineDueConfirmSheet(context, record: pick, babyId: babyId);
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
@@ -1622,7 +1669,7 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                 icon: Icons.vaccines_outlined,
                 color: AppTheme.primaryPink,
                 label: s.homeBannerChipVaccine,
-                onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const VaccinesPage())),
+                onTap: _openVaccineDueFromBanner,
               ),
             if (critical.length >= 2)
               criticalChip(
@@ -2141,7 +2188,7 @@ class _BabyBannerForecastCard extends StatelessWidget {
                                   title,
                                   style: TextStyle(
                                     fontWeight: FontWeight.w900,
-                                    fontSize: portalSp(context, 12),
+                                    fontSize: portalSp(context, 15),
                                     color: AppTheme.textPrimary,
                                     height: 1.15,
                                   ),
@@ -2250,9 +2297,15 @@ class _BabyBannerTimelineCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       title,
-                      maxLines: 1,
+                      maxLines: 2,
+                      softWrap: true,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: portalSp(context, 11.5), color: AppTheme.textPrimary),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: portalSp(context, 14.5),
+                        color: AppTheme.textPrimary,
+                        height: 1.12,
+                      ),
                     ),
                   ),
                 ],
@@ -3009,7 +3062,12 @@ class _DevelopmentLeapHomeCard extends StatelessWidget {
                             titleLbl,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontWeight: FontWeight.w900, color: Colors.black.withAlpha(165)),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: portalSp(context, 16),
+                              color: Colors.black.withAlpha(165),
+                              height: 1.2,
+                            ),
                           ),
                         ),
                         Container(

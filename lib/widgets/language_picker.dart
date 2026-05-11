@@ -69,7 +69,7 @@ Future<void> showLanguagePicker(BuildContext context) async {
             children: [
               ListTile(
                 title: Text(s.language, style: const TextStyle(fontWeight: FontWeight.w900)),
-                subtitle: const Text('Português • English • Español • Français • Deutsch • Italiano • हिन्दी • Bahasa Indonesia • 日本語 • 한국어 • Русский • Türkçe • 中文'),
+                subtitle: const Text('Português • English • Español • Français • Deutsch • Italiano • 日本語 • 한국어 • 中文'),
               ),
               option(lang: AppLang.pt, label: 'Português (Brasil)', flag: '🇧🇷'),
               option(lang: AppLang.en, label: 'English (US)', flag: '🇺🇸'),
@@ -77,12 +77,8 @@ Future<void> showLanguagePicker(BuildContext context) async {
               option(lang: AppLang.fr, label: 'Français (FR)', flag: '🇫🇷'),
               option(lang: AppLang.de, label: 'Deutsch (DE)', flag: '🇩🇪'),
               option(lang: AppLang.it, label: 'Italiano (IT)', flag: '🇮🇹'),
-              option(lang: AppLang.hi, label: 'हिन्दी (IN)', flag: '🇮🇳'),
-              option(lang: AppLang.id, label: 'Bahasa Indonesia (ID)', flag: '🇮🇩'),
               option(lang: AppLang.ja, label: '日本語 (JP)', flag: '🇯🇵'),
               option(lang: AppLang.ko, label: '한국어 (KR)', flag: '🇰🇷'),
-              option(lang: AppLang.ru, label: 'Русский (RU)', flag: '🇷🇺'),
-              option(lang: AppLang.tr, label: 'Türkçe (TR)', flag: '🇹🇷'),
               option(lang: AppLang.zh, label: '中文 (简体)', flag: '🇨🇳'),
             ],
           ),

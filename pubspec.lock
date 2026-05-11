@@ -146,7 +146,7 @@ packages:
     source: hosted
     version: "0.3.5+2"
   crypto:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: crypto
       sha256: c8ea0233063ba03258fbcf2ca4d6dadfefe14f02fab57702265467a19f27fadf
@@ -613,8 +613,40 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.2"
-  intl:
+  in_app_purchase:
+    dependency: "direct main"
+    description:
+      name: in_app_purchase
+      sha256: "5cddd7f463f3bddb1d37a72b95066e840d5822d66291331d7f8f05ce32c24b6c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.2.3"
+  in_app_purchase_android:
     dependency: transitive
+    description:
+      name: in_app_purchase_android
+      sha256: "634bee4734b17fe55f370f0ac07a22431a9666e0f3a870c6d20350856e8bbf71"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.0+10"
+  in_app_purchase_platform_interface:
+    dependency: transitive
+    description:
+      name: in_app_purchase_platform_interface
+      sha256: "1d353d38251da5b9fea6635c0ebfc6bb17a2d28d0e86ea5e083bf64244f1fb4c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.0"
+  in_app_purchase_storekit:
+    dependency: transitive
+    description:
+      name: in_app_purchase_storekit
+      sha256: "1d512809edd9f12ff88fce4596a13a18134e2499013f4d6a8894b04699363c93"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.8+1"
+  intl:
+    dependency: "direct main"
     description:
       name: intl
       sha256: "3df61194eb431efc39c4ceba583b95633a403f46c9fd341e550ce0bfa50e9aa5"
@@ -741,6 +773,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  package_info_plus:
+    dependency: "direct main"
+    description:
+      name: package_info_plus
+      sha256: "16eee997588c60225bda0488b6dcfac69280a6b7a3cf02c741895dd370a02968"
+      url: "https://pub.dev"
+    source: hosted
+    version: "8.3.1"
+  package_info_plus_platform_interface:
+    dependency: transitive
+    description:
+      name: package_info_plus_platform_interface
+      sha256: "202a487f08836a592a6bd4f901ac69b3a8f146af552bbd14407b6b41e1c3f086"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.2.1"
   path:
     dependency: "direct main"
     description:
@@ -813,6 +861,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.12.0"
+  pdf_widget_wrapper:
+    dependency: transitive
+    description:
+      name: pdf_widget_wrapper
+      sha256: c930860d987213a3d58c7ec3b7ecf8085c3897f773e8dc23da9cae60a5d6d0f5
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.4"
   petitparser:
     dependency: transitive
     description:
@@ -861,6 +917,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.5.0"
+  printing:
+    dependency: "direct main"
+    description:
+      name: printing
+      sha256: "689170c9ddb1bda85826466ba80378aa8993486d3c959a71cd7d2d80cb606692"
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.14.3"
   process_run:
     dependency: transitive
     description:
@@ -965,6 +1029,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.4.1"
+  sign_in_with_apple:
+    dependency: "direct main"
+    description:
+      name: sign_in_with_apple
+      sha256: "5568378c3cc5993931955357d85e4c3344fa4365006915bdef965fa3de1dc0a5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "8.0.0"
+  sign_in_with_apple_platform_interface:
+    dependency: transitive
+    description:
+      name: sign_in_with_apple_platform_interface
+      sha256: "981bca52cf3bb9c3ad7ef44aace2d543e5c468bb713fd8dda4275ff76dfa6659"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.0"
+  sign_in_with_apple_web:
+    dependency: transitive
+    description:
+      name: sign_in_with_apple_web
+      sha256: f316400827f52cafcf50d00e1a2e8a0abc534ca1264e856a81c5f06bd5b10fed
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.0"
   simple_gesture_detector:
     dependency: transitive
     description:
@@ -1252,4 +1340,4 @@ packages:
     version: "3.1.3"
 sdks:
   dart: ">=3.11.0 <4.0.0"
-  flutter: ">=3.38.4"
+  flutter: ">=3.41.0"

@@ -8,6 +8,7 @@ import '../pages/feeding_hub_page.dart';
 import '../pages/growth_dashboard_page.dart';
 import '../pages/sleep_page.dart';
 import '../pages/consultations_page.dart';
+import '../pages/vaccines_page.dart';
 
 /// Payloads gravados ao mostrar notificações; ao tocar, navega para o separador certo no [ShellNestedNav].
 abstract final class NotificationNav {
@@ -77,6 +78,9 @@ abstract final class NotificationNav {
       case payloadSleep:
         pushOnTab(1, MaterialPageRoute<void>(builder: (_) => const SleepPage()));
         return;
+      case 'nav_vaccines':
+        pushOnTab(0, MaterialPageRoute<void>(builder: (_) => const VaccinesPage()));
+        return;
       default:
         if (payload.startsWith('nav_consultation:')) {
           final rawId = payload.substring('nav_consultation:'.length).trim();
@@ -86,6 +90,19 @@ abstract final class NotificationNav {
               0,
               MaterialPageRoute<void>(
                 builder: (_) => ConsultationsPage(openConsultationId: cid),
+              ),
+            );
+          }
+          return;
+        }
+        if (payload.startsWith('nav_vaccine:')) {
+          final rawId = payload.substring('nav_vaccine:'.length).trim();
+          final vid = int.tryParse(rawId);
+          if (vid != null) {
+            pushOnTab(
+              0,
+              MaterialPageRoute<void>(
+                builder: (_) => VaccinesPage(openVaccineId: vid),
               ),
             );
           }

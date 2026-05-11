@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../i18n/app_i18n.dart';
 import '../../models/memory_badge.dart';
 import '../../theme/app_theme.dart';
 
@@ -44,7 +45,8 @@ class MemoryBadgeIcon extends StatelessWidget {
 
     if (badge.isMonthlyBadge && badge.monthNumber != null) {
       final n = badge.monthNumber!;
-      final label = (n == 1) ? 'mês' : 'meses';
+      final s = S.of(context);
+      final unitLabel = n == 1 ? s.memoryBadgeMonthUnitSingular : s.memoryBadgeMonthUnitPlural;
       final inner = Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -53,7 +55,7 @@ class MemoryBadgeIcon extends StatelessWidget {
             style: TextStyle(fontWeight: FontWeight.w900, fontSize: size * 0.55, height: 1, color: fg),
           ),
           Text(
-            label,
+            unitLabel,
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: size * 0.22, height: 1, color: fg.withAlpha(160)),
           ),
         ],

@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app/app_locale.dart';
 import '../controllers/current_baby_controller.dart';
+import '../controllers/sleep_timer_controller.dart';
 import '../i18n/app_i18n.dart';
 import 'app_database.dart';
 import 'home_prefs.dart';
@@ -166,6 +167,16 @@ abstract final class ScheduledLocalReminders {
 
     if (HomePrefs.sleepAlertsEnabled.value) {
       final prefs = await SharedPreferences.getInstance();
+      await SleepTimerController.instance.init();
+      final babyIsInSleepSession = SleepTimerController.instance.isTracking &&
+          SleepTimerController.instance.babyId == babyId;
+
+      if (babyIsInSleepSession) {
+        // Sono a decorrer (cronómetro): não avisar “hora de dormir” — a BD ainda tem o fim do sono anterior.
+        await svc.cancelNotificationIds([sleepApproachId, sleepOverdueId]);
+        await prefs.remove(_prefsKeySleepSigV2);
+        await prefs.remove(_prefsKeySleepMissedCatchupSnoozeMs);
+      } else {
       final row = CurrentBabyController.instance.currentBabyRow;
       final birthRaw = row?['birth_date'] as String?;
       final birth = DateTime.tryParse(birthRaw ?? '');
@@ -239,6 +250,7 @@ abstract final class ScheduledLocalReminders {
 
           if (approachStillAhead || overdueStillAhead) await prefs.remove(_prefsKeySleepMissedCatchupSnoozeMs);
         }
+      }
       }
     } else {
       await svc.cancelNotificationIds([sleepApproachId, sleepOverdueId]);

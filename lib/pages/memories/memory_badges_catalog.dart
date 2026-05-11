@@ -26,6 +26,14 @@ class MemoryBadgesCatalog {
     return _fixedPastels[id] ?? _pastels[sortIndex % _pastels.length];
   }
 
+  /// Resolve badge metadata by stable id (for localized titles via [S.memoryBadgeTitle]).
+  static MemoryBadge? findBadgeById(String id) {
+    for (final b in all()) {
+      if (b.id == id) return b;
+    }
+    return null;
+  }
+
   static List<MemoryBadge> all() {
     final out = <MemoryBadge>[];
     var sort = 0;

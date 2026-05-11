@@ -7,18 +7,18 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:91181989163:android:5f4ca3cf26c344677c596e",
+        "mobilesdk_app_id": "1:91181989163:android:89025eca471f02e97c596e",
         "android_client_info": {
-          "package_name": "com.example.facebaby_flutter"
+          "package_name": "com.facebaby.app"
         }
       },
       "oauth_client": [
         {
-          "client_id": "91181989163-qgmmg1kcbqgimie8g9i7aj23ttup72r9.apps.googleusercontent.com",
+          "client_id": "91181989163-f6atafo61co2ldo9vobmlnjjnltc50fn.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.example.facebaby_flutter",
-            "certificate_hash": "43519140df25c49f253262c023a5bc5d1aafa532"
+            "package_name": "com.facebaby.app",
+            "certificate_hash": "85613811e030366068c120dc8b8c24ecf6ce6d85"
           }
         },
         {

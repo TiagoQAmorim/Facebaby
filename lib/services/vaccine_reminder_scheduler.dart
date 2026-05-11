@@ -21,8 +21,8 @@ class VaccineReminderScheduler {
 
   static int notificationId(int vaccineId) => _notificationIdBase + vaccineId;
 
-  /// Payload para [NotificationNav]: abre a tela de vacinas (por enquanto sem deep-link para o item).
-  static String get payload => 'nav_vaccines';
+  /// Payload para [NotificationNav]: abre detalhe desta vacina (`nav_vaccine:<id>`).
+  static String payloadFor(int vaccineId) => 'nav_vaccine:$vaccineId';
 
   static Set<int> _parseIdSet(String? raw) {
     final out = <int>{};
@@ -98,7 +98,7 @@ class VaccineReminderScheduler {
           title: strings.vaccineReminderNotifTitle,
           body: strings.vaccineReminderNotifBody(r.name),
           whenLocal: when,
-          payload: payload,
+          payload: payloadFor(r.id),
         );
       }
 

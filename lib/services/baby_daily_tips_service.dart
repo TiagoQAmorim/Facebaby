@@ -26,10 +26,20 @@ abstract final class BabyDailyTipsService {
   }
 
   static String _resolvedBody(BabyDailyTip tip, AppLang lang) {
-    if (lang == AppLang.pt) return tip.text.trim();
-    final en = tip.textEn?.trim();
-    if (en != null && en.isNotEmpty) return en;
-    return tip.text.trim();
+    switch (lang) {
+      case AppLang.pt:
+        return tip.text.trim();
+      case AppLang.es:
+        final es = tip.textEs?.trim();
+        if (es != null && es.isNotEmpty) return es;
+        final enEs = tip.textEn?.trim();
+        if (enEs != null && enEs.isNotEmpty) return enEs;
+        return tip.text.trim();
+      default:
+        final en = tip.textEn?.trim();
+        if (en != null && en.isNotEmpty) return en;
+        return tip.text.trim();
+    }
   }
 
   static Future<List<BabyDailyTip>> tips() {

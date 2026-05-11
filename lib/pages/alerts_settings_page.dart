@@ -4,8 +4,10 @@ import '../controllers/current_baby_controller.dart';
 import '../i18n/app_i18n.dart';
 import '../services/home_prefs.dart';
 import '../services/sleep_routine.dart';
+import '../services/premium/premium_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/android_exact_alarm_card.dart';
+import 'premium/premium_paywall_screen.dart';
 
 /// **Mais › Alertas**: regras explicadas e preferências de lembretes locais.
 class AlertsSettingsPage extends StatelessWidget {
@@ -25,6 +27,60 @@ class AlertsSettingsPage extends StatelessWidget {
               Text(
                 s.alertsScreenIntro,
                 style: TextStyle(fontSize: 14, height: 1.4, fontWeight: FontWeight.w600, color: Colors.black.withAlpha(145)),
+              ),
+              ListenableBuilder(
+                listenable: PremiumService.instance,
+                builder: (context, _) {
+                  if (PremiumService.instance.isPremium) return const SizedBox.shrink();
+                  final accent = Color.lerp(AppTheme.primary, AppTheme.primaryPurple, 0.35)!;
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 14),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(18),
+                        onTap: () => openPremiumPaywall(context),
+                        child: Ink(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(18),
+                            gradient: LinearGradient(
+                              colors: [
+                                accent.withAlpha(26),
+                                AppTheme.mint.withAlpha(40),
+                              ],
+                            ),
+                            border: Border.all(color: accent.withAlpha(55)),
+                          ),
+                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.nights_stay_rounded, color: accent),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      s.plusBrandTitle,
+                                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: accent),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      s.settingsPlusCardBodyFree,
+                                      style: TextStyle(fontSize: 12.5, height: 1.35, fontWeight: FontWeight.w600, color: Colors.black.withAlpha(145)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(Icons.chevron_right_rounded, color: accent.withAlpha(200)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 16),
               const AndroidExactAlarmCard(),
