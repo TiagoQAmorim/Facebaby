@@ -6,16 +6,20 @@ import '../app/app_locale.dart';
 import '../controllers/current_baby_controller.dart';
 import '../controllers/sleep_timer_controller.dart';
 import '../i18n/app_i18n.dart';
+import '../models/consultation_record.dart';
+import '../models/vaccine_record.dart';
 import 'app_database.dart';
 import 'diaper_events.dart';
 import 'feeding_events.dart';
 import 'growth_events.dart';
+import 'home_critical_notifications.dart';
 import 'home_prefs.dart';
 import 'sleep_events.dart';
 import 'local_notifications_service.dart';
 import 'notification_nav.dart';
 import 'consultation_reminder_scheduler.dart';
 import 'scheduled_local_reminders.dart';
+import 'sleep_routine.dart';
 import 'health_calendar_events.dart';
 import 'vaccine_reminder_scheduler.dart';
 
@@ -26,6 +30,9 @@ class ReminderMonitor {
 
   Timer? _timer;
   bool _started = false;
+
+  /// Garante que [_runCheck] não corre em paralelo (vários listeners + resume + timer).
+  Future<void> _checkChain = Future<void>.value();
 
   int? _growthAlertsBabyId;
   int? _lastWeightLossNotifiedRecordId;
@@ -48,9 +55,9 @@ class ReminderMonitor {
     SleepEvents.revision.addListener(_kick);
     SleepTimerController.instance.addListener(_kick);
 
-    // Periodic check while app is open.
-    _timer = Timer.periodic(const Duration(minutes: 1), (_) => _check());
-    _check();
+    // Periodic check while app is open (sem fallback consulta/vacina — evita som a repetir).
+    _timer = Timer.periodic(const Duration(minutes: 1), (_) => _check(includeConsultVaccFallback: false));
+    _check(includeConsultVaccFallback: true);
   }
 
   void stop() {
@@ -74,14 +81,23 @@ class ReminderMonitor {
   }
 
   void onAppResumed() {
-    _check();
+    _check(includeConsultVaccFallback: true);
   }
 
   void _kick() {
-    _check();
+    _check(includeConsultVaccFallback: true);
   }
 
-  Future<void> _check() async {
+  /// [includeConsultVaccFallback]: falso no timer periódico — o push imediato partilha ID
+  /// com o lembrete agendado da vacina e, em alguns SO, cada `show()` volta a tocar som.
+  Future<void> _check({bool includeConsultVaccFallback = true}) {
+    _checkChain = _checkChain.catchError((Object e, StackTrace st) {
+      debugPrint('ReminderMonitor._check chain: $e\n$st');
+    }).then((_) => _runCheck(includeConsultVaccFallback: includeConsultVaccFallback));
+    return _checkChain;
+  }
+
+  Future<void> _runCheck({required bool includeConsultVaccFallback}) async {
     final babyId = CurrentBabyController.instance.currentBabyId;
 
     if (babyId != _growthAlertsBabyId) {
@@ -95,6 +111,17 @@ class ReminderMonitor {
       debugPrint('ReminderMonitor.sync: $e\n$st');
     }
 
+    // Fallback robusto — usa `svc.show()` (igual ao botão de teste imediato) sempre
+    // que detectar estado crítico, mesmo se [ScheduledLocalReminders.sync] foi
+    // recusado pelo AlarmManager. Partilha dedup com o sync para nunca duplicar.
+    if (babyId != null) {
+      try {
+        await _kickCriticalNotifications(babyId);
+      } catch (e, st) {
+        debugPrint('ReminderMonitor._kickCriticalNotifications: $e\n$st');
+      }
+    }
+
     if (babyId != null) {
       try {
         await ConsultationReminderScheduler.instance.rescheduleForBaby(babyId);
@@ -105,6 +132,13 @@ class ReminderMonitor {
         await VaccineReminderScheduler.instance.rescheduleForBaby(babyId);
       } catch (e, st) {
         debugPrint('ReminderMonitor.vaccines: $e\n$st');
+      }
+      if (includeConsultVaccFallback) {
+        try {
+          await _kickConsultationVaccineFallback(babyId);
+        } catch (e, st) {
+          debugPrint('ReminderMonitor.consultVaccFallback: $e\n$st');
+        }
       }
     }
 
@@ -146,6 +180,85 @@ class ReminderMonitor {
     } else {
       _lastWeightLossNotifiedRecordId = null;
     }
+  }
+
+  /// Calcula o mesmo estado “crítico” que o banner da Home e dispara notificações
+  /// imediatas via [HomeCriticalNotifications] (com dedup partilhado).
+  Future<void> _kickCriticalNotifications(int babyId) async {
+    final now = DateTime.now();
+    final db = AppDatabase.instance;
+
+    bool feedCritical = false;
+    if (HomePrefs.feedingAlertsEnabled.value) {
+      final lastFeed = await db.latestBreastOrBottleFeedingEndedAt(babyId: babyId);
+      if (lastFeed != null) {
+        final intervalMin = await HomePrefs.getFeedingAlertIntervalMinutes();
+        final effective = intervalMin < 20 ? 20 : intervalMin;
+        feedCritical = now.difference(lastFeed).inMinutes >= effective;
+      }
+    }
+
+    bool sleepCritical = false;
+    if (HomePrefs.sleepAlertsEnabled.value) {
+      final timer = SleepTimerController.instance;
+      final inSession = timer.isTracking && timer.babyId == babyId;
+      if (!inSession) {
+        final lastSleepEnd = await db.latestCompletedSleepEnd(babyId: babyId);
+        if (lastSleepEnd != null) {
+          final row = await db.getBabyById(babyId);
+          final birthStr = row?['birth_date'] as String?;
+          final birth = DateTime.tryParse(birthStr ?? '');
+          final months = SleepRoutine.monthsOld(birth);
+          final w = SleepRoutine.windowForMonths(months);
+          final maxAwake = (HomePrefs.sleepAwakeMaxOverrideMinutes.value > 0)
+              ? HomePrefs.sleepAwakeMaxOverrideMinutes.value
+              : w.maxAwakeMin;
+          sleepCritical = now.difference(lastSleepEnd).inMinutes >= maxAwake;
+        }
+      }
+    }
+
+    bool diaperCritical = false;
+    if (HomePrefs.diaperAlertsEnabled.value) {
+      final lastDiaper = await db.latestDiaperChangedAt(babyId: babyId);
+      if (lastDiaper != null) {
+        diaperCritical = now.difference(lastDiaper).inMinutes >= 210;
+      }
+    }
+
+    if (!feedCritical && !sleepCritical && !diaperCritical) return;
+    await HomeCriticalNotifications.instance.kickFromBannerVisible(
+      babyId: babyId,
+      feedingCritical: feedCritical,
+      sleepCritical: sleepCritical,
+      diaperCritical: diaperCritical,
+    );
+  }
+
+  /// Mesma lógica que os chips de consulta / vacina na Home: push imediato se o SO
+  /// não entregou o agendamento (`scheduleZoned`).
+  Future<void> _kickConsultationVaccineFallback(int babyId) async {
+    final now = DateTime.now();
+    final db = AppDatabase.instance;
+
+    ConsultationRecord? consultToday;
+    final consultRow = await db.nextUpcomingConsultation(babyId: babyId);
+    if (consultRow != null) {
+      final c = ConsultationRecord.fromRow(consultRow);
+      if (ConsultationReminderScheduler.shouldShowDayOfBanner(c, now)) {
+        consultToday = c;
+      }
+    }
+
+    final dayStart = DateTime(now.year, now.month, now.day);
+    final vaccRows = await db.listVaccinesDueOnCalendarDay(babyId: babyId, calendarDay: dayStart);
+    final vaccines = vaccRows.map(VaccineRecord.fromRow).toList();
+
+    await HomeCriticalNotifications.instance.kickConsultationAndVaccineFromBanner(
+      babyId: babyId,
+      consultationToday: consultToday,
+      vaccinesDueToday: vaccines,
+    );
   }
 }
 

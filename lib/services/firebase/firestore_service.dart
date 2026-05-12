@@ -487,5 +487,15 @@ class FirestoreService {
   Stream<DocumentSnapshot<Map<String, dynamic>>> weeklyPhotoSpotlightSnapshots() {
     return _weeklyPhotoContestsCol().doc('spotlight_current').snapshots();
   }
+
+  /// Fallback público para a Home: lista as últimas memórias públicas (ordenadas por
+  /// `publicEnabledAt` desc) — usado quando `spotlight_current` está em falta/inativo.
+  /// O cliente filtra por `photoUrl != null/vazio` no chamador.
+  Stream<QuerySnapshot<Map<String, dynamic>>> publicMemoriesLatestSnapshots({int limit = 20}) {
+    return _publicMemoriesCol()
+        .orderBy('publicEnabledAt', descending: true)
+        .limit(limit)
+        .snapshots();
+  }
 }
 

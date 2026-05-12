@@ -17,7 +17,7 @@ import '../../theme/app_theme.dart';
 import '../../utils/measurement_format.dart';
 import '../../utils/memory_share_transport.dart';
 import '../../utils/pediatric_report_pdf.dart';
-import '../../utils/symptom_report_format.dart';
+import '../../utils/pediatric_report_symptom_lines.dart';
 import '../../utils/portal_layout.dart';
 import '../premium/premium_paywall_screen.dart';
 
@@ -165,19 +165,6 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
     }
   }
 
-  String _irritLabel(S s, String key) {
-    switch (key) {
-      case 'high':
-        return s.reportPediatricIrritHigh;
-      case 'low':
-        return s.reportPediatricIrritLow;
-      case 'medium':
-        return s.reportPediatricIrritMedium;
-      default:
-        return s.reportPediatricIrritUnknown;
-    }
-  }
-
   String _weightGainLabel(PediatricReportSnapshot snap) {
     final g = snap.weightDeltaGrams;
     if (g == null) return '—';
@@ -205,8 +192,6 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
       labelAvgFeeds: s.reportPediatricAvgFeeds,
       labelAvgSleep: s.reportPediatricAvgSleep,
       labelAvgDiapers: s.reportPediatricAvgDiapers,
-      labelFever: s.reportPediatricFeverEpisodes,
-      labelMedications: s.reportPediatricMedications,
       labelVaccines: s.reportPediatricVaccines,
       labelSleepAvgDay: s.reportPediatricSleepAvgDaily,
       labelSleepAwakenings: s.reportPediatricSleepAwakenings,
@@ -217,15 +202,7 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
       labelFeedSolid: s.reportPediatricFeedingSolid,
       labelFeedSessions: s.reportPediatricFeedingSessions,
       labelAvgDuration: s.reportPediatricFeedingAvgDur,
-      labelSymptomReflux: s.reportPediatricSymptomReflux,
-      labelSymptomColic: s.reportPediatricSymptomColic,
-      labelSymptomIrrit: s.reportPediatricSymptomIrrit,
-      labelSymptomCrying: s.reportPediatricSymptomCrying,
-      labelSymptomPain: s.reportPediatricSymptomPain,
-      labelStructuredSymptoms: s.reportPediatricStructuredSymptoms,
-      structuredSymptomsEmpty: s.reportPediatricStructuredSymptomsEmpty,
-      yes: s.reportPediatricYes,
-      no: s.reportPediatricNo,
+      symptomDetailsEmpty: s.reportPediatricStructuredSymptomsEmpty,
       na: s.reportPediatricNa,
       footerDisclaimer: s.reportPediatricPdfFooter,
       noneRegistered: s.reportPediatricNone,
@@ -247,13 +224,8 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
     final periodLine =
         _periodRangeLabel(context, snap.periodStart, snap.periodEndInclusive);
 
-    final meds = snap.customMedicationHints.isEmpty
-        ? s.reportPediatricNone
-        : snap.customMedicationHints.join('; ');
-
-    final structuredLines = snap.symptomReportsInPeriod
-        .map((r) => SymptomReportFormat.summaryLine(s, r, loc))
-        .toList();
+    final symptomBlocks =
+        PediatricReportSymptomLines.buildBlocks(s, snap.symptomOccurrencesByKind, loc);
 
     return buildPediatricReportPdf(
       snap: snap,
@@ -267,10 +239,7 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
       weightGainFmt: _weightGainLabel(snap),
       heightFmt: MeasurementFormat.length(snap.heightCm),
       sleepPatternText: _sleepPattern(s, snap),
-      irritabilityText: _irritLabel(s, snap.irritabilityKey),
-      medicationsLine: meds,
-      feverEpisodesText: '${snap.feverEpisodesLogged}',
-      structuredSymptomLines: structuredLines,
+      symptomDetailBlocks: symptomBlocks,
       str: _pdfStrings(s),
     );
   }
@@ -396,16 +365,17 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
     );
   }
 
-  String _fmtDay(DateTime d) {
+  String _fmtDayShort(DateTime d) {
     final loc = Localizations.localeOf(context).toString();
     try {
-      return DateFormat.yMMMd(loc).format(d);
+      return DateFormat.yMd(loc).format(d);
     } catch (_) {
       return '${d.day}/${d.month}/${d.year}';
     }
   }
 
   Widget _rangeFilterCard(S s) {
+    final rangeLine = _periodRangeLabel(context, _rangeStart, _rangeEnd);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(
@@ -420,7 +390,7 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
                   child: Column(
@@ -434,67 +404,50 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
                           color: _clinicalPurple,
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  s.reportPediatricDateFrom,
-                                  style: TextStyle(
-                                      color: AppTheme.textMuted,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: portalSp(context, 12)),
-                                ),
-                                Text(
-                                  _fmtDay(_rangeStart),
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: portalSp(context, 15),
-                                      color: AppTheme.textPrimary),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  s.reportPediatricDateTo,
-                                  style: TextStyle(
-                                      color: AppTheme.textMuted,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: portalSp(context, 12)),
-                                ),
-                                Text(
-                                  _fmtDay(_rangeEnd),
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: portalSp(context, 15),
-                                      color: AppTheme.textPrimary),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 8),
+                      Text(
+                        rangeLine,
+                        maxLines: 2,
+                        softWrap: true,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: portalSp(context, 15),
+                          height: 1.25,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        (_rangeStart.year == _rangeEnd.year &&
+                                _rangeStart.month == _rangeEnd.month &&
+                                _rangeStart.day == _rangeEnd.day)
+                            ? '${s.reportPediatricDateFrom} ${_fmtDayShort(_rangeStart)}'
+                            : '${s.reportPediatricDateFrom} ${_fmtDayShort(_rangeStart)} · ${s.reportPediatricDateTo} ${_fmtDayShort(_rangeEnd)}',
+                        maxLines: 2,
+                        softWrap: true,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: portalSp(context, 11.5),
+                          color: AppTheme.textMuted,
+                          fontWeight: FontWeight.w600,
+                          height: 1.2,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         s.reportPediatricFilterMaxDaysHint,
                         style: TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.textMuted,
-                            height: 1.25),
+                          fontSize: 11,
+                          color: AppTheme.textMuted,
+                          height: 1.25,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                Icon(Icons.edit_calendar_outlined,
-                    color: _clinicalPurple, size: 22),
+                const SizedBox(width: 8),
+                Icon(Icons.edit_calendar_outlined, color: _clinicalPurple, size: 24),
               ],
             ),
           ),
@@ -601,22 +554,11 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
                                 s),
                             _row(s.reportPediatricAvgDiapers,
                                 snap.avgDiapersPerDay.toStringAsFixed(1), s),
-                            _row(s.reportPediatricFeverEpisodes,
-                                '${snap.feverEpisodesLogged}', s),
-                            _row(s.reportPediatricFeverNote,
-                                s.reportPediatricFeverFootnote, s),
                             _row(
                               s.reportPediatricVaccines,
                               snap.vaccinesInPeriodLines.isEmpty
                                   ? s.reportPediatricNone
                                   : snap.vaccinesInPeriodLines.join('\n'),
-                              s,
-                            ),
-                            _row(
-                              s.reportPediatricMedications,
-                              snap.customMedicationHints.isEmpty
-                                  ? s.reportPediatricNone
-                                  : snap.customMedicationHints.join('; '),
                               s,
                             ),
                           ],
@@ -637,8 +579,9 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
                                   : snap.sleepAwakeningsAvg.toStringAsFixed(1),
                               s,
                             ),
-                            _row(s.reportPediatricSleepPattern,
-                                _sleepPattern(s, snap), s),
+                            if (snap.hasSleepPatternBasis)
+                              _row(s.reportPediatricSleepPattern,
+                                  _sleepPattern(s, snap), s),
                             _row(
                                 s.reportPediatricSleepLongest,
                                 WeeklyReportService.formatHoursMinutes(
@@ -671,43 +614,8 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
                         _clinicalCard(
                           title: s.reportPediatricSectionSymptoms,
                           children: [
-                            _row(
-                                s.reportPediatricSymptomReflux,
-                                snap.refluxMentionedInJournals
-                                    ? s.reportPediatricYes
-                                    : s.reportPediatricNo,
-                                s),
-                            _row(
-                                s.reportPediatricSymptomColic,
-                                snap.colicMentionedInJournals
-                                    ? s.reportPediatricYes
-                                    : s.reportPediatricNo,
-                                    s),
-                            _row(s.reportPediatricSymptomIrrit,
-                                _irritLabel(s, snap.irritabilityKey), s),
-                            _row(
-                                s.reportPediatricSymptomCrying,
-                                snap.cryingNotedInSymptomReports
-                                    ? s.reportPediatricYes
-                                    : s.reportPediatricNo,
-                                s),
-                            _row(
-                                s.reportPediatricSymptomPain,
-                                snap.painNotedInSymptomReports
-                                    ? s.reportPediatricYes
-                                    : s.reportPediatricNo,
-                                s),
-                            const SizedBox(height: 10),
-                            Text(
-                              s.reportPediatricStructuredSymptoms,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: portalSp(context, 13),
-                                color: _clinicalPurple,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            if (snap.symptomReportsInPeriod.isEmpty)
+                            if (!PediatricReportSymptomLines.hasAnyOccurrence(
+                                snap.symptomOccurrencesByKind))
                               Text(
                                 s.reportPediatricStructuredSymptomsEmpty,
                                 style: TextStyle(
@@ -717,17 +625,20 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
                                 ),
                               )
                             else
-                              ...snap.symptomReportsInPeriod.map(
-                                (r) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
+                              ...PediatricReportSymptomLines.buildBlocks(
+                                      s, snap.symptomOccurrencesByKind, loc)
+                                  .map(
+                                (block) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 14),
                                   child: Align(
                                     alignment: Alignment.centerLeft,
                                     child: Text(
-                                      '• ${SymptomReportFormat.summaryLine(s, r, loc)}',
+                                      block,
                                       style: TextStyle(
                                         fontSize: portalSp(context, 13),
-                                        height: 1.35,
+                                        height: 1.4,
                                         color: AppTheme.textPrimary,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ),

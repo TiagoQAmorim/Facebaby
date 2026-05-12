@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -66,12 +68,7 @@ class LocalNotificationsService {
   /// Só inicializa o plugin — **não** pede permissão (evita duplicar com [requestPermission]).
 
   Future<void> ensureCoreInitialized() async {
-
     if (_coreInitialized || kIsWeb) return;
-
-    _coreInitialized = true;
-
-
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -79,18 +76,22 @@ class LocalNotificationsService {
 
     const initSettings = InitializationSettings(android: android, iOS: ios);
 
-    await _plugin.initialize(
-      initSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) {
-        NotificationNav.scheduleOpen(response.payload);
-      },
-    );
+    try {
+      await _plugin.initialize(
+        initSettings,
+        onDidReceiveNotificationResponse: (NotificationResponse response) {
+          NotificationNav.scheduleOpen(response.payload);
+        },
+      );
 
-    final launch = await _plugin.getNotificationAppLaunchDetails();
-    if (launch?.didNotificationLaunchApp ?? false) {
-      NotificationNav.scheduleOpen(launch!.notificationResponse?.payload);
+      final launch = await _plugin.getNotificationAppLaunchDetails();
+      if (launch?.didNotificationLaunchApp ?? false) {
+        NotificationNav.scheduleOpen(launch!.notificationResponse?.payload);
+      }
+      _coreInitialized = true;
+    } catch (e, st) {
+      debugPrint('LocalNotificationsService.ensureCoreInitialized failed: $e\n$st');
     }
-
   }
 
 
@@ -160,80 +161,85 @@ class LocalNotificationsService {
 
 
   Future<void> show({
-
     required int id,
-
     required String title,
-
     required String body,
-
     String? payload,
-
   }) async {
-
     if (kIsWeb) return;
-
     await ensureCoreInitialized();
-
+    if (!_coreInitialized) {
+      debugPrint('LocalNotificationsService.show($id): plugin not initialized — bailing out.');
+      return;
+    }
     final details = _reminderChannelDetails();
-
-    await _plugin.show(id, title, body, details, payload: payload);
-    await _persistNotificationLog(
+    try {
+      await _plugin.show(id, title, body, details, payload: payload);
+    } catch (e, st) {
+      debugPrint('LocalNotificationsService.show($id) failed: $e\n$st');
+      return;
+    }
+    // Log da BD em background — uma falha aqui NUNCA pode bloquear o show
+    // (já entregue ao SO acima). Veja [_persistNotificationLog].
+    unawaited(_persistNotificationLog(
       notifId: id,
       title: title,
       body: body,
       payload: payload,
       kind: 'shown',
       occurredAt: DateTime.now(),
-    );
-
+    ));
   }
 
   Future<void> showGrowthAlert({
-
     required int id,
-
     required String title,
-
     required String body,
-
     String? payload,
-
   }) async {
-
     if (kIsWeb) return;
-
     await ensureCoreInitialized();
-
+    if (!_coreInitialized) {
+      debugPrint('LocalNotificationsService.showGrowthAlert($id): plugin not initialized — bailing out.');
+      return;
+    }
     final details = _growthChannelDetails();
-
-    await _plugin.show(id, title, body, details, payload: payload);
-    await _persistNotificationLog(
+    try {
+      await _plugin.show(id, title, body, details, payload: payload);
+    } catch (e, st) {
+      debugPrint('LocalNotificationsService.showGrowthAlert($id) failed: $e\n$st');
+      return;
+    }
+    unawaited(_persistNotificationLog(
       notifId: id,
       title: title,
       body: body,
       payload: payload,
       kind: 'shown',
       occurredAt: DateTime.now(),
-    );
-
+    ));
   }
 
   static const List<int> legacyImmediateReminderIds = [1001, 1002, 1005, 1006];
 
-  /// Agendamento real do SO (dispara com app fechado). Requer [NotificationTimezone.init] antes.
-  Future<void> scheduleZoned({
+  /// Devolve **true** se o SO aceitou o agendamento; **false** se falhou por completo (sem excepção
+  /// em alguns Android — antes isto era silencioso).
+  Future<bool> scheduleZoned({
     required int id,
     required String title,
     required String body,
     required DateTime whenLocal,
     String? payload,
   }) async {
-    if (kIsWeb) return;
+    if (kIsWeb) return false;
     if (defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS) {
-      return;
+      return false;
     }
     await ensureCoreInitialized();
+    if (!_coreInitialized) {
+      debugPrint('LocalNotificationsService.scheduleZoned($id): plugin not initialized — bailing out.');
+      return false;
+    }
     await NotificationTimezone.init();
 
     var when = whenLocal;
@@ -244,7 +250,13 @@ class LocalNotificationsService {
 
     final details = _reminderChannelDetails();
 
-    final tzWhen = tz.TZDateTime.from(when, tz.local);
+    final tz.TZDateTime tzWhen;
+    try {
+      tzWhen = tz.TZDateTime.from(when, tz.local);
+    } catch (e, st) {
+      debugPrint('LocalNotificationsService.scheduleZoned($id): tz.TZDateTime.from failed: $e\n$st');
+      return false;
+    }
     Future<void> scheduleWithMode(AndroidScheduleMode androidMode) {
       return _plugin.zonedSchedule(
         id,
@@ -258,38 +270,58 @@ class LocalNotificationsService {
       );
     }
 
-    Future<void> logScheduled() => _persistNotificationLog(
-          notifId: id,
-          title: title,
-          body: body,
-          payload: payload,
-          kind: 'scheduled',
-          occurredAt: when,
-        );
+    void logScheduled() {
+      unawaited(_persistNotificationLog(
+        notifId: id,
+        title: title,
+        body: body,
+        payload: payload,
+        kind: 'scheduled',
+        occurredAt: when,
+      ));
+    }
 
     if (defaultTargetPlatform == TargetPlatform.android) {
-      // Ordem: exato → inexact+idle → inexact simples (máxima hipótese de o AlarmManager aceitar).
       try {
         await scheduleWithMode(AndroidScheduleMode.exactAllowWhileIdle);
-        await logScheduled();
-        return;
-      } on PlatformException catch (_) {
-        // Permissão negada ou OEM — tenta modos mais permissivos abaixo.
-      } catch (_) {}
+        logScheduled();
+        debugPrint('LocalNotificationsService.scheduleZoned($id): scheduled exactAllowWhileIdle for $tzWhen');
+        return true;
+      } on PlatformException catch (e) {
+        debugPrint('LocalNotificationsService.scheduleZoned($id): exactAllowWhileIdle PlatformException: $e — tentando inexactAllowWhileIdle');
+      } catch (e, st) {
+        debugPrint('LocalNotificationsService.scheduleZoned($id): exactAllowWhileIdle failed: $e\n$st — tentando inexactAllowWhileIdle');
+      }
 
       try {
         await scheduleWithMode(AndroidScheduleMode.inexactAllowWhileIdle);
-        await logScheduled();
-        return;
-      } catch (_) {}
+        logScheduled();
+        debugPrint('LocalNotificationsService.scheduleZoned($id): scheduled inexactAllowWhileIdle for $tzWhen');
+        return true;
+      } catch (e, st) {
+        debugPrint('LocalNotificationsService.scheduleZoned($id): inexactAllowWhileIdle failed: $e\n$st — tentando inexact');
+      }
 
-      await scheduleWithMode(AndroidScheduleMode.inexact);
-      await logScheduled();
-      return;
+      try {
+        await scheduleWithMode(AndroidScheduleMode.inexact);
+        logScheduled();
+        debugPrint('LocalNotificationsService.scheduleZoned($id): scheduled inexact for $tzWhen');
+        return true;
+      } catch (e, st) {
+        debugPrint('LocalNotificationsService.scheduleZoned($id): ALL modes failed: $e\n$st');
+        return false;
+      }
     }
 
-    await scheduleWithMode(AndroidScheduleMode.exactAllowWhileIdle);
-    await logScheduled();
+    try {
+      await scheduleWithMode(AndroidScheduleMode.exactAllowWhileIdle);
+      logScheduled();
+      debugPrint('LocalNotificationsService.scheduleZoned($id): scheduled (iOS) for $tzWhen');
+      return true;
+    } catch (e, st) {
+      debugPrint('LocalNotificationsService.scheduleZoned($id): iOS schedule failed: $e\n$st');
+      return false;
+    }
   }
 
   Future<void> _persistNotificationLog({
@@ -304,15 +336,22 @@ class LocalNotificationsService {
     try {
       final raw = FirebaseAuth.instance.currentUser?.uid ?? 'anonymous';
       final uid = raw.trim().isEmpty ? 'anonymous' : raw.trim();
-      await AppDatabase.instance.insertNotificationLog(
-        notifId: notifId,
-        uid: uid,
-        title: title,
-        body: body,
-        payload: payload,
-        kind: kind,
-        occurredAt: occurredAt,
-      );
+      // Timeout defensivo: se a BD ficar bloqueada (lock contention, init parado),
+      // **não** podemos manter a referência presa — isto corre em paralelo com
+      // o agendamento real do SO (via `unawaited(...)`) e é apenas observabilidade.
+      await AppDatabase.instance
+          .insertNotificationLog(
+            notifId: notifId,
+            uid: uid,
+            title: title,
+            body: body,
+            payload: payload,
+            kind: kind,
+            occurredAt: occurredAt,
+          )
+          .timeout(const Duration(seconds: 5));
+    } on TimeoutException catch (e) {
+      debugPrint('LocalNotificationsService._persistNotificationLog timeout: $e');
     } catch (e, st) {
       debugPrint('LocalNotificationsService._persistNotificationLog failed: $e\n$st');
     }

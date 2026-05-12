@@ -20,6 +20,7 @@ import '../../utils/photo_b64.dart';
 import '../../utils/portal_layout.dart';
 import '../../utils/weekly_photo_schedule.dart';
 import '../../utils/measurement_format.dart';
+import '../../widgets/memories/cached_memory_photo.dart';
 import '../../widgets/memories/memory_badge_icon.dart';
 import '../../widgets/memories/memory_share_card.dart';
 import 'add_memory_page.dart';
@@ -115,10 +116,19 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
 
   Future<void> _downloadSharePhotoForExport(String url) async {
     try {
-      final resp = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
+      Uint8List? out;
+      try {
+        final file = await memoryPhotoCacheManager.getSingleFile(url);
+        out = await file.readAsBytes();
+      } catch (_) {
+        final resp = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
+        if (resp.statusCode >= 200 && resp.statusCode < 300 && resp.bodyBytes.isNotEmpty) {
+          out = resp.bodyBytes;
+        }
+      }
       if (!mounted) return;
-      if (resp.statusCode >= 200 && resp.statusCode < 300 && resp.bodyBytes.isNotEmpty) {
-        setState(() => _sharePhotoResolved = resp.bodyBytes);
+      if (out != null && out.isNotEmpty) {
+        setState(() => _sharePhotoResolved = out);
       }
     } catch (e, st) {
       debugPrint('share photo download failed: $e\n$st');
@@ -157,6 +167,50 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
             children: [
               PhotoView(
                 imageProvider: MemoryImage(bytes),
+                gaplessPlayback: true,
+                minScale: PhotoViewComputedScale.contained * 0.85,
+                maxScale: PhotoViewComputedScale.covered * 4,
+                initialScale: PhotoViewComputedScale.contained,
+                backgroundDecoration: const BoxDecoration(color: Colors.black),
+                loadingBuilder: (c, event) => const Center(
+                  child: CircularProgressIndicator(color: Colors.white54),
+                ),
+                filterQuality: FilterQuality.medium,
+                customSize: sz,
+              ),
+              Positioned(
+                top: pad.top + 8,
+                right: 12,
+                child: IconButton(
+                  style: IconButton.styleFrom(backgroundColor: Colors.black.withAlpha(140)),
+                  icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _openFullPhotoFromNetworkUrl(BuildContext context, String url) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      useSafeArea: false,
+      barrierColor: Colors.black,
+      builder: (ctx) {
+        final pad = MediaQuery.paddingOf(ctx);
+        final sz = MediaQuery.sizeOf(ctx);
+        final provider = memoryPhotoNetworkImageProvider(url);
+        return Material(
+          color: Colors.black,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              PhotoView(
+                imageProvider: provider,
                 gaplessPlayback: true,
                 minScale: PhotoViewComputedScale.contained * 0.85,
                 maxScale: PhotoViewComputedScale.covered * 4,
@@ -244,12 +298,12 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
     );
   }
 
-  Future<void> _togglePublicPressed() async {
-    if (_savingPublic) return;
-    if (_memory.isPublic) {
-      await _requestPublicOff();
-    } else {
+  Future<void> _onPublicCheckboxChanged(bool? v) async {
+    if (_savingPublic || v == null) return;
+    if (v) {
       await _requestPublicOn();
+    } else {
+      await _requestPublicOff();
     }
   }
 
@@ -389,9 +443,15 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
       // [MemoryShareCard] atualiza com novo override só após rebuild.
       await WidgetsBinding.instance.endOfFrame;
     }
-    if (!mounted || resolved == null || resolved.isEmpty) return;
+    if (!mounted) return;
 
-    await precacheImage(MemoryImage(resolved), context);
+    if (resolved != null && resolved.isNotEmpty) {
+      await precacheImage(MemoryImage(resolved), context);
+    } else if (url.isNotEmpty) {
+      await precacheImage(memoryPhotoNetworkImageProvider(url), context);
+    } else {
+      return;
+    }
     await WidgetsBinding.instance.endOfFrame;
     await Future<void>.delayed(const Duration(milliseconds: 48));
   }
@@ -420,11 +480,29 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
                     shape: MemoryBadgeIconShape.original,
                   ),
                 )
-              : (bytes != null ? Image.memory(bytes, fit: BoxFit.cover) : Image.network(url, fit: BoxFit.cover)),
+              : (bytes != null
+                  ? Image.memory(bytes, fit: BoxFit.cover)
+                  : CachedMemoryPhoto(
+                      imageUrl: url,
+                      fit: BoxFit.cover,
+                      filterQuality: FilterQuality.medium,
+                      placeholder: (_, __) => ColoredBox(
+                        color: AppTheme.softPurple.withAlpha(80),
+                        child: const Center(
+                          child: SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      ),
+                    )),
         ),
       );
       if (bytes != null) {
         inner = GestureDetector(onTap: () => _openFullPhoto(context, bytes), child: inner);
+      } else if (url.isNotEmpty) {
+        inner = GestureDetector(onTap: () => _openFullPhotoFromNetworkUrl(context, url), child: inner);
       }
       return inner;
     }
@@ -761,9 +839,42 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
                   ),
                   const SizedBox(height: 12),
                 ],
-                if (!_memory.isPublic)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _shareBusy ? null : _promptShare,
+                    icon: Icon(Icons.ios_share_rounded, color: AppTheme.primaryPurple),
+                    label: Text(
+                      s.memoryShareButton,
+                      style: TextStyle(fontWeight: FontWeight.w900, color: AppTheme.primaryPurple),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: BorderSide(color: AppTheme.primaryPurple.withAlpha(180)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                      backgroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                CheckboxListTile(
+                  value: _memory.isPublic,
+                  onChanged: _savingPublic
+                      ? null
+                      : (bool? v) {
+                          unawaited(_onPublicCheckboxChanged(v));
+                        },
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: Text(
+                    _memory.isPublic ? s.weeklyPhotoPublicOn : s.weeklyPhotoPublicOff,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: portalSp(context, 16),
+                    ),
+                  ),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 8, right: 4),
                     child: Text(
                       s.weeklyPhotoPublicExplainer,
                       style: TextStyle(
@@ -774,47 +885,9 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
                       ),
                     ),
                   ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _shareBusy ? null : _promptShare,
-                        icon: Icon(Icons.ios_share_rounded, color: AppTheme.primaryPurple),
-                        label: Text(
-                          s.memoryShareButton,
-                          style: TextStyle(fontWeight: FontWeight.w900, color: AppTheme.primaryPurple),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          side: BorderSide(color: AppTheme.primaryPurple.withAlpha(180)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-                          backgroundColor: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: _savingPublic ? null : _togglePublicPressed,
-                        icon: Icon(
-                          _memory.isPublic ? Icons.public_rounded : Icons.lock_outline_rounded,
-                          color: Colors.white,
-                        ),
-                        label: Text(
-                          _memory.isPublic ? s.weeklyPhotoPublicOn : s.weeklyPhotoPublicOff,
-                          style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white),
-                        ),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          backgroundColor: AppTheme.primaryPurple,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
                 if (_memory.isPublic) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 4),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(s.weeklyPhotoShowBabyFirstName, style: const TextStyle(fontWeight: FontWeight.w700)),

@@ -93,13 +93,16 @@ class VaccineReminderScheduler {
         if (!due.isAfter(now)) continue;
         final when = reminderLocalNine(due);
         if (!when.isAfter(now)) continue;
-        await LocalNotificationsService.instance.scheduleZoned(
+        final ok = await LocalNotificationsService.instance.scheduleZoned(
           id: nid,
           title: strings.vaccineReminderNotifTitle,
           body: strings.vaccineReminderNotifBody(r.name),
           whenLocal: when,
           payload: payloadFor(r.id),
         );
+        if (!ok) {
+          debugPrint('VaccineReminderScheduler: scheduleZoned failed for vaccine ${r.id}');
+        }
       }
 
       await prefs.setString(sigKey, nextSig);

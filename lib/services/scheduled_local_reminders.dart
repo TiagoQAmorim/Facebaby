@@ -9,6 +9,7 @@ import 'app_database.dart';
 import 'home_prefs.dart';
 import 'local_notifications_service.dart';
 import 'notification_nav.dart';
+import 'notification_timezone.dart';
 import 'sleep_routine.dart';
 
 /// Reagenda alertas no sistema operativo (funcionam com app encerrada).
@@ -34,11 +35,15 @@ abstract final class ScheduledLocalReminders {
   static const _prefsKeyGrowthStaleSigV1 = 'facebaby_scheduled_growth_stale_sig_v1';
   /// Reenvio quando já está «em atraso» e o alarme pode não ter disparado (ex.: sem permissão de alarmas exactos).
   static const _prefsKeyFeedOverdueSnoozeMs = 'facebaby_feed_overdue_snooze_ms_v1';
+  static const _prefsKeyDiaperOverdueSnoozeMs = 'facebaby_diaper_overdue_snooze_ms_v1';
 
   /// Sono: identidade do par de alarmas (bebé + último fim de sono + regras). Evita cancelar/rescrever a cada minuto.
   static const _prefsKeySleepSigV2 = 'facebaby_scheduled_sleep_sig_v2';
   /// Se ambos os momentos já passaram mas o utilizador não recebeu push, re-agendar com intervalo (~25 min como amamentação).
   static const _prefsKeySleepMissedCatchupSnoozeMs = 'facebaby_scheduled_sleep_missed_snooze_ms_v2';
+  /// `sleepSig` para o qual já mostrámos um push imediato (`svc.show`) de overdue. Evita repetir
+  /// um aviso por cada tick do [ReminderMonitor] enquanto a janela continuar ultrapassada.
+  static const _prefsKeySleepOverdueShownSig = 'facebaby_scheduled_sleep_overdue_shown_sig_v1';
 
   static String _feedingScheduleSig({required int babyId, required DateTime lastFeedEnd, required int intervalMin}) {
     return '$babyId|${lastFeedEnd.toIso8601String()}|$intervalMin|${kAppLanguage.lang.name}';
@@ -69,6 +74,8 @@ abstract final class ScheduledLocalReminders {
       return;
     }
 
+    await NotificationTimezone.init();
+
     /// IDs antigos de “show imediato” — mantém compat e limpa lixo.
     await svc.cancelNotificationIds(LocalNotificationsService.legacyImmediateReminderIds);
 
@@ -78,49 +85,53 @@ abstract final class ScheduledLocalReminders {
     if (HomePrefs.feedingAlertsEnabled.value) {
       final lastFeed = await AppDatabase.instance.latestBreastOrBottleFeedingEndedAt(babyId: babyId);
       if (lastFeed != null) {
-        // Default por idade (se a mãe nunca customizou, HomePrefs já devolve recomendado).
         final intervalMin = await HomePrefs.getFeedingAlertIntervalMinutes();
         final when = lastFeed.add(Duration(minutes: intervalMin));
         final prefs = await SharedPreferences.getInstance();
         final sig = _feedingScheduleSig(babyId: babyId, lastFeedEnd: lastFeed, intervalMin: intervalMin);
         final prevSig = prefs.getString(_prefsKeyFeedScheduleSigV1);
 
-        // Se já passou do horário, ainda assim agenda um lembrete “em breve” (senão o utilizador vê o banner na app
-        // mas nunca recebe push porque o trigger ficaria no passado).
-        final effectiveWhen = _isFutureTrigger(when, now) ? when : now.add(const Duration(seconds: 8));
-
-        // Evita re-agendar o mesmo lembrete a cada minuto quando continua overdue — mas **não** cancelar o ID antes.
         if (prevSig == sig && !_isFutureTrigger(when, now)) {
-          // Já passou do intervalo: se o SO não disparou (alarmas inexactos / permissões), re-tenta de ~25 em ~25 min.
+          // Atraso: o AlarmManager muitas vezes não dispara — usar notificação imediata (como o teste).
           final lastSnooze = prefs.getInt(_prefsKeyFeedOverdueSnoozeMs) ?? 0;
           final nowMs = now.millisecondsSinceEpoch;
           if (nowMs - lastSnooze > const Duration(minutes: 25).inMilliseconds) {
             await svc.cancelNotificationIds([feedId]);
-            final ok = await _safeSchedule(() => svc.scheduleZoned(
+            final ok = await _safeSchedule(() => svc.show(
                   id: feedId,
                   title: strings.homeTimeToFeed,
                   body: strings.scheduledFeedingReminderBody,
-                  whenLocal: now.add(const Duration(seconds: 12)),
+                  payload: NotificationNav.payloadFeeding,
+                ));
+            if (ok) await prefs.setInt(_prefsKeyFeedOverdueSnoozeMs, nowMs);
+          }
+        } else if (prevSig == sig && _isFutureTrigger(when, now)) {
+          // Futuro estável: mantém agendamento existente.
+        } else {
+          await svc.cancelNotificationIds([feedId]);
+          if (_isFutureTrigger(when, now)) {
+            final ok = await _runZonedSchedule(() => svc.scheduleZoned(
+                  id: feedId,
+                  title: strings.homeTimeToFeed,
+                  body: strings.scheduledFeedingReminderBody,
+                  whenLocal: when,
                   payload: NotificationNav.payloadFeeding,
                 ));
             if (ok) {
-              await prefs.setInt(_prefsKeyFeedOverdueSnoozeMs, nowMs);
+              await prefs.setString(_prefsKeyFeedScheduleSigV1, sig);
+              await prefs.remove(_prefsKeyFeedOverdueSnoozeMs);
             }
-          }
-        } else if (prevSig == sig && _isFutureTrigger(when, now)) {
-          // Horário ainda no futuro e nada mudou: mantém agendamento existente.
-        } else {
-          await svc.cancelNotificationIds([feedId]);
-          final ok = await _safeSchedule(() => svc.scheduleZoned(
-                id: feedId,
-                title: strings.homeTimeToFeed,
-                body: strings.scheduledFeedingReminderBody,
-                whenLocal: effectiveWhen,
-                payload: NotificationNav.payloadFeeding,
-              ));
-          if (ok) {
-            await prefs.setString(_prefsKeyFeedScheduleSigV1, sig);
-            await prefs.remove(_prefsKeyFeedOverdueSnoozeMs);
+          } else {
+            final ok = await _safeSchedule(() => svc.show(
+                  id: feedId,
+                  title: strings.homeTimeToFeed,
+                  body: strings.scheduledFeedingReminderBody,
+                  payload: NotificationNav.payloadFeeding,
+                ));
+            if (ok) {
+              await prefs.setString(_prefsKeyFeedScheduleSigV1, sig);
+              await prefs.setInt(_prefsKeyFeedOverdueSnoozeMs, now.millisecondsSinceEpoch);
+            }
           }
         }
       } else {
@@ -138,23 +149,47 @@ abstract final class ScheduledLocalReminders {
         final prefs = await SharedPreferences.getInstance();
         final sig = _diaperScheduleSig(babyId: babyId, lastDiaperAt: lastDiaper);
         final prevSig = prefs.getString(_prefsKeyDiaperScheduleSigV1);
-        final effectiveWhen = _isFutureTrigger(when, now) ? when : now.add(const Duration(seconds: 8));
 
         if (prevSig == sig && !_isFutureTrigger(when, now)) {
-          // overdue estável: não cancelar nem re-spammar
+          final lastSnooze = prefs.getInt(_prefsKeyDiaperOverdueSnoozeMs) ?? 0;
+          final nowMs = now.millisecondsSinceEpoch;
+          if (nowMs - lastSnooze > const Duration(minutes: 25).inMilliseconds) {
+            await svc.cancelNotificationIds([diaperId]);
+            final ok = await _safeSchedule(() => svc.show(
+                  id: diaperId,
+                  title: strings.scheduledDiaperReminderTitle,
+                  body: strings.scheduledDiaperReminderBody,
+                  payload: NotificationNav.payloadDiaper,
+                ));
+            if (ok) await prefs.setInt(_prefsKeyDiaperOverdueSnoozeMs, nowMs);
+          }
         } else if (prevSig == sig && _isFutureTrigger(when, now)) {
-          // futuro estável
+          // Futuro estável.
         } else {
           await svc.cancelNotificationIds([diaperId]);
-          final ok = await _safeSchedule(() => svc.scheduleZoned(
-                id: diaperId,
-                title: strings.scheduledDiaperReminderTitle,
-                body: strings.scheduledDiaperReminderBody,
-                whenLocal: effectiveWhen,
-                payload: NotificationNav.payloadDiaper,
-              ));
-          if (ok) {
-            await prefs.setString(_prefsKeyDiaperScheduleSigV1, sig);
+          if (_isFutureTrigger(when, now)) {
+            final ok = await _runZonedSchedule(() => svc.scheduleZoned(
+                  id: diaperId,
+                  title: strings.scheduledDiaperReminderTitle,
+                  body: strings.scheduledDiaperReminderBody,
+                  whenLocal: when,
+                  payload: NotificationNav.payloadDiaper,
+                ));
+            if (ok) {
+              await prefs.setString(_prefsKeyDiaperScheduleSigV1, sig);
+              await prefs.remove(_prefsKeyDiaperOverdueSnoozeMs);
+            }
+          } else {
+            final ok = await _safeSchedule(() => svc.show(
+                  id: diaperId,
+                  title: strings.scheduledDiaperReminderTitle,
+                  body: strings.scheduledDiaperReminderBody,
+                  payload: NotificationNav.payloadDiaper,
+                ));
+            if (ok) {
+              await prefs.setString(_prefsKeyDiaperScheduleSigV1, sig);
+              await prefs.setInt(_prefsKeyDiaperOverdueSnoozeMs, now.millisecondsSinceEpoch);
+            }
           }
         }
       } else {
@@ -176,6 +211,7 @@ abstract final class ScheduledLocalReminders {
         await svc.cancelNotificationIds([sleepApproachId, sleepOverdueId]);
         await prefs.remove(_prefsKeySleepSigV2);
         await prefs.remove(_prefsKeySleepMissedCatchupSnoozeMs);
+        await prefs.remove(_prefsKeySleepOverdueShownSig);
       } else {
       final row = CurrentBabyController.instance.currentBabyRow;
       final birthRaw = row?['birth_date'] as String?;
@@ -194,6 +230,7 @@ abstract final class ScheduledLocalReminders {
         await svc.cancelNotificationIds([sleepApproachId, sleepOverdueId]);
         await prefs.remove(_prefsKeySleepSigV2);
         await prefs.remove(_prefsKeySleepMissedCatchupSnoozeMs);
+        await prefs.remove(_prefsKeySleepOverdueShownSig);
       } else {
         final overdueAt = lastEnd.add(Duration(minutes: maxW));
         final approachAt =
@@ -210,28 +247,44 @@ abstract final class ScheduledLocalReminders {
             // Regra e referência não mudaram e ainda há lembrete válido por vir: não voltar a
             // cancelar/reagendar a cada tick (estraga alarmas em alguns Android e atrasa no iOS).
           } else {
-            // Ciclo já passou (ou SO não disparou): re-armar com espaçamento, como nas amamentações.
-            final nowMs = now.millisecondsSinceEpoch;
-            final lastCatch = prefs.getInt(_prefsKeySleepMissedCatchupSnoozeMs) ?? 0;
-            if (nowMs - lastCatch > const Duration(minutes: 25).inMilliseconds) {
+            // Janela já passou: mostrar push imediato (svc.show é mais fiável que zonedSchedule).
+            // Idempotente por sleepSig — só uma vez enquanto o estado “overdue” não mudar.
+            final shownSig = prefs.getString(_prefsKeySleepOverdueShownSig);
+            if (shownSig != sleepSig) {
               await svc.cancelNotificationIds([sleepOverdueId]);
-              final okCatch = await _safeSchedule(() => svc.scheduleZoned(
+              await _safeSchedule(() => svc.show(
                     id: sleepOverdueId,
                     title: strings.sleepNotifTitle,
                     body: strings.sleepNotifOverdueBody,
-                    whenLocal: now.add(const Duration(seconds: 12)),
                     payload: NotificationNav.payloadSleep,
                   ));
-              if (okCatch) await prefs.setInt(_prefsKeySleepMissedCatchupSnoozeMs, nowMs);
+              await prefs.setString(_prefsKeySleepOverdueShownSig, sleepSig);
+              await prefs.setInt(_prefsKeySleepMissedCatchupSnoozeMs, now.millisecondsSinceEpoch);
+            } else {
+              // Já mostrámos um aviso para esta janela — só re-armar com intervalo defensivo
+              // caso o utilizador o tenha dispensado e a janela continue ultrapassada.
+              final nowMs = now.millisecondsSinceEpoch;
+              final lastCatch = prefs.getInt(_prefsKeySleepMissedCatchupSnoozeMs) ?? 0;
+              if (nowMs - lastCatch > const Duration(minutes: 25).inMilliseconds) {
+                await svc.cancelNotificationIds([sleepOverdueId]);
+                final okCatch = await _safeSchedule(() => svc.show(
+                      id: sleepOverdueId,
+                      title: strings.sleepNotifTitle,
+                      body: strings.sleepNotifOverdueBody,
+                      payload: NotificationNav.payloadSleep,
+                    ));
+                if (okCatch) await prefs.setInt(_prefsKeySleepMissedCatchupSnoozeMs, nowMs);
+              }
             }
           }
         } else {
           await prefs.remove(_prefsKeySleepMissedCatchupSnoozeMs);
+          await prefs.remove(_prefsKeySleepOverdueShownSig);
           await svc.cancelNotificationIds([sleepApproachId, sleepOverdueId]);
           await prefs.setString(_prefsKeySleepSigV2, sleepSig);
 
           if (maxW > approachBefore) {
-            await _safeSchedule(() => svc.scheduleZoned(
+            await _runZonedSchedule(() => svc.scheduleZoned(
                   id: sleepApproachId,
                   title: strings.sleepNotifTitle,
                   body: strings.sleepNotifBeforeBody,
@@ -240,13 +293,26 @@ abstract final class ScheduledLocalReminders {
                 ));
           }
 
-          await _safeSchedule(() => svc.scheduleZoned(
-                id: sleepOverdueId,
-                title: strings.sleepNotifTitle,
-                body: strings.sleepNotifOverdueBody,
-                whenLocal: overdueAt,
-                payload: NotificationNav.payloadSleep,
-              ));
+          // Se o overdue já está no passado (sinal recém criado mas janela já vencida),
+          // dispara imediatamente; senão deixa-o agendado.
+          if (overdueStillAhead) {
+            await _runZonedSchedule(() => svc.scheduleZoned(
+                  id: sleepOverdueId,
+                  title: strings.sleepNotifTitle,
+                  body: strings.sleepNotifOverdueBody,
+                  whenLocal: overdueAt,
+                  payload: NotificationNav.payloadSleep,
+                ));
+          } else {
+            await _safeSchedule(() => svc.show(
+                  id: sleepOverdueId,
+                  title: strings.sleepNotifTitle,
+                  body: strings.sleepNotifOverdueBody,
+                  payload: NotificationNav.payloadSleep,
+                ));
+            await prefs.setString(_prefsKeySleepOverdueShownSig, sleepSig);
+            await prefs.setInt(_prefsKeySleepMissedCatchupSnoozeMs, now.millisecondsSinceEpoch);
+          }
 
           if (approachStillAhead || overdueStillAhead) await prefs.remove(_prefsKeySleepMissedCatchupSnoozeMs);
         }
@@ -257,6 +323,7 @@ abstract final class ScheduledLocalReminders {
       final prefsOff = await SharedPreferences.getInstance();
       await prefsOff.remove(_prefsKeySleepSigV2);
       await prefsOff.remove(_prefsKeySleepMissedCatchupSnoozeMs);
+      await prefsOff.remove(_prefsKeySleepOverdueShownSig);
     }
 
     if (HomePrefs.growthHealthAlertsEnabled.value) {
@@ -285,7 +352,7 @@ abstract final class ScheduledLocalReminders {
         } else {
           await svc.cancelNotificationIds([growthStaleId]);
           if (_isFutureTrigger(when, now)) {
-            final ok = await _safeSchedule(() => svc.scheduleZoned(
+            final ok = await _runZonedSchedule(() => svc.scheduleZoned(
                   id: growthStaleId,
                   title: strings.notifyGrowthStaleTitle,
                   body: strings.notifyGrowthStaleBody(31),
@@ -309,6 +376,15 @@ abstract final class ScheduledLocalReminders {
       return true;
     } catch (e, st) {
       debugPrint('ScheduledLocalReminders: falha ao agendar: $e\n$st');
+      return false;
+    }
+  }
+
+  static Future<bool> _runZonedSchedule(Future<bool> Function() fn) async {
+    try {
+      return await fn();
+    } catch (e, st) {
+      debugPrint('ScheduledLocalReminders: falha ao agendar zoned: $e\n$st');
       return false;
     }
   }

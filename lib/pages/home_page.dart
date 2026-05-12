@@ -1,7 +1,8 @@
-import 'dart:async' show Timer;
+import 'dart:async' show Timer, unawaited;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../controllers/current_baby_controller.dart';
 import '../controllers/sleep_timer_controller.dart';
 import '../services/reminder_monitor.dart';
@@ -16,6 +17,8 @@ import '../services/health_calendar_events.dart';
 import '../services/diaper_events.dart';
 import '../services/feeding_events.dart';
 import '../services/growth_events.dart';
+import '../services/home_critical_notifications.dart';
+import '../services/home_prefs.dart';
 import '../services/sleep_events.dart';
 import '../services/sleep_routine.dart';
 import '../services/development_leaps_service.dart';
@@ -23,7 +26,6 @@ import '../utils/measurement_format.dart';
 import '../services/measurement_units_prefs.dart';
 import '../services/mock_baby_service.dart';
 import '../services/baby_daily_tips_service.dart';
-import '../services/home_prefs.dart';
 import '../services/firebase/cloud_bootstrap_sync.dart';
 import '../services/firebase/firestore_service.dart';
 import '../theme/app_theme.dart';
@@ -74,6 +76,9 @@ class HomePage extends StatefulWidget {
 
 DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
+String _homePrefsDayStamp(DateTime d) =>
+    '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
 bool _sameCalendarDate(DateTime? a, DateTime? b) {
   if (a == null && b == null) return true;
   if (a == null || b == null) return false;
@@ -109,9 +114,30 @@ class _HomePageState extends State<HomePage> {
   /// Próxima consulta futura (para o banner do cartão do bebé).
   ConsultationRecord? _bannerNextConsultation;
 
+  /// Dica do dia fechada (prefs): ajusta espaçamento e remove coluna vazia no layout largo.
+  bool _homeDailyTipDismissedForLayout = false;
+
+  void _onHomeDailyTipLayoutDismissChanged(bool dismissed) {
+    if (!mounted) return;
+    if (_homeDailyTipDismissedForLayout == dismissed) return;
+    setState(() => _homeDailyTipDismissedForLayout = dismissed);
+  }
+
+  void _syncHomeDailyTipLayoutDay() {
+    final stamp = _homePrefsDayStamp(DateTime.now());
+    if (_homeDailyTipLayoutDayStamp == stamp) return;
+    setState(() {
+      _homeDailyTipLayoutDayStamp = stamp;
+      _homeDailyTipDismissedForLayout = false;
+    });
+  }
+
+  String _homeDailyTipLayoutDayStamp = '';
+
   @override
   void initState() {
     super.initState();
+    _homeDailyTipLayoutDayStamp = _homePrefsDayStamp(DateTime.now());
     _selectedDay = _dateOnly(DateTime.now());
     // O [Navigator] do separador Início não reconstrói o filho quando só muda o mapa do bebé na BD;
     // ouvimos o controller para atualizar foto / dados sem depender de [widget.baby] stale.
@@ -468,6 +494,8 @@ class _HomePageState extends State<HomePage> {
     final weightHint =
         weightCompact.contains('—') ? s.summaryWeightNotYet : s.homeSummaryExtraHint;
 
+    _syncHomeDailyTipLayoutDay();
+
     final backdropTint = AppTheme.backdropTintForSex(widget.baby.sex);
 
     return DecoratedBox(
@@ -603,7 +631,11 @@ class _HomePageState extends State<HomePage> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: (_consultationForBanner == null && _homeDailyTipDismissedForLayout)
+                        ? 10
+                        : 16,
+                  ),
                   LayoutBuilder(
                     builder: (context, greetC) {
                       final narrow = greetC.maxWidth < 360;
@@ -614,10 +646,13 @@ class _HomePageState extends State<HomePage> {
                         title: s.homeTipTitle,
                         fallbackBody: s.homeTipBody(_liveBabyName),
                         lang: s.lang,
+                        onDismissedLayoutChanged: _onHomeDailyTipLayoutDismissChanged,
                       );
                       final consultAlert = consult == null
                           ? null
                           : _HomeConsultationInlineAlert(
+                              babyId: consult.babyId,
+                              consultationId: consult.id,
                               title: consult.title,
                               when: consult.occurredAt,
                               onTap: () => showConsultationDetailSheet(context, consult),
@@ -659,12 +694,16 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ],
                       );
+                      final greetTipGap =
+                          (consultAlert == null && _homeDailyTipDismissedForLayout) ? 6.0 : 12.0;
+                      final showWideRightSlot =
+                          consultAlert != null || !_homeDailyTipDismissedForLayout;
                       if (narrow) {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             greetBlock,
-                            const SizedBox(height: 12),
+                            SizedBox(height: greetTipGap),
                             if (consultAlert != null) ...[
                               consultAlert,
                               const SizedBox(height: 10),
@@ -676,26 +715,35 @@ class _HomePageState extends State<HomePage> {
                       return Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(flex: 58, child: greetBlock),
-                          const SizedBox(width: 10),
                           Expanded(
-                            flex: 42,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                if (consultAlert != null) ...[
-                                  consultAlert,
-                                  const SizedBox(height: 10),
-                                ],
-                                tip,
-                              ],
-                            ),
+                            flex: showWideRightSlot ? 58 : 1,
+                            child: greetBlock,
                           ),
+                          if (showWideRightSlot) ...[
+                            const SizedBox(width: 10),
+                            Expanded(
+                              flex: 42,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (consultAlert != null) ...[
+                                    consultAlert,
+                                    const SizedBox(height: 10),
+                                  ],
+                                  tip,
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       );
                     },
                   ),
-                  const SizedBox(height: 14),
+                  SizedBox(
+                    height: (_consultationForBanner == null && _homeDailyTipDismissedForLayout)
+                        ? 8
+                        : 14,
+                  ),
                   _PrimaryBabyCard(
                     baby: widget.baby,
                     routineBirthDate: _liveBabyBirthDate,
@@ -1241,6 +1289,8 @@ class _PrimaryBabyCard extends StatefulWidget {
 
 class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
   Timer? _bannerSleepProgressTicker;
+  bool _hideVaccineBannerChip = false;
+  String _vaccineDismissDayStamp = '';
 
   DateTime? get _routineBirth => widget.routineBirthDate ?? widget.baby.birthDate;
 
@@ -1250,6 +1300,8 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
     SleepTimerController.instance.addListener(_onSleepTimerTick);
     HomePrefs.sleepAlertsEnabled.addListener(_onSleepPrefs);
     _syncBannerSleepProgressTicker();
+    _vaccineDismissDayStamp = _homePrefsDayStamp(DateTime.now());
+    unawaited(_loadVaccineBannerChipDismissed());
   }
 
   @override
@@ -1258,6 +1310,45 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
     if (oldWidget.isTodayView != widget.isTodayView || oldWidget.babyId != widget.babyId) {
       _syncBannerSleepProgressTicker();
     }
+    if (oldWidget.babyId != widget.babyId) {
+      _vaccineDismissDayStamp = _homePrefsDayStamp(DateTime.now());
+      _hideVaccineBannerChip = false;
+      unawaited(_loadVaccineBannerChipDismissed());
+    } else if (widget.bannerVaccinesDueToday.isNotEmpty &&
+        !_sameVaccineDueListForBanner(oldWidget.bannerVaccinesDueToday, widget.bannerVaccinesDueToday)) {
+      unawaited(_loadVaccineBannerChipDismissed());
+    }
+  }
+
+  static bool _sameVaccineDueListForBanner(List<VaccineRecord> a, List<VaccineRecord> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id) return false;
+    }
+    return true;
+  }
+
+  Future<void> _loadVaccineBannerChipDismissed() async {
+    final id = widget.babyId;
+    if (id == null || widget.bannerVaccinesDueToday.isEmpty) {
+      if (mounted) setState(() => _hideVaccineBannerChip = false);
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final day = _homePrefsDayStamp(DateTime.now());
+    final hidden = prefs.getBool('facebaby_home_vacc_chip_dismiss_v1_${id}_$day') ?? false;
+    if (!mounted) return;
+    setState(() => _hideVaccineBannerChip = hidden);
+  }
+
+  Future<void> _dismissVaccineBannerChip() async {
+    final id = widget.babyId;
+    if (id == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final day = _homePrefsDayStamp(DateTime.now());
+    await prefs.setBool('facebaby_home_vacc_chip_dismiss_v1_${id}_$day', true);
+    if (!mounted) return;
+    setState(() => _hideVaccineBannerChip = true);
   }
 
   void _syncBannerSleepProgressTicker() {
@@ -1495,6 +1586,12 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
 
         List<Widget> _bannerAlertChips() {
           if (!widget.isTodayView) return const <Widget>[];
+          final todayStamp = _homePrefsDayStamp(DateTime.now());
+          if (_vaccineDismissDayStamp != todayStamp) {
+            _vaccineDismissDayStamp = todayStamp;
+            _hideVaccineBannerChip = false;
+            unawaited(_loadVaccineBannerChipDismissed());
+          }
           final sleepRem = _sleepCountdownRemaining();
           final sleepOverdue = sleepRem != null && sleepRem.isNegative;
           final feedRem = _feedingCountdownRemaining();
@@ -1663,13 +1760,55 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
           // Prioridade visual: mamada > sono > fralda.
           critical.sort((a, b) => a.kind.priority.compareTo(b.kind.priority));
 
+          // Caminho directo de notificação para os mesmos itens críticos visíveis no
+          // banner. Usa o `svc.show()` imediato (caminho fiável que o teste confirma
+          // funcionar) e partilha dedup com o `ScheduledLocalReminders` para nunca
+          // duplicar. Necessário porque o agendamento via AlarmManager pode ser
+          // recusado/atrasado pelo SO em alguns Android (Doze/MIUI/OneUI/etc).
+          if (critical.isNotEmpty) {
+            unawaited(
+              HomeCriticalNotifications.instance.kickFromBannerVisible(
+                babyId: widget.babyId,
+                feedingCritical: timeToFeedNow || feedOverdue,
+                sleepCritical: sleepOverdue,
+                diaperCritical: widget.bannerDiaperAlert,
+              ),
+            );
+          }
+
+          if (widget.bannerConsultation != null || widget.bannerVaccinesDueToday.isNotEmpty) {
+            unawaited(
+              HomeCriticalNotifications.instance.kickConsultationAndVaccineFromBanner(
+                babyId: widget.babyId,
+                consultationToday: widget.bannerConsultation,
+                vaccinesDueToday: widget.bannerVaccinesDueToday,
+              ),
+            );
+          }
+
           final items = <Widget>[
-            if (widget.bannerVaccinesDueToday.isNotEmpty)
-              chip(
-                icon: Icons.vaccines_outlined,
-                color: AppTheme.primaryPink,
-                label: s.homeBannerChipVaccine,
-                onTap: _openVaccineDueFromBanner,
+            if (widget.bannerVaccinesDueToday.isNotEmpty && !_hideVaccineBannerChip)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  chip(
+                    icon: Icons.vaccines_outlined,
+                    color: AppTheme.primaryPink,
+                    label: s.homeBannerChipVaccine,
+                    onTap: _openVaccineDueFromBanner,
+                  ),
+                  IconButton(
+                    tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                    onPressed: _dismissVaccineBannerChip,
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    visualDensity: VisualDensity.compact,
+                    style: IconButton.styleFrom(
+                      foregroundColor: AppTheme.primaryPink.withAlpha(220),
+                      minimumSize: const Size(30, 30),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
               ),
             if (critical.length >= 2)
               criticalChip(
@@ -2684,63 +2823,91 @@ class _TodaySummaryCard extends StatelessWidget {
 class _HomeDailyTipCard extends StatelessWidget {
   final String title;
   final String text;
+  final VoidCallback? onDismiss;
 
-  const _HomeDailyTipCard({required this.title, required this.text});
+  const _HomeDailyTipCard({
+    required this.title,
+    required this.text,
+    this.onDismiss,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF4CC),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFFFD88A)),
-        boxShadow: [
-          BoxShadow(color: AppTheme.yellow.withAlpha(48), blurRadius: 14, offset: const Offset(0, 6)),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF2C2),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.yellow.withAlpha(120)),
-            ),
-            child: const Icon(Icons.star_rounded, color: Color(0xFFFFB020), size: 22),
+    final padR = onDismiss != null ? 36.0 : 12.0;
+    final closeTip = MaterialLocalizations.of(context).closeButtonTooltip;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          padding: EdgeInsets.fromLTRB(12, 12, padR, 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF4CC),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFFFD88A)),
+            boxShadow: [
+              BoxShadow(color: AppTheme.yellow.withAlpha(48), blurRadius: 14, offset: const Offset(0, 6)),
+            ],
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: portalSp(context, 13),
-                    color: AppTheme.primaryPurple,
-                    height: 1.15,
-                  ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF2C2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.yellow.withAlpha(120)),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  text,
-                  style: TextStyle(
-                    color: Colors.black.withAlpha(145),
-                    fontWeight: FontWeight.w600,
-                    height: 1.3,
-                    fontSize: portalSp(context, 11.5),
-                  ),
+                child: const Icon(Icons.star_rounded, color: Color(0xFFFFB020), size: 22),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: portalSp(context, 13),
+                        color: AppTheme.primaryPurple,
+                        height: 1.15,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      text,
+                      style: TextStyle(
+                        color: Colors.black.withAlpha(145),
+                        fontWeight: FontWeight.w600,
+                        height: 1.3,
+                        fontSize: portalSp(context, 11.5),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
+            ],
+          ),
+        ),
+        if (onDismiss != null)
+          Positioned(
+            top: 2,
+            right: 2,
+            child: IconButton(
+              tooltip: closeTip,
+              onPressed: onDismiss,
+              icon: const Icon(Icons.close_rounded, size: 20),
+              visualDensity: VisualDensity.compact,
+              style: IconButton.styleFrom(
+                foregroundColor: AppTheme.textSecondary.withAlpha(230),
+                minimumSize: const Size(32, 32),
+                padding: EdgeInsets.zero,
+              ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }
@@ -2772,16 +2939,59 @@ class _CriticalBannerAlert {
 }
 
 /// Aviso compacto de próxima consulta, acima da "Dica do dia".
-class _HomeConsultationInlineAlert extends StatelessWidget {
+class _HomeConsultationInlineAlert extends StatefulWidget {
+  final int babyId;
+  final int consultationId;
   final String title;
   final DateTime when;
   final VoidCallback onTap;
 
   const _HomeConsultationInlineAlert({
+    required this.babyId,
+    required this.consultationId,
     required this.title,
     required this.when,
     required this.onTap,
   });
+
+  @override
+  State<_HomeConsultationInlineAlert> createState() => _HomeConsultationInlineAlertState();
+}
+
+class _HomeConsultationInlineAlertState extends State<_HomeConsultationInlineAlert> {
+  bool _dismissed = false;
+
+  static String _prefsKey(int babyId, int consultationId) =>
+      'facebaby_home_consult_strip_dismiss_v1_${babyId}_$consultationId';
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadDismissed());
+  }
+
+  @override
+  void didUpdateWidget(covariant _HomeConsultationInlineAlert oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.babyId != widget.babyId || oldWidget.consultationId != widget.consultationId) {
+      _dismissed = false;
+      unawaited(_loadDismissed());
+    }
+  }
+
+  Future<void> _loadDismissed() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hidden = prefs.getBool(_prefsKey(widget.babyId, widget.consultationId)) ?? false;
+    if (!mounted) return;
+    setState(() => _dismissed = hidden);
+  }
+
+  Future<void> _onDismiss() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefsKey(widget.babyId, widget.consultationId), true);
+    if (!mounted) return;
+    setState(() => _dismissed = true);
+  }
 
   String _fmtWhen(DateTime dt) {
     final dd = dt.day.toString().padLeft(2, '0');
@@ -2793,8 +3003,10 @@ class _HomeConsultationInlineAlert extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (_dismissed) return const SizedBox.shrink();
     final s = S.of(context);
     final red = Colors.red.shade700;
+    final closeTip = MaterialLocalizations.of(context).closeButtonTooltip;
     return Material(
       color: Color.lerp(Colors.white, Colors.red, 0.06),
       elevation: 2,
@@ -2804,46 +3016,63 @@ class _HomeConsultationInlineAlert extends StatelessWidget {
         side: BorderSide(color: Colors.red.withAlpha(55)),
       ),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.error_outline_rounded, color: red, size: 22),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: InkWell(
+              onTap: widget.onTap,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      s.homeConsultationScheduled,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        color: red,
-                        fontSize: portalSp(context, 12.5),
-                        height: 1.15,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${_fmtWhen(when)} · $title',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: red.withAlpha(220),
-                        fontSize: portalSp(context, 11.5),
-                        height: 1.25,
+                    Icon(Icons.error_outline_rounded, color: red, size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            s.homeConsultationScheduled,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: red,
+                              fontSize: portalSp(context, 12.5),
+                              height: 1.15,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${_fmtWhen(widget.when)} · ${widget.title}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: red.withAlpha(220),
+                              fontSize: portalSp(context, 11.5),
+                              height: 1.25,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+          IconButton(
+            tooltip: closeTip,
+            onPressed: _onDismiss,
+            icon: Icon(Icons.close_rounded, color: red.withAlpha(210), size: 22),
+            visualDensity: VisualDensity.compact,
+            style: IconButton.styleFrom(
+              minimumSize: const Size(36, 36),
+              padding: const EdgeInsets.only(right: 6, top: 4),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2856,6 +3085,7 @@ class _HomeDailyTipLoader extends StatefulWidget {
   final String title;
   final String fallbackBody;
   final AppLang lang;
+  final ValueChanged<bool>? onDismissedLayoutChanged;
 
   const _HomeDailyTipLoader({
     required this.birthDate,
@@ -2863,6 +3093,7 @@ class _HomeDailyTipLoader extends StatefulWidget {
     required this.title,
     required this.fallbackBody,
     required this.lang,
+    this.onDismissedLayoutChanged,
   });
 
   @override
@@ -2871,6 +3102,57 @@ class _HomeDailyTipLoader extends StatefulWidget {
 
 class _HomeDailyTipLoaderState extends State<_HomeDailyTipLoader> {
   late Future<String?> _future;
+  String _tipPrefsDay = '';
+  bool _tipDismissed = false;
+
+  static String _dismissPrefsKey(int babyId, String day) => 'facebaby_home_tip_dismiss_v1_${babyId}_$day';
+
+  void _scheduleLayoutDismissNotify() {
+    final cb = widget.onDismissedLayoutChanged;
+    if (cb == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      cb(_tipDismissed);
+    });
+  }
+
+  void _syncTipDismissCalendarDay() {
+    final day = _homePrefsDayStamp(DateTime.now());
+    if (_tipPrefsDay != day) {
+      _tipPrefsDay = day;
+      setState(() => _tipDismissed = false);
+      _scheduleLayoutDismissNotify();
+      unawaited(_reloadTipDismissedFromPrefs());
+    }
+  }
+
+  Future<void> _reloadTipDismissedFromPrefs() async {
+    final bid = widget.babyId;
+    if (bid == null) {
+      if (mounted) {
+        setState(() => _tipDismissed = false);
+        _scheduleLayoutDismissNotify();
+      }
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final stamp = _homePrefsDayStamp(DateTime.now());
+    final v = prefs.getBool(_dismissPrefsKey(bid, stamp)) ?? false;
+    if (!mounted) return;
+    setState(() => _tipDismissed = v);
+    _scheduleLayoutDismissNotify();
+  }
+
+  Future<void> _onDismissTip() async {
+    final bid = widget.babyId;
+    if (bid == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final stamp = _homePrefsDayStamp(DateTime.now());
+    await prefs.setBool(_dismissPrefsKey(bid, stamp), true);
+    if (!mounted) return;
+    setState(() => _tipDismissed = true);
+    _scheduleLayoutDismissNotify();
+  }
 
   @override
   void initState() {
@@ -2881,11 +3163,14 @@ class _HomeDailyTipLoaderState extends State<_HomeDailyTipLoader> {
       now: DateTime.now(),
       lang: widget.lang,
     );
+    _tipPrefsDay = _homePrefsDayStamp(DateTime.now());
+    unawaited(_reloadTipDismissedFromPrefs());
   }
 
   @override
   void didUpdateWidget(covariant _HomeDailyTipLoader oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _syncTipDismissCalendarDay();
     if (!_sameCalendarDate(oldWidget.birthDate, widget.birthDate) ||
         oldWidget.babyId != widget.babyId ||
         oldWidget.lang != widget.lang) {
@@ -2897,17 +3182,25 @@ class _HomeDailyTipLoaderState extends State<_HomeDailyTipLoader> {
           lang: widget.lang,
         );
       });
+      unawaited(_reloadTipDismissedFromPrefs());
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    _syncTipDismissCalendarDay();
+    if (_tipDismissed) return const SizedBox.shrink();
+    final bid = widget.babyId;
     return FutureBuilder<String?>(
       future: _future,
       builder: (context, snap) {
         final custom = snap.hasError ? null : snap.data?.trim();
         final text = (custom != null && custom.isNotEmpty) ? custom : widget.fallbackBody;
-        return _HomeDailyTipCard(title: widget.title, text: text);
+        return _HomeDailyTipCard(
+          title: widget.title,
+          text: text,
+          onDismiss: bid == null ? null : _onDismissTip,
+        );
       },
     );
   }

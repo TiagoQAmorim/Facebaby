@@ -1,4 +1,4 @@
-import 'symptom_report.dart';
+import 'pediatric_symptom_occurrence.dart';
 
 /// Resumo clínico agregado para o relatório pediátrico (intervalo de dias civis).
 class PediatricReportSnapshot {
@@ -15,21 +15,16 @@ class PediatricReportSnapshot {
     required this.sleepAwakeningsAvg,
     required this.longestSleepSec,
     required this.sleepPatternKey,
+    required this.hasSleepPatternBasis,
     required this.breastfeedingSessions,
     required this.formulaSessions,
     required this.solidFoodSessions,
     required this.avgBreastMinutes,
     required this.avgFormulaMinutes,
     required this.avgSolidMinutes,
-    required this.feverEpisodesLogged,
-    required this.refluxMentionedInJournals,
-    required this.colicMentionedInJournals,
-    required this.irritabilityKey,
     required this.vaccinesInPeriodLines,
     required this.customMedicationHints,
-    required this.symptomReportsInPeriod,
-    required this.cryingNotedInSymptomReports,
-    required this.painNotedInSymptomReports,
+    required this.symptomOccurrencesByKind,
   });
 
   /// Primeiro dia do período (data civil, início do dia).
@@ -45,17 +40,20 @@ class PediatricReportSnapshot {
   final double? weightStartKg;
   final double? weightEndKg;
 
-  /// Diferença entre primeiro e último peso na semana (gramas).
+  /// Diferença entre primeiro e último peso no período (gramas); com fallback de peso fora do intervalo.
   final int? weightDeltaGrams;
 
-  /// Última altura medida no período (ou mais recente até ao fim da semana).
+  /// Altura: última medição no período, ou última conhecida até ao fim do período se não houver no intervalo.
   final double? heightCm;
 
   final double sleepAwakeningsAvg;
   final int longestSleepSec;
 
-  /// `stable` | `moderate` | `fragmented`
+  /// `stable` | `moderate` | `fragmented` — só mostrar se [hasSleepPatternBasis] for verdadeiro.
   final String sleepPatternKey;
+
+  /// Há registos de sono no intervalo analisado (evita mostrar "padrão" sem dados).
+  final bool hasSleepPatternBasis;
 
   final int breastfeedingSessions;
   final int formulaSessions;
@@ -66,24 +64,12 @@ class PediatricReportSnapshot {
   final double? avgFormulaMinutes;
   final double? avgSolidMinutes;
 
-  /// Episódios com “febre” marcada nos relatos estruturados no período.
-  final int feverEpisodesLogged;
-
-  final bool refluxMentionedInJournals;
-  final bool colicMentionedInJournals;
-
-  /// `high` | `medium` | `low` | `unknown`
-  final String irritabilityKey;
-
-  /// Linhas curtas “Nome — data” para vacinas aplicadas no período.
+  /// Linhas curtas "Nome — data" para vacinas aplicadas no período.
   final List<String> vaccinesInPeriodLines;
 
   /// Notas em mamações/memórias que sugerem medicamento (heurística), mais medicamentos dos relatos.
   final List<String> customMedicationHints;
 
-  /// Relatos de sintomas com data/hora no período.
-  final List<SymptomReport> symptomReportsInPeriod;
-
-  final bool cryingNotedInSymptomReports;
-  final bool painNotedInSymptomReports;
+  /// Chaves: `reflux`, `colic`, `crying`, `pain`, `fever`, `medication`, `other`.
+  final Map<String, List<PediatricSymptomOccurrence>> symptomOccurrencesByKind;
 }

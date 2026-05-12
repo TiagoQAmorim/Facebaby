@@ -2,11 +2,12 @@
   "name": "facebaby-functions",
   "private": true,
   "engines": {
-    "node": "18"
+    "node": "22"
   },
   "main": "index.js",
   "dependencies": {
     "firebase-admin": "^12.6.0",
-    "firebase-functions": "^5.1.1"
+    "firebase-functions": "^5.1.1",
+    "luxon": "^3.5.0"
   }
 }
