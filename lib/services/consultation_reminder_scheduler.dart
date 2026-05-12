@@ -35,6 +35,16 @@ class ConsultationReminderScheduler {
     return out;
   }
 
+  /// Mesma regra visual que a Home (`_consultationForBanner`): mostrar no **dia da consulta**,
+  /// das **06:00** até à hora da consulta (ainda futura).
+  static bool shouldShowDayOfBanner(ConsultationRecord c, DateTime now) {
+    if (!c.occurredAt.isAfter(now)) return false;
+    final start = DateTime(c.occurredAt.year, c.occurredAt.month, c.occurredAt.day, 6);
+    if (now.isBefore(start)) return false;
+    return DateTime(now.year, now.month, now.day) ==
+        DateTime(c.occurredAt.year, c.occurredAt.month, c.occurredAt.day);
+  }
+
   /// Dia civil anterior ao dia da consulta, às 06:00 local (relativo a [occurredLocal]).
   static DateTime reminderLocalDayBeforeSix(DateTime occurredLocal) {
     final consultDay = DateTime(occurredLocal.year, occurredLocal.month, occurredLocal.day);
@@ -96,13 +106,16 @@ class ConsultationReminderScheduler {
         final whenLabel =
             '${r.occurredAt.day.toString().padLeft(2, '0')}/${r.occurredAt.month.toString().padLeft(2, '0')} '
             '${r.occurredAt.hour.toString().padLeft(2, '0')}:${r.occurredAt.minute.toString().padLeft(2, '0')}';
-        await LocalNotificationsService.instance.scheduleZoned(
+        final ok = await LocalNotificationsService.instance.scheduleZoned(
           id: nid,
           title: strings.consultationReminderNotifTitle,
           body: strings.consultationReminderNotifBody(r.title, whenLabel),
           whenLocal: when,
           payload: payloadFor(r.id),
         );
+        if (!ok) {
+          debugPrint('ConsultationReminderScheduler: scheduleZoned failed for consultation ${r.id}');
+        }
       }
 
       await prefs.setString(sigKey, nextSig);

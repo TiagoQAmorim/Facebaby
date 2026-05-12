@@ -65,6 +65,12 @@ class WeeklyPhotoPublicSync {
         return;
       }
 
+      // O banner "Foto da Semana" e as Cloud Functions só usam URLs HTTPS remotas — não gravar caminho local.
+      if (!photoUrl.toLowerCase().startsWith('https://')) {
+        await FirestoreService.instance.deletePublicMemoryDoc(docId);
+        return;
+      }
+
       final title = (row['title'] as String?)?.trim() ?? '—';
       final description = (row['description'] as String?)?.trim();
       final memoryDateStr = (row['memory_date'] as String?)?.trim();

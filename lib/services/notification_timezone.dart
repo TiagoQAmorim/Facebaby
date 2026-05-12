@@ -11,13 +11,18 @@ class NotificationTimezone {
 
   static Future<void> init() async {
     if (kIsWeb || _ready) return;
-    _ready = true;
-    tzdata.initializeTimeZones();
     try {
-      final info = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(info.identifier));
-    } catch (_) {
-      tz.setLocalLocation(tz.UTC);
+      tzdata.initializeTimeZones();
+      try {
+        final info = await FlutterTimezone.getLocalTimezone();
+        tz.setLocalLocation(tz.getLocation(info.identifier));
+      } catch (_) {
+        tz.setLocalLocation(tz.UTC);
+      }
+      _ready = true;
+    } catch (e, st) {
+      _ready = false;
+      debugPrint('NotificationTimezone.init failed: $e\n$st');
     }
   }
 }

@@ -2,7 +2,9 @@ import 'dart:math' as math;
 
 import '../models/daily_summary.dart';
 import '../models/pediatric_report_snapshot.dart';
+import '../models/pediatric_symptom_occurrence.dart';
 import '../models/symptom_report.dart';
+import '../utils/measurement_format.dart';
 import 'app_database.dart';
 
 /// Agrega dados locais para o relatório pediátrico num intervalo de dias civis
@@ -108,32 +110,6 @@ abstract final class PediatricReportService {
     return 'other';
   }
 
-  static String _irritabilityFromMoods(List<String> moods) {
-    if (moods.isEmpty) return 'unknown';
-    final buf = StringBuffer();
-    for (final m in moods) {
-      buf.write(m.toLowerCase());
-      buf.write(' ');
-    }
-    final s = buf.toString();
-    if (s.contains('irrit') ||
-        s.contains('chor') ||
-        s.contains('nervos') ||
-        s.contains('agit') ||
-        s.contains('fuss') ||
-        s.contains('cry')) {
-      return 'high';
-    }
-    if (s.contains('calm') ||
-        s.contains('calmo') ||
-        s.contains('tranquil') ||
-        s.contains('happy') ||
-        s.contains('feliz')) {
-      return 'low';
-    }
-    return 'medium';
-  }
-
   static bool _journalMentions(String? text, List<String> keys) {
     if (text == null || text.trim().isEmpty) return false;
     final lower = text.toLowerCase();
@@ -141,6 +117,56 @@ abstract final class PediatricReportService {
       if (lower.contains(k)) return true;
     }
     return false;
+  }
+
+  static DateTime? _appliedAtLocalFromRow(Object? raw) {
+    if (raw == null) return null;
+    final s = raw.toString().trim();
+    if (s.isEmpty) return null;
+    final dt = DateTime.tryParse(s);
+    if (dt == null) return null;
+    return dt.isUtc ? dt.toLocal() : dt;
+  }
+
+  static bool _hasStructuredSymptomOnCalendarDay(
+    List<PediatricSymptomOccurrence> list,
+    DateTime calendarDay,
+  ) {
+    final y = calendarDay.year;
+    final m = calendarDay.month;
+    final d = calendarDay.day;
+    for (final o in list) {
+      if (o.journalDayOnly) continue;
+      final t = o.at;
+      if (t.year == y && t.month == m && t.day == d) return true;
+    }
+    return false;
+  }
+
+  static void _sortSymptomOccurrences(Map<String, List<PediatricSymptomOccurrence>> byKind) {
+    for (final list in byKind.values) {
+      list.sort((a, b) => a.at.compareTo(b.at));
+    }
+  }
+
+  /// Último registo de crescimento que satisfaz [include] (`measured_at` mais recente).
+  static Map<String, Object?>? _latestGrowthRecordWhere(
+    List<Map<String, Object?>> rows,
+    bool Function(DateTime t) include,
+  ) {
+    Map<String, Object?>? best;
+    DateTime? bestT;
+    for (final r in rows) {
+      final t = DateTime.tryParse(r['measured_at'] as String? ?? '');
+      final v = (r['value'] as num?)?.toDouble();
+      if (t == null || v == null || v <= 0) continue;
+      if (!include(t)) continue;
+      if (bestT == null || t.isAfter(bestT)) {
+        bestT = t;
+        best = r;
+      }
+    }
+    return best;
   }
 
   /// Limite máximo de dias num relatório (evita consultas excessivas).
@@ -198,19 +224,42 @@ abstract final class PediatricReportService {
       wStart = (weightsInPeriod.first['value'] as num).toDouble();
       wEnd = (weightsInPeriod.last['value'] as num).toDouble();
       wDeltaG = ((wEnd - wStart) * 1000).round();
+    } else {
+      // Sem pesagens no intervalo: usar o último peso conhecido até ao fim do período e,
+      // para a variação, o último antes do início do período (se existir).
+      final latestUpToEnd = _latestGrowthRecordWhere(
+        wRows,
+        (t) => t.isBefore(periodEndExclusive),
+      );
+      if (latestUpToEnd != null) {
+        wEnd = (latestUpToEnd['value'] as num).toDouble();
+      }
+      final latestBeforeStart = _latestGrowthRecordWhere(wRows, (t) => t.isBefore(start));
+      if (latestBeforeStart != null) {
+        wStart = (latestBeforeStart['value'] as num).toDouble();
+      }
+      if (wStart != null && wEnd != null) {
+        wDeltaG = ((wEnd - wStart) * 1000).round();
+      } else {
+        wDeltaG = null;
+      }
     }
 
     double? heightCm;
     final hRows = await db.listGrowthRecords(babyId: babyId, kind: 'height', limit: 400);
-    DateTime? bestT;
-    for (final r in hRows) {
-      final t = DateTime.tryParse(r['measured_at'] as String? ?? '');
-      final v = (r['value'] as num?)?.toDouble();
-      if (t == null || v == null || v <= 0) continue;
-      if (t.isBefore(start) || !t.isBefore(periodEndExclusive)) continue;
-      if (bestT == null || t.isAfter(bestT)) {
-        bestT = t;
-        heightCm = v;
+    final heightInPeriod = _latestGrowthRecordWhere(
+      hRows,
+      (t) => !t.isBefore(start) && t.isBefore(periodEndExclusive),
+    );
+    if (heightInPeriod != null) {
+      heightCm = (heightInPeriod['value'] as num).toDouble();
+    } else {
+      final latestH = _latestGrowthRecordWhere(
+        hRows,
+        (t) => t.isBefore(periodEndExclusive),
+      );
+      if (latestH != null) {
+        heightCm = (latestH['value'] as num).toDouble();
       }
     }
 
@@ -222,6 +271,7 @@ abstract final class PediatricReportService {
     final awakenAvg = _avgNightAwakeningsForPeriod(sleepPool, start, spanDays);
     final longestSec = _longestSleepSec(sleepPool);
     final sleepPat = _sleepPatternKey(awakenAvg, longestSec);
+    final hasSleepPatternBasis = sleepPool.isNotEmpty;
 
     final feedRows = await db.listFeedings(babyId: babyId, limit: 600, startedSince: start.subtract(const Duration(days: 1)));
     final feedsPeriod = <Map<String, Object?>>[];
@@ -263,50 +313,81 @@ abstract final class PediatricReportService {
     double? avgFmin = formulaN > 0 ? formulaDur / formulaN / 60.0 : null;
     double? avgSmin = solidN > 0 ? solidDur / solidN / 60.0 : null;
 
-    final moods = <String>[];
-    for (var cursor = start; !cursor.isAfter(end); cursor = cursor.add(const Duration(days: 1))) {
-      moods.addAll(await db.listMemoryMoodsForCalendarDay(babyId: babyId, calendarDay: cursor));
-    }
-    final irrit = _irritabilityFromMoods(moods);
-
-    var reflux = false;
-    var colic = false;
-    for (var cursor = start; !cursor.isAfter(end); cursor = cursor.add(const Duration(days: 1))) {
-      final j = await db.getDailyJournalText(babyId: babyId, calendarDay: cursor);
-      if (_journalMentions(j, ['reflux', 'refluxo', 'regurg'])) reflux = true;
-      if (_journalMentions(j, ['cólica', 'colica', 'colic', 'cólic'])) colic = true;
-    }
-
     final symptomRows = await db.listSymptomReportsInPeriod(
       babyId: babyId,
       periodStart: start,
       periodEndInclusive: end,
     );
     final symptomReportsInPeriod = symptomRows.map(SymptomReport.fromMap).toList();
-    var feverEpisodesLogged = 0;
-    var cryingNotedInSymptomReports = false;
-    var painNotedInSymptomReports = false;
+
+    final byKind = <String, List<PediatricSymptomOccurrence>>{
+      'reflux': [],
+      'colic': [],
+      'crying': [],
+      'pain': [],
+      'fever': [],
+      'medication': [],
+      'other': [],
+    };
+
     for (final sr in symptomReportsInPeriod) {
-      if (sr.fever) feverEpisodesLogged++;
-      if (sr.unexplainedCrying) cryingNotedInSymptomReports = true;
-      if (sr.pain) painNotedInSymptomReports = true;
-      if (sr.reflux) reflux = true;
-      if (sr.colic) colic = true;
+      final t = sr.occurredAt;
+      if (sr.reflux) byKind['reflux']!.add(PediatricSymptomOccurrence(at: t));
+      if (sr.colic) byKind['colic']!.add(PediatricSymptomOccurrence(at: t));
+      if (sr.unexplainedCrying) byKind['crying']!.add(PediatricSymptomOccurrence(at: t));
+      if (sr.pain) byKind['pain']!.add(PediatricSymptomOccurrence(at: t));
+      if (sr.fever) {
+        final tempStr = sr.tempCelsius != null ? MeasurementFormat.temperature(sr.tempCelsius) : null;
+        byKind['fever']!.add(PediatricSymptomOccurrence(at: t, detail: tempStr));
+      }
       final medNote = sr.medicationNote?.trim();
-      if (medNote != null && medNote.isNotEmpty) medHints.add(medNote);
+      if (medNote != null && medNote.isNotEmpty) {
+        medHints.add(medNote);
+        byKind['medication']!.add(PediatricSymptomOccurrence(at: t, detail: medNote));
+      }
+      final other = sr.otherNote?.trim();
+      if (other != null && other.isNotEmpty) {
+        byKind['other']!.add(PediatricSymptomOccurrence(at: t, detail: other));
+      }
     }
+
+    for (var cursor = start; !cursor.isAfter(end); cursor = cursor.add(const Duration(days: 1))) {
+      final j = await db.getDailyJournalText(babyId: babyId, calendarDay: cursor);
+      if (_journalMentions(j, ['reflux', 'refluxo', 'regurg']) &&
+          !_hasStructuredSymptomOnCalendarDay(byKind['reflux']!, cursor)) {
+        byKind['reflux']!.add(
+          PediatricSymptomOccurrence(
+            at: DateTime(cursor.year, cursor.month, cursor.day),
+            journalDayOnly: true,
+          ),
+        );
+      }
+      if (_journalMentions(j, ['cólica', 'colica', 'colic', 'cólic']) &&
+          !_hasStructuredSymptomOnCalendarDay(byKind['colic']!, cursor)) {
+        byKind['colic']!.add(
+          PediatricSymptomOccurrence(
+            at: DateTime(cursor.year, cursor.month, cursor.day),
+            journalDayOnly: true,
+          ),
+        );
+      }
+    }
+    _sortSymptomOccurrences(byKind);
 
     final vaccinesRaw = await db.listVaccines(babyId: babyId);
     final vaccineLines = <String>[];
     for (final v in vaccinesRaw) {
-      final applied = _parse(v['applied_at'] as String?);
-      if (applied == null || applied.isBefore(start) || !applied.isBefore(periodEndExclusive)) continue;
+      final appliedInst = _appliedAtLocalFromRow(v['applied_at']);
+      if (appliedInst == null) continue;
+      final appliedDay = DateTime(appliedInst.year, appliedInst.month, appliedInst.day);
+      if (appliedDay.isBefore(start) || appliedDay.isAfter(end)) continue;
       final name = (v['name'] as String?)?.trim() ?? '';
       final dose = (v['dose'] as String?)?.trim() ?? '';
       final line = dose.isEmpty ? name : '$name ($dose)';
       if (line.isNotEmpty) {
         try {
-          final dlab = '${applied.day.toString().padLeft(2, '0')}/${applied.month.toString().padLeft(2, '0')}/${applied.year}';
+          final dlab =
+              '${appliedDay.day.toString().padLeft(2, '0')}/${appliedDay.month.toString().padLeft(2, '0')}/${appliedDay.year}';
           vaccineLines.add('$line — $dlab');
         } catch (_) {
           vaccineLines.add(line);
@@ -327,21 +408,16 @@ abstract final class PediatricReportService {
       sleepAwakeningsAvg: awakenAvg,
       longestSleepSec: longestSec,
       sleepPatternKey: sleepPat,
+      hasSleepPatternBasis: hasSleepPatternBasis,
       breastfeedingSessions: breastN,
       formulaSessions: formulaN,
       solidFoodSessions: solidN,
       avgBreastMinutes: avgBmin,
       avgFormulaMinutes: avgFmin,
       avgSolidMinutes: avgSmin,
-      feverEpisodesLogged: feverEpisodesLogged,
-      refluxMentionedInJournals: reflux,
-      colicMentionedInJournals: colic,
-      irritabilityKey: irrit,
       vaccinesInPeriodLines: vaccineLines,
       customMedicationHints: medHints.take(6).toList(),
-      symptomReportsInPeriod: symptomReportsInPeriod,
-      cryingNotedInSymptomReports: cryingNotedInSymptomReports,
-      painNotedInSymptomReports: painNotedInSymptomReports,
+      symptomOccurrencesByKind: byKind,
     );
   }
 }

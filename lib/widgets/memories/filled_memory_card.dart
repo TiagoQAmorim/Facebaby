@@ -7,6 +7,7 @@ import '../../models/memory_badge.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/photo_b64.dart';
 import '../../utils/portal_layout.dart';
+import 'cached_memory_photo.dart';
 import 'memory_badge_grid_title.dart';
 import 'memory_badge_icon.dart';
 
@@ -90,7 +91,14 @@ class FilledMemoryCard extends StatelessWidget {
                     height: d,
                     child: bytes != null
                         ? Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true)
-                        : Image.network(url, fit: BoxFit.cover),
+                        : CachedMemoryPhoto(
+                            imageUrl: url,
+                            fit: BoxFit.cover,
+                            filterQuality: FilterQuality.low,
+                            placeholder: (_, __) => ColoredBox(
+                              color: MemoryBadgeIcon.mutedDiskBackground.withAlpha(180),
+                            ),
+                          ),
                   ),
                 ),
                 Positioned(

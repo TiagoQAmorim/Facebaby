@@ -26,6 +26,7 @@ import '../widgets/ai_button.dart';
 import '../widgets/ai_overlay.dart';
 import '../widgets/loading_scope.dart';
 import '../widgets/loading_navigator_observer.dart';
+import '../widgets/weekly_photo_winner_congrats_host.dart';
 import 'shell_nested_nav.dart';
 
 class MainShell extends StatefulWidget {
@@ -54,10 +55,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       LocalNotificationsService.instance.requestPermissionOnceOnFirstLaunch();
     });
-    currentBaby.init();
-    SleepTimerController.instance.init();
-    HomePrefs.init();
-    ReminderMonitor.instance.start();
+    unawaited(_bootstrapRemindersPipeline());
     _aiMicListener = () {
       if (!HomePrefs.aiMicEnabled.value && aiController.isActive) {
         aiController.close();
@@ -76,6 +74,28 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       // Reagenda lembretes locais (não depender só da Home puxada para refresh).
       ReminderMonitor.instance.onAppResumed();
     }
+  }
+
+  /// Garante bebé + prefs carregados antes de [ReminderMonitor] — evita o primeiro [sync] com
+  /// `babyId == null` cancelar todos os lembretes agendados no SO.
+  Future<void> _bootstrapRemindersPipeline() async {
+    try {
+      await currentBaby.init();
+    } catch (e, st) {
+      debugPrint('MainShell: currentBaby.init failed: $e\n$st');
+    }
+    try {
+      await SleepTimerController.instance.init();
+    } catch (e, st) {
+      debugPrint('MainShell: SleepTimerController.init failed: $e\n$st');
+    }
+    try {
+      await HomePrefs.init();
+    } catch (e, st) {
+      debugPrint('MainShell: HomePrefs.init failed: $e\n$st');
+    }
+    if (!mounted) return;
+    ReminderMonitor.instance.start();
   }
 
   void _goToTab(int index) {
@@ -335,6 +355,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                   state: aiController.state,
                   onClose: aiController.close,
                 ),
+              const WeeklyPhotoWinnerCongratsHost(),
             ],
           ),
         );

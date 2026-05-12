@@ -22,7 +22,7 @@ class BabyMemory {
   final DateTime? publicEnabledAt;
   final DateTime? publicDisabledAt;
 
-  /// Derivado ao gravar: Mon–Qui da semana do sorteio e com foto.
+  /// Derivado ao gravar: semana ISO (seg–dom) do concurso, com foto e público.
   final bool eligibleForWeeklyPhoto;
 
   /// Preenchido quando a nuvem marca esta memória como vencedora.

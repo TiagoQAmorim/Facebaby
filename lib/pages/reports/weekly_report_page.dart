@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../controllers/current_baby_controller.dart';
 import '../../i18n/app_i18n.dart';
+import '../../models/daily_summary.dart';
 import '../../models/weekly_report_snapshot.dart';
 import '../../services/weekly_report_service.dart';
 import '../../theme/app_theme.dart';
@@ -116,8 +117,14 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
   String _heroParagraph(S s, WeeklyReportSnapshot w, String babyName) {
     final tone = w.narrativeToneKey == 'calm' ? s.reportWeeklyToneCalm : s.reportWeeklyToneActive;
     final sp = w.sleepPctVsPrev;
+    final hasCurrentData = w.aggregatedDayCount > 0 &&
+        (w.avgDailyFeedings > 0 ||
+            w.avgDailyDiapers > 0 ||
+            w.currentWeekDays.take(w.aggregatedDayCount).any((d) => d.sleepTotalSeconds > 0));
+    // Em vez de “Sem dados suficientes para comparar…”, quando estamos na primeira
+    // semana com dados (sem histórico anterior) descrevemos o que JÁ foi registado.
     final sleepSentence = sp == null
-        ? s.reportWeeklySleepUnknown
+        ? (hasCurrentData ? s.reportWeeklyFirstWeekSleepLine : s.reportWeeklySleepUnknown)
         : sp.abs() < 4
             ? s.reportWeeklySleepStableShort
             : sp > 0
@@ -172,10 +179,12 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
     }
   }
 
-  String _trendValue(S s, WeeklyTrendBand band, double? pct, {String? grams}) {
-    if (grams != null && grams.isNotEmpty) return grams;
-    if (pct == null || band == WeeklyTrendBand.unknown) return s.reportWeeklyTrendNA;
-    if (band == WeeklyTrendBand.stable) return '0%';
+  /// Badge "% vs semana anterior" — só devolve algo quando a comparação é conhecida.
+  /// Quando volta `null`, o cartão mostra apenas o valor absoluto atual (evita o
+  /// efeito “tudo vazio” em semanas onde ainda não há histórico para comparar).
+  String? _comparisonBadge(WeeklyTrendBand band, double? pct) {
+    if (pct == null || band == WeeklyTrendBand.unknown) return null;
+    if (band == WeeklyTrendBand.stable) return '≈ 0%';
     final p = pct.round();
     return '${p > 0 ? '+' : ''}$p%';
   }
@@ -359,66 +368,7 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
                     const SizedBox(height: 18),
                     Text(s.reportWeeklyTrendsTitle, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
                     const SizedBox(height: 10),
-                    _whiteCard(
-                      child: Column(
-                        children: [
-                          _trendRow(
-                            context,
-                            icon: Icons.nightlight_round,
-                            iconColor: AppTheme.primaryPurple,
-                            label: s.shortcutSleep,
-                            trendLabel: _trendLabel(s, snap.sleepBand, forWeight: false),
-                            value: _trendValue(s, snap.sleepBand, snap.sleepPctVsPrev),
-                            color: _trendColor(snap.sleepBand),
-                            iconTrend: _trendIcon(snap.sleepBand),
-                          ),
-                          const Divider(height: 20),
-                          _trendRow(
-                            context,
-                            icon: Icons.restaurant_outlined,
-                            iconColor: const Color(0xFFE08A3E),
-                            label: s.reportTabFeedings,
-                            trendLabel: _trendLabel(s, snap.feedingBand, forWeight: false),
-                            value: _trendValue(s, snap.feedingBand, snap.feedingPctVsPrev),
-                            color: _trendColor(snap.feedingBand),
-                            iconTrend: _trendIcon(snap.feedingBand),
-                            subtitle: s.reportWeeklyAvgFeedsDay(snap.avgDailyFeedings.toStringAsFixed(1)),
-                          ),
-                          const Divider(height: 20),
-                          _trendRow(
-                            context,
-                            icon: Icons.baby_changing_station_rounded,
-                            iconColor: AppTheme.babyBlue,
-                            label: s.shortcutDiaper,
-                            trendLabel: snap.diaperBand == WeeklyTrendBand.improved
-                                ? s.reportWeeklyTrendLabelIncreased
-                                : _trendLabel(s, snap.diaperBand, forWeight: false),
-                            value: _trendValue(s, snap.diaperBand, snap.diaperPctVsPrev),
-                            color: _trendColor(snap.diaperBand),
-                            iconTrend: _trendIcon(snap.diaperBand),
-                            subtitle: s.reportWeeklyAvgDiapersDay(snap.avgDailyDiapers.toStringAsFixed(1)),
-                          ),
-                          const Divider(height: 20),
-                          _trendRow(
-                            context,
-                            icon: Icons.monitor_weight_outlined,
-                            iconColor: AppTheme.secondary,
-                            label: s.growth,
-                            trendLabel: _trendLabel(s, snap.weightBand, forWeight: true),
-                            value: _trendValue(
-                              s,
-                              snap.weightBand,
-                              null,
-                              grams: snap.weightDeltaGramsThisWeek != null
-                                  ? '${snap.weightDeltaGramsThisWeek! > 0 ? '+' : ''}${snap.weightDeltaGramsThisWeek}g'
-                                  : null,
-                            ),
-                            color: _trendColor(snap.weightBand),
-                            iconTrend: _trendIcon(snap.weightBand),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _whiteCard(child: _buildTrendsList(s, snap)),
                     const SizedBox(height: 18),
                     SizedBox(
                       width: double.infinity,
@@ -461,16 +411,88 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
     );
   }
 
+  /// Lista de linhas de tendência — agora mostra sempre o valor absoluto desta
+  /// semana (média/dia ou ganho de peso). O `±%` vs semana anterior aparece
+  /// como badge pequeno só quando há comparação fiável; caso contrário a linha
+  /// continua "preenchida" (sem `N/A` por todo o lado).
+  Widget _buildTrendsList(S s, WeeklyReportSnapshot snap) {
+    final agg = snap.aggregatedDayCount.clamp(0, 7);
+    final currSlice = agg <= 0
+        ? const <DailySummary>[]
+        : snap.currentWeekDays.sublist(0, agg.clamp(0, snap.currentWeekDays.length));
+    final avgSleepH = WeeklyReportService.avgSleepHours(currSlice);
+
+    final sleepValue = WeeklyReportService.formatHoursMinutes(avgSleepH);
+    final feedsValue = s.reportWeeklyAvgFeedsDay(snap.avgDailyFeedings.toStringAsFixed(1));
+    final diapersValue = s.reportWeeklyAvgDiapersDay(snap.avgDailyDiapers.toStringAsFixed(1));
+    final wDelta = snap.weightDeltaGramsThisWeek;
+    final weightValue = wDelta == null ? '—' : '${wDelta > 0 ? '+' : ''}${wDelta}g';
+
+    return Column(
+      children: [
+        _trendRow(
+          context,
+          icon: Icons.nightlight_round,
+          iconColor: AppTheme.primaryPurple,
+          label: s.shortcutSleep,
+          mainValue: sleepValue,
+          comparison: _comparisonBadge(snap.sleepBand, snap.sleepPctVsPrev),
+          comparisonColor: _trendColor(snap.sleepBand),
+          comparisonIcon: _trendIcon(snap.sleepBand),
+          subtitle: s.reportWeeklyAvgWeekLabel,
+        ),
+        const Divider(height: 20),
+        _trendRow(
+          context,
+          icon: Icons.restaurant_outlined,
+          iconColor: const Color(0xFFE08A3E),
+          label: s.reportTabFeedings,
+          mainValue: feedsValue,
+          comparison: _comparisonBadge(snap.feedingBand, snap.feedingPctVsPrev),
+          comparisonColor: _trendColor(snap.feedingBand),
+          comparisonIcon: _trendIcon(snap.feedingBand),
+          subtitle: _trendLabel(s, snap.feedingBand, forWeight: false),
+        ),
+        const Divider(height: 20),
+        _trendRow(
+          context,
+          icon: Icons.baby_changing_station_rounded,
+          iconColor: AppTheme.babyBlue,
+          label: s.shortcutDiaper,
+          mainValue: diapersValue,
+          comparison: _comparisonBadge(snap.diaperBand, snap.diaperPctVsPrev),
+          comparisonColor: _trendColor(snap.diaperBand),
+          comparisonIcon: _trendIcon(snap.diaperBand),
+          subtitle: snap.diaperBand == WeeklyTrendBand.improved
+              ? s.reportWeeklyTrendLabelIncreased
+              : _trendLabel(s, snap.diaperBand, forWeight: false),
+        ),
+        const Divider(height: 20),
+        _trendRow(
+          context,
+          icon: Icons.monitor_weight_outlined,
+          iconColor: AppTheme.secondary,
+          label: s.growth,
+          mainValue: weightValue,
+          comparison: null,
+          comparisonColor: _trendColor(snap.weightBand),
+          comparisonIcon: _trendIcon(snap.weightBand),
+          subtitle: _trendLabel(s, snap.weightBand, forWeight: true),
+        ),
+      ],
+    );
+  }
+
   Widget _trendRow(
     BuildContext context, {
     required IconData icon,
     required Color iconColor,
     required String label,
-    required String trendLabel,
-    required String value,
-    required Color color,
-    required IconData iconTrend,
-    String? subtitle,
+    required String mainValue,
+    required String subtitle,
+    String? comparison,
+    Color? comparisonColor,
+    IconData? comparisonIcon,
   }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,22 +508,37 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
-              if (subtitle != null) Text(subtitle, style: TextStyle(fontSize: 12, color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
-              Text(trendLabel, style: TextStyle(fontSize: 13, color: AppTheme.textMuted, fontWeight: FontWeight.w700)),
+              Text(subtitle, style: TextStyle(fontSize: 12, color: AppTheme.textMuted, fontWeight: FontWeight.w700)),
             ],
           ),
         ),
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(iconTrend, color: color, size: 22),
-                const SizedBox(width: 4),
-                Text(value, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: color)),
-              ],
+            Text(
+              mainValue,
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.textPrimary),
             ),
+            if (comparison != null) ...[
+              const SizedBox(height: 2),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (comparisonIcon != null)
+                    Icon(comparisonIcon, color: comparisonColor ?? AppTheme.textMuted, size: 14),
+                  if (comparisonIcon != null) const SizedBox(width: 2),
+                  Text(
+                    comparison,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12,
+                      color: comparisonColor ?? AppTheme.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ],

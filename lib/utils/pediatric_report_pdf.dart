@@ -27,8 +27,6 @@ class PediatricReportPdfStrings {
     required this.labelAvgFeeds,
     required this.labelAvgSleep,
     required this.labelAvgDiapers,
-    required this.labelFever,
-    required this.labelMedications,
     required this.labelVaccines,
     required this.labelSleepAvgDay,
     required this.labelSleepAwakenings,
@@ -39,15 +37,7 @@ class PediatricReportPdfStrings {
     required this.labelFeedSolid,
     required this.labelFeedSessions,
     required this.labelAvgDuration,
-    required this.labelSymptomReflux,
-    required this.labelSymptomColic,
-    required this.labelSymptomIrrit,
-    required this.labelSymptomCrying,
-    required this.labelSymptomPain,
-    required this.labelStructuredSymptoms,
-    required this.structuredSymptomsEmpty,
-    required this.yes,
-    required this.no,
+    required this.symptomDetailsEmpty,
     required this.na,
     required this.footerDisclaimer,
     required this.noneRegistered,
@@ -71,8 +61,6 @@ class PediatricReportPdfStrings {
   final String labelAvgFeeds;
   final String labelAvgSleep;
   final String labelAvgDiapers;
-  final String labelFever;
-  final String labelMedications;
   final String labelVaccines;
   final String labelSleepAvgDay;
   final String labelSleepAwakenings;
@@ -83,15 +71,7 @@ class PediatricReportPdfStrings {
   final String labelFeedSolid;
   final String labelFeedSessions;
   final String labelAvgDuration;
-  final String labelSymptomReflux;
-  final String labelSymptomColic;
-  final String labelSymptomIrrit;
-  final String labelSymptomCrying;
-  final String labelSymptomPain;
-  final String labelStructuredSymptoms;
-  final String structuredSymptomsEmpty;
-  final String yes;
-  final String no;
+  final String symptomDetailsEmpty;
   final String na;
   final String footerDisclaimer;
   final String noneRegistered;
@@ -109,10 +89,7 @@ Future<Uint8List> buildPediatricReportPdf({
   required String weightGainFmt,
   required String heightFmt,
   required String sleepPatternText,
-  required String irritabilityText,
-  required String medicationsLine,
-  required String feverEpisodesText,
-  required List<String> structuredSymptomLines,
+  required List<String> symptomDetailBlocks,
   required PediatricReportPdfStrings str,
 }) async {
   final doc = pw.Document();
@@ -136,7 +113,12 @@ Future<Uint8List> buildPediatricReportPdf({
     return '${m.round()} min';
   }
 
-  String yn(bool v) => v ? str.yes : str.no;
+  final sleepInner = <pw.Widget>[
+    kv(str.labelSleepAvgDay, WeeklyReportService.formatHoursMinutes(snap.avgSleepHoursPerDay)),
+    kv(str.labelSleepAwakenings, snap.sleepAwakeningsAvg <= 0 ? str.na : snap.sleepAwakeningsAvg.toStringAsFixed(1)),
+    if (snap.hasSleepPatternBasis) kv(str.labelSleepPattern, sleepPatternText),
+    kv(str.labelSleepLongest, WeeklyReportService.formatHoursMinutes(snap.longestSleepSec / 3600.0)),
+  ];
 
   doc.addPage(
     pw.MultiPage(
@@ -170,12 +152,10 @@ Future<Uint8List> buildPediatricReportPdf({
             kv(str.labelAvgFeeds, snap.avgFeedingsPerDay.toStringAsFixed(1)),
             kv(str.labelAvgSleep, WeeklyReportService.formatHoursMinutes(snap.avgSleepHoursPerDay)),
             kv(str.labelAvgDiapers, snap.avgDiapersPerDay.toStringAsFixed(1)),
-            kv(str.labelFever, feverEpisodesText),
             kv(
               str.labelVaccines,
               snap.vaccinesInPeriodLines.isEmpty ? str.noneRegistered : snap.vaccinesInPeriodLines.join('; '),
             ),
-            kv(str.labelMedications, medicationsLine),
           ],
         ),
         pw.SizedBox(height: 10),
@@ -183,12 +163,7 @@ Future<Uint8List> buildPediatricReportPdf({
           softLine,
           str.sectionSleep,
           accent,
-          [
-            kv(str.labelSleepAvgDay, WeeklyReportService.formatHoursMinutes(snap.avgSleepHoursPerDay)),
-            kv(str.labelSleepAwakenings, snap.sleepAwakeningsAvg <= 0 ? str.na : snap.sleepAwakeningsAvg.toStringAsFixed(1)),
-            kv(str.labelSleepPattern, sleepPatternText),
-            kv(str.labelSleepLongest, WeeklyReportService.formatHoursMinutes(snap.longestSleepSec / 3600.0)),
-          ],
+          sleepInner,
         ),
         pw.SizedBox(height: 10),
         _boxed(
@@ -216,37 +191,24 @@ Future<Uint8List> buildPediatricReportPdf({
           str.sectionSymptoms,
           accent,
           [
-            kv(str.labelSymptomReflux, yn(snap.refluxMentionedInJournals)),
-            kv(str.labelSymptomColic, yn(snap.colicMentionedInJournals)),
-            kv(str.labelSymptomIrrit, irritabilityText),
-            kv(str.labelSymptomCrying, yn(snap.cryingNotedInSymptomReports)),
-            kv(str.labelSymptomPain, yn(snap.painNotedInSymptomReports)),
-            if (structuredSymptomLines.isEmpty)
+            if (symptomDetailBlocks.isEmpty)
               pw.Padding(
-                padding: const pw.EdgeInsets.only(top: 6),
+                padding: const pw.EdgeInsets.only(top: 2),
                 child: pw.Text(
-                  str.structuredSymptomsEmpty,
+                  str.symptomDetailsEmpty,
                   style: pw.TextStyle(fontSize: 9, color: muted, fontStyle: pw.FontStyle.italic),
                 ),
               )
-            else ...[
-              pw.Padding(
-                padding: const pw.EdgeInsets.only(top: 8),
-                child: pw.Text(
-                  str.labelStructuredSymptoms,
-                  style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: accent),
-                ),
-              ),
-              ...structuredSymptomLines.map(
-                (line) => pw.Padding(
-                  padding: const pw.EdgeInsets.only(left: 8, top: 3),
+            else
+              ...symptomDetailBlocks.map(
+                (block) => pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 10),
                   child: pw.Text(
-                    '• $line',
-                    style: const pw.TextStyle(fontSize: 9.5, lineSpacing: 1.2),
+                    block,
+                    style: const pw.TextStyle(fontSize: 9.5, lineSpacing: 1.25),
                   ),
                 ),
               ),
-            ],
           ],
         ),
         pw.SizedBox(height: 10),

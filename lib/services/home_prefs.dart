@@ -19,6 +19,7 @@ class HomePrefs {
   static const _diaperAlertsEnabledKey = 'facebaby_diaper_alerts_enabled';
   static const _growthHealthAlertsEnabledKey = 'facebaby_growth_health_alerts_enabled';
   static const _exactAlarmPromptedKey = 'facebaby_exact_alarm_prompted_v1';
+  static const _weeklyWinnerCongratsWeekKey = 'facebaby_weekly_winner_congrats_week_v1';
 
   static const int feedingAlertIntervalMinClamp = 20;
   static const int feedingAlertIntervalMaxClamp = 360;
@@ -209,5 +210,18 @@ class HomePrefs {
       await LocalNotificationsService.instance.requestPermission();
       await _maybePromptExactAlarmIfNeeded();
     }
+  }
+
+  /// `week_id` do `spotlight_current` para o qual a mãe já viu o modal de parabéns.
+  static Future<String?> getWeeklyWinnerCongratsAckWeek() async {
+    final p = await SharedPreferences.getInstance();
+    final v = p.getString(_weeklyWinnerCongratsWeekKey);
+    if (v == null || v.trim().isEmpty) return null;
+    return v.trim();
+  }
+
+  static Future<void> setWeeklyWinnerCongratsAckWeek(String weekId) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_weeklyWinnerCongratsWeekKey, weekId.trim());
   }
 }

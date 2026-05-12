@@ -1,5 +1,10 @@
-/// Regras da “Foto da Semana”: coleta segunda–quinta, sorteio sexta,
-/// exibição sexta 00:00 até segunda 00:00 (horário local do dispositivo).
+/// Regras da “Foto da Semana” (Príncipe/Princesa da semana):
+/// - Candidaturas: segunda a domingo da semana ISO (marcação pública até passar a meia-noite
+///   de domingo → exclusivo segunda seguinte 00:00).
+/// - Sorteio na nuvem: domingo ~23:58 (America/Sao_Paulo), com base nas memórias da **semana
+///   ISO que acaba** nesse domingo (`submissionWeekId` = segunda dessa semana).
+/// - Exibição na Home: segunda 00:00 à segunda seguinte 00:00 (todos os utilizadores autenticados
+///   veem o mesmo `spotlight_current`).
 class WeeklyPhotoSchedule {
   WeeklyPhotoSchedule._();
 
@@ -11,14 +16,22 @@ class WeeklyPhotoSchedule {
     return day.subtract(Duration(days: day.weekday - DateTime.monday));
   }
 
-  /// true se [t] (data/hora local) está entre segunda 00:00 e quinta 23:59:59.
-  static bool isInCollectionWindow(DateTime t) {
-    final wd = t.weekday;
-    if (wd < DateTime.monday || wd > DateTime.thursday) return false;
-    return true;
+  /// Segunda 00:00 **depois** da semana ISO de [anyInWeek] (início da semana seguinte).
+  static DateTime mondayAfterIsoWeekContaining(DateTime anyInWeek) {
+    final mon = mondayOfIsoWeekContaining(anyInWeek);
+    return mon.add(const Duration(days: 7));
   }
 
-  /// Identificador estável da semana do sorteio (sexta que encerra o ciclo): `YYYY-MM-DD` da segunda ISO.
+  /// Janela de candidatura: qualquer momento dentro da semana ISO (seg 00:00 ≤ t < seg seguinte).
+  /// Equivale a “até 00h de domingo” no sentido de incluir todo o domingo até virar segunda.
+  static bool isInCollectionWindow(DateTime t) {
+    final mon = mondayOfIsoWeekContaining(t);
+    final nextMon = mon.add(const Duration(days: 7));
+    return !t.isBefore(mon) && t.isBefore(nextMon);
+  }
+
+  /// Identificador estável da semana do concurso: `YYYY-MM-DD` da segunda ISO da semana em que
+  /// a memória ficou pública (e entra no pool desse sorteio).
   static String contestWeekId(DateTime anyMomentInWeek) {
     final mon = mondayOfIsoWeekContaining(anyMomentInWeek);
     return '${mon.year.toString().padLeft(4, '0')}-'
@@ -26,13 +39,13 @@ class WeeklyPhotoSchedule {
         '${mon.day.toString().padLeft(2, '0')}';
   }
 
-  /// Quando a mãe marca público durante seg–qui, a marca entra no sorteio da **sexta seguinte**
-  /// (ainda na mesma semana ISO da marca).
+  /// A marcação pública conta para o sorteio dessa semana ISO (seg–dom).
   static bool isMarkEligibleForWeeklyDraw(DateTime markPublicAt) {
     return isInCollectionWindow(markPublicAt);
   }
 
-  /// Badge “Participando da Foto da Semana”: opt-in na janela desta semana e antes do sorteio (sexta 00:00).
+  /// Badge “Participando da Foto da Semana”: opt-in na semana do pool e até à segunda em que
+  /// o destaque desse sorteio entra em vigor (a segunda **após** o fim da semana ISO da marcação).
   static bool showParticipatingBadge({
     required bool isPublic,
     required bool hasPhoto,
@@ -42,23 +55,12 @@ class WeeklyPhotoSchedule {
     if (!isPublic || !hasPhoto || publicEnabledAt == null) return false;
     if (!isInCollectionWindow(publicEnabledAt)) return false;
     if (contestWeekId(publicEnabledAt) != contestWeekId(now)) return false;
-    final draw = fridayDrawAt(publicEnabledAt);
-    return now.isBefore(draw);
+    final spotlightStarts = mondayAfterIsoWeekContaining(publicEnabledAt);
+    return now.isBefore(spotlightStarts);
   }
 
-  /// Sexta-feira 00:00 da semana ISO que contém [anyInWeek] (referência para sorteio).
-  static DateTime fridayDrawAt(DateTime anyInWeek) {
-    final mon = mondayOfIsoWeekContaining(anyInWeek);
-    return mon.add(const Duration(days: 4)); // seg + 4 = sex
-  }
-
-  /// Segunda 00:00 após o período de exibição (fim do spotlight na Home).
-  static DateTime displayEndMondayAfterFriday(DateTime fridayDraw) {
-    final monAfter = mondayOfIsoWeekContaining(fridayDraw).add(const Duration(days: 7));
-    return monAfter;
-  }
-
-  /// Spotlight visível entre [drawAt] (sexta 00:00) e [displayUntil] (segunda 00:00 seguinte).
+  /// Spotlight visível entre [drawAt] (segunda 00:00 do período de exibição) e [displayUntil]
+  /// (segunda seguinte 00:00), conforme gravado em `spotlight_current`.
   static bool isWithinSpotlightDisplay({
     required DateTime now,
     required DateTime drawAt,

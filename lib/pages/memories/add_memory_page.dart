@@ -1,7 +1,9 @@
+import 'dart:async' show unawaited;
 import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:photo_view/photo_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../app/app_locale.dart';
 import '../../controllers/memory_controller.dart';
@@ -17,6 +19,7 @@ import '../../utils/pick_image_b64.dart';
 import '../../utils/memory_photo_limits.dart';
 import '../../utils/photo_b64.dart';
 import '../../widgets/card_box.dart';
+import '../../widgets/memories/cached_memory_photo.dart';
 import '../../widgets/memories/memory_badge_icon.dart';
 import '../../widgets/face_baby_loading.dart';
 
@@ -141,6 +144,62 @@ class _AddMemoryPageState extends State<AddMemoryPage> {
     });
   }
 
+  void _openPhotoFullscreen() {
+    if (!_hasPhotoForUi) return;
+    final b = _photoBytesDecoded;
+    final url = _photoUrl?.trim();
+    if (b != null) {
+      _showPhotoFullscreenDialog(MemoryImage(b));
+      return;
+    }
+    if (url != null && url.isNotEmpty) {
+      _showPhotoFullscreenDialog(memoryPhotoNetworkImageProvider(url));
+    }
+  }
+
+  void _showPhotoFullscreenDialog(ImageProvider<Object> imageProvider) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      useSafeArea: false,
+      barrierColor: Colors.black,
+      builder: (ctx) {
+        final pad = MediaQuery.paddingOf(ctx);
+        final sz = MediaQuery.sizeOf(ctx);
+        return Material(
+          color: Colors.black,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              PhotoView(
+                imageProvider: imageProvider,
+                gaplessPlayback: true,
+                minScale: PhotoViewComputedScale.contained * 0.85,
+                maxScale: PhotoViewComputedScale.covered * 4,
+                initialScale: PhotoViewComputedScale.contained,
+                backgroundDecoration: const BoxDecoration(color: Colors.black),
+                loadingBuilder: (c, event) => const Center(
+                  child: CircularProgressIndicator(color: Colors.white54),
+                ),
+                filterQuality: FilterQuality.medium,
+                customSize: sz,
+              ),
+              Positioned(
+                top: pad.top + 8,
+                right: 12,
+                child: IconButton(
+                  style: IconButton.styleFrom(backgroundColor: Colors.black.withAlpha(140)),
+                  icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _pickDateTime() async {
     final d = await showDatePicker(
       context: context,
@@ -200,14 +259,6 @@ class _AddMemoryPageState extends State<AddMemoryPage> {
     }
     if (!mounted) return;
     setState(() => _isPublic = true);
-  }
-
-  Future<void> _togglePublicPressed() async {
-    if (_isPublic) {
-      await _requestPublicOff();
-    } else {
-      await _requestPublicOn();
-    }
   }
 
   Future<void> _save() async {
@@ -344,137 +395,162 @@ class _AddMemoryPageState extends State<AddMemoryPage> {
                       const SizedBox(height: 10),
                       Material(
                         color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(20),
-                          onTap: _pickPhoto,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-                            child: LayoutBuilder(
-                              builder: (context, c) {
-                                final mw = (c.maxWidth.isFinite && c.maxWidth > 0)
-                                    ? c.maxWidth
-                                    : math.min(MediaQuery.sizeOf(context).width - 48, 760);
-                                // Reserva espaço para o título da badge à direita (com foto há só texto; ícone vai no canto da foto).
-                                final badgeRailMin = !_hasPhotoForUi ? 100.0 : 88.0;
-                                const gap = 12.0;
-                                final photoSide = math.min(
-                                  136.0,
-                                  math.max(84.0, mw - badgeRailMin - gap),
-                                );
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                          child: LayoutBuilder(
+                            builder: (context, c) {
+                              final mw = (c.maxWidth.isFinite && c.maxWidth > 0)
+                                  ? c.maxWidth
+                                  : math.min(MediaQuery.sizeOf(context).width - 48, 760);
+                              // Reserva espaço para o título da badge à direita (com foto há só texto; ícone vai no canto da foto).
+                              final badgeRailMin = !_hasPhotoForUi ? 100.0 : 88.0;
+                              const gap = 12.0;
+                              final photoSide = math.min(
+                                136.0,
+                                math.max(84.0, mw - badgeRailMin - gap),
+                              );
 
-                                Widget circleChild;
-                                if (!_hasPhotoForUi) {
-                                  circleChild = Container(
-                                    width: photoSide,
-                                    height: photoSide,
-                                    color: MemoryBadgeIcon.mutedDiskBackground.withAlpha(230),
+                              Widget circleChild;
+                              if (!_hasPhotoForUi) {
+                                circleChild = Container(
+                                  width: photoSide,
+                                  height: photoSide,
+                                  color: MemoryBadgeIcon.mutedDiskBackground.withAlpha(230),
+                                  alignment: Alignment.center,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.add_a_photo_rounded, size: 38, color: Colors.black.withAlpha(100)),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        s.memoryTapToPickPhoto,
+                                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.black.withAlpha(120)),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              } else {
+                                final mini = (photoSide * 0.26).clamp(22.0, 36.0);
+                                final Widget ovalImage;
+                                if (bytes != null) {
+                                  ovalImage = Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true, alignment: Alignment.center);
+                                } else if (photoUrlTrim != null && photoUrlTrim.isNotEmpty) {
+                                  ovalImage = CachedMemoryPhoto(
+                                    imageUrl: photoUrlTrim,
+                                    fit: BoxFit.cover,
                                     alignment: Alignment.center,
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.add_a_photo_rounded, size: 38, color: Colors.black.withAlpha(100)),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          s.memoryTapToPickPhoto,
-                                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.black.withAlpha(120)),
-                                        ),
-                                      ],
+                                    filterQuality: FilterQuality.medium,
+                                    placeholder: (_, __) => Center(
+                                      child: FaceBabySpinner(size: photoSide * 0.35, strokeWidth: 2.6),
+                                    ),
+                                    errorWidget: (_, __, ___) => Container(
+                                      color: MemoryBadgeIcon.mutedDiskBackground,
+                                      alignment: Alignment.center,
+                                      child: Icon(Icons.broken_image_outlined, size: photoSide * 0.35, color: Colors.black45),
                                     ),
                                   );
                                 } else {
-                                  final mini = (photoSide * 0.26).clamp(22.0, 36.0);
-                                  final Widget ovalImage;
-                                  if (bytes != null) {
-                                    ovalImage = Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true, alignment: Alignment.center);
-                                  } else if (photoUrlTrim != null && photoUrlTrim.isNotEmpty) {
-                                    ovalImage = Image.network(
-                                      photoUrlTrim,
-                                      fit: BoxFit.cover,
-                                      alignment: Alignment.center,
-                                      gaplessPlayback: true,
-                                      loadingBuilder: (ctx, child, loadingProgress) {
-                                        if (loadingProgress == null) return child;
-                                        return Center(
-                                          child: FaceBabySpinner(size: photoSide * 0.35, strokeWidth: 2.6),
-                                        );
-                                      },
-                                      errorBuilder: (_, __, ___) => Container(
-                                        color: MemoryBadgeIcon.mutedDiskBackground,
-                                        alignment: Alignment.center,
-                                        child: Icon(Icons.broken_image_outlined, size: photoSide * 0.35, color: Colors.black45),
-                                      ),
-                                    );
-                                  } else {
-                                    ovalImage = const SizedBox.shrink();
-                                  }
-                                  circleChild = SizedBox(
-                                    width: photoSide,
-                                    height: photoSide,
-                                    child: Stack(
-                                      clipBehavior: Clip.none,
-                                      alignment: Alignment.center,
-                                      children: [
-                                        ClipOval(
-                                          child: SizedBox(
-                                            width: photoSide,
-                                            height: photoSide,
-                                            child: ovalImage,
-                                          ),
-                                        ),
-                                        Positioned(
-                                          right: 2,
-                                          bottom: 2,
-                                          child: Container(
-                                            padding: const EdgeInsets.all(4),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              shape: BoxShape.circle,
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.black.withAlpha(40),
-                                                  blurRadius: 8,
-                                                  offset: const Offset(0, 3),
-                                                ),
-                                              ],
-                                            ),
-                                            child: MemoryBadgeIcon(badge: widget.badge, muted: false, size: mini),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
+                                  ovalImage = const SizedBox.shrink();
                                 }
-
-                                return Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    ClipOval(child: circleChild),
-                                    SizedBox(width: gap),
-                                    Expanded(
-                                      child: Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            if (!_hasPhotoForUi) ...[
-                                              MemoryBadgeIcon(badge: widget.badge, muted: true, size: 44),
-                                              const SizedBox(height: 6),
+                                circleChild = SizedBox(
+                                  width: photoSide,
+                                  height: photoSide,
+                                  child: Stack(
+                                    clipBehavior: Clip.none,
+                                    alignment: Alignment.center,
+                                    children: [
+                                      ClipOval(
+                                        child: SizedBox(
+                                          width: photoSide,
+                                          height: photoSide,
+                                          child: ovalImage,
+                                        ),
+                                      ),
+                                      Positioned(
+                                        right: 2,
+                                        bottom: 2,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withAlpha(40),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 3),
+                                              ),
                                             ],
-                                            Text(
-                                              s.memoryBadgeTitle(widget.badge),
-                                              maxLines: 3,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppTheme.textPrimary.withAlpha(200)),
+                                          ),
+                                          child: MemoryBadgeIcon(badge: widget.badge, muted: false, size: mini),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+
+                              final photoLeading = _hasPhotoForUi
+                                  ? Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        customBorder: const CircleBorder(),
+                                        onTap: _openPhotoFullscreen,
+                                        child: ClipOval(child: circleChild),
+                                      ),
+                                    )
+                                  : ClipOval(child: circleChild);
+
+                              final row = Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  photoLeading,
+                                  SizedBox(width: gap),
+                                  Expanded(
+                                    child: Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          if (!_hasPhotoForUi) ...[
+                                            MemoryBadgeIcon(badge: widget.badge, muted: true, size: 44),
+                                            const SizedBox(height: 6),
+                                          ],
+                                          Text(
+                                            s.memoryBadgeTitle(widget.badge),
+                                            maxLines: 3,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppTheme.textPrimary.withAlpha(200)),
+                                          ),
+                                          if (_hasPhotoForUi) ...[
+                                            const SizedBox(height: 4),
+                                            TextButton.icon(
+                                              onPressed: _pickPhoto,
+                                              icon: const Icon(Icons.photo_camera_outlined, size: 18),
+                                              label: Text(s.memoryPhotoEditTitle),
+                                              style: TextButton.styleFrom(
+                                                visualDensity: VisualDensity.compact,
+                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                              ),
                                             ),
                                           ],
-                                        ),
+                                        ],
                                       ),
                                     ),
-                                  ],
+                                  ),
+                                ],
+                              );
+
+                              if (!_hasPhotoForUi) {
+                                return InkWell(
+                                  borderRadius: BorderRadius.circular(20),
+                                  onTap: _pickPhoto,
+                                  child: row,
                                 );
-                              },
-                            ),
+                              }
+                              return row;
+                            },
                           ),
                         ),
                       ),
@@ -546,9 +622,25 @@ class _AddMemoryPageState extends State<AddMemoryPage> {
                         decoration: InputDecoration(labelText: s.memoryMomNotesFieldLabel, border: const OutlineInputBorder()),
                       ),
                       const SizedBox(height: 18),
-                      if (!_isPublic)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
+                      CheckboxListTile(
+                        value: _isPublic,
+                        onChanged: _saving
+                            ? null
+                            : (bool? v) {
+                                if (v == true) {
+                                  unawaited(_requestPublicOn());
+                                } else if (v == false) {
+                                  unawaited(_requestPublicOff());
+                                }
+                              },
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        title: Text(
+                          _isPublic ? s.weeklyPhotoPublicOn : s.weeklyPhotoPublicOff,
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                        ),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: 8, right: 4),
                           child: Text(
                             s.weeklyPhotoPublicExplainer,
                             style: TextStyle(
@@ -559,27 +651,9 @@ class _AddMemoryPageState extends State<AddMemoryPage> {
                             ),
                           ),
                         ),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: _saving ? null : _togglePublicPressed,
-                          icon: Icon(
-                            _isPublic ? Icons.public_rounded : Icons.lock_outline_rounded,
-                            color: Colors.white,
-                          ),
-                          label: Text(
-                            _isPublic ? s.weeklyPhotoPublicOn : s.weeklyPhotoPublicOff,
-                            style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white),
-                          ),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            backgroundColor: AppTheme.primaryPurple,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-                          ),
-                        ),
                       ),
                       if (_isPublic) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
                         SwitchListTile(
                           contentPadding: EdgeInsets.zero,
                           title: Text(s.weeklyPhotoShowBabyFirstName, style: const TextStyle(fontWeight: FontWeight.w700)),

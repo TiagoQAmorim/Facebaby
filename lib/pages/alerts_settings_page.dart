@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../controllers/current_baby_controller.dart';
 import '../i18n/app_i18n.dart';
 import '../services/home_prefs.dart';
+import '../services/local_notifications_service.dart';
+import '../services/scheduled_local_reminders.dart';
+import '../services/app_database.dart';
 import '../services/sleep_routine.dart';
 import '../services/premium/premium_service.dart';
 import '../theme/app_theme.dart';
@@ -141,9 +144,164 @@ class AlertsSettingsPage extends StatelessWidget {
                   },
                 ),
               ),
+              const SizedBox(height: 6),
+              const _AlertsTestCard(),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Diagnóstico: dispara uma notificação imediata e agenda outra a 30s para confirmar
+/// que tanto o canal `show` como o `zonedSchedule` (OS AlarmManager) estão a funcionar.
+class _AlertsTestCard extends StatefulWidget {
+  const _AlertsTestCard();
+
+  @override
+  State<_AlertsTestCard> createState() => _AlertsTestCardState();
+}
+
+class _AlertsTestCardState extends State<_AlertsTestCard> {
+  bool _busy = false;
+  String? _lastResult;
+
+  Future<void> _runTest() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _lastResult = null;
+    });
+    final svc = LocalNotificationsService.instance;
+    final messenger = ScaffoldMessenger.of(context);
+
+    final errors = <String>[];
+    try {
+      await svc.requestPermission();
+    } catch (e) {
+      errors.add('permission: $e');
+    }
+
+    try {
+      await svc.show(
+        id: 99001,
+        title: 'FaceBaby — teste imediato',
+        body: 'Se vê esta mensagem, o canal imediato está OK.',
+      );
+    } catch (e) {
+      errors.add('show: $e');
+    }
+
+    try {
+      final scheduled = await svc.scheduleZoned(
+        id: 99002,
+        title: 'FaceBaby — teste agendado',
+        body: 'Esta foi agendada via AlarmManager (~30s).',
+        whenLocal: DateTime.now().add(const Duration(seconds: 30)),
+      );
+      if (!scheduled) errors.add('schedule: AlarmManager recusou todos os modos');
+    } catch (e) {
+      errors.add('schedule: $e');
+    }
+
+    if (!mounted) return;
+    final ok = errors.isEmpty;
+    setState(() {
+      _busy = false;
+      _lastResult = ok
+          ? 'Enviado. Deve receber agora (imediato) e em ~30s (agendado).'
+          : 'Falhou: ${errors.join(' | ')}';
+    });
+    messenger.showSnackBar(SnackBar(content: Text(_lastResult!)));
+  }
+
+  Future<void> _runReminderSync() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _lastResult = null;
+    });
+    final messenger = ScaffoldMessenger.of(context);
+    final babyId = CurrentBabyController.instance.currentBabyId;
+    final buf = StringBuffer('bebé=$babyId');
+    if (babyId != null) {
+      try {
+        final lastFeed = await AppDatabase.instance.latestBreastOrBottleFeedingEndedAt(babyId: babyId);
+        buf.write(' • última mamada=${lastFeed?.toIso8601String() ?? '—'}');
+        final lastSleep = await AppDatabase.instance.latestCompletedSleepEnd(babyId: babyId);
+        buf.write(' • último sono fim=${lastSleep?.toIso8601String() ?? '—'}');
+        final lastDiaper = await AppDatabase.instance.latestDiaperChangedAt(babyId: babyId);
+        buf.write(' • última fralda=${lastDiaper?.toIso8601String() ?? '—'}');
+      } catch (e) {
+        buf.write(' • erro DB: $e');
+      }
+    }
+    try {
+      await ScheduledLocalReminders.sync(babyId: babyId);
+      buf.write(' • sync OK');
+    } catch (e) {
+      buf.write(' • sync erro: $e');
+    }
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _lastResult = buf.toString();
+    });
+    messenger.showSnackBar(SnackBar(content: Text(_lastResult!), duration: const Duration(seconds: 8)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.black.withAlpha(18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.notifications_active_rounded, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Testar notificações',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Dispara um aviso imediato e agenda outro daqui a 30 segundos. '
+            'Útil para confirmar que o sistema está a entregar as notificações da app.',
+            style: TextStyle(fontSize: 12.5, height: 1.4, color: Colors.black.withAlpha(150)),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: _busy ? null : _runTest,
+            icon: _busy
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.bolt_rounded),
+            label: const Text('Disparar teste'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _busy ? null : _runReminderSync,
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Forçar reagendamento (lembretes reais)'),
+          ),
+          if (_lastResult != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              _lastResult!,
+              style: TextStyle(fontSize: 12, color: Colors.black.withAlpha(170)),
+            ),
+          ],
+        ],
       ),
     );
   }

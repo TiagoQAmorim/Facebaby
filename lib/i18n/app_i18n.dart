@@ -8,11 +8,19 @@ import '../models/memory_badge.dart';
 import 'development_leaps_translated.dart';
 
 // Common languages across Play Store / App Store audiences.
-// (PT/EN/ES/FR/DE/IT/JA/KO/ZH no seletor; hi/id/ru/tr mantidos no enum por dados legados.)
+// (PT/EN/ES/FR/DE/IT no seletor; hi/id/ru/tr/ja/ko/zh mantidos no enum por dados legados.)
 enum AppLang { pt, en, es, fr, de, it, hi, id, ja, ko, ru, tr, zh }
 
 /// Idiomas não mostrados em Definições › Idioma (strings nas maps mantêm-se).
-const Set<AppLang> kAppLangHiddenFromPicker = {AppLang.hi, AppLang.id, AppLang.ru, AppLang.tr};
+const Set<AppLang> kAppLangHiddenFromPicker = {
+  AppLang.hi,
+  AppLang.id,
+  AppLang.ru,
+  AppLang.tr,
+  AppLang.ja,
+  AppLang.ko,
+  AppLang.zh,
+};
 
 class AppLanguageController extends ChangeNotifier {
   static const _prefKey = 'facebaby_app_lang_v1';
@@ -288,6 +296,7 @@ class S {
   String get reportWeeklyToneCalm => _t('reportWeeklyToneCalm');
   String get reportWeeklyToneActive => _t('reportWeeklyToneActive');
   String get reportWeeklySleepUnknown => _t('reportWeeklySleepUnknown');
+  String get reportWeeklyFirstWeekSleepLine => _t('reportWeeklyFirstWeekSleepLine');
   String get reportWeeklySleepStableShort => _t('reportWeeklySleepStableShort');
   String reportWeeklySleepUp(int pct) => _t('reportWeeklySleepUp').replaceAll('{pct}', '$pct');
   String reportWeeklySleepDown(int pct) => _t('reportWeeklySleepDown').replaceAll('{pct}', '$pct');
@@ -447,6 +456,7 @@ class S {
   String get reportPediatricSymptomIrrit => _t('reportPediatricSymptomIrrit');
   String get reportPediatricSymptomCrying => _t('reportPediatricSymptomCrying');
   String get reportPediatricSymptomPain => _t('reportPediatricSymptomPain');
+  String get reportPediatricSymptomFromJournal => _t('reportPediatricSymptomFromJournal');
   String get reportPediatricStructuredSymptoms => _t('reportPediatricStructuredSymptoms');
   String get reportPediatricStructuredSymptomsEmpty => _t('reportPediatricStructuredSymptomsEmpty');
   String get reportPediatricIrritHigh => _t('reportPediatricIrritHigh');
@@ -523,6 +533,8 @@ class S {
   String memoriesAlbumCoverTagline(String name) =>
       _t('memoriesAlbumCoverTagline').replaceAll('{name}', name);
   String get memoriesAlbumFooter => _t('memoriesAlbumFooter');
+  String get memoriesAlbumBackCoverBody => _t('memoriesAlbumBackCoverBody');
+  String get memoriesAlbumBackCoverFinale => _t('memoriesAlbumBackCoverFinale');
   String get addMemory => _t('addMemory');
 
   String get memoryBadgeMonthOne => _t('memoryBadgeMonthOne');
@@ -769,11 +781,21 @@ class S {
     return _t('weeklyPhotoSectionTitleFemale');
   }
 
+  /// Título em destaque no banner da Home (maiúsculas; PT/EN nas maps, resto via fallback EN).
+  String weeklyPhotoHomeHeroTitle(String? sex) {
+    final sx = sex?.trim().toUpperCase();
+    if (sx == 'M') return _t('weeklyPhotoHomeHeroMale');
+    return _t('weeklyPhotoHomeHeroFemale');
+  }
+
   String get weeklyPhotoSectionSubtitle => _t('weeklyPhotoSectionSubtitle');
   String get weeklyPhotoViewMemory => _t('weeklyPhotoViewMemory');
   String get weeklyPhotoBabyFallback => _t('weeklyPhotoBabyFallback');
   String get weeklyPhotoDisclaimerShort => _t('weeklyPhotoDisclaimerShort');
   String get weeklyPhotoPublicDetailAppBar => _t('weeklyPhotoPublicDetailAppBar');
+  String get weeklyPhotoWinnerCongratsTitle => _t('weeklyPhotoWinnerCongratsTitle');
+  String get weeklyPhotoWinnerCongratsBody => _t('weeklyPhotoWinnerCongratsBody');
+  String get weeklyPhotoWinnerCongratsOk => _t('weeklyPhotoWinnerCongratsOk');
   String get memoryEditTitle => _t('memoryEditTitle');
   String get memoryNewTitle => _t('memoryNewTitle');
   String get memoryMomNotesFieldLabel => _t('memoryMomNotesFieldLabel');
@@ -1053,6 +1075,9 @@ class S {
   String get consultationReminderNotifTitle => _t('consultationReminderNotifTitle');
   String consultationReminderNotifBody(String title, String whenFormatted) =>
       _t('consultationReminderNotifBody').replaceAll('{title}', title).replaceAll('{when}', whenFormatted);
+  /// Lembrete no **dia** da consulta (push imediato / banner), por oposição a “amanhã”.
+  String consultationTodayReminderNotifBody(String title, String whenFormatted) =>
+      _t('consultationTodayReminderNotifBody').replaceAll('{title}', title).replaceAll('{when}', whenFormatted);
   String homeConsultationBannerChip(String title, String timeHm) =>
       _t('homeConsultationBannerChip').replaceAll('{title}', title).replaceAll('{t}', timeHm);
   String get consultationsEmpty => _t('consultationsEmpty');
@@ -1606,6 +1631,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportWeeklyToneCalm': 'tranquila',
     'reportWeeklyToneActive': 'movimentada',
     'reportWeeklySleepUnknown': 'Sem dados suficientes para comparar o sono entre semanas.',
+    'reportWeeklyFirstWeekSleepLine':
+        'Esta é a primeira semana com registos: continue a anotar para vermos tendências em breve.',
     'reportWeeklySleepStableShort': 'O sono manteve-se estável face à semana anterior.',
     'reportWeeklySleepUp': 'O sono melhorou cerca de {pct}% face à semana anterior.',
     'reportWeeklySleepDown': 'O sono reduziu cerca de {pct}% face à semana anterior.',
@@ -1780,6 +1807,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricFeverDisclaimerShort': '0',
     'reportPediatricSymptomCrying': 'Choro sem causa aparente (relatos)',
     'reportPediatricSymptomPain': 'Dor (relatos)',
+    'reportPediatricSymptomFromJournal': 'mencionado no diário (sem hora)',
     'reportPediatricStructuredSymptoms': 'Relatos de sintomas (data e hora)',
     'reportPediatricStructuredSymptomsEmpty': 'Nenhum relato estruturado neste período.',
     'reportDevScreenTitle': 'Desenvolvimento',
@@ -1846,6 +1874,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoriesAlbumCoverMain': 'Livro de recordação',
     'memoriesAlbumCoverTagline': 'Momentos especiais com {name}',
     'memoriesAlbumFooter': 'Gerado com FaceBaby',
+    'memoriesAlbumBackCoverBody':
+        'FaceBaby nasceu para transformar momentos simples em lembranças eternas. Cada sorriso, descoberta, abraço e conquista do seu bebê merece ser guardado com carinho, amor e significado.\n\nEste livro foi criado para acompanhar os primeiros passos dessa jornada tão especial, registrando memórias únicas que poderão ser revividas por toda a vida.\n\nMais do que fotos e anotações, estas páginas carregam sentimentos, histórias e emoções que o tempo jamais apagará.\n\nObrigado por permitir que a FaceBaby faça parte da história da sua família. 💛',
+    'memoriesAlbumBackCoverFinale':
+        'Porque crescer passa rápido…\nmas as memórias podem durar para sempre.',
     'addMemory': 'Adicionar memória',
     'memoryBadgeMonthOne': '1 mês',
     'memoryBadgeMonthsMany': '{n} meses',
@@ -2079,12 +2111,18 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Somente fotos marcadas como públicas participam. Você pode remover a opção a qualquer momento.',
     'weeklyPhotoSectionTitleMale': 'Príncipe da Semana',
     'weeklyPhotoSectionTitleFemale': 'Princesa da Semana',
+    'weeklyPhotoHomeHeroMale': 'PRÍNCIPE DA SEMANA',
+    'weeklyPhotoHomeHeroFemale': 'PRINCESA DA SEMANA',
     'weeklyPhotoSectionSubtitle': 'Uma memória especial compartilhada por uma mãe do FaceBaby.',
     'weeklyPhotoViewMemory': 'Ver memória',
     'weeklyPhotoBabyFallback': 'Um bebê FaceBaby',
     'weeklyPhotoDisclaimerShort':
         'Somente fotos marcadas como públicas participam. Você pode remover a opção a qualquer momento.',
     'weeklyPhotoPublicDetailAppBar': 'Memória da semana',
+    'weeklyPhotoWinnerCongratsTitle': 'Parabéns!',
+    'weeklyPhotoWinnerCongratsBody':
+        'A sua foto foi escolhida como Foto da Semana (Princesa ou Príncipe da Semana) no FaceBaby. Obrigada por partilhar este momento connosco.',
+    'weeklyPhotoWinnerCongratsOk': 'Obrigada',
     'memoryEditTitle': 'Editar memória',
     'memoryNewTitle': 'Nova memória',
     'memoryMomNotesFieldLabel': 'Observações da mamãe',
@@ -2305,6 +2343,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'consultationDetailNotes': 'Notas',
     'consultationReminderNotifTitle': 'Consulta agendada',
     'consultationReminderNotifBody': 'Amanhã · {title} · {when}',
+    'consultationTodayReminderNotifBody': 'Hoje · {title} · {when}',
     'homeConsultationBannerChip': 'Consulta · {title} · {t}',
     'consultationsEmpty': 'Nenhuma consulta registada ainda.',
     'consultationsDayEmpty': 'Nenhuma consulta neste dia.',
@@ -3154,6 +3193,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportWeeklyToneCalm': 'calm',
     'reportWeeklyToneActive': 'busy',
     'reportWeeklySleepUnknown': 'Not enough sleep data to compare weeks.',
+    'reportWeeklyFirstWeekSleepLine':
+        'This is the first week with entries — keep logging so trends can show up next week.',
     'reportWeeklySleepStableShort': 'Sleep stayed stable vs last week.',
     'reportWeeklySleepUp': 'Sleep improved by about {pct}% vs last week.',
     'reportWeeklySleepDown': 'Sleep dropped by about {pct}% vs last week.',
@@ -3327,6 +3368,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricFeverDisclaimerShort': '0',
     'reportPediatricSymptomCrying': 'Unexplained crying (structured logs)',
     'reportPediatricSymptomPain': 'Pain (structured logs)',
+    'reportPediatricSymptomFromJournal': 'mentioned in journal (no time)',
     'reportPediatricStructuredSymptoms': 'Structured symptom logs (date & time)',
     'reportPediatricStructuredSymptomsEmpty': 'No structured symptom logs this period.',
     'reportDevScreenTitle': 'Development',
@@ -3393,6 +3435,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoriesAlbumCoverMain': 'Keepsake memory book',
     'memoriesAlbumCoverTagline': 'Special moments with {name}',
     'memoriesAlbumFooter': 'Made with FaceBaby',
+    'memoriesAlbumBackCoverBody':
+        'FaceBaby was created to turn simple moments into everlasting memories. Every smile, discovery, hug, and milestone your baby experiences deserves to be preserved with love, care, and meaning.\n\nThis book was designed to follow the first steps of this beautiful journey, capturing precious memories that can be treasured forever.\n\nMore than photos and notes, these pages hold emotions, stories, and feelings that time will never erase.\n\nThank you for allowing FaceBaby to be part of your family\u2019s story. 💛',
+    'memoriesAlbumBackCoverFinale':
+        'Because childhood goes by quickly…\nbut memories can last forever.',
     'addMemory': 'Add memory',
     'memoryBadgeMonthOne': '1 month',
     'memoryBadgeMonthsMany': '{n} months',
@@ -3625,12 +3671,18 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Only photos marked public participate. You can remove this anytime.',
     'weeklyPhotoSectionTitleMale': 'Prince of the Week',
     'weeklyPhotoSectionTitleFemale': 'Princess of the Week',
+    'weeklyPhotoHomeHeroMale': 'PRINCE OF THE WEEK',
+    'weeklyPhotoHomeHeroFemale': 'PRINCESS OF THE WEEK',
     'weeklyPhotoSectionSubtitle': 'A special memory shared by a FaceBaby mom.',
     'weeklyPhotoViewMemory': 'View memory',
     'weeklyPhotoBabyFallback': 'A FaceBaby baby',
     'weeklyPhotoDisclaimerShort':
         'Only photos marked public participate. You can remove this anytime.',
     'weeklyPhotoPublicDetailAppBar': 'Weekly memory',
+    'weeklyPhotoWinnerCongratsTitle': 'Congratulations!',
+    'weeklyPhotoWinnerCongratsBody':
+        'Your photo was chosen as Photo of the Week (Princess or Prince of the Week) in FaceBaby. Thank you for sharing this moment with us.',
+    'weeklyPhotoWinnerCongratsOk': 'Thanks',
     'memoryEditTitle': 'Edit memory',
     'memoryNewTitle': 'New memory',
     'memoryMomNotesFieldLabel': "Mom's notes",
@@ -3847,6 +3899,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'consultationDetailNotes': 'Notes',
     'consultationReminderNotifTitle': 'Upcoming checkup',
     'consultationReminderNotifBody': 'Tomorrow · {title} · {when}',
+    'consultationTodayReminderNotifBody': 'Today · {title} · {when}',
     'homeConsultationBannerChip': 'Checkup · {title} · {t}',
     'consultationsEmpty': 'No checkups logged yet.',
     'consultationsDayEmpty': 'No checkups on this day.',
@@ -4593,6 +4646,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'vaccineReminderNotifBody': 'Vacuna prevista hoy: {name}.',
     'consultationReminderNotifTitle': 'Cita programada',
     'consultationReminderNotifBody': 'Mañana · {title} · {when}',
+    'consultationTodayReminderNotifBody': 'Hoy · {title} · {when}',
     'notifChannelRemindersName': 'Recordatorios',
     'notifChannelRemindersDesc': 'Alertas de alimentación, pañales y sueño.',
     'notifChannelGrowthName': 'Crecimiento',
@@ -4724,6 +4778,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoriesAlbumCoverMain': 'Libro de recuerdos',
     'memoriesAlbumCoverTagline': 'Momentos especiales con {name}',
     'memoriesAlbumFooter': 'Creado con FaceBaby',
+    'memoriesAlbumBackCoverBody':
+        'FaceBaby nació para transformar momentos simples en recuerdos eternos. Cada sonrisa, descubrimiento, abrazo y logro de tu bebé merece ser guardado con amor, cariño y significado.\n\nEste libro fue creado para acompañar los primeros pasos de esta hermosa etapa, registrando recuerdos únicos que podrán revivirse para siempre.\n\nMás que fotos y anotaciones, estas páginas guardan emociones, historias y sentimientos que el tiempo jamás borrará.\n\nGracias por permitir que FaceBaby forme parte de la historia de tu familia. 💛',
+    'memoriesAlbumBackCoverFinale':
+        'Porque crecer pasa rápido…\npero los recuerdos pueden durar para siempre.',
     'memoryBadgeMonthOne': '1 mes',
     'memoryBadgeMonthsMany': '{n} meses',
     'memoryBadgeYearOne': '1 año',
@@ -5011,6 +5069,10 @@ const Map<AppLang, Map<String, String>> _strings = {
   },
   AppLang.fr: {
     'appName': 'FaceBaby',
+    'memoriesAlbumBackCoverBody':
+        'FaceBaby est né pour transformer de simples instants en souvenirs éternels. Chaque sourire, découverte, câlin et moment précieux de votre bébé mérite d\u2019être conservé avec amour et tendresse.\n\nCe livre a été créé pour accompagner les premiers pas de cette merveilleuse aventure et préserver des souvenirs uniques pour toute une vie.\n\nBien plus que des photos et des notes, ces pages renferment des émotions, des histoires et des souvenirs que le temps n\u2019effacera jamais.\n\nMerci de permettre à FaceBaby de faire partie de l\u2019histoire de votre famille. 💛',
+    'memoriesAlbumBackCoverFinale':
+        'Parce que l\u2019enfance passe vite…\nmais les souvenirs peuvent durer pour toujours.',
     'home': 'Accueil',
     'records': 'Journaux',
     'reports': 'Rapports',
@@ -5300,6 +5362,10 @@ const Map<AppLang, Map<String, String>> _strings = {
   },
   AppLang.de: {
     'appName': 'FaceBaby',
+    'memoriesAlbumBackCoverBody':
+        'FaceBaby wurde geschaffen, um kleine Momente in unvergessliche Erinnerungen zu verwandeln. Jedes Lächeln, jede Entdeckung, jede Umarmung und jeder besondere Meilenstein Ihres Babys verdient es, mit Liebe bewahrt zu werden.\n\nDieses Buch begleitet die ersten Schritte dieser wundervollen Reise und hält Erinnerungen fest, die ein Leben lang bleiben können.\n\nMehr als nur Fotos und Notizen – diese Seiten bewahren Gefühle, Geschichten und Emotionen, die die Zeit niemals auslöschen wird.\n\nDanke, dass FaceBaby Teil der Geschichte Ihrer Familie sein darf. 💛',
+    'memoriesAlbumBackCoverFinale':
+        'Denn die Kindheit vergeht schnell…\naber Erinnerungen bleiben für immer.',
     'home': 'Start',
     'records': 'Protokolle',
     'reports': 'Berichte',
@@ -5477,6 +5543,10 @@ const Map<AppLang, Map<String, String>> _strings = {
   },
   AppLang.it: {
     'appName': 'FaceBaby',
+    'memoriesAlbumBackCoverBody':
+        'FaceBaby è nato per trasformare semplici momenti in ricordi eterni. Ogni sorriso, scoperta, abbraccio e traguardo del tuo bambino merita di essere custodito con amore e significato.\n\nQuesto libro è stato creato per accompagnare i primi passi di questo meraviglioso viaggio, conservando ricordi preziosi da rivivere per sempre.\n\nPiù di semplici foto o annotazioni, queste pagine custodiscono emozioni, storie e sentimenti che il tempo non cancellerà mai.\n\nGrazie per aver permesso a FaceBaby di fare parte della storia della tua famiglia. 💛',
+    'memoriesAlbumBackCoverFinale':
+        'Perché i bambini crescono in fretta…\nma i ricordi possono durare per sempre.',
     'home': 'Home',
     'records': 'Registri',
     'reports': 'Report',
@@ -6286,6 +6356,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoriesAlbumCoverMain': '思い出の本',
     'memoriesAlbumCoverTagline': '{name}との特別な瞬間',
     'memoriesAlbumFooter': 'FaceBabyで作成',
+    'memoriesAlbumBackCoverBody':
+        'FaceBaby は、何気ない瞬間を一生の思い出に変えるために生まれました。赤ちゃんの笑顔、発見、ハグ、そして成長のひとつひとつを、大切に残していきます。\n\nこの本は、かけがえのない成長の時間を記録し、いつまでも振り返ることのできる宝物となるよう作られています。\n\n写真やメモだけではなく、このページには時間が経っても消えることのない想いと物語が詰まっています。\n\nFaceBaby がご家族の物語の一部になれることを心より嬉しく思います。 💛',
+    'memoriesAlbumBackCoverFinale':
+        '子どもの成長はあっという間ですが…\n思い出は永遠に残ります。',
     'vaccNoBabies': 'まだ赤ちゃんが登録されていません。「その他 > 登録（ママと赤ちゃん）」へ。',
     'exampleCard': 'カード例：',
   },
@@ -6516,6 +6590,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoriesAlbumCoverMain': '추억 책',
     'memoriesAlbumCoverTagline': '{name}와(과) 함께한 특별한 순간',
     'memoriesAlbumFooter': 'FaceBaby로 제작',
+    'memoriesAlbumBackCoverBody':
+        'FaceBaby는 소중한 순간들을 영원한 추억으로 남기기 위해 만들어졌습니다. 아기의 모든 미소, 발견, 포옹, 그리고 특별한 순간들은 사랑과 의미로 간직될 가치가 있습니다.\n\n이 책은 아름다운 성장의 첫걸음을 함께하며, 평생 간직할 수 있는 소중한 기억들을 담기 위해 제작되었습니다.\n\n사진과 메모 그 이상의 의미를 담아, 이 페이지들은 시간이 지나도 사라지지 않을 감정과 이야기를 간직합니다.\n\nFaceBaby가 가족의 이야기에 함께할 수 있도록 해주셔서 감사합니다. 💛',
+    'memoriesAlbumBackCoverFinale':
+        '아이들은 너무 빨리 자라지만…\n추억은 영원히 남을 수 있습니다.',
     'vaccNoBabies': '등록된 아기가 없습니다. «더보기 > 등록(엄마와 아기)»으로 이동하세요.',
     'exampleCard': '카드 예시:',
   },

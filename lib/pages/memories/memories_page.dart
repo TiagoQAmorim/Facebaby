@@ -143,6 +143,17 @@ class _MemoriesPageState extends State<MemoriesPage> with AutomaticKeepAliveClie
       return;
     }
 
+    // Helper local: garante que o diálogo de loading é fechado uma única vez,
+    // antes de mostrarmos o bottom sheet de “PDF pronto” ou um SnackBar de erro.
+    var loadingDismissed = false;
+    void dismissLoading() {
+      if (loadingDismissed) return;
+      loadingDismissed = true;
+      if (!mounted) return;
+      final nav = Navigator.of(context, rootNavigator: true);
+      if (nav.canPop()) nav.pop();
+    }
+
     showDialog<void>(
       context: context,
       useRootNavigator: true,
@@ -171,24 +182,31 @@ class _MemoriesPageState extends State<MemoriesPage> with AutomaticKeepAliveClie
           coverMainTitle: s.memoriesAlbumCoverMain,
           coverTagline: s.memoriesAlbumCoverTagline(displayName),
           footer: s.memoriesAlbumFooter,
+          backCoverBody: s.memoriesAlbumBackCoverBody,
+          backCoverFinale: s.memoriesAlbumBackCoverFinale,
         ),
         pages: pages,
       );
       final stamp = DateTime.now().toIso8601String().replaceAll(':', '').split('.').first;
       final fileName = 'facebaby_album_$stamp.pdf';
       if (!mounted) return;
+      // Fecha o loading ANTES do bottom sheet — caso contrário o `await` do
+      // bottom sheet segura o `finally` e o diálogo de progresso fica visível
+      // (e a bloquear toques) sobre as ações de Partilhar / Guardar.
+      dismissLoading();
+      if (!mounted) return;
       await _showAlbumPdfActions(pdfBytes, fileName);
     } catch (e) {
+      dismissLoading();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${s.memoriesAlbumError} ($e)')),
         );
       }
     } finally {
-      if (mounted) {
-        final nav = Navigator.of(context, rootNavigator: true);
-        if (nav.canPop()) nav.pop();
-      }
+      // Salvaguarda caso saiamos por um `return` (ex.: !mounted) sem ter passado
+      // pelo caminho normal.
+      dismissLoading();
     }
   }
 
