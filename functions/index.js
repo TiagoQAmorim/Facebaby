@@ -81,6 +81,12 @@ function memoryPhotoUrl(row) {
   return u.trim();
 }
 
+/** UID da mãe em `public_memories` — o app grava `userId` e/ou `owner_uid`. */
+function rowUserId(row) {
+  if (!row) return '';
+  return `${row.userId || row.owner_uid || row.user_id || ''}`.trim();
+}
+
 /**
  * Candidatos com foto HTTPS: evita `limit(N)` sem critério; pagina a coleção se necessário.
  *
@@ -160,7 +166,7 @@ async function loadPublicMemoriesWithPhotoCandidates(
 function oneCandidatePerUser(rows) {
   const bestByUser = new Map();
   for (const row of rows) {
-    const uid = `${row.userId || ''}`.trim();
+    const uid = rowUserId(row);
     if (!uid) continue;
 
     const prev = bestByUser.get(uid);
@@ -210,24 +216,27 @@ async function runWeeklyPhotoDrawFromPoolMonday(poolMondayLuxon, drawInstant) {
   const spotlightRef = db.collection('weekly_photo_contests').doc('spotlight_current');
 
   if (candidates.length === 0) {
-    await spotlightRef.set({
-      status: 'inactive',
-      week_id: weekKey,
-      updated_at: admin.firestore.FieldValue.serverTimestamp(),
-      bypass_display_window: admin.firestore.FieldValue.delete(),
-      winner_photo_url: admin.firestore.FieldValue.delete(),
-      winner_badge_title: admin.firestore.FieldValue.delete(),
-      winner_badge_id: admin.firestore.FieldValue.delete(),
-      winner_baby_sex: admin.firestore.FieldValue.delete(),
-      winner_user_id: admin.firestore.FieldValue.delete(),
-      winner_public_memory_id: admin.firestore.FieldValue.delete(),
-      winner_baby_display_name: admin.firestore.FieldValue.delete(),
-      winner_baby_age_label: admin.firestore.FieldValue.delete(),
-      winner_public_description: admin.firestore.FieldValue.delete(),
-      winner_memory_date: admin.firestore.FieldValue.delete(),
-      draw_at: admin.firestore.FieldValue.delete(),
-      display_until: admin.firestore.FieldValue.delete(),
-    });
+    await spotlightRef.set(
+      {
+        status: 'inactive',
+        week_id: weekKey,
+        updated_at: admin.firestore.FieldValue.serverTimestamp(),
+        bypass_display_window: false,
+        winner_photo_url: null,
+        winner_badge_title: null,
+        winner_badge_id: null,
+        winner_baby_sex: null,
+        winner_user_id: null,
+        winner_public_memory_id: null,
+        winner_baby_display_name: null,
+        winner_baby_age_label: null,
+        winner_public_description: null,
+        winner_memory_date: null,
+        draw_at: null,
+        display_until: null,
+      },
+      { merge: true },
+    );
     return {
       weekKey,
       candidateCount: 0,
@@ -251,7 +260,7 @@ async function runWeeklyPhotoDrawFromPoolMonday(poolMondayLuxon, drawInstant) {
     draw_at: admin.firestore.Timestamp.fromDate(displayStart.toJSDate()),
     display_until: admin.firestore.Timestamp.fromDate(displayUntil.toJSDate()),
     winner_public_memory_id: pick.id,
-    winner_user_id: pick.userId || null,
+    winner_user_id: rowUserId(pick) || null,
     winner_badge_id: pick.badgeId || pick.badge_id || null,
     winner_photo_url: memoryPhotoUrl(pick),
     winner_badge_title: `${pick.badgeTitle || pick.badge_title || ''}`.trim() || '',
@@ -283,7 +292,7 @@ async function runWeeklyPhotoDrawFromPoolMonday(poolMondayLuxon, drawInstant) {
       drawAt: admin.firestore.Timestamp.fromDate(drawInstant),
       displayUntil: admin.firestore.Timestamp.fromDate(displayUntil.toJSDate()),
       winnerMemoryId: pick.memoryId || pick.id,
-      winnerUserId: pick.userId || null,
+      winnerUserId: rowUserId(pick) || null,
       winnerBabyId: pick.babyId || null,
       winnerBabySex: pick.babySex === 'M' || pick.babySex === 'F' ? pick.babySex : null,
       status: 'active',
@@ -298,7 +307,7 @@ async function runWeeklyPhotoDrawFromPoolMonday(poolMondayLuxon, drawInstant) {
     candidateCount: candidates.length,
     status: 'active',
     winnerPublicMemoryId: pick.id,
-    winnerUserId: pick.userId || null,
+    winnerUserId: rowUserId(pick) || null,
     bypass_display_window: bypassDisplayWindow,
     forced: false,
   };
@@ -503,7 +512,7 @@ exports.seedSpotlightWinner = onRequest(
         draw_at: admin.firestore.Timestamp.fromDate(displayStartLuxon.toJSDate()),
         display_until: admin.firestore.Timestamp.fromDate(displayUntilLuxon.toJSDate()),
         winner_public_memory_id: (pick && pick.id) || null,
-        winner_user_id: (pick && pick.userId) || null,
+        winner_user_id: (pick && rowUserId(pick)) || null,
         winner_badge_id: (pick && (pick.badgeId || pick.badge_id)) || null,
         winner_photo_url: photoUrl,
         winner_badge_title: badgeTitle,
@@ -577,7 +586,7 @@ exports.inspectSpotlight = onRequest(
  *
  * Útil para escolher manualmente um `winnerMemoryId` para `seedSpotlightWinner` ou
  * `pickRandomSpotlightFromPublicMemories`. Retorna campos diagnósticos suficientes
- * para identificar o bebé / dono / descrição.
+ * para identificar o bebê / dono / descrição.
  *
  * GET público (sem secret).
  */
@@ -598,7 +607,7 @@ exports.listPublicMemoryCandidates = onRequest(
       const rows = withPhoto.slice(0, limit).map((row) => ({
           id: row.id,
           submissionWeekId: row.submissionWeekId || null,
-          userId: row.userId || null,
+          userId: rowUserId(row) || null,
           babyId: row.babyId || null,
           photoUrl: memoryPhotoUrl(row),
           badgeTitle: row.badgeTitle || row.badge_title || null,
@@ -719,7 +728,7 @@ exports.pickRandomSpotlightFromPublicMemories = onRequest(
         draw_at: admin.firestore.Timestamp.fromDate(displayStartLuxon.toJSDate()),
         display_until: admin.firestore.Timestamp.fromDate(displayUntilLuxon.toJSDate()),
         winner_public_memory_id: pick.id,
-        winner_user_id: pick.userId || null,
+        winner_user_id: rowUserId(pick) || null,
         winner_badge_id: pick.badgeId || pick.badge_id || null,
         winner_photo_url: memoryPhotoUrl(pick),
         winner_badge_title: `${pick.badgeTitle || pick.badge_title || ''}`.trim() || 'Foto da Semana',
@@ -728,8 +737,8 @@ exports.pickRandomSpotlightFromPublicMemories = onRequest(
         winner_baby_age_label: babyAgeLabel,
         winner_public_description: pick.publicDescription || null,
         winner_memory_date: pick.createdAt || now.toISOString(),
-        cleared_at: admin.firestore.FieldValue.delete(),
-        cleared_via: admin.firestore.FieldValue.delete(),
+        cleared_at: null,
+        cleared_via: null,
         updated_at: admin.firestore.FieldValue.serverTimestamp(),
       };
 
@@ -749,7 +758,7 @@ exports.pickRandomSpotlightFromPublicMemories = onRequest(
         ok: true,
         weekKey,
         winnerPublicMemoryId: pick.id,
-        winnerUserId: pick.userId || null,
+        winnerUserId: rowUserId(pick) || null,
         winnerBabyDisplayName: babyDisplayName,
         winnerBabyAgeLabel: babyAgeLabel,
         winnerBabySex: babySex,

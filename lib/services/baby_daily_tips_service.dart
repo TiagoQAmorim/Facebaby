@@ -6,7 +6,7 @@ import '../i18n/app_i18n.dart';
 import '../models/baby_daily_tip.dart';
 import '../utils/baby_age_months.dart';
 
-/// Carrega `assets/data/baby_daily_tips_500.json` e escolhe uma dica estável por dia + bebé + idade.
+/// Carrega `assets/data/baby_daily_tips_500.json` e escolhe uma dica estável por dia + bebê + idade.
 abstract final class BabyDailyTipsService {
   BabyDailyTipsService._();
 

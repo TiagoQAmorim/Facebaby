@@ -52,7 +52,7 @@ class AppTheme {
   /// Padding horizontal padrão das páginas (reduzido para ganhar área útil).
   static const double pageHPadding = 16;
 
-  /// Fundo principal do `Scaffold` e base dos gradientes (pastel por sexo do bebé).
+  /// Fundo principal do `Scaffold` e base dos gradientes (pastel por sexo do bebê).
   static Color backdropTintForSex(String sex) {
     const pink = Color(0xFFFFE8EF);
     const blue = Color(0xFFEAF2FF);

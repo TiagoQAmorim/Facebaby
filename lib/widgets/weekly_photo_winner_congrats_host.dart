@@ -9,6 +9,7 @@ import '../i18n/app_i18n.dart';
 import '../services/firebase/firestore_service.dart';
 import '../services/home_prefs.dart';
 import '../utils/weekly_photo_spotlight_visibility.dart';
+import '../widgets/weekly_photo_crown_icon.dart';
 
 /// Mostra um diálogo de parabéns à mãe cujo `userId` coincide com o vencedor em `spotlight_current`
 /// (uma vez por `week_id`, guardado em [HomePrefs]).
@@ -65,7 +66,19 @@ class _WeeklyPhotoWinnerCongratsHostState extends State<WeeklyPhotoWinnerCongrat
       builder: (ctx) {
         final s = S.of(ctx);
         return AlertDialog(
-          title: Text(s.weeklyPhotoWinnerCongratsTitle),
+          title: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const WeeklyPhotoCrownIcon(size: 30),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  s.weeklyPhotoWinnerCongratsTitle,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ],
+          ),
           content: SingleChildScrollView(
             child: Text(s.weeklyPhotoWinnerCongratsBody, style: const TextStyle(height: 1.4)),
           ),

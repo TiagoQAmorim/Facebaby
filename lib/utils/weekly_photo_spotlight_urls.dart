@@ -1,4 +1,7 @@
 /// URLs de imagem que não devem aparecer no banner “Foto da Semana” (seeds / demos).
+///
+/// O filtro pode ser contornado só com opt-in explícito — ver
+/// [WeeklyPhotoSpotlightVisibility.shouldShowForBanner] e `allow_stock_winner_photo` no Firestore.
 abstract final class WeeklyPhotoSpotlightUrls {
   WeeklyPhotoSpotlightUrls._();
 

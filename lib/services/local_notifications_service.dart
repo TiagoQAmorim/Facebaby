@@ -288,9 +288,22 @@ class LocalNotificationsService {
         debugPrint('LocalNotificationsService.scheduleZoned($id): scheduled exactAllowWhileIdle for $tzWhen');
         return true;
       } on PlatformException catch (e) {
-        debugPrint('LocalNotificationsService.scheduleZoned($id): exactAllowWhileIdle PlatformException: $e — tentando inexactAllowWhileIdle');
+        debugPrint('LocalNotificationsService.scheduleZoned($id): exactAllowWhileIdle PlatformException: $e — tentando alarmClock');
       } catch (e, st) {
-        debugPrint('LocalNotificationsService.scheduleZoned($id): exactAllowWhileIdle failed: $e\n$st — tentando inexactAllowWhileIdle');
+        debugPrint('LocalNotificationsService.scheduleZoned($id): exactAllowWhileIdle failed: $e\n$st — tentando alarmClock');
+      }
+
+      // `setAlarmClock`: costuma funcionar sem “Alarmas e lembretes” / alarmas exactos nalguns OEMs,
+      // e o SO trata com maior prioridade que `inexact*` (que pode adiar com app fechada).
+      try {
+        await scheduleWithMode(AndroidScheduleMode.alarmClock);
+        logScheduled();
+        debugPrint('LocalNotificationsService.scheduleZoned($id): scheduled alarmClock for $tzWhen');
+        return true;
+      } on PlatformException catch (e) {
+        debugPrint('LocalNotificationsService.scheduleZoned($id): alarmClock PlatformException: $e — tentando inexactAllowWhileIdle');
+      } catch (e, st) {
+        debugPrint('LocalNotificationsService.scheduleZoned($id): alarmClock failed: $e\n$st — tentando inexactAllowWhileIdle');
       }
 
       try {

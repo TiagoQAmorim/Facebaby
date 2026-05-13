@@ -49,4 +49,3 @@ class MemoryService {
     return id;
   }
 }
-

@@ -1,5 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../i18n/app_i18n.dart';
 import '../theme/app_theme.dart';
@@ -193,6 +196,64 @@ Future<bool> _promptReauthenticateForDeletion(BuildContext ctx, S s) async {
   }
 }
 
+Future<void> _inviteFriendShare(BuildContext context) async {
+  final s = S.of(context);
+  await Share.share(s.settingsInviteShareText);
+}
+
+Future<void> _openStoreRating(BuildContext context) async {
+  final s = S.of(context);
+  if (kIsWeb) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.settingsRateCouldNotOpen)));
+    return;
+  }
+  final uri = !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS
+      ? Uri.parse('https://apps.apple.com/search?term=FaceBaby')
+      : Uri.parse('https://play.google.com/store/apps/details?id=com.facebaby.app');
+  try {
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.settingsRateCouldNotOpen)));
+    }
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.settingsRateCouldNotOpen)));
+    }
+  }
+}
+
+void _showPremiumBenefitsDialog(BuildContext context) {
+  final s = S.of(context);
+  final plus = PremiumService.instance.isPremium;
+  showDialog<void>(
+    context: context,
+    builder: (ctx) {
+      return AlertDialog(
+        title: Text(s.settingsPremiumBenefitsTitle),
+        content: SingleChildScrollView(
+          child: SelectableText(
+            plus
+                ? '${s.plusPremiumActiveBody}\n\n${s.plusSheetBullets}'
+                : '${s.settingsPlusCardBodyFree}\n\n${s.plusSheetBullets}',
+            style: const TextStyle(height: 1.45, fontWeight: FontWeight.w600, fontSize: 14),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(s.plusDoneClose)),
+          if (!plus)
+            FilledButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                openPremiumPaywall(context);
+              },
+              child: Text(s.settingsPlusUpgradeCta),
+            ),
+        ],
+      );
+    },
+  );
+}
+
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
@@ -261,77 +322,20 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
+    final accent = Color.lerp(AppTheme.primaryPurple, AppTheme.primaryPink, 0.4)!;
+
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(AppTheme.pageHPadding, 24, AppTheme.pageHPadding, 110),
+      padding: EdgeInsets.fromLTRB(AppTheme.pageHPadding, 12, AppTheme.pageHPadding, 100),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(s.settingsTitle, style: TextStyle(fontSize: portalSp(context, 28), fontWeight: FontWeight.w900, height: 1.15)),
-          const SizedBox(height: 18),
-          ListenableBuilder(
-            listenable: PremiumService.instance,
-            builder: (context, _) {
-              final plus = PremiumService.instance.isPremium;
-              final accent = Color.lerp(AppTheme.primaryPurple, AppTheme.primaryPink, 0.4)!;
-              return CardBox(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(Icons.favorite_rounded, color: accent, size: 26),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            s.settingsPlusCardTitle,
-                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: portalSp(context, 17), color: accent),
-                          ),
-                        ),
-                        if (plus)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: accent.withAlpha(36),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              'PLUS',
-                              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: accent),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      plus ? s.settingsPlusCardBodyActive : s.settingsPlusCardBodyFree,
-                      style: TextStyle(fontSize: portalSp(context, 13.5), height: 1.45, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
-                    ),
-                    const SizedBox(height: 14),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: () => openPremiumPaywall(context),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: accent,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        child: Text(plus ? s.settingsPlusManageCta : s.settingsPlusUpgradeCta, style: const TextStyle(fontWeight: FontWeight.w800)),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
+          Text(
+            s.settingsTitle,
+            style: TextStyle(fontSize: portalSp(context, 24), fontWeight: FontWeight.w900, height: 1.1),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 12),
           _SettingsTile(
-            icon: Icons.settings_rounded,
-            title: s.unitsTitle,
-            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const UnitsSettingsPage())),
-          ),
-          _SettingsTile(
+            compact: true,
             icon: Icons.person_outline,
             title: s.settingsMotherProfile,
             onTap: () => Navigator.of(context).push(
@@ -339,6 +343,43 @@ class SettingsPage extends StatelessWidget {
             ),
           ),
           _SettingsTile(
+            compact: true,
+            icon: Icons.language,
+            title: s.language,
+            onTap: () => showLanguagePicker(context),
+          ),
+          _SettingsTile(
+            compact: true,
+            icon: Icons.insert_chart_outlined,
+            title: s.reportsTitle,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const ReportsHubPage()),
+            ),
+          ),
+          const _SettingsRulerDivider(widthFactor: 0.38),
+          _SettingsTile(
+            compact: true,
+            icon: Icons.ios_share_outlined,
+            title: s.settingsTellFriend,
+            onTap: () => _inviteFriendShare(context),
+          ),
+          _SettingsTile(
+            compact: true,
+            icon: Icons.star_rate_rounded,
+            title: s.settingsRateUs,
+            onTap: () => _openStoreRating(context),
+          ),
+          _SettingsTile(
+            compact: true,
+            icon: Icons.mail_outline,
+            title: s.contactTitle,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const ContactPage()),
+            ),
+          ),
+          const _SettingsRulerDivider(widthFactor: 0.94),
+          _SettingsTile(
+            compact: true,
             icon: Icons.notifications_none,
             title: s.settingsAlerts,
             onTap: () => Navigator.of(context).push(
@@ -346,25 +387,14 @@ class SettingsPage extends StatelessWidget {
             ),
           ),
           _SettingsTile(
-            icon: Icons.insert_chart_outlined,
-            title: s.reportsTitle,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const ReportsHubPage()),
-            ),
+            compact: true,
+            icon: Icons.settings_rounded,
+            title: s.unitsTitle,
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const UnitsSettingsPage())),
           ),
+          const _SettingsRulerDivider(widthFactor: 0.94),
           _SettingsTile(
-            icon: Icons.mail_outline,
-            title: s.contactTitle,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const ContactPage()),
-            ),
-          ),
-          _SettingsTile(
-            icon: Icons.language,
-            title: s.language,
-            onTap: () => showLanguagePicker(context),
-          ),
-          _SettingsTile(
+            compact: true,
             icon: Icons.description_outlined,
             title: s.settingsTermsOfUse,
             onTap: () => Navigator.of(context).push(
@@ -372,21 +402,81 @@ class SettingsPage extends StatelessWidget {
             ),
           ),
           _SettingsTile(
+            compact: true,
             icon: Icons.privacy_tip_outlined,
             title: s.settingsPrivacyPolicy,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const PrivacyPolicyPage()),
             ),
           ),
-          const SizedBox(height: 18),
-          Text(
-            s.settingsSoonTitle,
-            style: TextStyle(fontWeight: FontWeight.w900, fontSize: portalSp(context, 16), color: Colors.black.withAlpha(160)),
+          const _SettingsRulerDivider(widthFactor: 0.94),
+          ListenableBuilder(
+            listenable: PremiumService.instance,
+            builder: (context, _) {
+              final plus = PremiumService.instance.isPremium;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => _showPremiumBenefitsDialog(context),
+                  child: CardBox(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.workspace_premium_rounded, color: accent, size: 22),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                s.settingsPlusCardTitle,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: portalSp(context, 15),
+                                  color: accent,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                s.settingsPremiumBannerHint,
+                                style: TextStyle(
+                                  fontSize: portalSp(context, 12.5),
+                                  height: 1.35,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (plus)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6, top: 2),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: accent.withAlpha(36),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                'PLUS',
+                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: accent),
+                              ),
+                            ),
+                          ),
+                        Icon(Icons.chevron_right, color: accent.withAlpha(200), size: 22),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
-          const SizedBox(height: 10),
-          _SettingsTile(icon: Icons.star_rate_rounded, title: s.settingsRateUs, enabled: false, badge: s.settingsSoonBadge),
-          const SizedBox(height: 8),
+          const _SettingsRulerDivider(widthFactor: 0.42),
           _DangerSettingsTile(
+            compact: true,
             icon: Icons.delete_forever_rounded,
             title: s.deleteAccountTitle,
             onTap: () => _deleteAccount(context),
@@ -397,34 +487,90 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
+/// Divisor horizontal com traços curtos (efeito “régua”).
+class _SettingsRulerDivider extends StatelessWidget {
+  const _SettingsRulerDivider({this.widthFactor = 0.9});
+
+  final double widthFactor;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Colors.black.withAlpha(42);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Center(
+        child: FractionallySizedBox(
+          widthFactor: widthFactor,
+          child: SizedBox(
+            height: 12,
+            child: CustomPaint(
+              painter: _RulerTicksPainter(color: color),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RulerTicksPainter extends CustomPainter {
+  _RulerTicksPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final midY = size.height / 2;
+    final line = Paint()
+      ..color = color
+      ..strokeWidth = 1;
+    canvas.drawLine(Offset(0, midY), Offset(size.width, midY), line);
+    const step = 5.5;
+    const tick = 3.0;
+    final tickPaint = Paint()
+      ..color = color
+      ..strokeWidth = 0.85;
+    for (double x = 0; x < size.width; x += step) {
+      canvas.drawLine(Offset(x, midY - tick), Offset(x, midY + tick), tickPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RulerTicksPainter oldDelegate) => oldDelegate.color != color;
+}
+
 class _SettingsTile extends StatelessWidget {
   final IconData icon;
   final String title;
-  final String? badge;
-  final bool enabled;
+  final bool compact;
   final VoidCallback? onTap;
 
   const _SettingsTile({
     required this.icon,
     required this.title,
-    this.badge,
-    this.enabled = true,
+    this.compact = false,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final hPad = compact ? 12.0 : 16.0;
+    final vPad = compact ? 10.0 : 16.0;
+    final iconSize = compact ? 21.0 : 24.0;
+    final fontSize = compact ? 14.0 : 15.0;
+    final bottom = compact ? 5.0 : 10.0;
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.only(bottom: bottom),
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
-        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
         child: CardBox(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
           child: Row(
             children: [
-              Icon(icon, color: enabled ? null : Colors.black.withAlpha(120)),
-              const SizedBox(width: 12),
+              Icon(icon, size: iconSize, color: AppTheme.textPrimary.withAlpha(220)),
+              SizedBox(width: compact ? 10 : 12),
               Expanded(
                 child: Text(
                   title,
@@ -432,26 +578,13 @@ class _SettingsTile extends StatelessWidget {
                   softWrap: true,
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
-                    fontSize: portalSp(context, 15),
-                    height: 1.25,
-                    color: enabled ? AppTheme.textPrimary : Colors.black.withAlpha(135),
+                    fontSize: portalSp(context, fontSize),
+                    height: 1.2,
+                    color: AppTheme.textPrimary,
                   ),
                 ),
               ),
-              if (badge != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withAlpha(10),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    badge!,
-                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: portalSp(context, 11), color: Colors.black.withAlpha(150)),
-                  ),
-                )
-              else
-                Icon(Icons.chevron_right, color: enabled ? null : Colors.black.withAlpha(90)),
+              Icon(Icons.chevron_right, size: compact ? 20 : 24, color: AppTheme.textMuted),
             ],
           ),
         ),
@@ -463,23 +596,29 @@ class _SettingsTile extends StatelessWidget {
 class _DangerSettingsTile extends StatelessWidget {
   final IconData icon;
   final String title;
+  final bool compact;
   final VoidCallback? onTap;
 
-  const _DangerSettingsTile({required this.icon, required this.title, this.onTap});
+  const _DangerSettingsTile({required this.icon, required this.title, this.compact = false, this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    final hPad = compact ? 12.0 : 16.0;
+    final vPad = compact ? 10.0 : 16.0;
+    final iconSize = compact ? 21.0 : 24.0;
+    final fontSize = compact ? 14.0 : 15.0;
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.only(bottom: compact ? 5 : 10),
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: CardBox(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
           child: Row(
             children: [
-              Icon(icon, color: const Color(0xFFFF3B30)),
-              const SizedBox(width: 12),
+              Icon(icon, size: iconSize, color: const Color(0xFFFF3B30)),
+              SizedBox(width: compact ? 10 : 12),
               Expanded(
                 child: Text(
                   title,
@@ -487,13 +626,13 @@ class _DangerSettingsTile extends StatelessWidget {
                   softWrap: true,
                   style: TextStyle(
                     fontWeight: FontWeight.w900,
-                    fontSize: portalSp(context, 15),
-                    height: 1.25,
+                    fontSize: portalSp(context, fontSize),
+                    height: 1.2,
                     color: const Color(0xFFFF3B30),
                   ),
                 ),
               ),
-              const Icon(Icons.chevron_right, color: Color(0xFFFF3B30)),
+              Icon(Icons.chevron_right, size: compact ? 20 : 24, color: const Color(0xFFFF3B30)),
             ],
           ),
         ),

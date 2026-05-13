@@ -31,29 +31,13 @@ Campos lidos pela Home:
 
 Crie um índice composto se usar queries adicionais; para o sorteio atual basta `where('submissionWeekId','==', ...)`.
 
-## Firestore — regras (esboço)
+## Firestore — regras
 
-Coloque em `firestore.rules` no projeto Firebase (ajuste ao seu modelo de auth):
+O ficheiro na raiz do repositório é `firestore.rules` (referenciado em `firebase.json`). Deploy:
 
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
+`firebase deploy --only firestore:rules`
 
-    match /public_memories/{docId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.resource.data.owner_uid == request.auth.uid;
-    }
-
-    match /weekly_photo_contests/{id} {
-      allow read: if request.auth != null;
-      allow write: if false;
-    }
-  }
-}
-```
-
-O cliente grava `owner_uid` na primeira versão do sync — alinhe o campo em `FirestoreService.upsertPublicMemoryDoc` se usar outro nome.
+Resumo: `public_memories` — leitura pública; create/update/delete só se `owner_uid` ou `userId` (existente / resultante) for o UID autenticado; delete usa `resource` (não `request.resource`). `weekly_photo_contests` — leitura pública, escrita negada (só backend). `users/{uid}/**` — só o próprio utilizador.
 
 ## Sorteio antecipado (forçar)
 

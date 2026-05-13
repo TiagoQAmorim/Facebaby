@@ -111,7 +111,7 @@ class _HomePageState extends State<HomePage> {
   /// Consultas com horário no dia civil do resumo.
   List<ConsultationRecord> _dayConsultations = <ConsultationRecord>[];
 
-  /// Próxima consulta futura (para o banner do cartão do bebé).
+  /// Próxima consulta futura (para o banner do cartão do bebê).
   ConsultationRecord? _bannerNextConsultation;
 
   /// Dica do dia fechada (prefs): ajusta espaçamento e remove coluna vazia no layout largo.
@@ -139,7 +139,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _homeDailyTipLayoutDayStamp = _homePrefsDayStamp(DateTime.now());
     _selectedDay = _dateOnly(DateTime.now());
-    // O [Navigator] do separador Início não reconstrói o filho quando só muda o mapa do bebé na BD;
+    // O [Navigator] do separador Início não reconstrói o filho quando só muda o mapa do bebê na BD;
     // ouvimos o controller para atualizar foto / dados sem depender de [widget.baby] stale.
     CurrentBabyController.instance.addListener(_onCurrentBabyUiChanged);
     CurrentBabyController.instance.addListener(_onHomeFeedSourcesChanged);
@@ -173,7 +173,7 @@ class _HomePageState extends State<HomePage> {
     _refreshRealtimeHomeMetricsFromDb();
   }
 
-  /// Foto do bebé na BD (o [Baby] vindo do [MainShell] pode ficar stale dentro do [Navigator]).
+  /// Foto do bebê na BD (o [Baby] vindo do [MainShell] pode ficar stale dentro do [Navigator]).
   String? get _liveBabyPhotoB64 {
     final row = CurrentBabyController.instance.currentBabyRow;
     if (row != null) return row['photo_b64'] as String?;
@@ -2543,7 +2543,7 @@ class _MiniTimeline extends StatelessWidget {
   }
 }
 
-/// Atalhos no cartão do bebé: ícone à esquerda, textos à direita (uma linha com [Expanded]×3).
+/// Atalhos no cartão do bebê: ícone à esquerda, textos à direita (uma linha com [Expanded]×3).
 class _BabyQuickTile extends StatelessWidget {
   final bool narrow;
   final IconData icon;

@@ -21,7 +21,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const _dbName = 'facebaby.db';
-  static const _dbVersion = 25;
+  static const _dbVersion = 26;
 
   Database? _db;
   SharedPreferences? _prefs;
@@ -195,6 +195,7 @@ CREATE TABLE symptom_reports (
   colic INTEGER NOT NULL DEFAULT 0,
   reflux INTEGER NOT NULL DEFAULT 0,
   other_note TEXT,
+  cloud_id TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
@@ -677,6 +678,14 @@ CREATE TABLE IF NOT EXISTS symptom_reports (
 )
 ''');
           await db.execute('CREATE INDEX IF NOT EXISTS idx_symptom_reports_baby_occurred ON symptom_reports(baby_id, occurred_at)');
+        }
+
+        if (oldVersion < 26) {
+          try {
+            await db.execute('ALTER TABLE symptom_reports ADD COLUMN cloud_id TEXT');
+          } catch (e) {
+            debugPrint('migration v26 symptom_reports.cloud_id: $e');
+          }
         }
 
         if (oldVersion < 10) {
@@ -1465,6 +1474,124 @@ WHERE baby_id = ?
     HealthCalendarEvents.ping();
   }
 
+  static bool _symptomBoolFromCloud(dynamic v) {
+    if (v == true) return true;
+    if (v == false) return false;
+    if (v is num) return v != 0;
+    return false;
+  }
+
+  Future<void> upsertSymptomReportFromCloud({
+    required int localBabyId,
+    required Map<String, dynamic> data,
+  }) async {
+    if (kIsWeb) return;
+    final cid = (data['id'] as String?)?.trim();
+    if (cid == null || cid.isEmpty) return;
+    DateTime? occurredAt = _parseCloudIso(data['occurred_at']) ?? _parseCloudIso(data['occurredAt']);
+    final et = data['event_time'];
+    if (occurredAt == null && et is Timestamp) {
+      occurredAt = et.toDate();
+    }
+    if (occurredAt == null) return;
+    final med = (data['medication_note'] ?? data['medicationNote']) as String?;
+    final medTrim = med?.trim();
+    final medicationNote = (medTrim == null || medTrim.isEmpty) ? null : medTrim;
+    final fever = _symptomBoolFromCloud(data['fever']);
+    final tempCelsius = _parseCloudDouble(data['temp_celsius'] ?? data['tempCelsius']);
+    final crying = _symptomBoolFromCloud(data['crying'] ?? data['unexplained_crying'] ?? data['unexplainedCrying']);
+    final pain = _symptomBoolFromCloud(data['pain']);
+    final colic = _symptomBoolFromCloud(data['colic']);
+    final reflux = _symptomBoolFromCloud(data['reflux']);
+    final otherRaw = (data['other_note'] ?? data['otherNote']) as String?;
+    final otherTrim = otherRaw?.trim();
+    final otherNote = (otherTrim == null || otherTrim.isEmpty) ? null : otherTrim;
+    final createdAt = DateTime.now().toIso8601String();
+
+    final db = await database;
+    final rows = await db.query(
+      'symptom_reports',
+      columns: ['id'],
+      where: 'baby_id = ? AND cloud_id = ?',
+      whereArgs: [localBabyId, cid],
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      await db.insert('symptom_reports', {
+        'baby_id': localBabyId,
+        'occurred_at': occurredAt.toIso8601String(),
+        'medication_note': medicationNote,
+        'fever': fever ? 1 : 0,
+        'temp_celsius': tempCelsius,
+        'crying': crying ? 1 : 0,
+        'pain': pain ? 1 : 0,
+        'colic': colic ? 1 : 0,
+        'reflux': reflux ? 1 : 0,
+        'other_note': otherNote,
+        'cloud_id': cid,
+        'created_at': createdAt,
+        'updated_at': createdAt,
+      });
+      HealthCalendarEvents.ping();
+      return;
+    }
+    final localId = (rows.first['id'] as num).toInt();
+    await db.update(
+      'symptom_reports',
+      {
+        'occurred_at': occurredAt.toIso8601String(),
+        'medication_note': medicationNote,
+        'fever': fever ? 1 : 0,
+        'temp_celsius': tempCelsius,
+        'crying': crying ? 1 : 0,
+        'pain': pain ? 1 : 0,
+        'colic': colic ? 1 : 0,
+        'reflux': reflux ? 1 : 0,
+        'other_note': otherNote,
+        'cloud_id': cid,
+        'updated_at': createdAt,
+      },
+      where: 'id = ? AND baby_id = ?',
+      whereArgs: [localId, localBabyId],
+    );
+    HealthCalendarEvents.ping();
+  }
+
+  Future<int> setSymptomReportCloudId({
+    required int id,
+    required int babyId,
+    required String cloudId,
+  }) async {
+    final cid = cloudId.trim();
+    if (cid.isEmpty) return 0;
+    try {
+      if (kIsWeb) {
+        return await _webSerialized(() async {
+          final prefs = await _webPrefs();
+          final list = _webReadList(prefs, 'symptom_reports');
+          final idx = list.indexWhere((raw) {
+            final m = Map<String, Object?>.from(raw as Map);
+            return ((m['id'] as num?)?.toInt() == id) && ((m['baby_id'] as num?)?.toInt() == babyId);
+          });
+          if (idx < 0) return 0;
+          final prev = Map<String, Object?>.from(list[idx] as Map);
+          list[idx] = {...prev, 'cloud_id': cid};
+          await _webWriteList(prefs, 'symptom_reports', list);
+          return 1;
+        });
+      }
+      final db = await database;
+      return await db.update(
+        'symptom_reports',
+        {'cloud_id': cid},
+        where: 'id = ? AND baby_id = ?',
+        whereArgs: [id, babyId],
+      );
+    } finally {
+      HealthCalendarEvents.ping();
+    }
+  }
+
   Future<void> upsertDailyJournalFromCloud({
     required int localBabyId,
     required Map<String, dynamic> data,
@@ -1836,7 +1963,7 @@ ORDER BY created_at DESC
 ''');
   }
 
-  /// Uma linha do bebé por id (fallback quando [listBabies] vem vazio por corrida).
+  /// Uma linha do bebê por id (fallback quando [listBabies] vem vazio por corrida).
   Future<Map<String, Object?>?> getBabyById(int babyId) async {
     if (kIsWeb) {
       final prefs = await _webPrefs();
@@ -2910,6 +3037,7 @@ ORDER BY m.created_at DESC, b.created_at DESC
             'colic': colic ? 1 : 0,
             'reflux': reflux ? 1 : 0,
             'other_note': other,
+            'cloud_id': null,
             'created_at': now,
             'updated_at': now,
           });

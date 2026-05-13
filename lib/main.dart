@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter/material.dart';
@@ -17,6 +18,14 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  if (kIsWeb) {
+    try {
+      await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+    } catch (e) {
+      debugPrint('FirebaseAuth.setPersistence(LOCAL): $e');
+    }
+  }
 
   if (!kIsWeb) {
     await NotificationTimezone.init();

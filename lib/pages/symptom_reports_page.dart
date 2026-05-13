@@ -4,6 +4,7 @@ import '../controllers/current_baby_controller.dart';
 import '../i18n/app_i18n.dart';
 import '../models/symptom_report.dart';
 import '../services/app_database.dart';
+import '../services/firebase/symptom_cloud_sync.dart';
 import '../services/measurement_units_prefs.dart';
 import '../theme/app_theme.dart';
 import '../utils/measurement_format.dart';
@@ -88,6 +89,7 @@ class _SymptomReportsPageState extends State<SymptomReportsPage> {
     final babyId = _babyCtrl.currentBabyId;
     if (babyId == null) return;
     try {
+      await SymptomCloudSync.deleteRemoteIfExists(localBabyId: babyId, localSymptomId: r.id);
       await AppDatabase.instance.deleteSymptomReport(id: r.id, babyId: babyId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.deletedOk)));
@@ -275,7 +277,7 @@ class _SymptomReportEditorPageState extends State<SymptomReportEditorPage> {
     try {
       final edit = widget.edit;
       if (edit == null) {
-        await AppDatabase.instance.insertSymptomReport(
+        final newId = await AppDatabase.instance.insertSymptomReport(
           babyId: widget.babyId,
           occurredAt: _occurredAt,
           medicationNote: _medCtrl.text,
@@ -287,6 +289,7 @@ class _SymptomReportEditorPageState extends State<SymptomReportEditorPage> {
           reflux: _reflux,
           otherNote: _otherCtrl.text,
         );
+        SymptomCloudSync.pushLocalSoon(localBabyId: widget.babyId, localSymptomId: newId);
       } else {
         await AppDatabase.instance.updateSymptomReport(
           id: edit.id,
@@ -301,6 +304,7 @@ class _SymptomReportEditorPageState extends State<SymptomReportEditorPage> {
           reflux: _reflux,
           otherNote: _otherCtrl.text,
         );
+        SymptomCloudSync.pushLocalSoon(localBabyId: widget.babyId, localSymptomId: edit.id);
       }
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {

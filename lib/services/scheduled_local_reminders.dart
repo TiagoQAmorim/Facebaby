@@ -37,7 +37,7 @@ abstract final class ScheduledLocalReminders {
   static const _prefsKeyFeedOverdueSnoozeMs = 'facebaby_feed_overdue_snooze_ms_v1';
   static const _prefsKeyDiaperOverdueSnoozeMs = 'facebaby_diaper_overdue_snooze_ms_v1';
 
-  /// Sono: identidade do par de alarmas (bebé + último fim de sono + regras). Evita cancelar/rescrever a cada minuto.
+  /// Sono: identidade do par de alarmas (bebê + último fim de sono + regras). Evita cancelar/rescrever a cada minuto.
   static const _prefsKeySleepSigV2 = 'facebaby_scheduled_sleep_sig_v2';
   /// Se ambos os momentos já passaram mas o utilizador não recebeu push, re-agendar com intervalo (~25 min como amamentação).
   static const _prefsKeySleepMissedCatchupSnoozeMs = 'facebaby_scheduled_sleep_missed_snooze_ms_v2';

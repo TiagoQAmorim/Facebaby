@@ -12,7 +12,7 @@ class DevelopmentMilestoneItem {
   /// Idade típica em meses (aprox.) em que o marco costuma observar-se.
   final double typicalAgeMonths;
 
-  /// Se a idade atual do bebé atinge ou ultrapassa o esperado para este marco.
+  /// Se a idade atual do bebê atinge ou ultrapassa o esperado para este marco.
   final bool achieved;
 }
 

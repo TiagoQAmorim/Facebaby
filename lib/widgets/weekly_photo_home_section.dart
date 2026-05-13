@@ -15,11 +15,12 @@ import '../utils/portal_layout.dart';
 import '../utils/weekly_photo_spotlight_visibility.dart';
 import '../widgets/memories/cached_memory_photo.dart';
 import '../widgets/memories/memory_badge_icon.dart';
+import '../widgets/weekly_photo_crown_icon.dart';
 
 /// Secção “Foto da Semana” no final da Home (segunda a segunda; `spotlight_current` ativo no período).
 ///
-/// Estratégia: stream Firestore como fonte primária; se nada chegar em 2 segundos ou ocorrer erro,
-/// usa fallback HTTP (`inspectSpotlight` Cloud Function) — contorna Firestore Rules em emergência.
+/// Stream Firestore + pedido HTTP a [WeeklyPhotoSpotlightHttp] (vários URLs) em paralelo e nova
+/// tentativa aos 2s se ainda não houver dados mostráveis — contorna regras e deploy Gen2 (`*.run.app`).
 class WeeklyPhotoHomeSection extends StatefulWidget {
   const WeeklyPhotoHomeSection({super.key});
 
@@ -32,12 +33,25 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
   Map<String, dynamic>? _streamData;
 
   Map<String, dynamic>? _httpData;
-  bool _httpLoading = false;
+  bool _httpFetchInFlight = false;
   Timer? _httpStartTimer;
 
-  /// URLs cuja imagem falhou a carregar — escondemos o cartão completamente
-  /// (sem placeholder/ícone) para evitar mostrar “foto genérica e sem informação”.
-  final Set<String> _failedPhotoUrls = <String>{};
+  void _startHttpSpotlightFetch() {
+    if (_httpFetchInFlight) return;
+    _httpFetchInFlight = true;
+    unawaited(
+      WeeklyPhotoSpotlightHttp.fetch().then((data) {
+        if (!mounted) return;
+        setState(() {
+          _httpFetchInFlight = false;
+          if (data != null) _httpData = data;
+        });
+      }).catchError((Object e, StackTrace st) {
+        debugPrint('WeeklyPhotoHomeSection: HTTP spotlight failed: $e\n$st');
+        if (mounted) setState(() => _httpFetchInFlight = false);
+      }),
+    );
+  }
 
   @override
   void initState() {
@@ -50,28 +64,20 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
         });
       }, onError: (Object e, StackTrace st) {
         debugPrint('WeeklyPhotoHomeSection: stream error: $e');
-        _kickHttpFallback();
+        _startHttpSpotlightFetch();
       });
     }
-    // Fallback HTTP se o stream demorar > 2s sem dados utilizáveis.
+    // HTTP em paralelo (não esperar 2s): Gen2 / regras podem falhar o stream; vários hosts em [WeeklyPhotoSpotlightHttp].
+    _startHttpSpotlightFetch();
     _httpStartTimer = Timer(const Duration(seconds: 2), () {
       if (!mounted) return;
       final now = DateTime.now();
-      if (WeeklyPhotoSpotlightVisibility.shouldShowForBanner(_streamData, now)) return;
-      _kickHttpFallback();
+      if (WeeklyPhotoSpotlightVisibility.shouldShowForBanner(_streamData, now) ||
+          WeeklyPhotoSpotlightVisibility.shouldShowForBanner(_httpData, now)) {
+        return;
+      }
+      _startHttpSpotlightFetch();
     });
-  }
-
-  void _kickHttpFallback() {
-    if (_httpLoading || _httpData != null) return;
-    _httpLoading = true;
-    unawaited(WeeklyPhotoSpotlightHttp.fetch().then((data) {
-      if (!mounted) return;
-      setState(() {
-        _httpLoading = false;
-        _httpData = data;
-      });
-    }));
   }
 
   @override
@@ -135,7 +141,6 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
     if (photoUrl == null || photoUrl.isEmpty || badgeTitle == null || badgeTitle.isEmpty) {
       return const SizedBox.shrink();
     }
-    if (_failedPhotoUrls.contains(photoUrl)) return const SizedBox.shrink();
 
     final badgeId =
         (d['winner_badge_id'] as String?)?.trim() ?? (d['winnerBadgeId'] as String?)?.trim();
@@ -156,7 +161,7 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
     final displayBadgeTitle =
         catalogBadge != null ? s.memoryBadgeTitle(catalogBadge) : badgeTitle;
 
-    // Linha “bebé · idade” só com dados reais (sem placeholder “Bebê”).
+    // Linha “bebê · idade” só com dados reais (sem placeholder “Bebê”).
     final hasName = babyName != null && babyName.isNotEmpty;
     final hasAge = babyAge != null && babyAge.isNotEmpty;
     String? babyLine;
@@ -174,15 +179,24 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            heroTitle,
-            style: TextStyle(
-              fontSize: portalSp(context, 19),
-              fontWeight: FontWeight.w900,
-              color: heroColor,
-              height: 1.15,
-              letterSpacing: 0.35,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              WeeklyPhotoCrownIcon(size: portalSp(context, 24)),
+              SizedBox(width: portalSp(context, 10)),
+              Expanded(
+                child: Text(
+                  heroTitle,
+                  style: TextStyle(
+                    fontSize: portalSp(context, 19),
+                    fontWeight: FontWeight.w900,
+                    color: heroColor,
+                    height: 1.15,
+                    letterSpacing: 0.35,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           Material(
@@ -215,15 +229,6 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
                             imageUrl: photoUrl,
                             fit: BoxFit.cover,
                             filterQuality: FilterQuality.medium,
-                            onError: (failedUrl, _) {
-                              WidgetsBinding.instance.addPostFrameCallback((_) {
-                                if (!mounted) return;
-                                if (_failedPhotoUrls.add(failedUrl)) {
-                                  setState(() {});
-                                }
-                              });
-                            },
-                            errorWidget: (_, __, ___) => const SizedBox.shrink(),
                           ),
                           Positioned(
                             left: 0,

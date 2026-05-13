@@ -16,11 +16,11 @@ class CloudBootstrapSync {
 
   static bool get _authed => FirebaseAuth.instance.currentUser != null;
   static DateTime? _lastProfilesHydrateAt;
-  /// Por bebé local — o cooldown global anterior fazia saltar a hidratação de memórias/fotos dos outros filhos.
+  /// Por bebê local — o cooldown global anterior fazia saltar a hidratação de memórias/fotos dos outros filhos.
   static final Map<int, DateTime> _lastBabyHydrateAtByLocalId = {};
 
   /// Quando há bebês no SQLite mas algum `mother_id` aponta para uma mãe inexistente,
-  /// recria a mãe a partir de `users/{uid}` e reencaminha o FK de todos os bebés afetados.
+  /// recria a mãe a partir de `users/{uid}` e reencaminha o FK de todos os bebês afetados.
   ///
   /// Isto corrige «Meu Perfil › Mãe sem informações» após inconsistência na BD local.
   static Future<bool> repairOrphanMotherLinks() async {
@@ -222,6 +222,11 @@ class CloudBootstrapSync {
       final growthRows = await FirestoreService.instance.listGrowthRecords(babyCloud);
       for (final g in growthRows) {
         await AppDatabase.instance.upsertGrowthFromCloud(localBabyId: localBabyId, data: g);
+      }
+
+      final symptomRows = await FirestoreService.instance.listSymptomReports(babyCloud);
+      for (final sr in symptomRows) {
+        await AppDatabase.instance.upsertSymptomReportFromCloud(localBabyId: localBabyId, data: sr);
       }
 
       final journalRows = await FirestoreService.instance.listDailyJournals(babyCloud);
