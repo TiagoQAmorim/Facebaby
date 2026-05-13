@@ -411,6 +411,80 @@ class FirestoreService {
     return _listEventsForBaby(babyId, 'growth');
   }
 
+  Future<String> createSymptomReport({
+    required String babyId,
+    required DateTime occurredAt,
+    String? medicationNote,
+    required bool fever,
+    double? tempCelsius,
+    required bool crying,
+    required bool pain,
+    required bool colic,
+    required bool reflux,
+    String? otherNote,
+  }) async {
+    final ref = eventsCol().doc();
+    final path = 'users/$_uid/events/${ref.id}';
+    _log('create', path, 'symptom_report');
+    final med = medicationNote?.trim();
+    final other = otherNote?.trim();
+    await ref.set({
+      'type': 'symptom_report',
+      'baby_id': babyId,
+      'event_time': Timestamp.fromDate(occurredAt),
+      'occurred_at': occurredAt.toIso8601String(),
+      'medication_note': (med == null || med.isEmpty) ? null : med,
+      'fever': fever,
+      'temp_celsius': tempCelsius,
+      'crying': crying,
+      'pain': pain,
+      'colic': colic,
+      'reflux': reflux,
+      'other_note': (other == null || other.isEmpty) ? null : other,
+      'created_at': FieldValue.serverTimestamp(),
+      'updated_at': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    return ref.id;
+  }
+
+  Future<void> updateSymptomReport({
+    required String babyId,
+    required String symptomReportId,
+    required DateTime occurredAt,
+    String? medicationNote,
+    required bool fever,
+    double? tempCelsius,
+    required bool crying,
+    required bool pain,
+    required bool colic,
+    required bool reflux,
+    String? otherNote,
+  }) async {
+    final path = 'users/$_uid/events/$symptomReportId';
+    _log('update', path, 'symptom_report');
+    final med = medicationNote?.trim();
+    final other = otherNote?.trim();
+    await eventsCol().doc(symptomReportId).set({
+      'type': 'symptom_report',
+      'baby_id': babyId,
+      'event_time': Timestamp.fromDate(occurredAt),
+      'occurred_at': occurredAt.toIso8601String(),
+      'medication_note': (med == null || med.isEmpty) ? null : med,
+      'fever': fever,
+      'temp_celsius': tempCelsius,
+      'crying': crying,
+      'pain': pain,
+      'colic': colic,
+      'reflux': reflux,
+      'other_note': (other == null || other.isEmpty) ? null : other,
+      'updated_at': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<List<Map<String, dynamic>>> listSymptomReports(String babyId) async {
+    return _listEventsForBaby(babyId, 'symptom_report');
+  }
+
   Future<void> upsertDailyJournal({
     required String babyId,
     required String dayKey,

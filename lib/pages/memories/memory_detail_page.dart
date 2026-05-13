@@ -23,6 +23,7 @@ import '../../utils/measurement_format.dart';
 import '../../widgets/memories/cached_memory_photo.dart';
 import '../../widgets/memories/memory_badge_icon.dart';
 import '../../widgets/memories/memory_share_card.dart';
+import '../../widgets/weekly_photo_crown_icon.dart';
 import 'add_memory_page.dart';
 
 enum _ShareExportKind { jpeg, pdf }
@@ -298,8 +299,8 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
     );
   }
 
-  Future<void> _onPublicCheckboxChanged(bool? v) async {
-    if (_savingPublic || v == null) return;
+  Future<void> _onPublicToggleChanged(bool v) async {
+    if (_savingPublic) return;
     if (v) {
       await _requestPublicOn();
     } else {
@@ -388,9 +389,17 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
       showDialog<void>(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const PopScope(
+        builder: (_) => PopScope(
           canPop: false,
-          child: Center(child: CircularProgressIndicator()),
+          child: AlertDialog(
+            content: Row(
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(width: 20),
+                Expanded(child: Text(S.of(context).memoriesAlbumGenerating)),
+              ],
+            ),
+          ),
         ),
       );
 
@@ -803,7 +812,7 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.emoji_events_outlined, color: AppTheme.primaryPurple, size: 22),
+                        WeeklyPhotoCrownIcon(size: portalSp(context, 22)),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
@@ -857,25 +866,45 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                CheckboxListTile(
-                  value: _memory.isPublic,
-                  onChanged: _savingPublic
-                      ? null
-                      : (bool? v) {
-                          unawaited(_onPublicCheckboxChanged(v));
-                        },
-                  contentPadding: EdgeInsets.zero,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  title: Text(
-                    _memory.isPublic ? s.weeklyPhotoPublicOn : s.weeklyPhotoPublicOff,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: portalSp(context, 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            s.weeklyPhotoPublicOff,
+                            textAlign: TextAlign.end,
+                            style: TextStyle(
+                              fontWeight: !_memory.isPublic ? FontWeight.w900 : FontWeight.w600,
+                              fontSize: portalSp(context, 15),
+                              color: !_memory.isPublic ? AppTheme.textPrimary : AppTheme.textMuted,
+                            ),
+                          ),
+                        ),
+                        Switch(
+                          value: _memory.isPublic,
+                          onChanged: _savingPublic
+                              ? null
+                              : (v) {
+                                  unawaited(_onPublicToggleChanged(v));
+                                },
+                        ),
+                        Expanded(
+                          child: Text(
+                            s.weeklyPhotoPublicOn,
+                            textAlign: TextAlign.start,
+                            style: TextStyle(
+                              fontWeight: _memory.isPublic ? FontWeight.w900 : FontWeight.w600,
+                              fontSize: portalSp(context, 15),
+                              color: _memory.isPublic ? AppTheme.textPrimary : AppTheme.textMuted,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 8, right: 4),
-                    child: Text(
+                    const SizedBox(height: 10),
+                    Text(
                       s.weeklyPhotoPublicExplainer,
                       style: TextStyle(
                         color: AppTheme.textSecondary,
@@ -884,7 +913,7 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
                         fontSize: portalSp(context, 13.5),
                       ),
                     ),
-                  ),
+                  ],
                 ),
                 if (_memory.isPublic) ...[
                   const SizedBox(height: 4),

@@ -100,12 +100,9 @@ class _SleepPageState extends State<SleepPage> {
     final rows = await AppDatabase.instance.listSleepRecords(babyId: bid, limit: 40);
     DateTime? lastEnd;
     if (rows.isNotEmpty) {
-      // Ignore registros muito curtos para a “janela ideal” (ex.: toques acidentais ao finalizar).
-      // Esses registros ainda aparecem no histórico; só não devem "zerar" o tempo acordado.
-      const minConsideredSec = 60;
+      // `listSleepRecords` vem por `ended_at DESC` — a régua de vigília segue sempre o **último**
+      // sono terminado (o que acabou de ser gravado), sem filtrar pela duração.
       for (final r in rows) {
-        final sec = (r['duration_sec'] as num?)?.toInt() ?? 0;
-        if (sec < minConsideredSec) continue;
         lastEnd = DateTime.tryParse(r['ended_at'] as String? ?? '');
         if (lastEnd != null) break;
       }
@@ -990,7 +987,7 @@ class _RoutineVm {
   });
 }
 
-/// Ilustração e texto quando a bebé está acordada (antes de iniciar o registo de sono).
+/// Ilustração e texto quando o bebê está acordado (antes de iniciar o registo de sono).
 class _SleepIdleHero extends StatelessWidget {
   final S strings;
 

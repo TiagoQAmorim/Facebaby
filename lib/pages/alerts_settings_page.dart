@@ -224,7 +224,7 @@ class _AlertsTestCardState extends State<_AlertsTestCard> {
     });
     final messenger = ScaffoldMessenger.of(context);
     final babyId = CurrentBabyController.instance.currentBabyId;
-    final buf = StringBuffer('bebé=$babyId');
+    final buf = StringBuffer('bebê=$babyId');
     if (babyId != null) {
       try {
         final lastFeed = await AppDatabase.instance.latestBreastOrBottleFeedingEndedAt(babyId: babyId);

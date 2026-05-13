@@ -67,7 +67,7 @@ class ConsultationReminderScheduler {
     return '$lang:${parts.join(';')}';
   }
 
-  /// Cancela e volta a agendar todos os lembretes futuros para este bebé (após CRUD ou ao retomar o app).
+  /// Cancela e volta a agendar todos os lembretes futuros para este bebê (após CRUD ou ao retomar o app).
   ///
   /// Se não mudou nem a lista de consultas nem o instante/lembrete, **não** volta a chamar ao SO —
   /// evita múltiplas linhas «Agendada» na inbox e cancel/reagenda inútil (Android/iOS).

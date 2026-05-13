@@ -1,5 +1,5 @@
 name: facebaby_flutter
-version: 1.0.20+40
+version: 1.0.26+53
 publish_to: 'none'
 description: MVP Flutter do FaceBaby, organizado com Page Objects/Screens, widgets, models, services e controllers.
 
@@ -75,6 +75,7 @@ flutter:
     - assets/sleep/baby_awake.png
     - assets/memories/mural_badges_ref.png
     - assets/memories/memory_album_cover.png
+    - assets/weekly_photo/crown.png
     - assets/memories/badges/
     - assets/memories/book/
     - assets/terms/

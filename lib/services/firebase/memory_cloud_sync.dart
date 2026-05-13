@@ -29,8 +29,16 @@ class MemoryCloudSync {
   }
 
   static Future<void> pushBadgeMemory({required int localBabyId, required String badgeId}) async {
-    if (!_authed || kIsWeb) return;
-    if (!PremiumService.instance.isPremium) return;
+    if (!_authed || kIsWeb) {
+      return;
+    }
+    final premium = PremiumService.instance.isPremium;
+    if (!premium) {
+      // Sem Premium não enviamos a memória privada para a subcoleção do bebê, mas o mural /
+      // `public_memories` (Foto da Semana) precisa existir quando a mãe marca como pública.
+      await WeeklyPhotoPublicSync.syncBadgeMemory(localBabyId: localBabyId, badgeId: badgeId);
+      return;
+    }
     final gateKey = '$localBabyId::$badgeId';
     final previous = _pushInFlight[gateKey];
     if (previous != null) {

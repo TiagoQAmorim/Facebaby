@@ -622,26 +622,49 @@ class _AddMemoryPageState extends State<AddMemoryPage> {
                         decoration: InputDecoration(labelText: s.memoryMomNotesFieldLabel, border: const OutlineInputBorder()),
                       ),
                       const SizedBox(height: 18),
-                      CheckboxListTile(
-                        value: _isPublic,
-                        onChanged: _saving
-                            ? null
-                            : (bool? v) {
-                                if (v == true) {
-                                  unawaited(_requestPublicOn());
-                                } else if (v == false) {
-                                  unawaited(_requestPublicOff());
-                                }
-                              },
-                        contentPadding: EdgeInsets.zero,
-                        controlAffinity: ListTileControlAffinity.leading,
-                        title: Text(
-                          _isPublic ? s.weeklyPhotoPublicOn : s.weeklyPhotoPublicOff,
-                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
-                        ),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 8, right: 4),
-                          child: Text(
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  s.weeklyPhotoPublicOff,
+                                  textAlign: TextAlign.end,
+                                  style: TextStyle(
+                                    fontWeight: !_isPublic ? FontWeight.w900 : FontWeight.w600,
+                                    fontSize: 15,
+                                    color: !_isPublic ? AppTheme.textPrimary : AppTheme.textMuted,
+                                  ),
+                                ),
+                              ),
+                              Switch(
+                                value: _isPublic,
+                                onChanged: _saving
+                                    ? null
+                                    : (v) {
+                                        if (v) {
+                                          unawaited(_requestPublicOn());
+                                        } else {
+                                          unawaited(_requestPublicOff());
+                                        }
+                                      },
+                              ),
+                              Expanded(
+                                child: Text(
+                                  s.weeklyPhotoPublicOn,
+                                  textAlign: TextAlign.start,
+                                  style: TextStyle(
+                                    fontWeight: _isPublic ? FontWeight.w900 : FontWeight.w600,
+                                    fontSize: 15,
+                                    color: _isPublic ? AppTheme.textPrimary : AppTheme.textMuted,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
                             s.weeklyPhotoPublicExplainer,
                             style: TextStyle(
                               color: AppTheme.textSecondary,
@@ -650,7 +673,7 @@ class _AddMemoryPageState extends State<AddMemoryPage> {
                               fontSize: 13.5,
                             ),
                           ),
-                        ),
+                        ],
                       ),
                       if (_isPublic) ...[
                         const SizedBox(height: 4),

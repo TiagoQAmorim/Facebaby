@@ -578,6 +578,10 @@ class S {
   String get settingsPrivacyPolicy => _t('settingsPrivacyPolicy');
   String get settingsSpecialThanks => _t('settingsSpecialThanks');
   String get settingsTellFriend => _t('settingsTellFriend');
+  String get settingsInviteShareText => _t('settingsInviteShareText');
+  String get settingsPremiumBenefitsTitle => _t('settingsPremiumBenefitsTitle');
+  String get settingsPremiumBannerHint => _t('settingsPremiumBannerHint');
+  String get settingsRateCouldNotOpen => _t('settingsRateCouldNotOpen');
   String get unitsTitle => _t('unitsTitle');
   String get unitsIntro => _t('unitsIntro');
   String get unitsLengthTitle => _t('unitsLengthTitle');
@@ -936,7 +940,7 @@ class S {
   String homeDaysOld(int days) =>
       days == 1 ? _t('homeOneDayOld') : _t('homeDaysOld').replaceAll('{d}', '$days');
 
-  /// Idade do bebé no cartão/banner (dias → semanas → meses → anos), conforme o idioma.
+  /// Idade do bebê no cartão/banner (dias → semanas → meses → anos), conforme o idioma.
   String babyAgeLabel(DateTime birthDate, DateTime now) {
     final days = now.difference(birthDate).inDays;
     if (days < 0) return '—';
@@ -1536,7 +1540,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusCtaLater': 'Agora não',
     'plusSheetFootnote':
         'Compra única processada pela Google Play ou pela App Store. Nas definições da conta pode restaurar noutro telemóvel.',
-    'plusWelcomeSnack': 'Obrigada por confiar no FaceBaby Premium — as memórias do bebé ficam ainda mais seguras.',
+    'plusWelcomeSnack': 'Obrigada por confiar no FaceBaby Premium — as memórias do bebê ficam ainda mais seguras.',
     'plusPurchaseUnavailableSnack':
         'Não foi possível iniciar a compra. Confirme o produto nas lojas ou tente mais tarde.',
     'plusPurchaseSkuNotFoundSnack':
@@ -1824,8 +1828,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportDevInsightTitle': 'Insights',
     'reportDevSeeAllMarcos': 'Ver todos os marcos',
     'reportDevFootnote':
-        'Marcos são orientações gerais; cada bebé tem o seu tempo. Em dúvida, converse com o pediatra.',
-    'reportDevNeedBirth': 'Adiciona a data de nascimento do bebé para ver este relatório.',
+        'Marcos são orientações gerais; cada bebê tem o seu tempo. Em dúvida, converse com o pediatra.',
+    'reportDevNeedBirth': 'Adiciona a data de nascimento do bebê para ver este relatório.',
     'devReport_motor_head': 'Sustenta a cabeça',
     'devReport_motor_roll': 'Rola (ex.: de bruços para costas)',
     'devReport_motor_sit': 'Senta (com ou sem apoio)',
@@ -1863,12 +1867,12 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoriesAlbumPromoSubtitle':
         'Baixe um PDF elegante com capa FaceBaby, moldura decorativa e todas as badges que já preencheu — ideal para guardar ou partilhar.',
     'memoriesAlbumDownloadCta': 'Baixar PDF do álbum',
-    'memoriesAlbumGenerating': 'A gerar o seu álbum…',
+    'memoriesAlbumGenerating': 'Gerando o Álbum',
     'memoriesAlbumNeedFilled': 'Preencha pelo menos um momento no álbum para gerar o PDF.',
     'memoriesAlbumError': 'Não foi possível gerar o PDF.',
     'memoriesAlbumPdfReadyTitle': 'PDF do álbum pronto',
-    'memoriesAlbumShareAction': 'Partilhar…',
-    'memoriesAlbumSaveAction': 'Guardar / download',
+    'memoriesAlbumShareAction': 'Compartilhar',
+    'memoriesAlbumSaveAction': 'Salvar / Download',
     'memoriesAlbumSavedSnack': 'PDF guardado no telemóvel.',
     'memoriesAlbumSaveFailedSnack': 'Não foi possível guardar o PDF.',
     'memoriesAlbumCoverMain': 'Livro de recordação',
@@ -1954,7 +1958,12 @@ const Map<AppLang, Map<String, String>> _strings = {
     'termsLoadError': 'Não foi possível carregar os termos.',
     'settingsPrivacyPolicy': 'Política de privacidade',
     'settingsSpecialThanks': 'Agradecimentos especiais',
-    'settingsTellFriend': 'Conte a um amigo',
+    'settingsTellFriend': 'Indique para um Amigo',
+    'settingsInviteShareText':
+        'Experimente o FaceBaby — o diário da rotina e memórias do bebê.\nhttps://play.google.com/store/apps/details?id=com.facebaby.app',
+    'settingsPremiumBenefitsTitle': 'Benefícios FaceBaby Premium',
+    'settingsPremiumBannerHint': 'Toque para ver o que está incluído no seu plano.',
+    'settingsRateCouldNotOpen': 'Não foi possível abrir a loja. Tente mais tarde.',
     'unitsTitle': 'Unidades de medida',
     'unitsIntro': 'Escolha como prefere ver as medidas. Começamos com um padrão automático baseado na região do seu celular.',
     'unitsLengthTitle': 'Unidade de comprimento',
@@ -2417,7 +2426,7 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Sugestão fixa na app de cerca de 3 horas e 30 minutos após a última troca registada. Ao guardar uma nova troca, o lembrete é cancelado e reagendado. Respeita a permissão do sistema para notificações.',
     'alertsSectionSleep': 'Sono',
     'alertsRuleSleep':
-        'Usando a última hora em que terminou um sono registado e a idade da bebé em meses (data de nascimento no perfil), a app marca até dois tipos de aviso quando o alerta está ligado: um pouco antes de atingir a janela de vigília habitual e outro quando essa janela já pode ter sido ultrapassada. Ao gravar um novo período de sono, os horários são atualizados.',
+        'Usando a última hora em que terminou um sono registado e a idade do bebê em meses (data de nascimento no perfil), a app marca até dois tipos de aviso quando o alerta está ligado: um pouco antes de atingir a janela de vigília habitual e outro quando essa janela já pode ter sido ultrapassada. Ao gravar um novo período de sono, os horários são atualizados.',
     'alertsSectionGrowth': 'Crescimento e medições',
     'alertsRuleGrowth':
         'Notificação quando o peso mais recente fica abaixo do registo de peso anterior (por data de medição). Outro aviso quando passam mais de 30 dias sem qualquer medição de peso, altura ou perímetro craniano guardada na app.',
@@ -2432,7 +2441,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'sleepAlertsApproachSliderLabelCustom': '{m} min',
     'sleepAlertsWakeWindowAutomatic': 'Limite de vigília usado no alerta: {m} min (automático pela tabela por idade).',
     'sleepAlertsWakeWindowAutomaticNoBirth':
-        'Adicione a data de nascimento do bebé no perfil para o padrão certo; até lá usamos referência de {m} min.',
+        'Adicione a data de nascimento do bebê no perfil para o padrão certo; até lá usamos referência de {m} min.',
     'sleepAlertsMonthsApprox': 'Tabela de referência: ~{n} meses',
     'sleepAlertsWakeWindowCustom': 'Limite de vigília personalizado: {m} min.',
     'sleepAlertsApproachAuto': 'Aviso antes do limite: {m} min antecedência (valor padrão).',
@@ -3515,7 +3524,12 @@ const Map<AppLang, Map<String, String>> _strings = {
     'termsLoadError': 'Could not load the terms.',
     'settingsPrivacyPolicy': 'Privacy policy',
     'settingsSpecialThanks': 'Special thanks',
-    'settingsTellFriend': 'Tell a friend',
+    'settingsTellFriend': 'Refer a friend',
+    'settingsInviteShareText':
+        'Try FaceBaby — baby routines & memories in one place.\nhttps://play.google.com/store/apps/details?id=com.facebaby.app',
+    'settingsPremiumBenefitsTitle': 'FaceBaby Premium benefits',
+    'settingsPremiumBannerHint': 'Tap to see what is included in your plan.',
+    'settingsRateCouldNotOpen': 'Could not open the store. Try again later.',
     'unitsTitle': 'Measurement units',
     'unitsIntro': 'Choose how you want measurements to be shown. We start with an automatic default based on your device region.',
     'unitsLengthTitle': 'Length unit',

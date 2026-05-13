@@ -19,6 +19,7 @@ import '../services/app_database.dart';
 import '../services/home_prefs.dart';
 import '../services/local_notifications_service.dart';
 import '../services/reminder_monitor.dart';
+import '../services/scheduled_local_reminders.dart';
 import '../services/firebase/profile_cloud_sync.dart';
 import '../services/measurement_units_prefs.dart';
 import '../theme/app_theme.dart';
@@ -67,16 +68,22 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      // Última oportunidade antes do SO suspender o isolate: regravar alarmes no AlarmManager.
+      // Sem isto, em alguns equipamentos só o `show()` ao voltar a abrir parece “funcionar”.
+      final bid = currentBaby.currentBabyId;
+      unawaited(ScheduledLocalReminders.sync(babyId: bid));
+    }
     if (state == AppLifecycleState.resumed) {
       _lastShellResumeAt = DateTime.now();
-      // Após segundo plano: re-sincroniza bebé/mãe na BD (evita UI “sem cadastro” por estado stale).
+      // Após segundo plano: re-sincroniza bebê/mãe na BD (evita UI “sem cadastro” por estado stale).
       unawaited(currentBaby.refresh());
       // Reagenda lembretes locais (não depender só da Home puxada para refresh).
       ReminderMonitor.instance.onAppResumed();
     }
   }
 
-  /// Garante bebé + prefs carregados antes de [ReminderMonitor] — evita o primeiro [sync] com
+  /// Garante bebê + prefs carregados antes de [ReminderMonitor] — evita o primeiro [sync] com
   /// `babyId == null` cancelar todos os lembretes agendados no SO.
   Future<void> _bootstrapRemindersPipeline() async {
     try {

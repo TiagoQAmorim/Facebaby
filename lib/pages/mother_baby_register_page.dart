@@ -61,7 +61,7 @@ class MotherBabyRegisterPage extends StatefulWidget {
   final int? presetMotherId;
   /// Editar dados da mãe existentes (Meu Perfil).
   final int? editMotherId;
-  /// Editar dados do bebé existente (Meu Perfil).
+  /// Editar dados do bebê existente (Meu Perfil).
   final int? editBabyId;
 
   const MotherBabyRegisterPage({

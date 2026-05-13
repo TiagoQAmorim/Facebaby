@@ -7,7 +7,7 @@ import '../app_database.dart';
 import 'firestore_service.dart';
 import 'storage_service.dart';
 
-/// Espelha perfis de mãe/bebé no Firestore + fotos no Storage (conta autenticada).
+/// Espelha perfis de mãe/bebê no Firestore + fotos no Storage (conta autenticada).
 /// A BD local mantém-se para eventos e FKs; a cópia na nuvem é a cópia partilhada entre dispositivos.
 class ProfileCloudSync {
   ProfileCloudSync._();

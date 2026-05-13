@@ -3,6 +3,7 @@ class SymptomReport {
   const SymptomReport({
     required this.id,
     required this.babyId,
+    this.cloudId,
     required this.occurredAt,
     this.medicationNote,
     required this.fever,
@@ -18,6 +19,9 @@ class SymptomReport {
 
   final int id;
   final int babyId;
+
+  /// `users/{uid}/events/{id}` no Firestore, quando já sincronizado.
+  final String? cloudId;
   final DateTime occurredAt;
 
   /// Texto livre (medicamentos tomados).
@@ -55,9 +59,11 @@ class SymptomReport {
     final occurredAt = DateTime.tryParse(m['occurred_at'] as String? ?? '') ?? DateTime.now();
     final createdAt = DateTime.tryParse(m['created_at'] as String? ?? '') ?? occurredAt;
     final updatedAt = DateTime.tryParse(m['updated_at'] as String? ?? '') ?? createdAt;
+    final cid = (m['cloud_id'] as String?)?.trim();
     return SymptomReport(
       id: id,
       babyId: babyId,
+      cloudId: (cid == null || cid.isEmpty) ? null : cid,
       occurredAt: occurredAt.isUtc ? occurredAt.toLocal() : occurredAt,
       medicationNote: (m['medication_note'] as String?)?.trim().isEmpty == true
           ? null

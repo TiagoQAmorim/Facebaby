@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Mural / Foto da Semana — cliente grava `owner_uid` (FirestoreService) e `userId` (WeeklyPhotoPublicSync).
+    match /public_memories/{memoryId} {
+      allow read: if true;
+
+      allow create: if request.auth != null
+        && (
+          request.resource.data.owner_uid == request.auth.uid
+          || request.resource.data.userId == request.auth.uid
+        );
+
+      // Exige que o documento existente já pertença ao utilizador e que o resultado continue a indicá-lo.
+      allow update: if request.auth != null
+        && (resource.data.owner_uid == request.auth.uid
+            || resource.data.userId == request.auth.uid)
+        && (
+          request.resource.data.owner_uid == request.auth.uid
+          || request.resource.data.userId == request.auth.uid
+        );
+
+      // Em delete não existe request.resource — usar apenas resource.
+      allow delete: if request.auth != null
+        && (
+          resource.data.owner_uid == request.auth.uid
+          || resource.data.userId == request.auth.uid
+        );
+    }
+
+    // Sorteio / destaque — escrita só Admin SDK / Cloud Functions.
+    match /weekly_photo_contests/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Dados privados da mãe (perfil, bebês, eventos, memórias em `events`, etc.).
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      match /{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+  }
+}
