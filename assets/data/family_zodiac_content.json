@@ -1,0 +1,374 @@
+{
+  "pt": {
+    "aries": {
+      "father": "O pai de Áries é intenso, energético e apaixonado pela vida. Ele costuma viver a paternidade com entusiasmo e incentiva os filhos a serem fortes, independentes e corajosos. Gosta de aventuras, brincadeiras agitadas e desafios. É o tipo de pai que motiva os filhos a acreditarem em si mesmos, ensinando desde cedo que é importante lutar pelos próprios sonhos. Apesar de muito amoroso, pode ser impulsivo e perder a paciência rapidamente quando sente que está sendo desafiado.",
+      "mother": "A mãe de Áries possui uma energia vibrante e protetora. Ela é ativa, determinada e extremamente dedicada ao crescimento dos filhos. Incentiva autonomia, coragem e confiança, sempre tentando preparar a criança para enfrentar o mundo. Demonstra amor através de ações e proteção constante. É divertida, espontânea e muito participativa na vida da família.",
+      "baby": "O bebê de Áries geralmente demonstra personalidade forte desde muito cedo. É curioso, inquieto e cheio de energia. Gosta de explorar o ambiente, aprender rapidamente e chamar atenção. Pode ficar irritado facilmente quando é contrariado, mas também possui enorme capacidade de superação e entusiasmo."
+    },
+    "taurus": {
+      "father": "O pai taurino transmite segurança, estabilidade e proteção. Ele valoriza conforto, estabilidade financeira e momentos tranquilos em família. Demonstra amor através do cuidado diário, do carinho físico e da presença constante. Costuma ser paciente, confiável e muito dedicado ao bem-estar dos filhos.",
+      "mother": "A mãe de Touro é acolhedora, carinhosa e extremamente protetora. Gosta de criar um ambiente confortável, bonito e seguro para os filhos crescerem. Demonstra amor através de abraços, alimentação, cuidado e presença emocional. Costuma ser calma e transmitir muita estabilidade emocional.",
+      "baby": "O bebê taurino tende a ser tranquilo, amoroso e muito ligado ao conforto. Gosta de rotina, carinho e ambientes acolhedores. Pode criar apego forte aos pais e demonstrar resistência a mudanças repentinas. É um bebê sensível ao toque, ao colo e ao aconchego."
+    },
+    "gemini": {
+      "father": "O pai geminiano é divertido, inteligente e extremamente comunicativo. Ele gosta de conversar, ensinar e estimular a curiosidade dos filhos. É moderno, criativo e procura transformar a convivência familiar em algo leve e cheio de descobertas. Costuma incentivar leitura, tecnologia e criatividade.",
+      "mother": "A mãe de Gêmeos é dinâmica, sociável e cheia de energia mental. Ela adora estimular o aprendizado dos filhos e criar um ambiente de diálogo aberto. Está sempre buscando novidades e maneiras criativas de divertir e ensinar as crianças.",
+      "baby": "O bebê geminiano é curioso e atento ao mundo ao redor. Aprende rápido, gosta de estímulos visuais e sonoros e demonstra interesse constante pelas pessoas. Pode ser mais inquieto e precisar de bastante interação para não se entediar."
+    },
+    "cancer": {
+      "father": "O pai canceriano é profundamente emocional e ligado à família. Vive a paternidade de forma intensa e costuma criar vínculos extremamente fortes com os filhos. É protetor, carinhoso e muito sensível às emoções das crianças. Faz de tudo para que a família se sinta segura e amada.",
+      "mother": "A mãe de Câncer é considerada uma das mais maternais do zodíaco. Ela vive para cuidar, proteger e acolher. Muito intuitiva, percebe rapidamente quando os filhos precisam de carinho ou apoio emocional. Valoriza tradições familiares, memórias e momentos afetivos.",
+      "baby": "O bebê canceriano é doce, sensível e muito apegado emocionalmente aos pais. Busca segurança no colo, no carinho e na presença constante da família. Pode estranhar ambientes desconhecidos, mas demonstra enorme capacidade de amar e criar vínculos profundos."
+    },
+    "leo": {
+      "father": "O pai de Leão costuma ser carismático, caloroso e cheio de orgulho pela família. Ele transmite aos filhos sua visão única de mundo e procura ensinar valores importantes através do exemplo e da convivência diária. Sua personalidade influencia fortemente o ambiente familiar e a forma como demonstra amor.",
+      "mother": "A mãe de Leão geralmente é carismático, caloroso e cheio de orgulho pela família. Ela cria vínculos especiais com os filhos e demonstra amor através do cuidado, da proteção e da dedicação constante. Seu jeito de educar deixa marcas profundas na formação emocional das crianças.",
+      "baby": "O bebê de Leão costuma apresentar traços como ser carismático, caloroso e cheio de orgulho pela família. Desde cedo demonstra características únicas que influenciam sua maneira de aprender, brincar, se comunicar e criar laços afetivos com a família."
+    },
+    "virgo": {
+      "father": "O pai de Virgem costuma ser organizado, observador e cuidadoso com os detalhes. Ele transmite aos filhos sua visão única de mundo e procura ensinar valores importantes através do exemplo e da convivência diária. Sua personalidade influencia fortemente o ambiente familiar e a forma como demonstra amor.",
+      "mother": "A mãe de Virgem geralmente é organizado, observador e cuidadoso com os detalhes. Ela cria vínculos especiais com os filhos e demonstra amor através do cuidado, da proteção e da dedicação constante. Seu jeito de educar deixa marcas profundas na formação emocional das crianças.",
+      "baby": "O bebê de Virgem costuma apresentar traços como ser organizado, observador e cuidadoso com os detalhes. Desde cedo demonstra características únicas que influenciam sua maneira de aprender, brincar, se comunicar e criar laços afetivos com a família."
+    },
+    "libra": {
+      "father": "O pai de Libra costuma ser equilibrado, gentil e focado na harmonia. Ele transmite aos filhos sua visão única de mundo e procura ensinar valores importantes através do exemplo e da convivência diária. Sua personalidade influencia fortemente o ambiente familiar e a forma como demonstra amor.",
+      "mother": "A mãe de Libra geralmente é equilibrado, gentil e focado na harmonia. Ela cria vínculos especiais com os filhos e demonstra amor através do cuidado, da proteção e da dedicação constante. Seu jeito de educar deixa marcas profundas na formação emocional das crianças.",
+      "baby": "O bebê de Libra costuma apresentar traços como ser equilibrado, gentil e focado na harmonia. Desde cedo demonstra características únicas que influenciam sua maneira de aprender, brincar, se comunicar e criar laços afetivos com a família."
+    },
+    "scorpio": {
+      "father": "O pai de Escorpião costuma ser intenso, protetor e emocionalmente profundo. Ele transmite aos filhos sua visão única de mundo e procura ensinar valores importantes através do exemplo e da convivência diária. Sua personalidade influencia fortemente o ambiente familiar e a forma como demonstra amor.",
+      "mother": "A mãe de Escorpião geralmente é intenso, protetor e emocionalmente profundo. Ela cria vínculos especiais com os filhos e demonstra amor através do cuidado, da proteção e da dedicação constante. Seu jeito de educar deixa marcas profundas na formação emocional das crianças.",
+      "baby": "O bebê de Escorpião costuma apresentar traços como ser intenso, protetor e emocionalmente profundo. Desde cedo demonstra características únicas que influenciam sua maneira de aprender, brincar, se comunicar e criar laços afetivos com a família."
+    },
+    "sagittarius": {
+      "father": "O pai de Sagitário costuma ser aventureiro, otimista e inspirador. Ele transmite aos filhos sua visão única de mundo e procura ensinar valores importantes através do exemplo e da convivência diária. Sua personalidade influencia fortemente o ambiente familiar e a forma como demonstra amor.",
+      "mother": "A mãe de Sagitário geralmente é aventureiro, otimista e inspirador. Ela cria vínculos especiais com os filhos e demonstra amor através do cuidado, da proteção e da dedicação constante. Seu jeito de educar deixa marcas profundas na formação emocional das crianças.",
+      "baby": "O bebê de Sagitário costuma apresentar traços como ser aventureiro, otimista e inspirador. Desde cedo demonstra características únicas que influenciam sua maneira de aprender, brincar, se comunicar e criar laços afetivos com a família."
+    },
+    "capricorn": {
+      "father": "O pai de Capricórnio costuma ser disciplinado, responsável e dedicado ao futuro. Ele transmite aos filhos sua visão única de mundo e procura ensinar valores importantes através do exemplo e da convivência diária. Sua personalidade influencia fortemente o ambiente familiar e a forma como demonstra amor.",
+      "mother": "A mãe de Capricórnio geralmente é disciplinado, responsável e dedicado ao futuro. Ela cria vínculos especiais com os filhos e demonstra amor através do cuidado, da proteção e da dedicação constante. Seu jeito de educar deixa marcas profundas na formação emocional das crianças.",
+      "baby": "O bebê de Capricórnio costuma apresentar traços como ser disciplinado, responsável e dedicado ao futuro. Desde cedo demonstra características únicas que influenciam sua maneira de aprender, brincar, se comunicar e criar laços afetivos com a família."
+    },
+    "aquarius": {
+      "father": "O pai de Aquário costuma ser criativo, moderno e independente. Ele transmite aos filhos sua visão única de mundo e procura ensinar valores importantes através do exemplo e da convivência diária. Sua personalidade influencia fortemente o ambiente familiar e a forma como demonstra amor.",
+      "mother": "A mãe de Aquário geralmente é criativo, moderno e independente. Ela cria vínculos especiais com os filhos e demonstra amor através do cuidado, da proteção e da dedicação constante. Seu jeito de educar deixa marcas profundas na formação emocional das crianças.",
+      "baby": "O bebê de Aquário costuma apresentar traços como ser criativo, moderno e independente. Desde cedo demonstra características únicas que influenciam sua maneira de aprender, brincar, se comunicar e criar laços afetivos com a família."
+    },
+    "pisces": {
+      "father": "O pai de Peixes costuma ser sensível, amoroso e extremamente intuitivo. Ele transmite aos filhos sua visão única de mundo e procura ensinar valores importantes através do exemplo e da convivência diária. Sua personalidade influencia fortemente o ambiente familiar e a forma como demonstra amor.",
+      "mother": "A mãe de Peixes geralmente é sensível, amoroso e extremamente intuitivo. Ela cria vínculos especiais com os filhos e demonstra amor através do cuidado, da proteção e da dedicação constante. Seu jeito de educar deixa marcas profundas na formação emocional das crianças.",
+      "baby": "O bebê de Peixes costuma apresentar traços como ser sensível, amoroso e extremamente intuitivo. Desde cedo demonstra características únicas que influenciam sua maneira de aprender, brincar, se comunicar e criar laços afetivos com a família."
+    }
+  },
+  "en": {
+    "aries": {
+      "father": "The Aries father is usually described as energetic, courageous, passionate, and independent. He tends to influence his children strongly through his personality, life values, and emotional energy. His way of showing love often reflects the natural characteristics of his zodiac sign.",
+      "mother": "The Aries mother is often energetic, courageous, passionate, and independent. She creates emotional bonds with her children through affection, care, protection, and guidance. Her parenting style usually reflects the emotional and behavioral energy of her sign.",
+      "baby": "The Aries baby usually shows traits such as being energetic, courageous, passionate, and independent from an early age. Astrology suggests that babies may express personality tendencies very early through emotions, curiosity, behavior, and interaction with the world."
+    },
+    "taurus": {
+      "father": "The Taurus father is usually described as stable, affectionate, patient, and protective. He tends to influence his children strongly through his personality, life values, and emotional energy. His way of showing love often reflects the natural characteristics of his zodiac sign.",
+      "mother": "The Taurus mother is often stable, affectionate, patient, and protective. She creates emotional bonds with her children through affection, care, protection, and guidance. Her parenting style usually reflects the emotional and behavioral energy of her sign.",
+      "baby": "The Taurus baby usually shows traits such as being stable, affectionate, patient, and protective from an early age. Astrology suggests that babies may express personality tendencies very early through emotions, curiosity, behavior, and interaction with the world."
+    },
+    "gemini": {
+      "father": "The Gemini father is usually described as communicative, curious, intelligent, and playful. He tends to influence his children strongly through his personality, life values, and emotional energy. His way of showing love often reflects the natural characteristics of his zodiac sign.",
+      "mother": "The Gemini mother is often communicative, curious, intelligent, and playful. She creates emotional bonds with her children through affection, care, protection, and guidance. Her parenting style usually reflects the emotional and behavioral energy of her sign.",
+      "baby": "The Gemini baby usually shows traits such as being communicative, curious, intelligent, and playful from an early age. Astrology suggests that babies may express personality tendencies very early through emotions, curiosity, behavior, and interaction with the world."
+    },
+    "cancer": {
+      "father": "The Cancer father is usually described as emotional, nurturing, sensitive, and family-oriented. He tends to influence his children strongly through his personality, life values, and emotional energy. His way of showing love often reflects the natural characteristics of his zodiac sign.",
+      "mother": "The Cancer mother is often emotional, nurturing, sensitive, and family-oriented. She creates emotional bonds with her children through affection, care, protection, and guidance. Her parenting style usually reflects the emotional and behavioral energy of her sign.",
+      "baby": "The Cancer baby usually shows traits such as being emotional, nurturing, sensitive, and family-oriented from an early age. Astrology suggests that babies may express personality tendencies very early through emotions, curiosity, behavior, and interaction with the world."
+    },
+    "leo": {
+      "father": "The Leo father is usually described as charismatic, warm, confident, and proud. He tends to influence his children strongly through his personality, life values, and emotional energy. His way of showing love often reflects the natural characteristics of his zodiac sign.",
+      "mother": "The Leo mother is often charismatic, warm, confident, and proud. She creates emotional bonds with her children through affection, care, protection, and guidance. Her parenting style usually reflects the emotional and behavioral energy of her sign.",
+      "baby": "The Leo baby usually shows traits such as being charismatic, warm, confident, and proud from an early age. Astrology suggests that babies may express personality tendencies very early through emotions, curiosity, behavior, and interaction with the world."
+    },
+    "virgo": {
+      "father": "The Virgo father is usually described as organized, observant, caring, and detail-oriented. He tends to influence his children strongly through his personality, life values, and emotional energy. His way of showing love often reflects the natural characteristics of his zodiac sign.",
+      "mother": "The Virgo mother is often organized, observant, caring, and detail-oriented. She creates emotional bonds with her children through affection, care, protection, and guidance. Her parenting style usually reflects the emotional and behavioral energy of her sign.",
+      "baby": "The Virgo baby usually shows traits such as being organized, observant, caring, and detail-oriented from an early age. Astrology suggests that babies may express personality tendencies very early through emotions, curiosity, behavior, and interaction with the world."
+    },
+    "libra": {
+      "father": "The Libra father is usually described as balanced, gentle, sociable, and harmonious. He tends to influence his children strongly through his personality, life values, and emotional energy. His way of showing love often reflects the natural characteristics of his zodiac sign.",
+      "mother": "The Libra mother is often balanced, gentle, sociable, and harmonious. She creates emotional bonds with her children through affection, care, protection, and guidance. Her parenting style usually reflects the emotional and behavioral energy of her sign.",
+      "baby": "The Libra baby usually shows traits such as being balanced, gentle, sociable, and harmonious from an early age. Astrology suggests that babies may express personality tendencies very early through emotions, curiosity, behavior, and interaction with the world."
+    },
+    "scorpio": {
+      "father": "The Scorpio father is usually described as intense, protective, emotional, and loyal. He tends to influence his children strongly through his personality, life values, and emotional energy. His way of showing love often reflects the natural characteristics of his zodiac sign.",
+      "mother": "The Scorpio mother is often intense, protective, emotional, and loyal. She creates emotional bonds with her children through affection, care, protection, and guidance. Her parenting style usually reflects the emotional and behavioral energy of her sign.",
+      "baby": "The Scorpio baby usually shows traits such as being intense, protective, emotional, and loyal from an early age. Astrology suggests that babies may express personality tendencies very early through emotions, curiosity, behavior, and interaction with the world."
+    },
+    "sagittarius": {
+      "father": "The Sagittarius father is usually described as adventurous, optimistic, fun-loving, and inspiring. He tends to influence his children strongly through his personality, life values, and emotional energy. His way of showing love often reflects the natural characteristics of his zodiac sign.",
+      "mother": "The Sagittarius mother is often adventurous, optimistic, fun-loving, and inspiring. She creates emotional bonds with her children through affection, care, protection, and guidance. Her parenting style usually reflects the emotional and behavioral energy of her sign.",
+      "baby": "The Sagittarius baby usually shows traits such as being adventurous, optimistic, fun-loving, and inspiring from an early age. Astrology suggests that babies may express personality tendencies very early through emotions, curiosity, behavior, and interaction with the world."
+    },
+    "capricorn": {
+      "father": "The Capricorn father is usually described as disciplined, responsible, stable, and hardworking. He tends to influence his children strongly through his personality, life values, and emotional energy. His way of showing love often reflects the natural characteristics of his zodiac sign.",
+      "mother": "The Capricorn mother is often disciplined, responsible, stable, and hardworking. She creates emotional bonds with her children through affection, care, protection, and guidance. Her parenting style usually reflects the emotional and behavioral energy of her sign.",
+      "baby": "The Capricorn baby usually shows traits such as being disciplined, responsible, stable, and hardworking from an early age. Astrology suggests that babies may express personality tendencies very early through emotions, curiosity, behavior, and interaction with the world."
+    },
+    "aquarius": {
+      "father": "The Aquarius father is usually described as creative, modern, independent, and innovative. He tends to influence his children strongly through his personality, life values, and emotional energy. His way of showing love often reflects the natural characteristics of his zodiac sign.",
+      "mother": "The Aquarius mother is often creative, modern, independent, and innovative. She creates emotional bonds with her children through affection, care, protection, and guidance. Her parenting style usually reflects the emotional and behavioral energy of her sign.",
+      "baby": "The Aquarius baby usually shows traits such as being creative, modern, independent, and innovative from an early age. Astrology suggests that babies may express personality tendencies very early through emotions, curiosity, behavior, and interaction with the world."
+    },
+    "pisces": {
+      "father": "The Pisces father is usually described as sensitive, loving, intuitive, and dreamy. He tends to influence his children strongly through his personality, life values, and emotional energy. His way of showing love often reflects the natural characteristics of his zodiac sign.",
+      "mother": "The Pisces mother is often sensitive, loving, intuitive, and dreamy. She creates emotional bonds with her children through affection, care, protection, and guidance. Her parenting style usually reflects the emotional and behavioral energy of her sign.",
+      "baby": "The Pisces baby usually shows traits such as being sensitive, loving, intuitive, and dreamy from an early age. Astrology suggests that babies may express personality tendencies very early through emotions, curiosity, behavior, and interaction with the world."
+    }
+  },
+  "es": {
+    "aries": {
+      "father": "El padre de Aries suele ser enérgico, valiente, apasionado e independiente. Normalmente influye mucho en sus hijos a través de su personalidad, valores y energía emocional. Su manera de demostrar amor refleja las características naturales de su signo.",
+      "mother": "La madre de Aries suele ser enérgico, valiente, apasionado e independiente. Construye vínculos emocionales profundos con sus hijos mediante cariño, cuidado, protección y orientación. Su estilo de crianza refleja la energía emocional y comportamental de su signo.",
+      "baby": "El bebé de Aries normalmente muestra rasgos como ser enérgico, valiente, apasionado e independiente desde muy pequeño. La astrología sugiere que los bebés pueden expresar tendencias de personalidad desde los primeros años mediante emociones, curiosidad y comportamiento."
+    },
+    "taurus": {
+      "father": "El padre de Tauro suele ser estable, cariñoso, paciente y protector. Normalmente influye mucho en sus hijos a través de su personalidad, valores y energía emocional. Su manera de demostrar amor refleja las características naturales de su signo.",
+      "mother": "La madre de Tauro suele ser estable, cariñoso, paciente y protector. Construye vínculos emocionales profundos con sus hijos mediante cariño, cuidado, protección y orientación. Su estilo de crianza refleja la energía emocional y comportamental de su signo.",
+      "baby": "El bebé de Tauro normalmente muestra rasgos como ser estable, cariñoso, paciente y protector desde muy pequeño. La astrología sugiere que los bebés pueden expresar tendencias de personalidad desde los primeros años mediante emociones, curiosidad y comportamiento."
+    },
+    "gemini": {
+      "father": "El padre de Géminis suele ser comunicativo, curioso, inteligente y divertido. Normalmente influye mucho en sus hijos a través de su personalidad, valores y energía emocional. Su manera de demostrar amor refleja las características naturales de su signo.",
+      "mother": "La madre de Géminis suele ser comunicativo, curioso, inteligente y divertido. Construye vínculos emocionales profundos con sus hijos mediante cariño, cuidado, protección y orientación. Su estilo de crianza refleja la energía emocional y comportamental de su signo.",
+      "baby": "El bebé de Géminis normalmente muestra rasgos como ser comunicativo, curioso, inteligente y divertido desde muy pequeño. La astrología sugiere que los bebés pueden expresar tendencias de personalidad desde los primeros años mediante emociones, curiosidad y comportamiento."
+    },
+    "cancer": {
+      "father": "El padre de Cáncer suele ser emocional, sensible, protector y familiar. Normalmente influye mucho en sus hijos a través de su personalidad, valores y energía emocional. Su manera de demostrar amor refleja las características naturales de su signo.",
+      "mother": "La madre de Cáncer suele ser emocional, sensible, protector y familiar. Construye vínculos emocionales profundos con sus hijos mediante cariño, cuidado, protección y orientación. Su estilo de crianza refleja la energía emocional y comportamental de su signo.",
+      "baby": "El bebé de Cáncer normalmente muestra rasgos como ser emocional, sensible, protector y familiar desde muy pequeño. La astrología sugiere que los bebés pueden expresar tendencias de personalidad desde los primeros años mediante emociones, curiosidad y comportamiento."
+    },
+    "leo": {
+      "father": "El padre de Leo suele ser carismático, cálido, seguro y orgulloso. Normalmente influye mucho en sus hijos a través de su personalidad, valores y energía emocional. Su manera de demostrar amor refleja las características naturales de su signo.",
+      "mother": "La madre de Leo suele ser carismático, cálido, seguro y orgulloso. Construye vínculos emocionales profundos con sus hijos mediante cariño, cuidado, protección y orientación. Su estilo de crianza refleja la energía emocional y comportamental de su signo.",
+      "baby": "El bebé de Leo normalmente muestra rasgos como ser carismático, cálido, seguro y orgulloso desde muy pequeño. La astrología sugiere que los bebés pueden expresar tendencias de personalidad desde los primeros años mediante emociones, curiosidad y comportamiento."
+    },
+    "virgo": {
+      "father": "El padre de Virgo suele ser organizado, observador, cuidadoso y detallista. Normalmente influye mucho en sus hijos a través de su personalidad, valores y energía emocional. Su manera de demostrar amor refleja las características naturales de su signo.",
+      "mother": "La madre de Virgo suele ser organizado, observador, cuidadoso y detallista. Construye vínculos emocionales profundos con sus hijos mediante cariño, cuidado, protección y orientación. Su estilo de crianza refleja la energía emocional y comportamental de su signo.",
+      "baby": "El bebé de Virgo normalmente muestra rasgos como ser organizado, observador, cuidadoso y detallista desde muy pequeño. La astrología sugiere que los bebés pueden expresar tendencias de personalidad desde los primeros años mediante emociones, curiosidad y comportamiento."
+    },
+    "libra": {
+      "father": "El padre de Libra suele ser equilibrado, amable, sociable y armonioso. Normalmente influye mucho en sus hijos a través de su personalidad, valores y energía emocional. Su manera de demostrar amor refleja las características naturales de su signo.",
+      "mother": "La madre de Libra suele ser equilibrado, amable, sociable y armonioso. Construye vínculos emocionales profundos con sus hijos mediante cariño, cuidado, protección y orientación. Su estilo de crianza refleja la energía emocional y comportamental de su signo.",
+      "baby": "El bebé de Libra normalmente muestra rasgos como ser equilibrado, amable, sociable y armonioso desde muy pequeño. La astrología sugiere que los bebés pueden expresar tendencias de personalidad desde los primeros años mediante emociones, curiosidad y comportamiento."
+    },
+    "scorpio": {
+      "father": "El padre de Escorpio suele ser intenso, protector, emocional y leal. Normalmente influye mucho en sus hijos a través de su personalidad, valores y energía emocional. Su manera de demostrar amor refleja las características naturales de su signo.",
+      "mother": "La madre de Escorpio suele ser intenso, protector, emocional y leal. Construye vínculos emocionales profundos con sus hijos mediante cariño, cuidado, protección y orientación. Su estilo de crianza refleja la energía emocional y comportamental de su signo.",
+      "baby": "El bebé de Escorpio normalmente muestra rasgos como ser intenso, protector, emocional y leal desde muy pequeño. La astrología sugiere que los bebés pueden expresar tendencias de personalidad desde los primeros años mediante emociones, curiosidad y comportamiento."
+    },
+    "sagittarius": {
+      "father": "El padre de Sagitario suele ser aventurero, optimista, divertido e inspirador. Normalmente influye mucho en sus hijos a través de su personalidad, valores y energía emocional. Su manera de demostrar amor refleja las características naturales de su signo.",
+      "mother": "La madre de Sagitario suele ser aventurero, optimista, divertido e inspirador. Construye vínculos emocionales profundos con sus hijos mediante cariño, cuidado, protección y orientación. Su estilo de crianza refleja la energía emocional y comportamental de su signo.",
+      "baby": "El bebé de Sagitario normalmente muestra rasgos como ser aventurero, optimista, divertido e inspirador desde muy pequeño. La astrología sugiere que los bebés pueden expresar tendencias de personalidad desde los primeros años mediante emociones, curiosidad y comportamiento."
+    },
+    "capricorn": {
+      "father": "El padre de Capricornio suele ser disciplinado, responsable, estable y trabajador. Normalmente influye mucho en sus hijos a través de su personalidad, valores y energía emocional. Su manera de demostrar amor refleja las características naturales de su signo.",
+      "mother": "La madre de Capricornio suele ser disciplinado, responsable, estable y trabajador. Construye vínculos emocionales profundos con sus hijos mediante cariño, cuidado, protección y orientación. Su estilo de crianza refleja la energía emocional y comportamental de su signo.",
+      "baby": "El bebé de Capricornio normalmente muestra rasgos como ser disciplinado, responsable, estable y trabajador desde muy pequeño. La astrología sugiere que los bebés pueden expresar tendencias de personalidad desde los primeros años mediante emociones, curiosidad y comportamiento."
+    },
+    "aquarius": {
+      "father": "El padre de Acuario suele ser creativo, moderno, independiente e innovador. Normalmente influye mucho en sus hijos a través de su personalidad, valores y energía emocional. Su manera de demostrar amor refleja las características naturales de su signo.",
+      "mother": "La madre de Acuario suele ser creativo, moderno, independiente e innovador. Construye vínculos emocionales profundos con sus hijos mediante cariño, cuidado, protección y orientación. Su estilo de crianza refleja la energía emocional y comportamental de su signo.",
+      "baby": "El bebé de Acuario normalmente muestra rasgos como ser creativo, moderno, independiente e innovador desde muy pequeño. La astrología sugiere que los bebés pueden expresar tendencias de personalidad desde los primeros años mediante emociones, curiosidad y comportamiento."
+    },
+    "pisces": {
+      "father": "El padre de Piscis suele ser sensible, amoroso, intuitivo y soñador. Normalmente influye mucho en sus hijos a través de su personalidad, valores y energía emocional. Su manera de demostrar amor refleja las características naturales de su signo.",
+      "mother": "La madre de Piscis suele ser sensible, amoroso, intuitivo y soñador. Construye vínculos emocionales profundos con sus hijos mediante cariño, cuidado, protección y orientación. Su estilo de crianza refleja la energía emocional y comportamental de su signo.",
+      "baby": "El bebé de Piscis normalmente muestra rasgos como ser sensible, amoroso, intuitivo y soñador desde muy pequeño. La astrología sugiere que los bebés pueden expresar tendencias de personalidad desde los primeros años mediante emociones, curiosidad y comportamiento."
+    }
+  },
+  "fr": {
+    "aries": {
+      "father": "Le père Bélier est souvent décrit comme énergique, courageux, passionné et indépendant. Il influence généralement fortement ses enfants à travers sa personnalité, ses valeurs et son énergie émotionnelle. Sa manière de montrer son amour reflète souvent les caractéristiques naturelles de son signe.",
+      "mother": "La mère Bélier est souvent énergique, courageux, passionné et indépendant. Elle crée des liens émotionnels profonds avec ses enfants grâce à l’affection, aux soins, à la protection et aux conseils. Son style parental reflète l’énergie émotionnelle et comportementale de son signe.",
+      "baby": "Le bébé Bélier montre souvent des traits comme être énergique, courageux, passionné et indépendant dès son plus jeune âge. L’astrologie suggère que les bébés peuvent exprimer très tôt certaines tendances de personnalité à travers leurs émotions, leur curiosité et leur comportement."
+    },
+    "taurus": {
+      "father": "Le père Taureau est souvent décrit comme stable, affectueux, patient et protecteur. Il influence généralement fortement ses enfants à travers sa personnalité, ses valeurs et son énergie émotionnelle. Sa manière de montrer son amour reflète souvent les caractéristiques naturelles de son signe.",
+      "mother": "La mère Taureau est souvent stable, affectueux, patient et protecteur. Elle crée des liens émotionnels profonds avec ses enfants grâce à l’affection, aux soins, à la protection et aux conseils. Son style parental reflète l’énergie émotionnelle et comportementale de son signe.",
+      "baby": "Le bébé Taureau montre souvent des traits comme être stable, affectueux, patient et protecteur dès son plus jeune âge. L’astrologie suggère que les bébés peuvent exprimer très tôt certaines tendances de personnalité à travers leurs émotions, leur curiosité et leur comportement."
+    },
+    "gemini": {
+      "father": "Le père Gémeaux est souvent décrit comme communicatif, curieux, intelligent et amusant. Il influence généralement fortement ses enfants à travers sa personnalité, ses valeurs et son énergie émotionnelle. Sa manière de montrer son amour reflète souvent les caractéristiques naturelles de son signe.",
+      "mother": "La mère Gémeaux est souvent communicatif, curieux, intelligent et amusant. Elle crée des liens émotionnels profonds avec ses enfants grâce à l’affection, aux soins, à la protection et aux conseils. Son style parental reflète l’énergie émotionnelle et comportementale de son signe.",
+      "baby": "Le bébé Gémeaux montre souvent des traits comme être communicatif, curieux, intelligent et amusant dès son plus jeune âge. L’astrologie suggère que les bébés peuvent exprimer très tôt certaines tendances de personnalité à travers leurs émotions, leur curiosité et leur comportement."
+    },
+    "cancer": {
+      "father": "Le père Cancer est souvent décrit comme émotionnel, sensible, protecteur et familial. Il influence généralement fortement ses enfants à travers sa personnalité, ses valeurs et son énergie émotionnelle. Sa manière de montrer son amour reflète souvent les caractéristiques naturelles de son signe.",
+      "mother": "La mère Cancer est souvent émotionnel, sensible, protecteur et familial. Elle crée des liens émotionnels profonds avec ses enfants grâce à l’affection, aux soins, à la protection et aux conseils. Son style parental reflète l’énergie émotionnelle et comportementale de son signe.",
+      "baby": "Le bébé Cancer montre souvent des traits comme être émotionnel, sensible, protecteur et familial dès son plus jeune âge. L’astrologie suggère que les bébés peuvent exprimer très tôt certaines tendances de personnalité à travers leurs émotions, leur curiosité et leur comportement."
+    },
+    "leo": {
+      "father": "Le père Lion est souvent décrit comme charismatique, chaleureux, confiant et fier. Il influence généralement fortement ses enfants à travers sa personnalité, ses valeurs et son énergie émotionnelle. Sa manière de montrer son amour reflète souvent les caractéristiques naturelles de son signe.",
+      "mother": "La mère Lion est souvent charismatique, chaleureux, confiant et fier. Elle crée des liens émotionnels profonds avec ses enfants grâce à l’affection, aux soins, à la protection et aux conseils. Son style parental reflète l’énergie émotionnelle et comportementale de son signe.",
+      "baby": "Le bébé Lion montre souvent des traits comme être charismatique, chaleureux, confiant et fier dès son plus jeune âge. L’astrologie suggère que les bébés peuvent exprimer très tôt certaines tendances de personnalité à travers leurs émotions, leur curiosité et leur comportement."
+    },
+    "virgo": {
+      "father": "Le père Vierge est souvent décrit comme organisé, observateur, attentionné et minutieux. Il influence généralement fortement ses enfants à travers sa personnalité, ses valeurs et son énergie émotionnelle. Sa manière de montrer son amour reflète souvent les caractéristiques naturelles de son signe.",
+      "mother": "La mère Vierge est souvent organisé, observateur, attentionné et minutieux. Elle crée des liens émotionnels profonds avec ses enfants grâce à l’affection, aux soins, à la protection et aux conseils. Son style parental reflète l’énergie émotionnelle et comportementale de son signe.",
+      "baby": "Le bébé Vierge montre souvent des traits comme être organisé, observateur, attentionné et minutieux dès son plus jeune âge. L’astrologie suggère que les bébés peuvent exprimer très tôt certaines tendances de personnalité à travers leurs émotions, leur curiosité et leur comportement."
+    },
+    "libra": {
+      "father": "Le père Balance est souvent décrit comme équilibré, gentil, sociable et harmonieux. Il influence généralement fortement ses enfants à travers sa personnalité, ses valeurs et son énergie émotionnelle. Sa manière de montrer son amour reflète souvent les caractéristiques naturelles de son signe.",
+      "mother": "La mère Balance est souvent équilibré, gentil, sociable et harmonieux. Elle crée des liens émotionnels profonds avec ses enfants grâce à l’affection, aux soins, à la protection et aux conseils. Son style parental reflète l’énergie émotionnelle et comportementale de son signe.",
+      "baby": "Le bébé Balance montre souvent des traits comme être équilibré, gentil, sociable et harmonieux dès son plus jeune âge. L’astrologie suggère que les bébés peuvent exprimer très tôt certaines tendances de personnalité à travers leurs émotions, leur curiosité et leur comportement."
+    },
+    "scorpio": {
+      "father": "Le père Scorpion est souvent décrit comme intense, protecteur, émotionnel et loyal. Il influence généralement fortement ses enfants à travers sa personnalité, ses valeurs et son énergie émotionnelle. Sa manière de montrer son amour reflète souvent les caractéristiques naturelles de son signe.",
+      "mother": "La mère Scorpion est souvent intense, protecteur, émotionnel et loyal. Elle crée des liens émotionnels profonds avec ses enfants grâce à l’affection, aux soins, à la protection et aux conseils. Son style parental reflète l’énergie émotionnelle et comportementale de son signe.",
+      "baby": "Le bébé Scorpion montre souvent des traits comme être intense, protecteur, émotionnel et loyal dès son plus jeune âge. L’astrologie suggère que les bébés peuvent exprimer très tôt certaines tendances de personnalité à travers leurs émotions, leur curiosité et leur comportement."
+    },
+    "sagittarius": {
+      "father": "Le père Sagittaire est souvent décrit comme aventurier, optimiste, amusant et inspirant. Il influence généralement fortement ses enfants à travers sa personnalité, ses valeurs et son énergie émotionnelle. Sa manière de montrer son amour reflète souvent les caractéristiques naturelles de son signe.",
+      "mother": "La mère Sagittaire est souvent aventurier, optimiste, amusant et inspirant. Elle crée des liens émotionnels profonds avec ses enfants grâce à l’affection, aux soins, à la protection et aux conseils. Son style parental reflète l’énergie émotionnelle et comportementale de son signe.",
+      "baby": "Le bébé Sagittaire montre souvent des traits comme être aventurier, optimiste, amusant et inspirant dès son plus jeune âge. L’astrologie suggère que les bébés peuvent exprimer très tôt certaines tendances de personnalité à travers leurs émotions, leur curiosité et leur comportement."
+    },
+    "capricorn": {
+      "father": "Le père Capricorne est souvent décrit comme discipliné, responsable, stable et travailleur. Il influence généralement fortement ses enfants à travers sa personnalité, ses valeurs et son énergie émotionnelle. Sa manière de montrer son amour reflète souvent les caractéristiques naturelles de son signe.",
+      "mother": "La mère Capricorne est souvent discipliné, responsable, stable et travailleur. Elle crée des liens émotionnels profonds avec ses enfants grâce à l’affection, aux soins, à la protection et aux conseils. Son style parental reflète l’énergie émotionnelle et comportementale de son signe.",
+      "baby": "Le bébé Capricorne montre souvent des traits comme être discipliné, responsable, stable et travailleur dès son plus jeune âge. L’astrologie suggère que les bébés peuvent exprimer très tôt certaines tendances de personnalité à travers leurs émotions, leur curiosité et leur comportement."
+    },
+    "aquarius": {
+      "father": "Le père Verseau est souvent décrit comme créatif, moderne, indépendant et innovant. Il influence généralement fortement ses enfants à travers sa personnalité, ses valeurs et son énergie émotionnelle. Sa manière de montrer son amour reflète souvent les caractéristiques naturelles de son signe.",
+      "mother": "La mère Verseau est souvent créatif, moderne, indépendant et innovant. Elle crée des liens émotionnels profonds avec ses enfants grâce à l’affection, aux soins, à la protection et aux conseils. Son style parental reflète l’énergie émotionnelle et comportementale de son signe.",
+      "baby": "Le bébé Verseau montre souvent des traits comme être créatif, moderne, indépendant et innovant dès son plus jeune âge. L’astrologie suggère que les bébés peuvent exprimer très tôt certaines tendances de personnalité à travers leurs émotions, leur curiosité et leur comportement."
+    },
+    "pisces": {
+      "father": "Le père Poissons est souvent décrit comme sensible, affectueux, intuitif et rêveur. Il influence généralement fortement ses enfants à travers sa personnalité, ses valeurs et son énergie émotionnelle. Sa manière de montrer son amour reflète souvent les caractéristiques naturelles de son signe.",
+      "mother": "La mère Poissons est souvent sensible, affectueux, intuitif et rêveur. Elle crée des liens émotionnels profonds avec ses enfants grâce à l’affection, aux soins, à la protection et aux conseils. Son style parental reflète l’énergie émotionnelle et comportementale de son signe.",
+      "baby": "Le bébé Poissons montre souvent des traits comme être sensible, affectueux, intuitif et rêveur dès son plus jeune âge. L’astrologie suggère que les bébés peuvent exprimer très tôt certaines tendances de personnalité à travers leurs émotions, leur curiosité et leur comportement."
+    }
+  },
+  "de": {
+    "aries": {
+      "father": "Der Widder-Vater wird oft als energiegeladen, mutig, leidenschaftlich und unabhängig beschrieben. Er beeinflusst seine Kinder häufig stark durch seine Persönlichkeit, seine Werte und seine emotionale Energie. Die Art, wie er Liebe zeigt, spiegelt oft die natürlichen Eigenschaften seines Sternzeichens wider.",
+      "mother": "Die Widder-Mutter ist oft energiegeladen, mutig, leidenschaftlich und unabhängig. Sie baut tiefe emotionale Bindungen zu ihren Kindern durch Liebe, Fürsorge, Schutz und Unterstützung auf. Ihr Erziehungsstil spiegelt die emotionale und charakterliche Energie ihres Sternzeichens wider.",
+      "baby": "Das Widder-Baby zeigt oft schon früh Eigenschaften wie energiegeladen, mutig, leidenschaftlich und unabhängig. Die Astrologie deutet darauf hin, dass Babys ihre Persönlichkeitstendenzen bereits in jungen Jahren durch Emotionen, Neugier und Verhalten ausdrücken können."
+    },
+    "taurus": {
+      "father": "Der Stier-Vater wird oft als stabil, liebevoll, geduldig und beschützend beschrieben. Er beeinflusst seine Kinder häufig stark durch seine Persönlichkeit, seine Werte und seine emotionale Energie. Die Art, wie er Liebe zeigt, spiegelt oft die natürlichen Eigenschaften seines Sternzeichens wider.",
+      "mother": "Die Stier-Mutter ist oft stabil, liebevoll, geduldig und beschützend. Sie baut tiefe emotionale Bindungen zu ihren Kindern durch Liebe, Fürsorge, Schutz und Unterstützung auf. Ihr Erziehungsstil spiegelt die emotionale und charakterliche Energie ihres Sternzeichens wider.",
+      "baby": "Das Stier-Baby zeigt oft schon früh Eigenschaften wie stabil, liebevoll, geduldig und beschützend. Die Astrologie deutet darauf hin, dass Babys ihre Persönlichkeitstendenzen bereits in jungen Jahren durch Emotionen, Neugier und Verhalten ausdrücken können."
+    },
+    "gemini": {
+      "father": "Der Zwillinge-Vater wird oft als kommunikativ, neugierig, intelligent und verspielt beschrieben. Er beeinflusst seine Kinder häufig stark durch seine Persönlichkeit, seine Werte und seine emotionale Energie. Die Art, wie er Liebe zeigt, spiegelt oft die natürlichen Eigenschaften seines Sternzeichens wider.",
+      "mother": "Die Zwillinge-Mutter ist oft kommunikativ, neugierig, intelligent und verspielt. Sie baut tiefe emotionale Bindungen zu ihren Kindern durch Liebe, Fürsorge, Schutz und Unterstützung auf. Ihr Erziehungsstil spiegelt die emotionale und charakterliche Energie ihres Sternzeichens wider.",
+      "baby": "Das Zwillinge-Baby zeigt oft schon früh Eigenschaften wie kommunikativ, neugierig, intelligent und verspielt. Die Astrologie deutet darauf hin, dass Babys ihre Persönlichkeitstendenzen bereits in jungen Jahren durch Emotionen, Neugier und Verhalten ausdrücken können."
+    },
+    "cancer": {
+      "father": "Der Krebs-Vater wird oft als emotional, sensibel, fürsorglich und familienorientiert beschrieben. Er beeinflusst seine Kinder häufig stark durch seine Persönlichkeit, seine Werte und seine emotionale Energie. Die Art, wie er Liebe zeigt, spiegelt oft die natürlichen Eigenschaften seines Sternzeichens wider.",
+      "mother": "Die Krebs-Mutter ist oft emotional, sensibel, fürsorglich und familienorientiert. Sie baut tiefe emotionale Bindungen zu ihren Kindern durch Liebe, Fürsorge, Schutz und Unterstützung auf. Ihr Erziehungsstil spiegelt die emotionale und charakterliche Energie ihres Sternzeichens wider.",
+      "baby": "Das Krebs-Baby zeigt oft schon früh Eigenschaften wie emotional, sensibel, fürsorglich und familienorientiert. Die Astrologie deutet darauf hin, dass Babys ihre Persönlichkeitstendenzen bereits in jungen Jahren durch Emotionen, Neugier und Verhalten ausdrücken können."
+    },
+    "leo": {
+      "father": "Der Löwe-Vater wird oft als charismatisch, warmherzig, selbstbewusst und stolz beschrieben. Er beeinflusst seine Kinder häufig stark durch seine Persönlichkeit, seine Werte und seine emotionale Energie. Die Art, wie er Liebe zeigt, spiegelt oft die natürlichen Eigenschaften seines Sternzeichens wider.",
+      "mother": "Die Löwe-Mutter ist oft charismatisch, warmherzig, selbstbewusst und stolz. Sie baut tiefe emotionale Bindungen zu ihren Kindern durch Liebe, Fürsorge, Schutz und Unterstützung auf. Ihr Erziehungsstil spiegelt die emotionale und charakterliche Energie ihres Sternzeichens wider.",
+      "baby": "Das Löwe-Baby zeigt oft schon früh Eigenschaften wie charismatisch, warmherzig, selbstbewusst und stolz. Die Astrologie deutet darauf hin, dass Babys ihre Persönlichkeitstendenzen bereits in jungen Jahren durch Emotionen, Neugier und Verhalten ausdrücken können."
+    },
+    "virgo": {
+      "father": "Der Jungfrau-Vater wird oft als organisiert, aufmerksam, fürsorglich und detailorientiert beschrieben. Er beeinflusst seine Kinder häufig stark durch seine Persönlichkeit, seine Werte und seine emotionale Energie. Die Art, wie er Liebe zeigt, spiegelt oft die natürlichen Eigenschaften seines Sternzeichens wider.",
+      "mother": "Die Jungfrau-Mutter ist oft organisiert, aufmerksam, fürsorglich und detailorientiert. Sie baut tiefe emotionale Bindungen zu ihren Kindern durch Liebe, Fürsorge, Schutz und Unterstützung auf. Ihr Erziehungsstil spiegelt die emotionale und charakterliche Energie ihres Sternzeichens wider.",
+      "baby": "Das Jungfrau-Baby zeigt oft schon früh Eigenschaften wie organisiert, aufmerksam, fürsorglich und detailorientiert. Die Astrologie deutet darauf hin, dass Babys ihre Persönlichkeitstendenzen bereits in jungen Jahren durch Emotionen, Neugier und Verhalten ausdrücken können."
+    },
+    "libra": {
+      "father": "Der Waage-Vater wird oft als ausgeglichen, freundlich, sozial und harmonisch beschrieben. Er beeinflusst seine Kinder häufig stark durch seine Persönlichkeit, seine Werte und seine emotionale Energie. Die Art, wie er Liebe zeigt, spiegelt oft die natürlichen Eigenschaften seines Sternzeichens wider.",
+      "mother": "Die Waage-Mutter ist oft ausgeglichen, freundlich, sozial und harmonisch. Sie baut tiefe emotionale Bindungen zu ihren Kindern durch Liebe, Fürsorge, Schutz und Unterstützung auf. Ihr Erziehungsstil spiegelt die emotionale und charakterliche Energie ihres Sternzeichens wider.",
+      "baby": "Das Waage-Baby zeigt oft schon früh Eigenschaften wie ausgeglichen, freundlich, sozial und harmonisch. Die Astrologie deutet darauf hin, dass Babys ihre Persönlichkeitstendenzen bereits in jungen Jahren durch Emotionen, Neugier und Verhalten ausdrücken können."
+    },
+    "scorpio": {
+      "father": "Der Skorpion-Vater wird oft als intensiv, beschützend, emotional und loyal beschrieben. Er beeinflusst seine Kinder häufig stark durch seine Persönlichkeit, seine Werte und seine emotionale Energie. Die Art, wie er Liebe zeigt, spiegelt oft die natürlichen Eigenschaften seines Sternzeichens wider.",
+      "mother": "Die Skorpion-Mutter ist oft intensiv, beschützend, emotional und loyal. Sie baut tiefe emotionale Bindungen zu ihren Kindern durch Liebe, Fürsorge, Schutz und Unterstützung auf. Ihr Erziehungsstil spiegelt die emotionale und charakterliche Energie ihres Sternzeichens wider.",
+      "baby": "Das Skorpion-Baby zeigt oft schon früh Eigenschaften wie intensiv, beschützend, emotional und loyal. Die Astrologie deutet darauf hin, dass Babys ihre Persönlichkeitstendenzen bereits in jungen Jahren durch Emotionen, Neugier und Verhalten ausdrücken können."
+    },
+    "sagittarius": {
+      "father": "Der Schütze-Vater wird oft als abenteuerlustig, optimistisch, fröhlich und inspirierend beschrieben. Er beeinflusst seine Kinder häufig stark durch seine Persönlichkeit, seine Werte und seine emotionale Energie. Die Art, wie er Liebe zeigt, spiegelt oft die natürlichen Eigenschaften seines Sternzeichens wider.",
+      "mother": "Die Schütze-Mutter ist oft abenteuerlustig, optimistisch, fröhlich und inspirierend. Sie baut tiefe emotionale Bindungen zu ihren Kindern durch Liebe, Fürsorge, Schutz und Unterstützung auf. Ihr Erziehungsstil spiegelt die emotionale und charakterliche Energie ihres Sternzeichens wider.",
+      "baby": "Das Schütze-Baby zeigt oft schon früh Eigenschaften wie abenteuerlustig, optimistisch, fröhlich und inspirierend. Die Astrologie deutet darauf hin, dass Babys ihre Persönlichkeitstendenzen bereits in jungen Jahren durch Emotionen, Neugier und Verhalten ausdrücken können."
+    },
+    "capricorn": {
+      "father": "Der Steinbock-Vater wird oft als diszipliniert, verantwortungsbewusst, stabil und fleißig beschrieben. Er beeinflusst seine Kinder häufig stark durch seine Persönlichkeit, seine Werte und seine emotionale Energie. Die Art, wie er Liebe zeigt, spiegelt oft die natürlichen Eigenschaften seines Sternzeichens wider.",
+      "mother": "Die Steinbock-Mutter ist oft diszipliniert, verantwortungsbewusst, stabil und fleißig. Sie baut tiefe emotionale Bindungen zu ihren Kindern durch Liebe, Fürsorge, Schutz und Unterstützung auf. Ihr Erziehungsstil spiegelt die emotionale und charakterliche Energie ihres Sternzeichens wider.",
+      "baby": "Das Steinbock-Baby zeigt oft schon früh Eigenschaften wie diszipliniert, verantwortungsbewusst, stabil und fleißig. Die Astrologie deutet darauf hin, dass Babys ihre Persönlichkeitstendenzen bereits in jungen Jahren durch Emotionen, Neugier und Verhalten ausdrücken können."
+    },
+    "aquarius": {
+      "father": "Der Wassermann-Vater wird oft als kreativ, modern, unabhängig und innovativ beschrieben. Er beeinflusst seine Kinder häufig stark durch seine Persönlichkeit, seine Werte und seine emotionale Energie. Die Art, wie er Liebe zeigt, spiegelt oft die natürlichen Eigenschaften seines Sternzeichens wider.",
+      "mother": "Die Wassermann-Mutter ist oft kreativ, modern, unabhängig und innovativ. Sie baut tiefe emotionale Bindungen zu ihren Kindern durch Liebe, Fürsorge, Schutz und Unterstützung auf. Ihr Erziehungsstil spiegelt die emotionale und charakterliche Energie ihres Sternzeichens wider.",
+      "baby": "Das Wassermann-Baby zeigt oft schon früh Eigenschaften wie kreativ, modern, unabhängig und innovativ. Die Astrologie deutet darauf hin, dass Babys ihre Persönlichkeitstendenzen bereits in jungen Jahren durch Emotionen, Neugier und Verhalten ausdrücken können."
+    },
+    "pisces": {
+      "father": "Der Fische-Vater wird oft als sensibel, liebevoll, intuitiv und verträumt beschrieben. Er beeinflusst seine Kinder häufig stark durch seine Persönlichkeit, seine Werte und seine emotionale Energie. Die Art, wie er Liebe zeigt, spiegelt oft die natürlichen Eigenschaften seines Sternzeichens wider.",
+      "mother": "Die Fische-Mutter ist oft sensibel, liebevoll, intuitiv und verträumt. Sie baut tiefe emotionale Bindungen zu ihren Kindern durch Liebe, Fürsorge, Schutz und Unterstützung auf. Ihr Erziehungsstil spiegelt die emotionale und charakterliche Energie ihres Sternzeichens wider.",
+      "baby": "Das Fische-Baby zeigt oft schon früh Eigenschaften wie sensibel, liebevoll, intuitiv und verträumt. Die Astrologie deutet darauf hin, dass Babys ihre Persönlichkeitstendenzen bereits in jungen Jahren durch Emotionen, Neugier und Verhalten ausdrücken können."
+    }
+  },
+  "it": {
+    "aries": {
+      "father": "Il padre Ariete viene spesso descritto come energico, coraggioso, passionale e indipendente. Influenza profondamente i figli attraverso la sua personalità, i suoi valori e la sua energia emotiva. Il suo modo di dimostrare amore riflette spesso le caratteristiche naturali del suo segno zodiacale.",
+      "mother": "La madre Ariete è spesso energico, coraggioso, passionale e indipendente. Crea legami emotivi profondi con i figli attraverso affetto, cura, protezione e sostegno. Il suo stile educativo riflette l’energia emotiva e comportamentale del suo segno.",
+      "baby": "Il bambino Ariete mostra spesso fin da piccolo caratteristiche come essere energico, coraggioso, passionale e indipendente. Secondo l’astrologia, i bambini possono esprimere molto presto tendenze della loro personalità attraverso emozioni, curiosità e comportamento."
+    },
+    "taurus": {
+      "father": "Il padre Toro viene spesso descritto come stabile, affettuoso, paziente e protettivo. Influenza profondamente i figli attraverso la sua personalità, i suoi valori e la sua energia emotiva. Il suo modo di dimostrare amore riflette spesso le caratteristiche naturali del suo segno zodiacale.",
+      "mother": "La madre Toro è spesso stabile, affettuoso, paziente e protettivo. Crea legami emotivi profondi con i figli attraverso affetto, cura, protezione e sostegno. Il suo stile educativo riflette l’energia emotiva e comportamentale del suo segno.",
+      "baby": "Il bambino Toro mostra spesso fin da piccolo caratteristiche come essere stabile, affettuoso, paziente e protettivo. Secondo l’astrologia, i bambini possono esprimere molto presto tendenze della loro personalità attraverso emozioni, curiosità e comportamento."
+    },
+    "gemini": {
+      "father": "Il padre Gemelli viene spesso descritto come comunicativo, curioso, intelligente e divertente. Influenza profondamente i figli attraverso la sua personalità, i suoi valori e la sua energia emotiva. Il suo modo di dimostrare amore riflette spesso le caratteristiche naturali del suo segno zodiacale.",
+      "mother": "La madre Gemelli è spesso comunicativo, curioso, intelligente e divertente. Crea legami emotivi profondi con i figli attraverso affetto, cura, protezione e sostegno. Il suo stile educativo riflette l’energia emotiva e comportamentale del suo segno.",
+      "baby": "Il bambino Gemelli mostra spesso fin da piccolo caratteristiche come essere comunicativo, curioso, intelligente e divertente. Secondo l’astrologia, i bambini possono esprimere molto presto tendenze della loro personalità attraverso emozioni, curiosità e comportamento."
+    },
+    "cancer": {
+      "father": "Il padre Cancro viene spesso descritto come emotivo, sensibile, protettivo e legato alla famiglia. Influenza profondamente i figli attraverso la sua personalità, i suoi valori e la sua energia emotiva. Il suo modo di dimostrare amore riflette spesso le caratteristiche naturali del suo segno zodiacale.",
+      "mother": "La madre Cancro è spesso emotivo, sensibile, protettivo e legato alla famiglia. Crea legami emotivi profondi con i figli attraverso affetto, cura, protezione e sostegno. Il suo stile educativo riflette l’energia emotiva e comportamentale del suo segno.",
+      "baby": "Il bambino Cancro mostra spesso fin da piccolo caratteristiche come essere emotivo, sensibile, protettivo e legato alla famiglia. Secondo l’astrologia, i bambini possono esprimere molto presto tendenze della loro personalità attraverso emozioni, curiosità e comportamento."
+    },
+    "leo": {
+      "father": "Il padre Leone viene spesso descritto come carismatico, caloroso, sicuro di sé e orgoglioso. Influenza profondamente i figli attraverso la sua personalità, i suoi valori e la sua energia emotiva. Il suo modo di dimostrare amore riflette spesso le caratteristiche naturali del suo segno zodiacale.",
+      "mother": "La madre Leone è spesso carismatico, caloroso, sicuro di sé e orgoglioso. Crea legami emotivi profondi con i figli attraverso affetto, cura, protezione e sostegno. Il suo stile educativo riflette l’energia emotiva e comportamentale del suo segno.",
+      "baby": "Il bambino Leone mostra spesso fin da piccolo caratteristiche come essere carismatico, caloroso, sicuro di sé e orgoglioso. Secondo l’astrologia, i bambini possono esprimere molto presto tendenze della loro personalità attraverso emozioni, curiosità e comportamento."
+    },
+    "virgo": {
+      "father": "Il padre Vergine viene spesso descritto come organizzato, attento, premuroso e preciso. Influenza profondamente i figli attraverso la sua personalità, i suoi valori e la sua energia emotiva. Il suo modo di dimostrare amore riflette spesso le caratteristiche naturali del suo segno zodiacale.",
+      "mother": "La madre Vergine è spesso organizzato, attento, premuroso e preciso. Crea legami emotivi profondi con i figli attraverso affetto, cura, protezione e sostegno. Il suo stile educativo riflette l’energia emotiva e comportamentale del suo segno.",
+      "baby": "Il bambino Vergine mostra spesso fin da piccolo caratteristiche come essere organizzato, attento, premuroso e preciso. Secondo l’astrologia, i bambini possono esprimere molto presto tendenze della loro personalità attraverso emozioni, curiosità e comportamento."
+    },
+    "libra": {
+      "father": "Il padre Bilancia viene spesso descritto come equilibrato, gentile, socievole e armonioso. Influenza profondamente i figli attraverso la sua personalità, i suoi valori e la sua energia emotiva. Il suo modo di dimostrare amore riflette spesso le caratteristiche naturali del suo segno zodiacale.",
+      "mother": "La madre Bilancia è spesso equilibrato, gentile, socievole e armonioso. Crea legami emotivi profondi con i figli attraverso affetto, cura, protezione e sostegno. Il suo stile educativo riflette l’energia emotiva e comportamentale del suo segno.",
+      "baby": "Il bambino Bilancia mostra spesso fin da piccolo caratteristiche come essere equilibrato, gentile, socievole e armonioso. Secondo l’astrologia, i bambini possono esprimere molto presto tendenze della loro personalità attraverso emozioni, curiosità e comportamento."
+    },
+    "scorpio": {
+      "father": "Il padre Scorpione viene spesso descritto come intenso, protettivo, emotivo e leale. Influenza profondamente i figli attraverso la sua personalità, i suoi valori e la sua energia emotiva. Il suo modo di dimostrare amore riflette spesso le caratteristiche naturali del suo segno zodiacale.",
+      "mother": "La madre Scorpione è spesso intenso, protettivo, emotivo e leale. Crea legami emotivi profondi con i figli attraverso affetto, cura, protezione e sostegno. Il suo stile educativo riflette l’energia emotiva e comportamentale del suo segno.",
+      "baby": "Il bambino Scorpione mostra spesso fin da piccolo caratteristiche come essere intenso, protettivo, emotivo e leale. Secondo l’astrologia, i bambini possono esprimere molto presto tendenze della loro personalità attraverso emozioni, curiosità e comportamento."
+    },
+    "sagittarius": {
+      "father": "Il padre Sagittario viene spesso descritto come avventuroso, ottimista, allegro e ispiratore. Influenza profondamente i figli attraverso la sua personalità, i suoi valori e la sua energia emotiva. Il suo modo di dimostrare amore riflette spesso le caratteristiche naturali del suo segno zodiacale.",
+      "mother": "La madre Sagittario è spesso avventuroso, ottimista, allegro e ispiratore. Crea legami emotivi profondi con i figli attraverso affetto, cura, protezione e sostegno. Il suo stile educativo riflette l’energia emotiva e comportamentale del suo segno.",
+      "baby": "Il bambino Sagittario mostra spesso fin da piccolo caratteristiche come essere avventuroso, ottimista, allegro e ispiratore. Secondo l’astrologia, i bambini possono esprimere molto presto tendenze della loro personalità attraverso emozioni, curiosità e comportamento."
+    },
+    "capricorn": {
+      "father": "Il padre Capricorno viene spesso descritto come disciplinato, responsabile, stabile e laborioso. Influenza profondamente i figli attraverso la sua personalità, i suoi valori e la sua energia emotiva. Il suo modo di dimostrare amore riflette spesso le caratteristiche naturali del suo segno zodiacale.",
+      "mother": "La madre Capricorno è spesso disciplinato, responsabile, stabile e laborioso. Crea legami emotivi profondi con i figli attraverso affetto, cura, protezione e sostegno. Il suo stile educativo riflette l’energia emotiva e comportamentale del suo segno.",
+      "baby": "Il bambino Capricorno mostra spesso fin da piccolo caratteristiche come essere disciplinato, responsabile, stabile e laborioso. Secondo l’astrologia, i bambini possono esprimere molto presto tendenze della loro personalità attraverso emozioni, curiosità e comportamento."
+    },
+    "aquarius": {
+      "father": "Il padre Acquario viene spesso descritto come creativo, moderno, indipendente e innovativo. Influenza profondamente i figli attraverso la sua personalità, i suoi valori e la sua energia emotiva. Il suo modo di dimostrare amore riflette spesso le caratteristiche naturali del suo segno zodiacale.",
+      "mother": "La madre Acquario è spesso creativo, moderno, indipendente e innovativo. Crea legami emotivi profondi con i figli attraverso affetto, cura, protezione e sostegno. Il suo stile educativo riflette l’energia emotiva e comportamentale del suo segno.",
+      "baby": "Il bambino Acquario mostra spesso fin da piccolo caratteristiche come essere creativo, moderno, indipendente e innovativo. Secondo l’astrologia, i bambini possono esprimere molto presto tendenze della loro personalità attraverso emozioni, curiosità e comportamento."
+    },
+    "pisces": {
+      "father": "Il padre Pesci viene spesso descritto come sensibile, affettuoso, intuitivo e sognatore. Influenza profondamente i figli attraverso la sua personalità, i suoi valori e la sua energia emotiva. Il suo modo di dimostrare amore riflette spesso le caratteristiche naturali del suo segno zodiacale.",
+      "mother": "La madre Pesci è spesso sensibile, affettuoso, intuitivo e sognatore. Crea legami emotivi profondi con i figli attraverso affetto, cura, protezione e sostegno. Il suo stile educativo riflette l’energia emotiva e comportamentale del suo segno.",
+      "baby": "Il bambino Pesci mostra spesso fin da piccolo caratteristiche come essere sensibile, affettuoso, intuitivo e sognatore. Secondo l’astrologia, i bambini possono esprimere molto presto tendenze della loro personalità attraverso emozioni, curiosità e comportamento."
+    }
+  }
+}

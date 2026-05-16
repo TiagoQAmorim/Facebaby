@@ -32,6 +32,12 @@ class ProfileCloudSync {
       DateTime? birth;
       final bs = r['birth_date'] as String?;
       if (bs != null) birth = DateTime.tryParse(bs);
+      DateTime? fatherBirth;
+      final fbs = r['father_birth_date'] as String?;
+      if (fbs != null) fatherBirth = DateTime.tryParse(fbs);
+      final registerFather = r['register_father'] == null
+          ? null
+          : ((r['register_father'] as num?)?.toInt() == 1);
 
       final pb = (r['photo_b64'] as String?)?.trim();
       Uint8List? imgBytes;
@@ -41,10 +47,19 @@ class ProfileCloudSync {
         } catch (_) {}
       }
 
+      final fpb = (r['father_photo_b64'] as String?)?.trim();
+      Uint8List? fatherImgBytes;
+      if (fpb != null && fpb.isNotEmpty) {
+        try {
+          fatherImgBytes = Uint8List.fromList(base64Decode(fpb));
+        } catch (_) {}
+      }
+
       if (cid == null || cid.isEmpty) {
         // New schema: profile == users/{uid}
         cid = uid;
-        await AppDatabase.instance.setMotherCloudId(motherId: localMotherId, cloudId: cid);
+        await AppDatabase.instance
+            .setMotherCloudId(motherId: localMotherId, cloudId: cid);
       }
 
       String? photoUrl;
@@ -57,16 +72,39 @@ class ProfileCloudSync {
         );
       }
 
+      String? fatherPhotoUrl;
+      if (fatherImgBytes != null && fatherImgBytes.isNotEmpty) {
+        final ext = _imageExtFromBytes(fatherImgBytes);
+        fatherPhotoUrl = await StorageService.instance.uploadFatherPhotoBytes(
+          bytes: fatherImgBytes,
+          fileExt: ext,
+        );
+      }
+
       await FirestoreService.instance.upsertProfile({
         'name': name,
         'phone': r['phone'],
         'birth_date': birth?.toIso8601String(),
         'height_cm': r['height_cm'],
+        'father_name': r['father_name'],
         'father_height_cm': r['father_height_cm'],
+        'father_birth_date': fatherBirth?.toIso8601String(),
+        'register_father': registerFather,
+        'show_family_christian': (r['show_family_christian'] as num?)?.toInt() == 1,
+        'show_family_horoscope':
+            (r['show_family_horoscope'] as num?)?.toInt() != 0,
         if (photoUrl != null) 'photo_url': photoUrl,
+        if (fatherPhotoUrl != null) 'father_photo_url': fatherPhotoUrl,
       });
       if (photoUrl != null && photoUrl.isNotEmpty) {
-        await AppDatabase.instance.persistMotherPhotoUrl(motherId: localMotherId, photoUrl: photoUrl);
+        await AppDatabase.instance
+            .persistMotherPhotoUrl(motherId: localMotherId, photoUrl: photoUrl);
+      }
+      if (fatherPhotoUrl != null && fatherPhotoUrl.isNotEmpty) {
+        await AppDatabase.instance.persistFatherPhotoUrl(
+          motherId: localMotherId,
+          photoUrl: fatherPhotoUrl,
+        );
       }
     } catch (e, st) {
       debugPrint('ProfileCloudSync.pushMother failed: $e\n$st');
@@ -107,9 +145,15 @@ class ProfileCloudSync {
           zodiacSign: b['zodiac_sign'] as String?,
           weightKg: b['weight_kg'] as double?,
           heightCm: b['height_cm'] as double?,
+          firstBaby: _boolFromSqlite(b['first_baby']),
+          onboardingConcerns:
+              _stringListFromJson(b['onboarding_concerns_json'] as String?),
+          onboardingGoals:
+              _stringListFromJson(b['onboarding_goals_json'] as String?),
           photoUrl: null,
         );
-        await AppDatabase.instance.setBabyCloudId(babyId: localBabyId, cloudId: cid);
+        await AppDatabase.instance
+            .setBabyCloudId(babyId: localBabyId, cloudId: cid);
       }
 
       String? photoUrl;
@@ -129,14 +173,39 @@ class ProfileCloudSync {
         'zodiac_sign': b['zodiac_sign'],
         'weight_kg': b['weight_kg'],
         'height_cm': b['height_cm'],
+        'first_baby': _boolFromSqlite(b['first_baby']),
+        'onboarding_concerns':
+            _stringListFromJson(b['onboarding_concerns_json'] as String?),
+        'onboarding_goals':
+            _stringListFromJson(b['onboarding_goals_json'] as String?),
         if (photoUrl != null) 'photo_url': photoUrl,
       });
       if (photoUrl != null && photoUrl.isNotEmpty) {
-        await AppDatabase.instance.persistBabyPhotoUrl(babyId: localBabyId, photoUrl: photoUrl);
+        await AppDatabase.instance
+            .persistBabyPhotoUrl(babyId: localBabyId, photoUrl: photoUrl);
       }
     } catch (e, st) {
       debugPrint('ProfileCloudSync.pushBaby failed: $e\n$st');
       rethrow;
     }
+  }
+
+  static bool? _boolFromSqlite(Object? value) {
+    if (value == null) return null;
+    if (value is bool) return value;
+    if (value is num) return value.toInt() == 1;
+    return null;
+  }
+
+  static List<String>? _stringListFromJson(String? raw) {
+    final text = raw?.trim();
+    if (text == null || text.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(text);
+      if (decoded is List) {
+        return decoded.map((e) => '$e').toList(growable: false);
+      }
+    } catch (_) {}
+    return null;
   }
 }

@@ -13,6 +13,111 @@ import '../services/growth_events.dart';
 import '../services/home_prefs.dart';
 import '../services/measurement_units_prefs.dart';
 import '../utils/measurement_format.dart';
+import '../widgets/growth_ruler_picker.dart';
+
+/// Converte kg → valor mostrado na régua conforme preferência de peso.
+double _growthWeightDisplayFromKg(double kg) {
+  switch (MeasurementUnitsPrefs.weight.value) {
+    case WeightUnit.kg:
+      return kg;
+    case WeightUnit.lb:
+      return kg * 2.2046226218;
+    case WeightUnit.st:
+      return (kg * 2.2046226218) / 14.0;
+  }
+}
+
+/// Converte valor da régua → kg.
+double _growthWeightKgFromDisplay(double v) {
+  switch (MeasurementUnitsPrefs.weight.value) {
+    case WeightUnit.kg:
+      return v;
+    case WeightUnit.lb:
+      return v / 2.2046226218;
+    case WeightUnit.st:
+      return (v * 14.0) / 2.2046226218;
+  }
+}
+
+String _growthWeightUnitChipLabel(WeightUnit u) => switch (u) {
+      WeightUnit.kg => 'Kg',
+      WeightUnit.lb => 'Lb',
+      WeightUnit.st => 'St',
+    };
+
+/// Converte cm → valor mostrado na régua (cm ou polegadas).
+double _growthLengthDisplayFromCm(double cm) =>
+    MeasurementUnitsPrefs.length.value == LengthUnit.inch ? cm / 2.54 : cm;
+
+/// Converte valor da régua → cm.
+double _growthLengthCmFromDisplay(double v) =>
+    MeasurementUnitsPrefs.length.value == LengthUnit.inch ? v * 2.54 : v;
+
+/// Régua de peso/altura (mesmo padrão do onboarding) para o portal.
+Widget _buildPortalGrowthRuler({
+  required BuildContext context,
+  required S s,
+  required String kind,
+  required String label,
+  required double baseValue,
+  required ValueChanged<double> onBaseChanged,
+  VoidCallback? onAfterUnitChange,
+  String? subjectLabel,
+  bool snapStartToZeroWhenAtMax = false,
+}) {
+  assert(kind == 'weight' || kind == 'height');
+  final dragHint = s.onb('DragToAdjust');
+  if (kind == 'weight') {
+    final wu = MeasurementUnitsPrefs.weight.value;
+    final (double max, int divisions, int dec, String unitStr) = switch (wu) {
+      WeightUnit.kg => (40.0, 200, 2, 'Kg'),
+      WeightUnit.lb => (88.0, 176, 1, 'Lb'),
+      WeightUnit.st => (6.3, 126, 2, 'St'),
+    };
+    return GrowthRulerPicker(
+      value: _growthWeightDisplayFromKg(baseValue),
+      min: 0,
+      max: max,
+      divisions: divisions,
+      unit: unitStr,
+      decimalDigits: dec,
+      icon: Icons.monitor_weight_outlined,
+      subjectLabel: subjectLabel,
+      dragHint: dragHint,
+      unitOptions: const ['Kg', 'Lb', 'St'],
+      selectedUnit: _growthWeightUnitChipLabel(wu),
+      snapStartToZeroWhenAtMax: snapStartToZeroWhenAtMax,
+      onUnitSelected: (u) async {
+        await MeasurementUnitsPrefs.setWeight(
+          u == 'Lb' ? WeightUnit.lb : u == 'St' ? WeightUnit.st : WeightUnit.kg,
+        );
+        if (context.mounted) onAfterUnitChange?.call();
+      },
+      onChanged: (v) => onBaseChanged(_growthWeightKgFromDisplay(v)),
+    );
+  }
+  final lu = MeasurementUnitsPrefs.length.value;
+  final inch = lu == LengthUnit.inch;
+  return GrowthRulerPicker(
+    value: _growthLengthDisplayFromCm(baseValue),
+    min: 0,
+    max: inch ? 52.0 : 130.0,
+    divisions: 260,
+    unit: inch ? 'pol' : 'cm',
+    decimalDigits: 1,
+    icon: Icons.straighten_rounded,
+    subjectLabel: subjectLabel,
+    dragHint: dragHint,
+    unitOptions: const ['cm', 'pol'],
+    selectedUnit: inch ? 'pol' : 'cm',
+    snapStartToZeroWhenAtMax: snapStartToZeroWhenAtMax,
+    onUnitSelected: (u) async {
+      await MeasurementUnitsPrefs.setLength(u == 'pol' ? LengthUnit.inch : LengthUnit.cm);
+      if (context.mounted) onAfterUnitChange?.call();
+    },
+    onChanged: (v) => onBaseChanged(_growthLengthCmFromDisplay(v)),
+  );
+}
 
 /// Tabs Peso / Altura / Resumo com cartões Ao nascer · Atual · Mudar e gráfico por métrica.
 class GrowthDashboardPage extends StatefulWidget {
@@ -114,6 +219,27 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
     return (rows.first['value'] as num?)?.toDouble();
   }
 
+  /// Valor inicial da régua ao adicionar peso/altura (último registo → cadastro do bebê).
+  double _rulerSeedValueKgOrCm(String kind) {
+    final baby = _currentBaby.currentBabyRow;
+    switch (kind) {
+      case 'weight':
+        final latest = _latestValue(_weight);
+        if (latest != null && latest > 0) return latest;
+        final fromBaby = (baby?['weight_kg'] as num?)?.toDouble();
+        if (fromBaby != null && fromBaby > 0) return fromBaby;
+        return 0;
+      case 'height':
+        final latest = _latestValue(_height);
+        if (latest != null && latest > 0) return latest;
+        final fromBaby = (baby?['height_cm'] as num?)?.toDouble();
+        if (fromBaby != null && fromBaby > 0) return fromBaby;
+        return 0;
+      default:
+        return 0;
+    }
+  }
+
   String? _latestDateRaw(List<Map<String, Object?>> rows) =>
       rows.isEmpty ? null : rows.first['measured_at'] as String?;
 
@@ -195,26 +321,30 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
             LengthUnit.inch => 'pol',
           });
     var rawValue = '';
+    var baseValue = (kind == 'weight' || kind == 'height')
+        ? _rulerSeedValueKgOrCm(kind)
+        : 0.0;
+    final babySubject = _displayBabyName(_currentBaby.currentBabyRow, s);
+
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setSheet) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 22,
-                right: 22,
-                top: 20,
-                bottom: MediaQuery.viewInsetsOf(ctx).bottom + 22,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(label, style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 12),
-                  TextField(
+            final valueEditor = (kind == 'weight' || kind == 'height')
+                ? _buildPortalGrowthRuler(
+                    context: ctx,
+                    s: s,
+                    kind: kind,
+                    label: label,
+                    baseValue: baseValue,
+                    onBaseChanged: (v) => setSheet(() => baseValue = v),
+                    onAfterUnitChange: () => setSheet(() {}),
+                    subjectLabel: babySubject,
+                    snapStartToZeroWhenAtMax: false,
+                  )
+                : TextField(
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     autofocus: true,
                     onChanged: (v) => setSheet(() => rawValue = v),
@@ -222,36 +352,57 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
                       labelText: '$label ($unit)',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _accent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    onPressed: () async {
-                      final raw = rawValue.trim();
-                      final parsed = kind == 'weight'
-                          ? MeasurementFormat.parseWeightToKg(raw)
-                          : MeasurementFormat.parseLengthToCm(raw);
-                      if (parsed == null || parsed <= 0) {
-                        if (ctx.mounted) {
-                          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(s.invalidGrowthValue(label))));
+                  );
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 22,
+                right: 22,
+                top: 20,
+                bottom: MediaQuery.viewInsetsOf(ctx).bottom + 22,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(label, style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 12),
+                    valueEditor,
+                    const SizedBox(height: 18),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _accent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      onPressed: () async {
+                        final double? parsed;
+                        if (kind == 'weight' || kind == 'height') {
+                          parsed = baseValue;
+                        } else {
+                          parsed = kind == 'weight'
+                              ? MeasurementFormat.parseWeightToKg(rawValue.trim())
+                              : MeasurementFormat.parseLengthToCm(rawValue.trim());
                         }
-                        return;
-                      }
-                      final newId = await AppDatabase.instance.insertGrowthRecord(babyId: bid, kind: kind, value: parsed);
-                      GrowthCloudSync.pushLocalSoon(localBabyId: bid, localGrowthId: newId);
-                      GrowthEvents.ping();
-                      if (ctx.mounted) Navigator.pop(ctx);
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.growthSaved(label))));
-                      await _reload();
-                    },
-                    child: Text(s.add),
-                  ),
-                ],
+                        if (parsed == null || parsed <= 0) {
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(s.invalidGrowthValue(label))));
+                          }
+                          return;
+                        }
+                        final newId = await AppDatabase.instance.insertGrowthRecord(babyId: bid, kind: kind, value: parsed);
+                        GrowthCloudSync.pushLocalSoon(localBabyId: bid, localGrowthId: newId);
+                        GrowthEvents.ping();
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.growthSaved(label))));
+                        await _reload();
+                      },
+                      child: Text(s.add),
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -265,7 +416,9 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
     final id = _growthRowId(row);
     if (bid == null || id == null) return;
     final label = _metricShortLabel(s, kind);
-    final currentV = (row['value'] as num?)?.toDouble() ?? 0;
+    final rowV = (row['value'] as num?)?.toDouble() ?? 0;
+    final latestV = _rulerSeedValueKgOrCm(kind);
+    final currentV = rowV > 0 ? rowV : latestV;
     final unit = kind == 'weight'
         ? (switch (MeasurementUnitsPrefs.weight.value) {
             WeightUnit.kg => 'kg',
@@ -304,7 +457,9 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
           recordId: id,
           label: label,
           unit: unit,
+          rulerInitialBase: currentV,
           initialValueText: initialValueText,
+          subjectLabel: _displayBabyName(_currentBaby.currentBabyRow, s),
           initialMeasuredAt: initialMeasured,
           onSaved: () {
             if (!mounted) return;
@@ -347,6 +502,7 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
             await FirestoreService.instance.deleteEvent(cloudId);
           } catch (_) {}
         }
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.deletedOk)));
         await _reload();
       }
@@ -878,8 +1034,7 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
   }
 }
 
-/// Folha "editar registo": o [TextEditingController] tem de viver num [State] para
-/// [dispose] correr depois da [TextField] sair da árvore (evita `_dependents.isEmpty`).
+/// Folha "editar registo": [TextEditingController] só para perímetro cefálico; peso/altura usam [GrowthRulerPicker].
 class _EditGrowthSheetBody extends StatefulWidget {
   final Color accent;
   final S strings;
@@ -888,7 +1043,9 @@ class _EditGrowthSheetBody extends StatefulWidget {
   final int recordId;
   final String label;
   final String unit;
+  final double rulerInitialBase;
   final String initialValueText;
+  final String subjectLabel;
   final DateTime initialMeasuredAt;
   final VoidCallback onSaved;
 
@@ -900,7 +1057,9 @@ class _EditGrowthSheetBody extends StatefulWidget {
     required this.recordId,
     required this.label,
     required this.unit,
+    required this.rulerInitialBase,
     required this.initialValueText,
+    required this.subjectLabel,
     required this.initialMeasuredAt,
     required this.onSaved,
   });
@@ -910,7 +1069,8 @@ class _EditGrowthSheetBody extends StatefulWidget {
 }
 
 class _EditGrowthSheetBodyState extends State<_EditGrowthSheetBody> {
-  late final TextEditingController _valueCtrl;
+  TextEditingController? _headCtrl;
+  late double _rulerBase;
   late DateTime _picked;
 
   static String _fmtDateDdMmYy(DateTime dt) =>
@@ -919,13 +1079,16 @@ class _EditGrowthSheetBodyState extends State<_EditGrowthSheetBody> {
   @override
   void initState() {
     super.initState();
-    _valueCtrl = TextEditingController(text: widget.initialValueText);
     _picked = widget.initialMeasuredAt;
+    _rulerBase = widget.rulerInitialBase;
+    if (widget.kind == 'head') {
+      _headCtrl = TextEditingController(text: widget.initialValueText);
+    }
   }
 
   @override
   void dispose() {
-    _valueCtrl.dispose();
+    _headCtrl?.dispose();
     super.dispose();
   }
 
@@ -945,10 +1108,8 @@ class _EditGrowthSheetBodyState extends State<_EditGrowthSheetBody> {
 
   Future<void> _save() async {
     final s = widget.strings;
-    final raw = _valueCtrl.text.trim();
-    final parsed = widget.kind == 'weight'
-        ? MeasurementFormat.parseWeightToKg(raw)
-        : MeasurementFormat.parseLengthToCm(raw);
+    final double? parsed =
+        widget.kind == 'head' ? MeasurementFormat.parseLengthToCm(_headCtrl!.text.trim()) : _rulerBase;
     if (parsed == null || parsed <= 0) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.invalidGrowthValue(widget.label))));
@@ -970,6 +1131,27 @@ class _EditGrowthSheetBodyState extends State<_EditGrowthSheetBody> {
   @override
   Widget build(BuildContext context) {
     final s = widget.strings;
+    final valueField = widget.kind == 'head'
+        ? TextField(
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            controller: _headCtrl,
+            decoration: InputDecoration(
+              labelText: '${widget.label} (${widget.unit})',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+          )
+        : _buildPortalGrowthRuler(
+            context: context,
+            s: s,
+            kind: widget.kind,
+            label: widget.label,
+            baseValue: _rulerBase,
+            onBaseChanged: (v) => setState(() => _rulerBase = v),
+            onAfterUnitChange: () => setState(() {}),
+            subjectLabel: widget.subjectLabel,
+            snapStartToZeroWhenAtMax: false,
+          );
+
     return Padding(
       padding: EdgeInsets.only(
         left: 22,
@@ -977,42 +1159,37 @@ class _EditGrowthSheetBodyState extends State<_EditGrowthSheetBody> {
         top: 20,
         bottom: MediaQuery.viewInsetsOf(context).bottom + 22,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            '${s.edit} — ${widget.label}',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            controller: _valueCtrl,
-            decoration: InputDecoration(
-              labelText: '${widget.label} (${widget.unit})',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              '${s.edit} — ${widget.label}',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
             ),
-          ),
-          const SizedBox(height: 10),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.calendar_today_outlined),
-            title: Text(s.viewCalendar),
-            subtitle: Text(_fmtDateDdMmYy(_picked)),
-            onTap: _pickDate,
-          ),
-          const SizedBox(height: 18),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: widget.accent,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+            const SizedBox(height: 12),
+            valueField,
+            const SizedBox(height: 10),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.calendar_today_outlined),
+              title: Text(s.viewCalendar),
+              subtitle: Text(_fmtDateDdMmYy(_picked)),
+              onTap: _pickDate,
             ),
-            onPressed: _save,
-            child: Text(s.saveRecord),
-          ),
-        ],
+            const SizedBox(height: 18),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: widget.accent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              onPressed: _save,
+              child: Text(s.saveRecord),
+            ),
+          ],
+        ),
       ),
     );
   }

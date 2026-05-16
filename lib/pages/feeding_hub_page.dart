@@ -12,6 +12,7 @@ import '../services/firebase/feeding_cloud_sync.dart';
 import '../services/firebase/firestore_service.dart';
 import '../services/home_prefs.dart';
 import '../services/measurement_units_prefs.dart';
+import '../services/scheduled_local_reminders.dart';
 import '../theme/app_theme.dart';
 import '../widgets/android_exact_alarm_card.dart';
 import '../utils/measurement_format.dart';
@@ -133,6 +134,14 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
     if (mounted) setState(() {});
   }
 
+  Future<void> _syncLocalReminders(int babyId) async {
+    try {
+      await ScheduledLocalReminders.sync(babyId: babyId);
+    } catch (e, st) {
+      debugPrint('FeedingHubPage._syncLocalReminders: $e\n$st');
+    }
+  }
+
   String _two(int v) => v.toString().padLeft(2, '0');
 
   String _fmtHms(Duration d) {
@@ -174,6 +183,7 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
       type: 'peito',
     );
     FeedingCloudSync.pushLocalSoon(localBabyId: id, localFeedingId: newId);
+    await _syncLocalReminders(id);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(S.of(context).feedingSavedOk)));
     }
@@ -270,6 +280,7 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
                         note: null,
                       );
                       FeedingCloudSync.pushLocalSoon(localBabyId: id, localFeedingId: newId);
+                      await _syncLocalReminders(id);
                       if (ctx.mounted) Navigator.pop(ctx);
                       if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.feedingSavedOk)));
@@ -438,6 +449,7 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
                           FeedingCloudSync.pushLocalSoon(localBabyId: bid, localFeedingId: r.id);
                         }
 
+                        await _syncLocalReminders(bid);
                         if (ctx.mounted) Navigator.pop(ctx);
                         if (!mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.feedingHubFeedingUpdatedOk)));
@@ -480,6 +492,7 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
         note: _bottleNoteCtrl.text.trim().isEmpty ? null : _bottleNoteCtrl.text.trim(),
       );
       FeedingCloudSync.pushLocalSoon(localBabyId: id, localFeedingId: newId);
+      await _syncLocalReminders(id);
       _bottleMlCtrl.clear();
       _bottleNoteCtrl.clear();
       if (!mounted) return;
@@ -509,6 +522,7 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
         note: note.isEmpty ? null : note,
       );
       FeedingCloudSync.pushLocalSoon(localBabyId: id, localFeedingId: newId);
+      await _syncLocalReminders(id);
       _solidNoteCtrl.clear();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.feedingSavedOk)));
@@ -557,6 +571,7 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
     try {
       final cloudId = await AppDatabase.instance.getRowCloudId(table: 'feedings', id: r.id, babyId: bid);
       await AppDatabase.instance.deleteFeeding(id: r.id, babyId: bid);
+      await _syncLocalReminders(bid);
       if (cloudId != null) {
         try {
           await FirestoreService.instance.deleteEvent(cloudId);

@@ -5,8 +5,14 @@ import '../utils/portal_layout.dart';
 class SectionTitle extends StatelessWidget {
   final String title;
   final Widget? action;
+  final Color? titleColor;
 
-  const SectionTitle({super.key, required this.title, this.action});
+  const SectionTitle({
+    super.key,
+    required this.title,
+    this.action,
+    this.titleColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +28,7 @@ class SectionTitle extends StatelessWidget {
             style: TextStyle(
               fontSize: portalSp(context, 22),
               fontWeight: FontWeight.w800,
-              color: AppTheme.textSecondary.withAlpha(235),
+              color: titleColor ?? AppTheme.textSecondary,
               height: 1.2,
             ),
           ),

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FaceBaby — Redefinir senha</title>
+  <style>
+    :root {
+      --bg: #f7f8fc;
+      --card: #ffffff;
+      --text: #1f1f2e;
+      --muted: #74717f;
+      --accent: #5b6b8c;
+      --accent-hover: #4a5875;
+      --error: #c62828;
+      --ok: #2e7d4e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(165deg, #fff8f0 0%, var(--bg) 45%, #e8f4ff 100%);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: var(--card);
+      border-radius: 24px;
+      padding: 32px 28px 28px;
+      box-shadow: 0 12px 40px rgba(31, 31, 46, 0.08);
+      border: 1px solid rgba(31, 31, 46, 0.06);
+      text-align: center;
+    }
+    .logo {
+      width: 120px;
+      height: auto;
+      margin: 0 auto 20px;
+      display: block;
+    }
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 800;
+      margin: 0 0 8px;
+      color: #163b68;
+    }
+    p.lead {
+      margin: 0 0 24px;
+      font-size: 0.95rem;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+    label {
+      display: block;
+      text-align: left;
+      font-size: 0.8rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+    input {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid #e0e3ea;
+      font-size: 1rem;
+      margin-bottom: 14px;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(91, 107, 140, 0.2);
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 14px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+    button:hover:not(:disabled) { background: var(--accent-hover); }
+    button:disabled { opacity: 0.55; cursor: wait; }
+    .msg {
+      margin-top: 16px;
+      font-size: 0.9rem;
+      line-height: 1.4;
+      padding: 12px;
+      border-radius: 12px;
+    }
+    .msg.error { background: #ffebee; color: var(--error); }
+    .msg.ok { background: #e8f6ee; color: var(--ok); }
+    .hidden { display: none !important; }
+    .footer {
+      margin-top: 20px;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <img class="logo" src="/brand/logo.png" alt="FaceBaby" width="120" height="120" />
+    <h1 id="title">Nova senha</h1>
+    <p class="lead" id="subtitle">Escolha uma senha segura com pelo menos 6 caracteres.</p>
+
+    <div id="form-wrap">
+      <label for="pwd">Nova senha</label>
+      <input id="pwd" type="password" autocomplete="new-password" minlength="6" placeholder="••••••••" />
+      <label for="pwd2">Confirmar senha</label>
+      <input id="pwd2" type="password" autocomplete="new-password" minlength="6" placeholder="••••••••" />
+      <button type="button" id="submit">Salvar senha</button>
+    </div>
+
+    <div id="msg" class="msg hidden" role="alert"></div>
+    <p class="footer">FaceBaby — cuidando do seu ninho com carinho</p>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+    import { getAuth, confirmPasswordReset, verifyPasswordResetCode } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+
+    const firebaseConfig = {
+      apiKey: 'AIzaSyCAH2I67pZXfJGPI2BMObe3GWg0IA_FR9o',
+      authDomain: 'facebaby-afc41.firebaseapp.com',
+      projectId: 'facebaby-afc41',
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    const params = new URLSearchParams(location.search);
+    const mode = params.get('mode');
+    const oobCode = params.get('oobCode');
+    const lang = params.get('lang') || 'pt';
+
+    const title = document.getElementById('title');
+    const subtitle = document.getElementById('subtitle');
+    const formWrap = document.getElementById('form-wrap');
+    const msg = document.getElementById('msg');
+    const submit = document.getElementById('submit');
+    const pwd = document.getElementById('pwd');
+    const pwd2 = document.getElementById('pwd2');
+
+    const copy = lang.startsWith('en')
+      ? {
+          title: 'New password',
+          subtitle: 'Choose a secure password (at least 6 characters).',
+          save: 'Save password',
+          mismatch: 'Passwords do not match.',
+          short: 'Use at least 6 characters.',
+          ok: 'Password updated! You can close this page and sign in to the app.',
+          invalid: 'This link is invalid or has expired. Request a new email from the app.',
+          working: 'Saving…',
+        }
+      : {
+          title: 'Nova senha',
+          subtitle: 'Escolha uma senha segura com pelo menos 6 caracteres.',
+          save: 'Salvar senha',
+          mismatch: 'As senhas não coincidem.',
+          short: 'Use pelo menos 6 caracteres.',
+          ok: 'Senha atualizada! Feche esta página e entre no app.',
+          invalid: 'Este link é inválido ou expirou. Peça um novo e-mail no app.',
+          working: 'A guardar…',
+        };
+
+    title.textContent = copy.title;
+    subtitle.textContent = copy.subtitle;
+    submit.textContent = copy.save;
+
+    function showMessage(text, type) {
+      msg.textContent = text;
+      msg.className = 'msg ' + type;
+      msg.classList.remove('hidden');
+    }
+
+    if (mode !== 'resetPassword' || !oobCode) {
+      formWrap.classList.add('hidden');
+      showMessage(copy.invalid, 'error');
+    } else {
+      verifyPasswordResetCode(auth, oobCode).catch(() => {
+        formWrap.classList.add('hidden');
+        showMessage(copy.invalid, 'error');
+      });
+    }
+
+    submit.addEventListener('click', async () => {
+      msg.classList.add('hidden');
+      const a = pwd.value;
+      const b = pwd2.value;
+      if (a.length < 6) {
+        showMessage(copy.short, 'error');
+        return;
+      }
+      if (a !== b) {
+        showMessage(copy.mismatch, 'error');
+        return;
+      }
+      submit.disabled = true;
+      submit.textContent = copy.working;
+      try {
+        await confirmPasswordReset(auth, oobCode, a);
+        formWrap.classList.add('hidden');
+        showMessage(copy.ok, 'ok');
+      } catch (e) {
+        showMessage(copy.invalid, 'error');
+        submit.disabled = false;
+        submit.textContent = copy.save;
+      }
+    });
+  </script>
+</body>
+</html>

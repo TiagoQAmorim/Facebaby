@@ -221,6 +221,8 @@ class FirestoreUserRepository {
         'height_cm': profile?['height_cm'] ?? profile?['heightCm'],
         'father_height_cm': profile?['father_height_cm'] ?? profile?['fatherHeightCm'],
         'photo_url': profile?['photo_url'] ?? profile?['photoUrl'],
+        'father_photo_url':
+            profile?['father_photo_url'] ?? profile?['fatherPhotoUrl'],
       });
 
       String? selected;

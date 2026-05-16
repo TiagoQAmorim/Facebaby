@@ -9,10 +9,14 @@ import '../../utils/memory_moment_localizations.dart';
 import '../../utils/portal_layout.dart';
 import '../../widgets/memories/cached_memory_photo.dart';
 import '../../widgets/memories/memory_badge_icon.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import '../../widgets/weekly_photo_like_chip.dart';
 
 /// Detalhe público da “Foto da Semana” — alinhado ao visual da [MemoryDetailPage],
 /// só com campos seguros (sem peso, notas privadas, etc.).
 class PublicWeeklyMemoryDetailPage extends StatelessWidget {
+  final String publicMemoryId;
   final String photoUrl;
   final String badgeTitle;
   /// Id estável da badge no catálogo (`MemoryBadgesCatalog`) — vem de `winner_badge_id` no Firestore.
@@ -21,6 +25,7 @@ class PublicWeeklyMemoryDetailPage extends StatelessWidget {
   final String? babyAgeLabel;
   final String? publicDescription;
   final DateTime memoryDate;
+  final String? winnerUserId;
 
   static const _purpleCardBg = Color(0xFFF3EEFF);
   static const _purpleTitle = Color(0xFF7B5FB8);
@@ -28,6 +33,7 @@ class PublicWeeklyMemoryDetailPage extends StatelessWidget {
 
   const PublicWeeklyMemoryDetailPage({
     super.key,
+    this.publicMemoryId = '',
     required this.photoUrl,
     required this.badgeTitle,
     this.badgeId,
@@ -35,6 +41,7 @@ class PublicWeeklyMemoryDetailPage extends StatelessWidget {
     this.babyAgeLabel,
     this.publicDescription,
     required this.memoryDate,
+    this.winnerUserId,
   });
 
   MemoryBadge? _resolveBadge() {
@@ -98,8 +105,13 @@ class PublicWeeklyMemoryDetailPage extends StatelessWidget {
     final titleText = _title(s, badge);
     final desc = publicDescription?.trim();
     final name = (babyDisplayName ?? '').trim();
-    final age = (babyAgeLabel ?? '').trim();
+    final age = s.localizedAgeLabelFromStored(babyAgeLabel);
     final showInfoCard = name.isNotEmpty || age.isNotEmpty;
+    final memoryId = publicMemoryId.trim();
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    final isWinnerMom = winnerUserId != null &&
+        currentUid != null &&
+        winnerUserId!.trim() == currentUid;
 
     return Scaffold(
       backgroundColor: _screenBg,
@@ -156,6 +168,25 @@ class PublicWeeklyMemoryDetailPage extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (memoryId.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  if (isWinnerMom)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        s.weeklyPhotoLikesWinnerHint,
+                        style: TextStyle(
+                          fontSize: portalSp(context, 13),
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textSecondary,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  WeeklyPhotoLikeChip(
+                    publicMemoryId: memoryId,
+                  ),
+                ],
                 const SizedBox(height: 20),
                 LayoutBuilder(
                   builder: (context, c) {
@@ -231,12 +262,37 @@ class PublicWeeklyMemoryDetailPage extends StatelessWidget {
                       );
                     }
 
-                    return Row(
+                    final tp = TextPainter(
+                      text: TextSpan(text: desc, style: textStyle),
+                      textDirection: Directionality.of(context),
+                      textScaler: MediaQuery.textScalerOf(context),
+                    )..layout(maxWidth: remainingW);
+
+                    final cutPos = tp.getPositionForOffset(Offset(remainingW, side));
+                    final cut = cutPos.offset.clamp(0, desc.length);
+                    final lead = desc.substring(0, cut).trimRight();
+                    final tail = desc.substring(cut).trimLeft();
+
+                    return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        photoSquare(),
-                        const SizedBox(width: 18),
-                        Expanded(child: Text(desc, style: textStyle)),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            photoSquare(),
+                            const SizedBox(width: 18),
+                            Expanded(
+                              child: Text(
+                                lead.isEmpty ? desc : lead,
+                                style: textStyle,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (tail.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Text(tail, style: textStyle),
+                        ],
                       ],
                     );
                   },

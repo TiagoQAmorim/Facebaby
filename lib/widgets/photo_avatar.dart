@@ -1,12 +1,28 @@
+import 'dart:collection';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 import '../utils/photo_b64.dart';
 
+final CacheManager profilePhotoCacheManager = CacheManager(
+  Config(
+    'facebaby_profile_photos_v1',
+    stalePeriod: const Duration(days: 30),
+    maxNrOfCacheObjects: 80,
+  ),
+);
+
 /// Avatar circular com foto em base64, [photoUrl] (rede), ou [fallback].
 ///
-/// Ordem: base64 → URL → fallback. Mantém a mesma instância de [MemoryImage]
-/// enquanto [photoB64] não muda (ex.: timer da home).
-class PhotoAvatar extends StatefulWidget {
+/// Ordem: base64 → URL → fallback. O cache estático evita decodificar novamente
+/// as fotos da mãe/bebê a cada rebuild da Home.
+class PhotoAvatar extends StatelessWidget {
+  static const int _maxMemoryImages = 12;
+  static final LinkedHashMap<String, MemoryImage> _memoryImages =
+      LinkedHashMap<String, MemoryImage>();
+
   final String? photoB64;
   final String? photoUrl;
   final double radius;
@@ -22,59 +38,65 @@ class PhotoAvatar extends StatefulWidget {
     required this.fallback,
   });
 
-  @override
-  State<PhotoAvatar> createState() => _PhotoAvatarState();
-}
+  static MemoryImage? _memoryImageFor(String? rawB64) {
+    final key = rawB64?.trim();
+    if (key == null || key.isEmpty) return null;
 
-class _PhotoAvatarState extends State<PhotoAvatar> {
-  MemoryImage? _memoryImage;
-  String? _cachedB64Key;
+    final cached = _memoryImages.remove(key);
+    if (cached != null) {
+      _memoryImages[key] = cached;
+      return cached;
+    }
+
+    final bytes = decodePhotoB64(key);
+    if (bytes == null) return null;
+    final image = MemoryImage(bytes);
+    _memoryImages[key] = image;
+    while (_memoryImages.length > _maxMemoryImages) {
+      _memoryImages.remove(_memoryImages.keys.first);
+    }
+    return image;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final urlKey = widget.photoUrl?.trim() ?? '';
+    final urlKey = photoUrl?.trim() ?? '';
 
-    final b64Key = widget.photoB64?.trim() ?? '';
-    final bytes = decodePhotoB64(widget.photoB64);
-    if (bytes != null) {
-      if (_cachedB64Key != b64Key) {
-        _cachedB64Key = b64Key;
-        _memoryImage = MemoryImage(bytes);
-      }
+    final memoryImage = _memoryImageFor(photoB64);
+    if (memoryImage != null) {
       return CircleAvatar(
-        radius: widget.radius,
-        backgroundColor: widget.backgroundColor,
-        backgroundImage: _memoryImage,
+        radius: radius,
+        backgroundColor: backgroundColor,
+        backgroundImage: memoryImage,
       );
     }
-    _cachedB64Key = null;
-    _memoryImage = null;
 
     if (urlKey.isNotEmpty) {
       return CircleAvatar(
-        radius: widget.radius,
-        backgroundColor: widget.backgroundColor,
+        radius: radius,
+        backgroundColor: backgroundColor,
         child: ClipOval(
           child: SizedBox.square(
-            dimension: widget.radius * 2,
-            child: Image.network(
-              urlKey,
+            dimension: radius * 2,
+            child: CachedNetworkImage(
+              imageUrl: urlKey,
+              cacheManager: profilePhotoCacheManager,
               fit: BoxFit.cover,
-              gaplessPlayback: true,
-              errorBuilder: (_, __, ___) => SizedBox.square(
-                dimension: widget.radius * 2,
-                child: Center(child: widget.fallback),
+              fadeInDuration: const Duration(milliseconds: 120),
+              fadeOutDuration: Duration.zero,
+              errorWidget: (_, __, ___) => SizedBox.square(
+                dimension: radius * 2,
+                child: Center(child: fallback),
               ),
-              loadingBuilder: (context, child, progress) {
-                if (progress == null) return child;
-                final h = widget.radius * 2;
+              placeholder: (context, _) {
+                final h = radius * 2;
                 return SizedBox(
                   height: h,
                   width: h,
                   child: Center(
                     child: SizedBox(
-                      height: widget.radius,
-                      width: widget.radius,
+                      height: radius,
+                      width: radius,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         color: Theme.of(context).colorScheme.secondary,
@@ -90,9 +112,9 @@ class _PhotoAvatarState extends State<PhotoAvatar> {
     }
 
     return CircleAvatar(
-      radius: widget.radius,
-      backgroundColor: widget.backgroundColor,
-      child: widget.fallback,
+      radius: radius,
+      backgroundColor: backgroundColor,
+      child: fallback,
     );
   }
 }

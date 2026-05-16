@@ -21,7 +21,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const _dbName = 'facebaby.db';
-  static const _dbVersion = 26;
+  static const _dbVersion = 31;
 
   Database? _db;
   SharedPreferences? _prefs;
@@ -52,12 +52,12 @@ class AppDatabase {
     if (!kIsWeb) {
       try {
         final f = File(path);
-        debugPrint('SQLite open path=$path exists=${f.existsSync()} bytes=${f.existsSync() ? f.lengthSync() : 0}');
+        debugPrint(
+            'SQLite open path=$path exists=${f.existsSync()} bytes=${f.existsSync() ? f.lengthSync() : 0}');
       } catch (e) {
         debugPrint('SQLite open path=$path (stat failed: $e)');
       }
     }
-
 
     try {
       final db = await openDatabase(
@@ -68,8 +68,8 @@ class AppDatabase {
           await db.execute('PRAGMA foreign_keys = ON');
         },
         onCreate: (db, version) async {
-        debugPrint('SQLite onCreate version=$version path=$path');
-        await db.execute('''
+          debugPrint('SQLite onCreate version=$version path=$path');
+          await db.execute('''
 CREATE TABLE mothers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -77,6 +77,13 @@ CREATE TABLE mothers (
   birth_date TEXT,
   height_cm REAL,
   father_height_cm REAL,
+  father_name TEXT,
+  father_birth_date TEXT,
+  father_photo_b64 TEXT,
+  father_photo_url TEXT,
+  register_father INTEGER,
+  show_family_christian INTEGER NOT NULL DEFAULT 0,
+  show_family_horoscope INTEGER NOT NULL DEFAULT 1,
   photo_b64 TEXT,
   photo_url TEXT,
   cloud_id TEXT,
@@ -84,7 +91,7 @@ CREATE TABLE mothers (
 )
 ''');
 
-        await db.execute('''
+          await db.execute('''
 CREATE TABLE babies (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   mother_id INTEGER NOT NULL,
@@ -94,6 +101,9 @@ CREATE TABLE babies (
   zodiac_sign TEXT,
   weight_kg REAL,
   height_cm REAL,
+  first_baby INTEGER,
+  onboarding_concerns_json TEXT,
+  onboarding_goals_json TEXT,
   photo_b64 TEXT,
   photo_url TEXT,
   cloud_id TEXT,
@@ -102,9 +112,10 @@ CREATE TABLE babies (
 )
 ''');
 
-        await db.execute('CREATE INDEX idx_babies_mother_id ON babies(mother_id)');
+          await db.execute(
+              'CREATE INDEX idx_babies_mother_id ON babies(mother_id)');
 
-        await db.execute('''
+          await db.execute('''
 CREATE TABLE auth_tokens (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   access_token TEXT,
@@ -114,7 +125,7 @@ CREATE TABLE auth_tokens (
 )
 ''');
 
-        await db.execute('''
+          await db.execute('''
 CREATE TABLE memories (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   baby_id INTEGER NOT NULL,
@@ -145,11 +156,14 @@ CREATE TABLE memories (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-        await db.execute('CREATE INDEX idx_memories_baby_id ON memories(baby_id)');
-        await db.execute('CREATE INDEX idx_memories_day_key ON memories(baby_id, day_key)');
-        await db.execute('CREATE INDEX idx_memories_badge ON memories(baby_id, badge_id)');
+          await db.execute(
+              'CREATE INDEX idx_memories_baby_id ON memories(baby_id)');
+          await db.execute(
+              'CREATE INDEX idx_memories_day_key ON memories(baby_id, day_key)');
+          await db.execute(
+              'CREATE INDEX idx_memories_badge ON memories(baby_id, badge_id)');
 
-        await db.execute('''
+          await db.execute('''
 CREATE TABLE vaccines (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   baby_id INTEGER NOT NULL,
@@ -163,10 +177,12 @@ CREATE TABLE vaccines (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-        await db.execute('CREATE INDEX idx_vaccines_baby_id ON vaccines(baby_id)');
-        await db.execute('CREATE INDEX idx_vaccines_applied_at ON vaccines(applied_at)');
+          await db.execute(
+              'CREATE INDEX idx_vaccines_baby_id ON vaccines(baby_id)');
+          await db.execute(
+              'CREATE INDEX idx_vaccines_applied_at ON vaccines(applied_at)');
 
-        await db.execute('''
+          await db.execute('''
 CREATE TABLE consultations (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   baby_id INTEGER NOT NULL,
@@ -180,9 +196,10 @@ CREATE TABLE consultations (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-        await db.execute('CREATE INDEX idx_consultations_baby_occurred ON consultations(baby_id, occurred_at)');
+          await db.execute(
+              'CREATE INDEX idx_consultations_baby_occurred ON consultations(baby_id, occurred_at)');
 
-        await db.execute('''
+          await db.execute('''
 CREATE TABLE symptom_reports (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   baby_id INTEGER NOT NULL,
@@ -201,9 +218,10 @@ CREATE TABLE symptom_reports (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-        await db.execute('CREATE INDEX idx_symptom_reports_baby_occurred ON symptom_reports(baby_id, occurred_at)');
+          await db.execute(
+              'CREATE INDEX idx_symptom_reports_baby_occurred ON symptom_reports(baby_id, occurred_at)');
 
-        await db.execute('''
+          await db.execute('''
 CREATE TABLE feedings (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   baby_id INTEGER NOT NULL,
@@ -219,10 +237,12 @@ CREATE TABLE feedings (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-        await db.execute('CREATE INDEX idx_feedings_baby_id ON feedings(baby_id)');
-        await db.execute('CREATE INDEX idx_feedings_started_at ON feedings(started_at)');
+          await db.execute(
+              'CREATE INDEX idx_feedings_baby_id ON feedings(baby_id)');
+          await db.execute(
+              'CREATE INDEX idx_feedings_started_at ON feedings(started_at)');
 
-        await db.execute('''
+          await db.execute('''
 CREATE TABLE diapers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   baby_id INTEGER NOT NULL,
@@ -234,10 +254,12 @@ CREATE TABLE diapers (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-        await db.execute('CREATE INDEX idx_diapers_baby_id ON diapers(baby_id)');
-        await db.execute('CREATE INDEX idx_diapers_changed_at ON diapers(changed_at)');
+          await db
+              .execute('CREATE INDEX idx_diapers_baby_id ON diapers(baby_id)');
+          await db.execute(
+              'CREATE INDEX idx_diapers_changed_at ON diapers(changed_at)');
 
-        await db.execute('''
+          await db.execute('''
 CREATE TABLE growth_records (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   baby_id INTEGER NOT NULL,
@@ -249,10 +271,12 @@ CREATE TABLE growth_records (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-        await db.execute('CREATE INDEX idx_growth_records_baby_id ON growth_records(baby_id)');
-        await db.execute('CREATE INDEX idx_growth_records_kind_measured_at ON growth_records(kind, measured_at)');
+          await db.execute(
+              'CREATE INDEX idx_growth_records_baby_id ON growth_records(baby_id)');
+          await db.execute(
+              'CREATE INDEX idx_growth_records_kind_measured_at ON growth_records(kind, measured_at)');
 
-        await db.execute('''
+          await db.execute('''
 CREATE TABLE sleep_records (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   baby_id INTEGER NOT NULL,
@@ -266,10 +290,12 @@ CREATE TABLE sleep_records (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-        await db.execute('CREATE INDEX idx_sleep_records_baby_id ON sleep_records(baby_id)');
-        await db.execute('CREATE INDEX idx_sleep_records_started_at ON sleep_records(started_at)');
+          await db.execute(
+              'CREATE INDEX idx_sleep_records_baby_id ON sleep_records(baby_id)');
+          await db.execute(
+              'CREATE INDEX idx_sleep_records_started_at ON sleep_records(started_at)');
 
-        await db.execute('''
+          await db.execute('''
 CREATE TABLE daily_journals (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   baby_id INTEGER NOT NULL,
@@ -282,9 +308,10 @@ CREATE TABLE daily_journals (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-        await db.execute('CREATE INDEX idx_daily_journals_baby_day ON daily_journals(baby_id, day_key)');
+          await db.execute(
+              'CREATE INDEX idx_daily_journals_baby_day ON daily_journals(baby_id, day_key)');
 
-        await db.execute('''
+          await db.execute('''
 CREATE TABLE notification_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   uid TEXT,
@@ -298,10 +325,12 @@ CREATE TABLE notification_log (
   created_at TEXT NOT NULL
 )
 ''');
-        await db.execute('CREATE INDEX idx_notification_log_occurred ON notification_log(occurred_at)');
-        await db.execute('CREATE INDEX idx_notification_log_uid_occurred ON notification_log(uid, occurred_at)');
+          await db.execute(
+              'CREATE INDEX idx_notification_log_occurred ON notification_log(occurred_at)');
+          await db.execute(
+              'CREATE INDEX idx_notification_log_uid_occurred ON notification_log(uid, occurred_at)');
 
-        await db.execute('''
+          await db.execute('''
 CREATE TABLE daily_summary_snapshots (
   baby_id INTEGER NOT NULL,
   day_key TEXT NOT NULL,
@@ -319,15 +348,15 @@ CREATE TABLE daily_summary_snapshots (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-        await db.execute('CREATE INDEX idx_daily_summary_snapshots_day ON daily_summary_snapshots(day_key)');
-
+          await db.execute(
+              'CREATE INDEX idx_daily_summary_snapshots_day ON daily_summary_snapshots(day_key)');
         },
         onUpgrade: (db, oldVersion, newVersion) async {
-        debugPrint('SQLite onUpgrade $oldVersion->$newVersion path=$path');
-        if (oldVersion < 2) {
-          await db.execute('ALTER TABLE babies ADD COLUMN zodiac_sign TEXT');
+          debugPrint('SQLite onUpgrade $oldVersion->$newVersion path=$path');
+          if (oldVersion < 2) {
+            await db.execute('ALTER TABLE babies ADD COLUMN zodiac_sign TEXT');
 
-          await db.execute('''
+            await db.execute('''
 CREATE TABLE IF NOT EXISTS auth_tokens (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   access_token TEXT,
@@ -337,7 +366,7 @@ CREATE TABLE IF NOT EXISTS auth_tokens (
 )
 ''');
 
-          await db.execute('''
+            await db.execute('''
 CREATE TABLE IF NOT EXISTS memories (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   baby_id INTEGER NOT NULL,
@@ -352,10 +381,12 @@ CREATE TABLE IF NOT EXISTS memories (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_memories_baby_id ON memories(baby_id)');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_memories_day_key ON memories(baby_id, day_key)');
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_memories_baby_id ON memories(baby_id)');
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_memories_day_key ON memories(baby_id, day_key)');
 
-          await db.execute('''
+            await db.execute('''
 CREATE TABLE IF NOT EXISTS vaccines (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   baby_id INTEGER NOT NULL,
@@ -368,12 +399,14 @@ CREATE TABLE IF NOT EXISTS vaccines (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_vaccines_baby_id ON vaccines(baby_id)');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_vaccines_applied_at ON vaccines(applied_at)');
-        }
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_vaccines_baby_id ON vaccines(baby_id)');
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_vaccines_applied_at ON vaccines(applied_at)');
+          }
 
-        if (oldVersion < 3) {
-          await db.execute('''
+          if (oldVersion < 3) {
+            await db.execute('''
 CREATE TABLE IF NOT EXISTS feedings (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   baby_id INTEGER NOT NULL,
@@ -388,24 +421,27 @@ CREATE TABLE IF NOT EXISTS feedings (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_feedings_baby_id ON feedings(baby_id)');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_feedings_started_at ON feedings(started_at)');
-        }
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_feedings_baby_id ON feedings(baby_id)');
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_feedings_started_at ON feedings(started_at)');
+          }
 
-        if (oldVersion < 4) {
-          await db.execute('ALTER TABLE mothers ADD COLUMN photo_b64 TEXT');
-          await db.execute('ALTER TABLE babies ADD COLUMN sex TEXT');
-          await db.execute('ALTER TABLE babies ADD COLUMN photo_b64 TEXT');
-        }
+          if (oldVersion < 4) {
+            await db.execute('ALTER TABLE mothers ADD COLUMN photo_b64 TEXT');
+            await db.execute('ALTER TABLE babies ADD COLUMN sex TEXT');
+            await db.execute('ALTER TABLE babies ADD COLUMN photo_b64 TEXT');
+          }
 
-        if (oldVersion < 5) {
-          await db.execute('ALTER TABLE mothers ADD COLUMN birth_date TEXT');
-          await db.execute('ALTER TABLE mothers ADD COLUMN height_cm REAL');
-          await db.execute('ALTER TABLE mothers ADD COLUMN father_height_cm REAL');
-        }
+          if (oldVersion < 5) {
+            await db.execute('ALTER TABLE mothers ADD COLUMN birth_date TEXT');
+            await db.execute('ALTER TABLE mothers ADD COLUMN height_cm REAL');
+            await db.execute(
+                'ALTER TABLE mothers ADD COLUMN father_height_cm REAL');
+          }
 
-        if (oldVersion < 6) {
-          await db.execute('''
+          if (oldVersion < 6) {
+            await db.execute('''
 CREATE TABLE IF NOT EXISTS growth_records (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   baby_id INTEGER NOT NULL,
@@ -416,62 +452,75 @@ CREATE TABLE IF NOT EXISTS growth_records (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_growth_records_baby_id ON growth_records(baby_id)');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_growth_records_kind_measured_at ON growth_records(kind, measured_at)');
-        }
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_growth_records_baby_id ON growth_records(baby_id)');
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_growth_records_kind_measured_at ON growth_records(kind, measured_at)');
+          }
 
-        if (oldVersion < 7) {
-          // Daily photo mural fields (kept optional for backward compatibility).
-          await db.execute('ALTER TABLE memories ADD COLUMN day_key TEXT');
-          await db.execute('ALTER TABLE memories ADD COLUMN photo_b64 TEXT');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_memories_day_key ON memories(baby_id, day_key)');
-        }
+          if (oldVersion < 7) {
+            // Daily photo mural fields (kept optional for backward compatibility).
+            await db.execute('ALTER TABLE memories ADD COLUMN day_key TEXT');
+            await db.execute('ALTER TABLE memories ADD COLUMN photo_b64 TEXT');
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_memories_day_key ON memories(baby_id, day_key)');
+          }
 
-        if (oldVersion < 8) {
-          // Badge-driven memories (album grid). We keep legacy columns for compatibility.
-          Future<void> tryAdd(String sql) async {
-            try {
-              await db.execute(sql);
-            } catch (_) {
-              // ignore if already exists
+          if (oldVersion < 8) {
+            // Badge-driven memories (album grid). We keep legacy columns for compatibility.
+            Future<void> tryAdd(String sql) async {
+              try {
+                await db.execute(sql);
+              } catch (_) {
+                // ignore if already exists
+              }
             }
+
+            await tryAdd('ALTER TABLE memories ADD COLUMN badge_id TEXT');
+            await tryAdd('ALTER TABLE memories ADD COLUMN memory_date TEXT');
+            await tryAdd(
+                'ALTER TABLE memories ADD COLUMN baby_age_at_moment TEXT');
+            await tryAdd(
+                'ALTER TABLE memories ADD COLUMN weight_at_moment REAL');
+            await tryAdd(
+                'ALTER TABLE memories ADD COLUMN height_at_moment REAL');
+            await tryAdd('ALTER TABLE memories ADD COLUMN mood_at_moment TEXT');
+            await tryAdd('ALTER TABLE memories ADD COLUMN mother_notes TEXT');
+            await tryAdd(
+                'ALTER TABLE memories ADD COLUMN is_favorite INTEGER DEFAULT 0');
+
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_memories_badge ON memories(baby_id, badge_id)');
           }
 
-          await tryAdd('ALTER TABLE memories ADD COLUMN badge_id TEXT');
-          await tryAdd('ALTER TABLE memories ADD COLUMN memory_date TEXT');
-          await tryAdd('ALTER TABLE memories ADD COLUMN baby_age_at_moment TEXT');
-          await tryAdd('ALTER TABLE memories ADD COLUMN weight_at_moment REAL');
-          await tryAdd('ALTER TABLE memories ADD COLUMN height_at_moment REAL');
-          await tryAdd('ALTER TABLE memories ADD COLUMN mood_at_moment TEXT');
-          await tryAdd('ALTER TABLE memories ADD COLUMN mother_notes TEXT');
-          await tryAdd('ALTER TABLE memories ADD COLUMN is_favorite INTEGER DEFAULT 0');
+          if (oldVersion < 9) {
+            // Instalações que abriram com versão 8: onCreate não incluía colunas do álbum por badge —
+            // só existiam via onUpgrade, que não corre em BD nova. Garantimos colunas aqui.
+            Future<void> tryAdd(String sql) async {
+              try {
+                await db.execute(sql);
+              } catch (_) {}
+            }
 
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_memories_badge ON memories(baby_id, badge_id)');
-        }
+            await tryAdd('ALTER TABLE memories ADD COLUMN badge_id TEXT');
+            await tryAdd('ALTER TABLE memories ADD COLUMN memory_date TEXT');
+            await tryAdd(
+                'ALTER TABLE memories ADD COLUMN baby_age_at_moment TEXT');
+            await tryAdd(
+                'ALTER TABLE memories ADD COLUMN weight_at_moment REAL');
+            await tryAdd(
+                'ALTER TABLE memories ADD COLUMN height_at_moment REAL');
+            await tryAdd('ALTER TABLE memories ADD COLUMN mood_at_moment TEXT');
+            await tryAdd('ALTER TABLE memories ADD COLUMN mother_notes TEXT');
+            await tryAdd(
+                'ALTER TABLE memories ADD COLUMN is_favorite INTEGER DEFAULT 0');
 
-        if (oldVersion < 9) {
-          // Instalações que abriram com versão 8: onCreate não incluía colunas do álbum por badge —
-          // só existiam via onUpgrade, que não corre em BD nova. Garantimos colunas aqui.
-          Future<void> tryAdd(String sql) async {
-            try {
-              await db.execute(sql);
-            } catch (_) {}
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_memories_badge ON memories(baby_id, badge_id)');
           }
 
-          await tryAdd('ALTER TABLE memories ADD COLUMN badge_id TEXT');
-          await tryAdd('ALTER TABLE memories ADD COLUMN memory_date TEXT');
-          await tryAdd('ALTER TABLE memories ADD COLUMN baby_age_at_moment TEXT');
-          await tryAdd('ALTER TABLE memories ADD COLUMN weight_at_moment REAL');
-          await tryAdd('ALTER TABLE memories ADD COLUMN height_at_moment REAL');
-          await tryAdd('ALTER TABLE memories ADD COLUMN mood_at_moment TEXT');
-          await tryAdd('ALTER TABLE memories ADD COLUMN mother_notes TEXT');
-          await tryAdd('ALTER TABLE memories ADD COLUMN is_favorite INTEGER DEFAULT 0');
-
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_memories_badge ON memories(baby_id, badge_id)');
-        }
-
-        if (oldVersion < 11) {
-          await db.execute('''
+          if (oldVersion < 11) {
+            await db.execute('''
 CREATE TABLE IF NOT EXISTS sleep_records (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   baby_id INTEGER NOT NULL,
@@ -484,12 +533,14 @@ CREATE TABLE IF NOT EXISTS sleep_records (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_sleep_records_baby_id ON sleep_records(baby_id)');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_sleep_records_started_at ON sleep_records(started_at)');
-        }
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_sleep_records_baby_id ON sleep_records(baby_id)');
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_sleep_records_started_at ON sleep_records(started_at)');
+          }
 
-        if (oldVersion < 12) {
-          await db.execute('''
+          if (oldVersion < 12) {
+            await db.execute('''
 CREATE TABLE IF NOT EXISTS daily_journals (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   baby_id INTEGER NOT NULL,
@@ -501,11 +552,12 @@ CREATE TABLE IF NOT EXISTS daily_journals (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_daily_journals_baby_day ON daily_journals(baby_id, day_key)');
-        }
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_daily_journals_baby_day ON daily_journals(baby_id, day_key)');
+          }
 
-        if (oldVersion < 13) {
-          await db.execute('''
+          if (oldVersion < 13) {
+            await db.execute('''
 CREATE TABLE IF NOT EXISTS notification_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   uid TEXT,
@@ -518,12 +570,14 @@ CREATE TABLE IF NOT EXISTS notification_log (
   created_at TEXT NOT NULL
 )
 ''');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_notification_log_occurred ON notification_log(occurred_at)');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_notification_log_uid_occurred ON notification_log(uid, occurred_at)');
-        }
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_notification_log_occurred ON notification_log(occurred_at)');
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_notification_log_uid_occurred ON notification_log(uid, occurred_at)');
+          }
 
-        if (oldVersion < 14) {
-          await db.execute('''
+          if (oldVersion < 14) {
+            await db.execute('''
 CREATE TABLE IF NOT EXISTS daily_summary_snapshots (
   baby_id INTEGER NOT NULL,
   day_key TEXT NOT NULL,
@@ -540,11 +594,12 @@ CREATE TABLE IF NOT EXISTS daily_summary_snapshots (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_daily_summary_snapshots_day ON daily_summary_snapshots(day_key)');
-        }
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_daily_summary_snapshots_day ON daily_summary_snapshots(day_key)');
+          }
 
-        if (oldVersion < 15) {
-          await db.execute('''
+          if (oldVersion < 15) {
+            await db.execute('''
 CREATE TABLE IF NOT EXISTS consultations (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   baby_id INTEGER NOT NULL,
@@ -555,111 +610,122 @@ CREATE TABLE IF NOT EXISTS consultations (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_consultations_baby_occurred ON consultations(baby_id, occurred_at)');
-        }
-
-        if (oldVersion < 16) {
-          Future<void> tryAdd(String sql) async {
-            try {
-              await db.execute(sql);
-            } catch (_) {}
-          }
-
-          await tryAdd('ALTER TABLE consultations ADD COLUMN phone TEXT');
-          await tryAdd('ALTER TABLE consultations ADD COLUMN address TEXT');
-        }
-
-        if (oldVersion < 17) {
-          Future<void> tryAdd(String sql) async {
-            try {
-              await db.execute(sql);
-            } catch (_) {}
-          }
-
-          await tryAdd('ALTER TABLE mothers ADD COLUMN cloud_id TEXT');
-          await tryAdd('ALTER TABLE babies ADD COLUMN cloud_id TEXT');
-        }
-
-        if (oldVersion < 18) {
-          Future<void> tryAdd(String sql) async {
-            try {
-              await db.execute(sql);
-            } catch (_) {}
-          }
-
-          await tryAdd('ALTER TABLE memories ADD COLUMN cloud_id TEXT');
-          await tryAdd('ALTER TABLE vaccines ADD COLUMN cloud_id TEXT');
-          await tryAdd('ALTER TABLE consultations ADD COLUMN cloud_id TEXT');
-        }
-
-        if (oldVersion < 19) {
-          Future<void> tryAdd(String sql) async {
-            try {
-              await db.execute(sql);
-            } catch (_) {}
-          }
-
-          await tryAdd('ALTER TABLE feedings ADD COLUMN cloud_id TEXT');
-          await tryAdd('ALTER TABLE diapers ADD COLUMN cloud_id TEXT');
-          await tryAdd('ALTER TABLE sleep_records ADD COLUMN cloud_id TEXT');
-          await tryAdd('ALTER TABLE growth_records ADD COLUMN cloud_id TEXT');
-          await tryAdd('ALTER TABLE daily_journals ADD COLUMN cloud_id TEXT');
-          await tryAdd('ALTER TABLE notification_log ADD COLUMN cloud_id TEXT');
-          await tryAdd('ALTER TABLE daily_summary_snapshots ADD COLUMN cloud_id TEXT');
-        }
-
-        if (oldVersion < 20) {
-          Future<void> tryAdd(String sql) async {
-            try {
-              await db.execute(sql);
-            } catch (_) {}
-          }
-
-          await tryAdd('ALTER TABLE notification_log ADD COLUMN uid TEXT');
-          try {
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_notification_log_uid_occurred ON notification_log(uid, occurred_at)');
-          } catch (_) {}
-        }
-
-        if (oldVersion < 22) {
-          Future<void> tryAdd(String sql) async {
-            try {
-              await db.execute(sql);
-            } catch (_) {}
-          }
-
-          await tryAdd('ALTER TABLE mothers ADD COLUMN photo_url TEXT');
-          await tryAdd('ALTER TABLE babies ADD COLUMN photo_url TEXT');
-        }
-
-        if (oldVersion < 23) {
-          Future<void> tryAdd(String sql) async {
-            try {
-              await db.execute(sql);
-            } catch (_) {}
-          }
-
-          await tryAdd('ALTER TABLE memories ADD COLUMN is_public INTEGER DEFAULT 0');
-          await tryAdd('ALTER TABLE memories ADD COLUMN public_enabled_at TEXT');
-          await tryAdd('ALTER TABLE memories ADD COLUMN public_disabled_at TEXT');
-          await tryAdd('ALTER TABLE memories ADD COLUMN eligible_weekly_photo INTEGER DEFAULT 0');
-          await tryAdd('ALTER TABLE memories ADD COLUMN weekly_photo_winner INTEGER DEFAULT 0');
-          await tryAdd('ALTER TABLE memories ADD COLUMN weekly_photo_week_id TEXT');
-          await tryAdd('ALTER TABLE memories ADD COLUMN show_baby_name_public INTEGER DEFAULT 1');
-        }
-
-        if (oldVersion < 24) {
-          try {
             await db.execute(
-              "UPDATE notification_log SET uid = 'anonymous' WHERE uid IS NULL OR TRIM(COALESCE(uid, '')) = ''",
-            );
-          } catch (e) {
-            debugPrint('migration v24 notification_log uid: $e');
+                'CREATE INDEX IF NOT EXISTS idx_consultations_baby_occurred ON consultations(baby_id, occurred_at)');
           }
-        }
 
-        if (oldVersion < 25) {
-          await db.execute('''
+          if (oldVersion < 16) {
+            Future<void> tryAdd(String sql) async {
+              try {
+                await db.execute(sql);
+              } catch (_) {}
+            }
+
+            await tryAdd('ALTER TABLE consultations ADD COLUMN phone TEXT');
+            await tryAdd('ALTER TABLE consultations ADD COLUMN address TEXT');
+          }
+
+          if (oldVersion < 17) {
+            Future<void> tryAdd(String sql) async {
+              try {
+                await db.execute(sql);
+              } catch (_) {}
+            }
+
+            await tryAdd('ALTER TABLE mothers ADD COLUMN cloud_id TEXT');
+            await tryAdd('ALTER TABLE babies ADD COLUMN cloud_id TEXT');
+          }
+
+          if (oldVersion < 18) {
+            Future<void> tryAdd(String sql) async {
+              try {
+                await db.execute(sql);
+              } catch (_) {}
+            }
+
+            await tryAdd('ALTER TABLE memories ADD COLUMN cloud_id TEXT');
+            await tryAdd('ALTER TABLE vaccines ADD COLUMN cloud_id TEXT');
+            await tryAdd('ALTER TABLE consultations ADD COLUMN cloud_id TEXT');
+          }
+
+          if (oldVersion < 19) {
+            Future<void> tryAdd(String sql) async {
+              try {
+                await db.execute(sql);
+              } catch (_) {}
+            }
+
+            await tryAdd('ALTER TABLE feedings ADD COLUMN cloud_id TEXT');
+            await tryAdd('ALTER TABLE diapers ADD COLUMN cloud_id TEXT');
+            await tryAdd('ALTER TABLE sleep_records ADD COLUMN cloud_id TEXT');
+            await tryAdd('ALTER TABLE growth_records ADD COLUMN cloud_id TEXT');
+            await tryAdd('ALTER TABLE daily_journals ADD COLUMN cloud_id TEXT');
+            await tryAdd(
+                'ALTER TABLE notification_log ADD COLUMN cloud_id TEXT');
+            await tryAdd(
+                'ALTER TABLE daily_summary_snapshots ADD COLUMN cloud_id TEXT');
+          }
+
+          if (oldVersion < 20) {
+            Future<void> tryAdd(String sql) async {
+              try {
+                await db.execute(sql);
+              } catch (_) {}
+            }
+
+            await tryAdd('ALTER TABLE notification_log ADD COLUMN uid TEXT');
+            try {
+              await db.execute(
+                  'CREATE INDEX IF NOT EXISTS idx_notification_log_uid_occurred ON notification_log(uid, occurred_at)');
+            } catch (_) {}
+          }
+
+          if (oldVersion < 22) {
+            Future<void> tryAdd(String sql) async {
+              try {
+                await db.execute(sql);
+              } catch (_) {}
+            }
+
+            await tryAdd('ALTER TABLE mothers ADD COLUMN photo_url TEXT');
+            await tryAdd('ALTER TABLE babies ADD COLUMN photo_url TEXT');
+          }
+
+          if (oldVersion < 23) {
+            Future<void> tryAdd(String sql) async {
+              try {
+                await db.execute(sql);
+              } catch (_) {}
+            }
+
+            await tryAdd(
+                'ALTER TABLE memories ADD COLUMN is_public INTEGER DEFAULT 0');
+            await tryAdd(
+                'ALTER TABLE memories ADD COLUMN public_enabled_at TEXT');
+            await tryAdd(
+                'ALTER TABLE memories ADD COLUMN public_disabled_at TEXT');
+            await tryAdd(
+                'ALTER TABLE memories ADD COLUMN eligible_weekly_photo INTEGER DEFAULT 0');
+            await tryAdd(
+                'ALTER TABLE memories ADD COLUMN weekly_photo_winner INTEGER DEFAULT 0');
+            await tryAdd(
+                'ALTER TABLE memories ADD COLUMN weekly_photo_week_id TEXT');
+            await tryAdd(
+                'ALTER TABLE memories ADD COLUMN show_baby_name_public INTEGER DEFAULT 1');
+          }
+
+          if (oldVersion < 24) {
+            try {
+              await db.execute(
+                "UPDATE notification_log SET uid = 'anonymous' WHERE uid IS NULL OR TRIM(COALESCE(uid, '')) = ''",
+              );
+            } catch (e) {
+              debugPrint('migration v24 notification_log uid: $e');
+            }
+          }
+
+          if (oldVersion < 25) {
+            await db.execute('''
 CREATE TABLE IF NOT EXISTS symptom_reports (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   baby_id INTEGER NOT NULL,
@@ -677,19 +743,97 @@ CREATE TABLE IF NOT EXISTS symptom_reports (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_symptom_reports_baby_occurred ON symptom_reports(baby_id, occurred_at)');
-        }
-
-        if (oldVersion < 26) {
-          try {
-            await db.execute('ALTER TABLE symptom_reports ADD COLUMN cloud_id TEXT');
-          } catch (e) {
-            debugPrint('migration v26 symptom_reports.cloud_id: $e');
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_symptom_reports_baby_occurred ON symptom_reports(baby_id, occurred_at)');
           }
-        }
 
-        if (oldVersion < 10) {
-          await db.execute('''
+          if (oldVersion < 26) {
+            try {
+              await db.execute(
+                  'ALTER TABLE symptom_reports ADD COLUMN cloud_id TEXT');
+            } catch (e) {
+              debugPrint('migration v26 symptom_reports.cloud_id: $e');
+            }
+          }
+
+          if (oldVersion < 27) {
+            try {
+              await db.execute(
+                  'ALTER TABLE mothers ADD COLUMN father_birth_date TEXT');
+            } catch (e) {
+              debugPrint('migration v27 mothers.father_birth_date: $e');
+            }
+          }
+
+          if (oldVersion < 28) {
+            try {
+              await db
+                  .execute('ALTER TABLE mothers ADD COLUMN father_name TEXT');
+            } catch (e) {
+              debugPrint('migration v28 mothers.father_name: $e');
+            }
+          }
+
+          if (oldVersion < 29) {
+            Future<void> tryAdd(String sql, String label) async {
+              try {
+                await db.execute(sql);
+              } catch (e) {
+                debugPrint('migration v29 $label: $e');
+              }
+            }
+
+            await tryAdd(
+                'ALTER TABLE mothers ADD COLUMN register_father INTEGER',
+                'mothers.register_father');
+            await tryAdd('ALTER TABLE babies ADD COLUMN first_baby INTEGER',
+                'babies.first_baby');
+            await tryAdd(
+                'ALTER TABLE babies ADD COLUMN onboarding_concerns_json TEXT',
+                'babies.onboarding_concerns_json');
+            await tryAdd(
+                'ALTER TABLE babies ADD COLUMN onboarding_goals_json TEXT',
+                'babies.onboarding_goals_json');
+          }
+
+          if (oldVersion < 30) {
+            Future<void> tryAdd30(String sql, String label) async {
+              try {
+                await db.execute(sql);
+              } catch (e) {
+                debugPrint('migration v30 $label: $e');
+              }
+            }
+
+            await tryAdd30(
+                'ALTER TABLE mothers ADD COLUMN father_photo_b64 TEXT',
+                'mothers.father_photo_b64');
+            await tryAdd30(
+                'ALTER TABLE mothers ADD COLUMN father_photo_url TEXT',
+                'mothers.father_photo_url');
+          }
+
+          if (oldVersion < 31) {
+            Future<void> tryAdd31(String sql, String label) async {
+              try {
+                await db.execute(sql);
+              } catch (e) {
+                debugPrint('migration v31 $label: $e');
+              }
+            }
+
+            await tryAdd31(
+              'ALTER TABLE mothers ADD COLUMN show_family_christian INTEGER NOT NULL DEFAULT 0',
+              'mothers.show_family_christian',
+            );
+            await tryAdd31(
+              'ALTER TABLE mothers ADD COLUMN show_family_horoscope INTEGER NOT NULL DEFAULT 1',
+              'mothers.show_family_horoscope',
+            );
+          }
+
+          if (oldVersion < 10) {
+            await db.execute('''
 CREATE TABLE IF NOT EXISTS diapers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   baby_id INTEGER NOT NULL,
@@ -700,13 +844,13 @@ CREATE TABLE IF NOT EXISTS diapers (
   FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
 )
 ''');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_diapers_baby_id ON diapers(baby_id)');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_diapers_changed_at ON diapers(changed_at)');
-        }
-
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_diapers_baby_id ON diapers(baby_id)');
+            await db.execute(
+                'CREATE INDEX IF NOT EXISTS idx_diapers_changed_at ON diapers(changed_at)');
+          }
         },
       );
-
 
       return db;
     } catch (e) {
@@ -750,7 +894,8 @@ CREATE TABLE IF NOT EXISTS diapers (
     final next = (prefs.getInt(idKey) ?? 1);
     final ok = await prefs.setInt(idKey, next + 1);
     if (kIsWeb && !ok) {
-      throw StateError('Falha ao gravar contador de IDs (armazenamento cheio ou indisponível).');
+      throw StateError(
+          'Falha ao gravar contador de IDs (armazenamento cheio ou indisponível).');
     }
     return next;
   }
@@ -761,13 +906,16 @@ CREATE TABLE IF NOT EXISTS diapers (
     try {
       final decoded = jsonDecode(raw);
       if (decoded is! List) return <Map<String, Object?>>[];
-      return decoded.map((e) => (e as Map).map((k, v) => MapEntry(k.toString(), v))).toList();
+      return decoded
+          .map((e) => (e as Map).map((k, v) => MapEntry(k.toString(), v)))
+          .toList();
     } catch (e) {
       throw StateError('Invalid stored JSON for facebaby_web_$key: $e');
     }
   }
 
-  Future<void> _webWriteList(SharedPreferences prefs, String key, List<Map<String, Object?>> list) async {
+  Future<void> _webWriteList(SharedPreferences prefs, String key,
+      List<Map<String, Object?>> list) async {
     final encoded = jsonEncode(list);
     if (kIsWeb) {
       // localStorage ~5 MB por origem; o JSON das memórias inclui base64 de todas as fotos.
@@ -857,6 +1005,45 @@ CREATE TABLE IF NOT EXISTS diapers (
     return double.tryParse(v.toString());
   }
 
+  static bool? _parseCloudBool(dynamic v) {
+    if (v is bool) return v;
+    if (v is num) return v != 0;
+    if (v is String) {
+      final s = v.trim().toLowerCase();
+      if (s == 'true' || s == '1' || s == 'yes' || s == 'sim') return true;
+      if (s == 'false' || s == '0' || s == 'no' || s == 'nao' || s == 'não') {
+        return false;
+      }
+    }
+    return null;
+  }
+
+  static String? _stringListJson(dynamic v) {
+    if (v is List) {
+      return jsonEncode(v.map((e) => '$e').toList(growable: false));
+    }
+    if (v is String) {
+      final trimmed = v.trim();
+      if (trimmed.isEmpty) return null;
+      try {
+        final decoded = jsonDecode(trimmed);
+        if (decoded is List) {
+          return jsonEncode(decoded.map((e) => '$e').toList(growable: false));
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  static String? _encodeStringList(List<String>? values) {
+    final clean = values
+        ?.map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList(growable: false);
+    if (clean == null || clean.isEmpty) return null;
+    return jsonEncode(clean);
+  }
+
   /// Só atualiza foto local quando o mapa cloud traz string **não vazia** —
   /// caso contrário preservamos SQLite (Firestore pode trazer `photo_url: null`/"" com [containsKey]==true na serialização antiga ou merge parcial).
   static String? _nonEmptyTrimmed(dynamic v) {
@@ -865,7 +1052,8 @@ CREATE TABLE IF NOT EXISTS diapers (
     return t.isEmpty ? null : t;
   }
 
-  static String? _firstNonEmptyPhotoField(Map<String, dynamic> data, List<String> keys) {
+  static String? _firstNonEmptyPhotoField(
+      Map<String, dynamic> data, List<String> keys) {
     for (final k in keys) {
       if (!data.containsKey(k)) continue;
       final s = _nonEmptyTrimmed(data[k]);
@@ -875,15 +1063,18 @@ CREATE TABLE IF NOT EXISTS diapers (
   }
 
   /// Evita que um perfil Firestore incompleto (campos null/"") apague dados já gravados no SQLite.
-  static String _mergeMotherNameFromCloud(Map<String, dynamic> data, Map<String, Object?>? existing) {
-    final fromCloud = _nonEmptyTrimmed(data['name']) ?? _nonEmptyTrimmed(data['displayName']);
+  static String _mergeMotherNameFromCloud(
+      Map<String, dynamic> data, Map<String, Object?>? existing) {
+    final fromCloud =
+        _nonEmptyTrimmed(data['name']) ?? _nonEmptyTrimmed(data['displayName']);
     if (fromCloud != null) return fromCloud;
     final prev = _nonEmptyTrimmed(existing?['name'] as String?);
     if (prev != null) return prev;
     return 'Mãe';
   }
 
-  static String? _mergeMotherPhoneFromCloud(Map<String, dynamic> data, Map<String, Object?>? existing) {
+  static String? _mergeMotherPhoneFromCloud(
+      Map<String, dynamic> data, Map<String, Object?>? existing) {
     for (final k in ['phone', 'phoneNumber']) {
       if (!data.containsKey(k)) continue;
       final s = _nonEmptyTrimmed(data[k]);
@@ -892,8 +1083,10 @@ CREATE TABLE IF NOT EXISTS diapers (
     return _nonEmptyTrimmed(existing?['phone'] as String?);
   }
 
-  static DateTime? _mergeMotherBirthFromCloud(Map<String, dynamic> data, Map<String, Object?>? existing) {
-    final fromCloud = _parseCloudIso(data['birth_date']) ?? _parseCloudIso(data['birthDate']);
+  static DateTime? _mergeMotherBirthFromCloud(
+      Map<String, dynamic> data, Map<String, Object?>? existing) {
+    final fromCloud =
+        _parseCloudIso(data['birth_date']) ?? _parseCloudIso(data['birthDate']);
     if (fromCloud != null) return fromCloud;
     return _parseCloudIso(existing?['birth_date'] as String?);
   }
@@ -924,9 +1117,14 @@ CREATE TABLE IF NOT EXISTS diapers (
       return 0;
     }
     final db = await database;
-    final rows = await db.query('mothers', columns: ['id'], where: 'cloud_id = ?', whereArgs: [cloudId], limit: 1);
+    final rows = await db.query('mothers',
+        columns: ['id'], where: 'cloud_id = ?', whereArgs: [cloudId], limit: 1);
     final createdAt = DateTime.now().toIso8601String();
-    final mergedPhotoUrl = _firstNonEmptyPhotoField(Map<String, dynamic>.from(data), ['photo_url', 'photoUrl']);
+    final mergedPhotoUrl = _firstNonEmptyPhotoField(
+        Map<String, dynamic>.from(data), ['photo_url', 'photoUrl']);
+    final mergedFatherPhotoUrl = _firstNonEmptyPhotoField(
+        Map<String, dynamic>.from(data),
+        ['father_photo_url', 'fatherPhotoUrl']);
 
     Map<String, Object?>? existingRow;
     if (rows.isNotEmpty) {
@@ -942,6 +1140,16 @@ CREATE TABLE IF NOT EXISTS diapers (
     final name = _mergeMotherNameFromCloud(data, existingRow);
     final phone = _mergeMotherPhoneFromCloud(data, existingRow);
     final birth = _mergeMotherBirthFromCloud(data, existingRow);
+    final fatherName =
+        ((data['father_name'] ?? data['fatherName']) as String?)?.trim() ??
+            (existingRow?['father_name'] as String?)?.trim();
+    final fatherBirth = _parseCloudIso(data['father_birth_date']) ??
+        _parseCloudIso(data['fatherBirthDate']) ??
+        _parseCloudIso(existingRow?['father_birth_date'] as String?);
+    final registerFather = _parseCloudBool(
+          data['register_father'] ?? data['registerFather'],
+        ) ??
+        _parseCloudBool(existingRow?['register_father']);
     final height = rows.isEmpty
         ? _parseCloudDouble(data['height_cm'] ?? data['heightCm'])
         : _mergeMotherDoubleFromCloud(
@@ -958,6 +1166,16 @@ CREATE TABLE IF NOT EXISTS diapers (
             existingRow,
             'father_height_cm',
           );
+    final showChristian = _parseCloudBool(
+          data['show_family_christian'] ?? data['showFamilyChristian'],
+        ) ??
+        _parseCloudBool(existingRow?['show_family_christian']) ??
+        false;
+    final showHoroscope = _parseCloudBool(
+          data['show_family_horoscope'] ?? data['showFamilyHoroscope'],
+        ) ??
+        _parseCloudBool(existingRow?['show_family_horoscope']) ??
+        true;
 
     if (rows.isEmpty) {
       final id = await db.insert('mothers', {
@@ -965,9 +1183,17 @@ CREATE TABLE IF NOT EXISTS diapers (
         'phone': (phone == null || phone.isEmpty) ? null : phone,
         'birth_date': birth?.toIso8601String(),
         'height_cm': height,
+        'father_name':
+            (fatherName == null || fatherName.isEmpty) ? null : fatherName,
         'father_height_cm': fatherHeight,
+        'father_birth_date': fatherBirth?.toIso8601String(),
+        'register_father':
+            registerFather == null ? null : (registerFather ? 1 : 0),
+        'show_family_christian': showChristian ? 1 : 0,
+        'show_family_horoscope': showHoroscope ? 1 : 0,
         'photo_b64': null,
         'photo_url': mergedPhotoUrl,
+        'father_photo_url': mergedFatherPhotoUrl,
         'cloud_id': cloudId,
         'created_at': createdAt,
       });
@@ -979,10 +1205,20 @@ CREATE TABLE IF NOT EXISTS diapers (
       'phone': (phone == null || phone.isEmpty) ? null : phone,
       'birth_date': birth?.toIso8601String(),
       'height_cm': height,
+      'father_name':
+          (fatherName == null || fatherName.isEmpty) ? null : fatherName,
       'father_height_cm': fatherHeight,
+      'father_birth_date': fatherBirth?.toIso8601String(),
+      'register_father':
+          registerFather == null ? null : (registerFather ? 1 : 0),
+      'show_family_christian': showChristian ? 1 : 0,
+      'show_family_horoscope': showHoroscope ? 1 : 0,
       'cloud_id': cloudId,
     };
     if (mergedPhotoUrl != null) patch['photo_url'] = mergedPhotoUrl;
+    if (mergedFatherPhotoUrl != null) {
+      patch['father_photo_url'] = mergedFatherPhotoUrl;
+    }
     await db.update(
       'mothers',
       patch,
@@ -999,16 +1235,25 @@ CREATE TABLE IF NOT EXISTS diapers (
   }) async {
     if (kIsWeb) return 0;
     final db = await database;
-    final rows = await db.query('babies', columns: ['id'], where: 'cloud_id = ?', whereArgs: [cloudId], limit: 1);
+    final rows = await db.query('babies',
+        columns: ['id'], where: 'cloud_id = ?', whereArgs: [cloudId], limit: 1);
     final name = (data['name'] as String?)?.trim() ?? '';
     if (name.isEmpty) return 0;
-    final sex = ((data['sex'] as String?) ?? 'F').trim().isEmpty ? 'F' : ((data['sex'] as String?) ?? 'F').trim();
+    final sex = ((data['sex'] as String?) ?? 'F').trim().isEmpty
+        ? 'F'
+        : ((data['sex'] as String?) ?? 'F').trim();
     final birth = _parseCloudIso(data['birth_date']);
     final zodiac = (data['zodiac_sign'] as String?)?.trim();
     final weight = _parseCloudDouble(data['weight_kg']);
     final height = _parseCloudDouble(data['height_cm']);
+    final firstBaby = _parseCloudBool(data['first_baby'] ?? data['firstBaby']);
+    final concernsJson = _stringListJson(
+        data['onboarding_concerns'] ?? data['onboardingConcerns']);
+    final goalsJson =
+        _stringListJson(data['onboarding_goals'] ?? data['onboardingGoals']);
     final createdAt = DateTime.now().toIso8601String();
-    final mergedBabyPhotoUrl = _firstNonEmptyPhotoField(Map<String, dynamic>.from(data), ['photo_url', 'photoUrl']);
+    final mergedBabyPhotoUrl = _firstNonEmptyPhotoField(
+        Map<String, dynamic>.from(data), ['photo_url', 'photoUrl']);
 
     if (rows.isEmpty) {
       final id = await db.insert('babies', {
@@ -1019,6 +1264,9 @@ CREATE TABLE IF NOT EXISTS diapers (
         'zodiac_sign': (zodiac == null || zodiac.isEmpty) ? null : zodiac,
         'weight_kg': weight,
         'height_cm': height,
+        'first_baby': firstBaby == null ? null : (firstBaby ? 1 : 0),
+        'onboarding_concerns_json': concernsJson,
+        'onboarding_goals_json': goalsJson,
         'photo_b64': null,
         'photo_url': mergedBabyPhotoUrl,
         'cloud_id': cloudId,
@@ -1035,6 +1283,9 @@ CREATE TABLE IF NOT EXISTS diapers (
       'zodiac_sign': (zodiac == null || zodiac.isEmpty) ? null : zodiac,
       'weight_kg': weight,
       'height_cm': height,
+      'first_baby': firstBaby == null ? null : (firstBaby ? 1 : 0),
+      'onboarding_concerns_json': concernsJson,
+      'onboarding_goals_json': goalsJson,
       'cloud_id': cloudId,
     };
     if (mergedBabyPhotoUrl != null) patch['photo_url'] = mergedBabyPhotoUrl;
@@ -1163,7 +1414,9 @@ CREATE TABLE IF NOT EXISTS diapers (
     final docId = (data['id'] as String?)?.trim() ?? '';
 
     var badgeId = (data['badge_id'] as String?)?.trim() ?? '';
-    if (badgeId.isEmpty && babyCloud.isNotEmpty && docId.startsWith('badge_${babyCloud}_')) {
+    if (badgeId.isEmpty &&
+        babyCloud.isNotEmpty &&
+        docId.startsWith('badge_${babyCloud}_')) {
       badgeId = docId.substring('badge_${babyCloud}_'.length);
     }
     if (badgeId.isEmpty && docId.isNotEmpty && !docId.startsWith('badge_')) {
@@ -1194,8 +1447,8 @@ CREATE TABLE IF NOT EXISTS diapers (
     final dataMap = Map<String, dynamic>.from(data);
     final remoteB64 = _nonEmptyTrimmed(dataMap['photo_b64']);
     final photoB64 = remoteB64 ?? localB64;
-    final remotePathOrUrl =
-        _firstNonEmptyPhotoField(dataMap, ['photo_url', 'photoUrl', 'photo_path']);
+    final remotePathOrUrl = _firstNonEmptyPhotoField(
+        dataMap, ['photo_url', 'photoUrl', 'photo_path']);
     final photoUrl = remotePathOrUrl ?? localPath;
 
     final memoryDate = _parseCloudIso(data['memory_date']) ?? DateTime.now();
@@ -1204,16 +1457,21 @@ CREATE TABLE IF NOT EXISTS diapers (
     final height = _parseCloudDouble(data['height_at_moment']);
     final mood = (data['mood_at_moment'] as String?)?.trim();
     final motherNotes = (data['mother_notes'] as String?)?.trim();
-    final fav = (data['is_favorite'] == true) ? true : (data['is_favorite'] == 1);
+    final fav =
+        (data['is_favorite'] == true) ? true : (data['is_favorite'] == 1);
     final pub = (data['is_public'] == true) ? true : (data['is_public'] == 1);
     final pubEn = _parseCloudIso(data['public_enabled_at']);
     final pubDis = _parseCloudIso(data['public_disabled_at']);
-    final eligRaw = data['eligible_weekly_photo'] ?? data['eligible_for_weekly_photo'];
+    final eligRaw =
+        data['eligible_weekly_photo'] ?? data['eligible_for_weekly_photo'];
     final elig = (eligRaw == true) ? true : (eligRaw == 1);
-    final win = (data['weekly_photo_winner'] == true) ? true : (data['weekly_photo_winner'] == 1);
+    final win = (data['weekly_photo_winner'] == true)
+        ? true
+        : (data['weekly_photo_winner'] == 1);
     final wwk = (data['weekly_photo_week_id'] as String?)?.trim();
-    final showBaby =
-        (data['show_baby_name_public'] == false) ? false : (data['show_baby_name_public'] != 0);
+    final showBaby = (data['show_baby_name_public'] == false)
+        ? false
+        : (data['show_baby_name_public'] != 0);
 
     await upsertBabyMemory(
       babyId: localBabyId,
@@ -1227,7 +1485,8 @@ CREATE TABLE IF NOT EXISTS diapers (
       weightAtMoment: weight,
       heightAtMoment: height,
       moodAtMoment: (mood == null || mood.isEmpty) ? null : mood,
-      motherNotes: (motherNotes == null || motherNotes.isEmpty) ? null : motherNotes,
+      motherNotes:
+          (motherNotes == null || motherNotes.isEmpty) ? null : motherNotes,
       isFavorite: fav == true,
       isPublic: pub == true,
       publicEnabledAt: pubEn,
@@ -1248,7 +1507,9 @@ CREATE TABLE IF NOT EXISTS diapers (
     if (cid == null || cid.isEmpty) return;
     final startedAt = _parseCloudIso(data['started_at']);
     final endedAt = _parseCloudIso(data['ended_at']);
-    final duration = (data['duration_sec'] is num) ? (data['duration_sec'] as num).toInt() : int.tryParse('${data['duration_sec']}');
+    final duration = (data['duration_sec'] is num)
+        ? (data['duration_sec'] as num).toInt()
+        : int.tryParse('${data['duration_sec']}');
     if (startedAt == null || endedAt == null || duration == null) return;
 
     final db = await database;
@@ -1306,7 +1567,8 @@ CREATE TABLE IF NOT EXISTS diapers (
 
   /// Linhas antigas vinham da nuvem com `type = 'feeding'` (discriminador do evento Firestore) em vez de `feeding_type`.
   /// Isso zera o “Resumo de hoje”; forçamos rehidratação para corrigir.
-  Future<bool> feedingRowsHaveLegacyCloudSubtypeBug({required int babyId}) async {
+  Future<bool> feedingRowsHaveLegacyCloudSubtypeBug(
+      {required int babyId}) async {
     if (kIsWeb) return false;
     final db = await database;
     final rows = await db.rawQuery(
@@ -1379,7 +1641,9 @@ WHERE baby_id = ?
     if (cid == null || cid.isEmpty) return;
     final startedAt = _parseCloudIso(data['started_at']);
     final endedAt = _parseCloudIso(data['ended_at']);
-    final duration = (data['duration_sec'] is num) ? (data['duration_sec'] as num).toInt() : int.tryParse('${data['duration_sec']}');
+    final duration = (data['duration_sec'] is num)
+        ? (data['duration_sec'] as num).toInt()
+        : int.tryParse('${data['duration_sec']}');
     if (startedAt == null || endedAt == null || duration == null) return;
     final quality = (data['quality'] as String?)?.trim();
     final note = (data['note'] as String?)?.trim();
@@ -1436,7 +1700,8 @@ WHERE baby_id = ?
     final kind = (data['kind'] as String?)?.trim();
     final value = _parseCloudDouble(data['value']);
     final measuredAt = _parseCloudIso(data['measured_at']);
-    if (kind == null || kind.isEmpty || value == null || measuredAt == null) return;
+    if (kind == null || kind.isEmpty || value == null || measuredAt == null)
+      return;
     final createdAt = DateTime.now().toIso8601String();
 
     final db = await database;
@@ -1488,7 +1753,8 @@ WHERE baby_id = ?
     if (kIsWeb) return;
     final cid = (data['id'] as String?)?.trim();
     if (cid == null || cid.isEmpty) return;
-    DateTime? occurredAt = _parseCloudIso(data['occurred_at']) ?? _parseCloudIso(data['occurredAt']);
+    DateTime? occurredAt = _parseCloudIso(data['occurred_at']) ??
+        _parseCloudIso(data['occurredAt']);
     final et = data['event_time'];
     if (occurredAt == null && et is Timestamp) {
       occurredAt = et.toDate();
@@ -1496,16 +1762,21 @@ WHERE baby_id = ?
     if (occurredAt == null) return;
     final med = (data['medication_note'] ?? data['medicationNote']) as String?;
     final medTrim = med?.trim();
-    final medicationNote = (medTrim == null || medTrim.isEmpty) ? null : medTrim;
+    final medicationNote =
+        (medTrim == null || medTrim.isEmpty) ? null : medTrim;
     final fever = _symptomBoolFromCloud(data['fever']);
-    final tempCelsius = _parseCloudDouble(data['temp_celsius'] ?? data['tempCelsius']);
-    final crying = _symptomBoolFromCloud(data['crying'] ?? data['unexplained_crying'] ?? data['unexplainedCrying']);
+    final tempCelsius =
+        _parseCloudDouble(data['temp_celsius'] ?? data['tempCelsius']);
+    final crying = _symptomBoolFromCloud(data['crying'] ??
+        data['unexplained_crying'] ??
+        data['unexplainedCrying']);
     final pain = _symptomBoolFromCloud(data['pain']);
     final colic = _symptomBoolFromCloud(data['colic']);
     final reflux = _symptomBoolFromCloud(data['reflux']);
     final otherRaw = (data['other_note'] ?? data['otherNote']) as String?;
     final otherTrim = otherRaw?.trim();
-    final otherNote = (otherTrim == null || otherTrim.isEmpty) ? null : otherTrim;
+    final otherNote =
+        (otherTrim == null || otherTrim.isEmpty) ? null : otherTrim;
     final createdAt = DateTime.now().toIso8601String();
 
     final db = await database;
@@ -1571,7 +1842,8 @@ WHERE baby_id = ?
           final list = _webReadList(prefs, 'symptom_reports');
           final idx = list.indexWhere((raw) {
             final m = Map<String, Object?>.from(raw as Map);
-            return ((m['id'] as num?)?.toInt() == id) && ((m['baby_id'] as num?)?.toInt() == babyId);
+            return ((m['id'] as num?)?.toInt() == id) &&
+                ((m['baby_id'] as num?)?.toInt() == babyId);
           });
           if (idx < 0) return 0;
           final prev = Map<String, Object?>.from(list[idx] as Map);
@@ -1597,7 +1869,8 @@ WHERE baby_id = ?
     required Map<String, dynamic> data,
   }) async {
     if (kIsWeb) return;
-    final dayKey = (data['day_key'] as String?)?.trim() ?? (data['id'] as String?)?.trim();
+    final dayKey =
+        (data['day_key'] as String?)?.trim() ?? (data['id'] as String?)?.trim();
     if (dayKey == null || dayKey.isEmpty) return;
     final text = (data['text'] as String?)?.trim();
     final db = await database;
@@ -1638,7 +1911,8 @@ WHERE baby_id = ?
     required Map<String, dynamic> data,
   }) async {
     if (kIsWeb) return;
-    final dayKey = (data['day_key'] as String?)?.trim() ?? (data['id'] as String?)?.trim();
+    final dayKey =
+        (data['day_key'] as String?)?.trim() ?? (data['id'] as String?)?.trim();
     if (dayKey == null || dayKey.isEmpty) return;
     final createdAt = DateTime.now().toIso8601String();
 
@@ -1736,20 +2010,23 @@ WHERE baby_id = ?
   /// Isto alinha “últimos N dias registados na app” com o facto de alguns registos de
   /// agendamento guardarem um [occurred_at] lógico (ex.: deadline de sono) no passado
   /// mesmo quando foram escritos pela primeira vez já depois dessa data.
-  Future<List<Map<String, Object?>>> listNotificationLogSince({required String uid, required DateTime since}) async {
+  Future<List<Map<String, Object?>>> listNotificationLogSince(
+      {required String uid, required DateTime since}) async {
     if (kIsWeb) return const [];
     final db = await database;
     final sinceIso = since.toIso8601String();
     final uidNorm = uid.trim().isEmpty ? 'anonymous' : uid.trim();
     return db.query(
       'notification_log',
-      where: "COALESCE(uid, 'anonymous') = ? AND (occurred_at >= ? OR created_at >= ?)",
+      where:
+          "COALESCE(uid, 'anonymous') = ? AND (occurred_at >= ? OR created_at >= ?)",
       whereArgs: [uidNorm, sinceIso, sinceIso],
       orderBy: 'created_at DESC, occurred_at DESC',
     );
   }
 
-  Future<void> deleteNotificationLogs({required String uid, required List<int> ids}) async {
+  Future<void> deleteNotificationLogs(
+      {required String uid, required List<int> ids}) async {
     if (kIsWeb) return;
     if (ids.isEmpty) return;
     final db = await database;
@@ -1767,8 +2044,14 @@ WHERE baby_id = ?
     String? phone,
     DateTime? birthDate,
     double? heightCm,
+    String? fatherName,
     double? fatherHeightCm,
+    DateTime? fatherBirthDate,
+    bool? registerFather,
     String? photoB64,
+    String? fatherPhotoB64,
+    bool showFamilyChristian = false,
+    bool showFamilyHoroscope = true,
   }) async {
     if (kIsWeb) {
       return _webSerialized(() async {
@@ -1778,7 +2061,11 @@ WHERE baby_id = ?
         final createdAt = DateTime.now().toIso8601String();
         final n = name.trim();
         final p = phone?.trim().isEmpty == true ? null : phone?.trim();
+        final fn =
+            fatherName?.trim().isEmpty == true ? null : fatherName?.trim();
         final pb = photoB64?.trim().isEmpty == true ? null : photoB64?.trim();
+        final fpb =
+            fatherPhotoB64?.trim().isEmpty == true ? null : fatherPhotoB64?.trim();
 
         mothers.insert(0, {
           'id': id,
@@ -1786,7 +2073,14 @@ WHERE baby_id = ?
           'phone': p,
           'birth_date': birthDate?.toIso8601String(),
           'height_cm': heightCm,
+          'father_name': fn,
           'father_height_cm': fatherHeightCm,
+          'father_birth_date': fatherBirthDate?.toIso8601String(),
+          'father_photo_b64': fpb,
+          'register_father':
+              registerFather == null ? null : (registerFather ? 1 : 0),
+          'show_family_christian': showFamilyChristian ? 1 : 0,
+          'show_family_horoscope': showFamilyHoroscope ? 1 : 0,
           'photo_b64': pb,
           'cloud_id': null,
           'created_at': createdAt,
@@ -1796,17 +2090,33 @@ WHERE baby_id = ?
       });
     }
 
-
     final db = await database;
     // Using rawInsert for best compatibility across web/ffi implementations.
     final createdAt = DateTime.now().toIso8601String();
     final n = name.trim();
     final p = phone?.trim().isEmpty == true ? null : phone?.trim();
+    final fn = fatherName?.trim().isEmpty == true ? null : fatherName?.trim();
     final pb = photoB64?.trim().isEmpty == true ? null : photoB64?.trim();
+    final fpb =
+        fatherPhotoB64?.trim().isEmpty == true ? null : fatherPhotoB64?.trim();
     try {
       final res = await db.rawInsert(
-        'INSERT INTO mothers(name, phone, birth_date, height_cm, father_height_cm, photo_b64, created_at) VALUES(?, ?, ?, ?, ?, ?, ?)',
-        [n, p, birthDate?.toIso8601String(), heightCm, fatherHeightCm, pb, createdAt],
+        'INSERT INTO mothers(name, phone, birth_date, height_cm, father_name, father_height_cm, father_birth_date, father_photo_b64, register_father, show_family_christian, show_family_horoscope, photo_b64, created_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          n,
+          p,
+          birthDate?.toIso8601String(),
+          heightCm,
+          fn,
+          fatherHeightCm,
+          fatherBirthDate?.toIso8601String(),
+          fpb,
+          registerFather == null ? null : (registerFather ? 1 : 0),
+          showFamilyChristian ? 1 : 0,
+          showFamilyHoroscope ? 1 : 0,
+          pb,
+          createdAt
+        ],
       );
       return res;
     } catch (e) {
@@ -1823,7 +2133,23 @@ WHERE baby_id = ?
     final db = await database;
     return db.query(
       'mothers',
-      columns: ['id', 'name', 'phone', 'birth_date', 'height_cm', 'father_height_cm', 'photo_b64', 'photo_url', 'cloud_id', 'created_at'],
+      columns: [
+        'id',
+        'name',
+        'phone',
+        'birth_date',
+        'height_cm',
+        'father_name',
+        'father_height_cm',
+        'father_birth_date',
+        'father_photo_b64',
+        'father_photo_url',
+        'register_father',
+        'photo_b64',
+        'photo_url',
+        'cloud_id',
+        'created_at'
+      ],
       orderBy: 'created_at DESC',
     );
   }
@@ -1836,6 +2162,9 @@ WHERE baby_id = ?
     String? zodiacSign,
     double? weightKg,
     double? heightCm,
+    bool? firstBaby,
+    List<String>? onboardingConcerns,
+    List<String>? onboardingGoals,
     String? photoB64,
   }) async {
     if (kIsWeb) {
@@ -1845,9 +2174,12 @@ WHERE baby_id = ?
         final id = await _webNextId(prefs, 'babies');
         final createdAt = DateTime.now().toIso8601String();
         final n = name.trim();
-        final z = zodiacSign?.trim().isEmpty == true ? null : zodiacSign?.trim();
+        final z =
+            zodiacSign?.trim().isEmpty == true ? null : zodiacSign?.trim();
         final sx = sex.trim().isEmpty ? 'F' : sex.trim();
         final pb = photoB64?.trim().isEmpty == true ? null : photoB64?.trim();
+        final concernsJson = _encodeStringList(onboardingConcerns);
+        final goalsJson = _encodeStringList(onboardingGoals);
         babies.insert(0, {
           'id': id,
           'mother_id': motherId,
@@ -1857,6 +2189,9 @@ WHERE baby_id = ?
           'zodiac_sign': z,
           'weight_kg': weightKg,
           'height_cm': heightCm,
+          'first_baby': firstBaby == null ? null : (firstBaby ? 1 : 0),
+          'onboarding_concerns_json': concernsJson,
+          'onboarding_goals_json': goalsJson,
           'photo_b64': pb,
           'cloud_id': null,
           'created_at': createdAt,
@@ -1871,11 +2206,13 @@ WHERE baby_id = ?
     final z = zodiacSign?.trim().isEmpty == true ? null : zodiacSign?.trim();
     final sx = sex.trim().isEmpty ? 'F' : sex.trim();
     final pb = photoB64?.trim().isEmpty == true ? null : photoB64?.trim();
+    final concernsJson = _encodeStringList(onboardingConcerns);
+    final goalsJson = _encodeStringList(onboardingGoals);
     return db.rawInsert(
       '''
 INSERT INTO babies(
-  mother_id, name, sex, birth_date, zodiac_sign, weight_kg, height_cm, photo_b64, created_at
-) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+  mother_id, name, sex, birth_date, zodiac_sign, weight_kg, height_cm, first_baby, onboarding_concerns_json, onboarding_goals_json, photo_b64, created_at
+) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ''',
       [
         motherId,
@@ -1885,6 +2222,9 @@ INSERT INTO babies(
         z,
         weightKg,
         heightCm,
+        firstBaby == null ? null : (firstBaby ? 1 : 0),
+        concernsJson,
+        goalsJson,
         pb,
         createdAt,
       ],
@@ -1896,7 +2236,8 @@ INSERT INTO babies(
       return _webSerialized(() async {
         final prefs = await _webPrefs();
         final babies = _webReadList(prefs, 'babies');
-        final idx = babies.indexWhere((raw) => ((raw['id'] as num?)?.toInt() == babyId));
+        final idx = babies
+            .indexWhere((raw) => ((raw['id'] as num?)?.toInt() == babyId));
         if (idx < 0) return 0;
         babies.removeAt(idx);
         await _webWriteList(prefs, 'babies', babies);
@@ -1920,7 +2261,8 @@ INSERT INTO babies(
     return db.transaction((txn) async {
       final motherId = await txn.insert('mothers', {
         'name': motherName.trim(),
-        'phone': motherPhone?.trim().isEmpty == true ? null : motherPhone?.trim(),
+        'phone':
+            motherPhone?.trim().isEmpty == true ? null : motherPhone?.trim(),
         'created_at': DateTime.now().toIso8601String(),
       });
 
@@ -1928,7 +2270,9 @@ INSERT INTO babies(
         'mother_id': motherId,
         'name': babyName.trim(),
         'birth_date': babyBirthDate?.toIso8601String(),
-        'zodiac_sign': babyZodiacSign?.trim().isEmpty == true ? null : babyZodiacSign?.trim(),
+        'zodiac_sign': babyZodiacSign?.trim().isEmpty == true
+            ? null
+            : babyZodiacSign?.trim(),
         'weight_kg': babyWeightKg,
         'height_cm': babyHeightCm,
         'created_at': DateTime.now().toIso8601String(),
@@ -1954,6 +2298,9 @@ SELECT
   zodiac_sign,
   weight_kg,
   height_cm,
+  first_baby,
+  onboarding_concerns_json,
+  onboarding_goals_json,
   photo_b64,
   photo_url,
   cloud_id,
@@ -2029,7 +2376,25 @@ LIMIT 1
     final db = await database;
     final rows = await db.query(
       'mothers',
-      columns: ['id', 'name', 'phone', 'birth_date', 'height_cm', 'father_height_cm', 'photo_b64', 'photo_url', 'cloud_id', 'created_at'],
+      columns: [
+        'id',
+        'name',
+        'phone',
+        'birth_date',
+        'height_cm',
+        'father_name',
+        'father_height_cm',
+        'father_birth_date',
+        'father_photo_b64',
+        'father_photo_url',
+        'register_father',
+        'show_family_christian',
+        'show_family_horoscope',
+        'photo_b64',
+        'photo_url',
+        'cloud_id',
+        'created_at'
+      ],
       where: 'id = ?',
       whereArgs: [motherId],
       limit: 1,
@@ -2038,7 +2403,8 @@ LIMIT 1
   }
 
   /// Corrige só o FK quando a linha [mothers] ficou inconsistente após erro/migração.
-  Future<void> patchBabyMotherId({required int babyId, required int motherId}) async {
+  Future<void> patchBabyMotherId(
+      {required int babyId, required int motherId}) async {
     if (kIsWeb) {
       return _webSerialized(() async {
         final prefs = await _webPrefs();
@@ -2063,7 +2429,8 @@ LIMIT 1
     );
   }
 
-  Future<void> updateMotherPhoto({required int motherId, String? photoB64}) async {
+  Future<void> updateMotherPhoto(
+      {required int motherId, String? photoB64}) async {
     final pb = photoB64?.trim().isEmpty == true ? null : photoB64?.trim();
     if (kIsWeb) {
       return _webSerialized(() async {
@@ -2115,7 +2482,31 @@ LIMIT 1
     );
   }
 
-  Future<void> persistMotherPhotoUrl({required int motherId, required String photoUrl}) async {
+  Future<void> persistFatherPhotoUrl(
+      {required int motherId, required String photoUrl}) async {
+    final u = photoUrl.trim();
+    if (u.isEmpty) return;
+    if (kIsWeb) {
+      return _webSerialized(() async {
+        final prefs = await _webPrefs();
+        final mothers = _webReadList(prefs, 'mothers');
+        for (final m in mothers) {
+          final id = (m['id'] as num?)?.toInt();
+          if (id == motherId) {
+            m['father_photo_url'] = u;
+            break;
+          }
+        }
+        await _webWriteList(prefs, 'mothers', mothers);
+      });
+    }
+    final db = await database;
+    await db.update('mothers', {'father_photo_url': u, 'father_photo_b64': null},
+        where: 'id = ?', whereArgs: [motherId]);
+  }
+
+  Future<void> persistMotherPhotoUrl(
+      {required int motherId, required String photoUrl}) async {
     final u = photoUrl.trim();
     if (u.isEmpty) return;
     if (kIsWeb) {
@@ -2134,10 +2525,12 @@ LIMIT 1
     }
     final db = await database;
     // Se temos URL (Storage), não precisamos manter base64 local.
-    await db.update('mothers', {'photo_url': u, 'photo_b64': null}, where: 'id = ?', whereArgs: [motherId]);
+    await db.update('mothers', {'photo_url': u, 'photo_b64': null},
+        where: 'id = ?', whereArgs: [motherId]);
   }
 
-  Future<void> persistBabyPhotoUrl({required int babyId, required String photoUrl}) async {
+  Future<void> persistBabyPhotoUrl(
+      {required int babyId, required String photoUrl}) async {
     final u = photoUrl.trim();
     if (u.isEmpty) return;
     if (kIsWeb) {
@@ -2156,7 +2549,8 @@ LIMIT 1
     }
     final db = await database;
     // Se temos URL (Storage), não precisamos manter base64 local.
-    await db.update('babies', {'photo_url': u, 'photo_b64': null}, where: 'id = ?', whereArgs: [babyId]);
+    await db.update('babies', {'photo_url': u, 'photo_b64': null},
+        where: 'id = ?', whereArgs: [babyId]);
   }
 
   Future<void> updateBabySex({required int babyId, required String sex}) async {
@@ -2176,7 +2570,41 @@ LIMIT 1
       });
     }
     final db = await database;
-    await db.update('babies', {'sex': sx}, where: 'id = ?', whereArgs: [babyId]);
+    await db.update('babies', {'sex': sx},
+        where: 'id = ?', whereArgs: [babyId]);
+  }
+
+  Future<void> updateMotherFamilyMessagePrefs({
+    required int motherId,
+    required bool showChristian,
+    required bool showHoroscope,
+  }) async {
+    if (kIsWeb) {
+      return _webSerialized(() async {
+        final prefs = await _webPrefs();
+        final mothers = _webReadList(prefs, 'mothers');
+        for (var i = 0; i < mothers.length; i++) {
+          final m = Map<String, Object?>.from(mothers[i] as Map);
+          if ((m['id'] as num?)?.toInt() == motherId) {
+            m['show_family_christian'] = showChristian ? 1 : 0;
+            m['show_family_horoscope'] = showHoroscope ? 1 : 0;
+            mothers[i] = m;
+            break;
+          }
+        }
+        await _webWriteList(prefs, 'mothers', mothers);
+      });
+    }
+    final db = await database;
+    await db.update(
+      'mothers',
+      {
+        'show_family_christian': showChristian ? 1 : 0,
+        'show_family_horoscope': showHoroscope ? 1 : 0,
+      },
+      where: 'id = ?',
+      whereArgs: [motherId],
+    );
   }
 
   Future<void> updateMother({
@@ -2185,14 +2613,24 @@ LIMIT 1
     String? phone,
     DateTime? birthDate,
     double? heightCm,
+    String? fatherName,
     double? fatherHeightCm,
+    DateTime? fatherBirthDate,
+    bool? registerFather,
     String? photoB64,
+    String? fatherPhotoB64,
+    bool? showFamilyChristian,
+    bool? showFamilyHoroscope,
     bool resetProfilePhotoUrl = false,
+    bool resetFatherPhotoUrl = false,
   }) async {
     final n = name.trim();
     if (n.isEmpty) throw ArgumentError.value(name, 'name', 'Must be non-empty');
     final p = phone?.trim().isEmpty == true ? null : phone?.trim();
+    final fn = fatherName?.trim().isEmpty == true ? null : fatherName?.trim();
     final pb = photoB64?.trim().isEmpty == true ? null : photoB64?.trim();
+    final fpb =
+        fatherPhotoB64?.trim().isEmpty == true ? null : fatherPhotoB64?.trim();
 
     if (kIsWeb) {
       return _webSerialized(() async {
@@ -2205,9 +2643,22 @@ LIMIT 1
             m['phone'] = p;
             m['birth_date'] = birthDate?.toIso8601String();
             m['height_cm'] = heightCm;
+            m['father_name'] = fn;
             m['father_height_cm'] = fatherHeightCm;
+            m['father_birth_date'] = fatherBirthDate?.toIso8601String();
+            if (registerFather != null) {
+              m['register_father'] = registerFather ? 1 : 0;
+            }
             m['photo_b64'] = pb;
+            m['father_photo_b64'] = fpb;
+            if (showFamilyChristian != null) {
+              m['show_family_christian'] = showFamilyChristian! ? 1 : 0;
+            }
+            if (showFamilyHoroscope != null) {
+              m['show_family_horoscope'] = showFamilyHoroscope! ? 1 : 0;
+            }
             if (resetProfilePhotoUrl) m['photo_url'] = null;
+            if (resetFatherPhotoUrl) m['father_photo_url'] = null;
             mothers[i] = m;
             break;
           }
@@ -2221,10 +2672,23 @@ LIMIT 1
       'phone': p,
       'birth_date': birthDate?.toIso8601String(),
       'height_cm': heightCm,
+      'father_name': fn,
       'father_height_cm': fatherHeightCm,
+      'father_birth_date': fatherBirthDate?.toIso8601String(),
       'photo_b64': pb,
+      'father_photo_b64': fpb,
     };
+    if (registerFather != null) {
+      patch['register_father'] = registerFather ? 1 : 0;
+    }
+    if (showFamilyChristian != null) {
+      patch['show_family_christian'] = showFamilyChristian! ? 1 : 0;
+    }
+    if (showFamilyHoroscope != null) {
+      patch['show_family_horoscope'] = showFamilyHoroscope! ? 1 : 0;
+    }
     if (resetProfilePhotoUrl) patch['photo_url'] = null;
+    if (resetFatherPhotoUrl) patch['father_photo_url'] = null;
     await db.update(
       'mothers',
       patch,
@@ -2259,7 +2723,8 @@ LIMIT 1
           final b = Map<String, Object?>.from(babies[i] as Map);
           if ((b['id'] as num?)?.toInt() == babyId) {
             if ((b['mother_id'] as num?)?.toInt() != motherId) {
-              throw StateError('Baby $babyId does not belong to mother $motherId');
+              throw StateError(
+                  'Baby $babyId does not belong to mother $motherId');
             }
             b['name'] = n;
             b['sex'] = sx;
@@ -2297,7 +2762,8 @@ LIMIT 1
   }
 
   /// ID do documento Firestore associado (sincronização de perfil na nuvem).
-  Future<void> setMotherCloudId({required int motherId, required String cloudId}) async {
+  Future<void> setMotherCloudId(
+      {required int motherId, required String cloudId}) async {
     if (kIsWeb) {
       return _webSerialized(() async {
         final prefs = await _webPrefs();
@@ -2314,11 +2780,13 @@ LIMIT 1
       });
     }
     final db = await database;
-    await db.update('mothers', {'cloud_id': cloudId}, where: 'id = ?', whereArgs: [motherId]);
+    await db.update('mothers', {'cloud_id': cloudId},
+        where: 'id = ?', whereArgs: [motherId]);
   }
 
   /// ID do documento Firestore associado (sincronização de perfil na nuvem).
-  Future<void> setBabyCloudId({required int babyId, required String cloudId}) async {
+  Future<void> setBabyCloudId(
+      {required int babyId, required String cloudId}) async {
     if (kIsWeb) {
       return _webSerialized(() async {
         final prefs = await _webPrefs();
@@ -2335,7 +2803,8 @@ LIMIT 1
       });
     }
     final db = await database;
-    await db.update('babies', {'cloud_id': cloudId}, where: 'id = ?', whereArgs: [babyId]);
+    await db.update('babies', {'cloud_id': cloudId},
+        where: 'id = ?', whereArgs: [babyId]);
   }
 
   Future<List<Map<String, Object?>>> listMothersWithBabies() async {
@@ -2346,7 +2815,9 @@ LIMIT 1
       final out = <Map<String, Object?>>[];
       for (final m in mothers) {
         final mid = (m['id'] as num).toInt();
-        final mb = babies.where((b) => (b['mother_id'] as num).toInt() == mid).toList();
+        final mb = babies
+            .where((b) => (b['mother_id'] as num).toInt() == mid)
+            .toList();
         if (mb.isEmpty) {
           out.add({
             'mother_id': mid,
@@ -2354,7 +2825,9 @@ LIMIT 1
             'mother_phone': m['phone'],
             'mother_birth_date': m['birth_date'],
             'mother_height_cm': m['height_cm'],
+            'mother_father_name': m['father_name'],
             'mother_father_height_cm': m['father_height_cm'],
+            'mother_father_birth_date': m['father_birth_date'],
             'mother_created_at': m['created_at'],
             'baby_id': null,
             'baby_name': null,
@@ -2372,7 +2845,9 @@ LIMIT 1
               'mother_phone': m['phone'],
               'mother_birth_date': m['birth_date'],
               'mother_height_cm': m['height_cm'],
+              'mother_father_name': m['father_name'],
               'mother_father_height_cm': m['father_height_cm'],
+              'mother_father_birth_date': m['father_birth_date'],
               'mother_created_at': m['created_at'],
               'baby_id': b['id'],
               'baby_name': b['name'],
@@ -2395,7 +2870,9 @@ SELECT
   m.phone AS mother_phone,
   m.birth_date AS mother_birth_date,
   m.height_cm AS mother_height_cm,
+  m.father_name AS mother_father_name,
   m.father_height_cm AS mother_father_height_cm,
+  m.father_birth_date AS mother_father_birth_date,
   m.created_at AS mother_created_at,
   b.id AS baby_id,
   b.name AS baby_name,
@@ -2419,7 +2896,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
     String? notes,
   }) async {
     final nm = name.trim();
-    if (nm.isEmpty) throw ArgumentError.value(name, 'name', 'Must be non-empty');
+    if (nm.isEmpty)
+      throw ArgumentError.value(name, 'name', 'Must be non-empty');
     final created = DateTime.now().toIso8601String();
     final d = dose?.trim().isEmpty == true ? null : dose?.trim();
     final n = notes?.trim().isEmpty == true ? null : notes?.trim();
@@ -2464,7 +2942,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
     if (kIsWeb) {
       final prefs = await _webPrefs();
       final list = _webReadList(prefs, 'vaccines');
-      final filtered = list.where((r) => (r['baby_id'] as num?)?.toInt() == babyId).toList();
+      final filtered =
+          list.where((r) => (r['baby_id'] as num?)?.toInt() == babyId).toList();
       filtered.sort((a, b) {
         final aa = a['applied_at'] as String? ?? '';
         final bb = b['applied_at'] as String? ?? '';
@@ -2495,7 +2974,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
     String? notes,
   }) async {
     final nm = name.trim();
-    if (nm.isEmpty) throw ArgumentError.value(name, 'name', 'Must be non-empty');
+    if (nm.isEmpty)
+      throw ArgumentError.value(name, 'name', 'Must be non-empty');
     final d = dose?.trim().isEmpty == true ? null : dose?.trim();
     final n = notes?.trim().isEmpty == true ? null : notes?.trim();
 
@@ -2506,7 +2986,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
           final list = _webReadList(prefs, 'vaccines');
           final idx = list.indexWhere((raw) {
             final m = Map<String, Object?>.from(raw as Map);
-            return ((m['id'] as num?)?.toInt() == id) && ((m['baby_id'] as num?)?.toInt() == babyId);
+            return ((m['id'] as num?)?.toInt() == id) &&
+                ((m['baby_id'] as num?)?.toInt() == babyId);
           });
           if (idx < 0) return 0;
           final prev = Map<String, Object?>.from(list[idx] as Map);
@@ -2550,7 +3031,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
           final before = list.length;
           list.removeWhere((raw) {
             final m = Map<String, Object?>.from(raw as Map);
-            return ((m['id'] as num?)?.toInt() == id) && ((m['baby_id'] as num?)?.toInt() == babyId);
+            return ((m['id'] as num?)?.toInt() == id) &&
+                ((m['baby_id'] as num?)?.toInt() == babyId);
           });
           if (list.length == before) return 0;
           await _webWriteList(prefs, 'vaccines', list);
@@ -2573,7 +3055,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
     required int babyId,
     required DateTime calendarDay,
   }) async {
-    final start = DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
+    final start =
+        DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
     final end = start.add(const Duration(days: 1));
     final startIso = start.toIso8601String();
     final endIso = end.toIso8601String();
@@ -2589,8 +3072,10 @@ ORDER BY m.created_at DESC, b.created_at DESC
         out.add(m);
       }
       out.sort((a, b) {
-        final aa = DateTime.tryParse(a['applied_at'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final bb = DateTime.tryParse(b['applied_at'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final aa = DateTime.tryParse(a['applied_at'] as String? ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        final bb = DateTime.tryParse(b['applied_at'] as String? ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
         final c = aa.compareTo(bb);
         if (c != 0) return c;
         final ac = a['created_at'] as String? ?? '';
@@ -2603,7 +3088,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
     final db = await database;
     return db.query(
       'vaccines',
-      where: 'baby_id = ? AND applied_at IS NOT NULL AND applied_at >= ? AND applied_at < ?',
+      where:
+          'baby_id = ? AND applied_at IS NOT NULL AND applied_at >= ? AND applied_at < ?',
       whereArgs: [babyId, startIso, endIso],
       orderBy: 'applied_at ASC, created_at ASC',
     );
@@ -2619,7 +3105,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
       return null;
     }
     final db = await database;
-    final rows = await db.query('vaccines', where: 'id = ?', whereArgs: [id], limit: 1);
+    final rows =
+        await db.query('vaccines', where: 'id = ?', whereArgs: [id], limit: 1);
     if (rows.isEmpty) return null;
     return rows.first;
   }
@@ -2629,7 +3116,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
     required int babyId,
     required DateTime calendarDay,
   }) async {
-    final start = DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
+    final start =
+        DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
     final end = start.add(const Duration(days: 1));
     final startIso = start.toIso8601String();
     final endIso = end.toIso8601String();
@@ -2645,8 +3133,10 @@ ORDER BY m.created_at DESC, b.created_at DESC
         out.add(m);
       }
       out.sort((a, b) {
-        final aa = DateTime.tryParse(a['next_due_at'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final bb = DateTime.tryParse(b['next_due_at'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final aa = DateTime.tryParse(a['next_due_at'] as String? ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        final bb = DateTime.tryParse(b['next_due_at'] as String? ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
         final c = aa.compareTo(bb);
         if (c != 0) return c;
         final ac = a['created_at'] as String? ?? '';
@@ -2659,7 +3149,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
     final db = await database;
     return db.query(
       'vaccines',
-      where: 'baby_id = ? AND next_due_at IS NOT NULL AND next_due_at >= ? AND next_due_at < ?',
+      where:
+          'baby_id = ? AND next_due_at IS NOT NULL AND next_due_at >= ? AND next_due_at < ?',
       whereArgs: [babyId, startIso, endIso],
       orderBy: 'next_due_at ASC, created_at ASC',
     );
@@ -2669,7 +3160,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
     required int babyId,
     required DateTime calendarDay,
   }) async {
-    final start = DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
+    final start =
+        DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
     final end = start.add(const Duration(days: 1));
     final startIso = start.toIso8601String();
     final endIso = end.toIso8601String();
@@ -2685,8 +3177,10 @@ ORDER BY m.created_at DESC, b.created_at DESC
         out.add(m);
       }
       out.sort((a, b) {
-        final aa = DateTime.tryParse(a['occurred_at'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final bb = DateTime.tryParse(b['occurred_at'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final aa = DateTime.tryParse(a['occurred_at'] as String? ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        final bb = DateTime.tryParse(b['occurred_at'] as String? ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
         final c = aa.compareTo(bb);
         if (c != 0) return c;
         final ac = a['created_at'] as String? ?? '';
@@ -2705,13 +3199,18 @@ ORDER BY m.created_at DESC, b.created_at DESC
     );
   }
 
-  Future<List<Map<String, Object?>>> listConsultations({required int babyId}) async {
+  Future<List<Map<String, Object?>>> listConsultations(
+      {required int babyId}) async {
     if (kIsWeb) {
       final prefs = await _webPrefs();
-      final filtered = _webReadList(prefs, 'consultations').where((r) => (r['baby_id'] as num?)?.toInt() == babyId).toList();
+      final filtered = _webReadList(prefs, 'consultations')
+          .where((r) => (r['baby_id'] as num?)?.toInt() == babyId)
+          .toList();
       filtered.sort((a, b) {
-        final aa = DateTime.tryParse(a['occurred_at'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final bb = DateTime.tryParse(b['occurred_at'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final aa = DateTime.tryParse(a['occurred_at'] as String? ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        final bb = DateTime.tryParse(b['occurred_at'] as String? ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
         final c = bb.compareTo(aa);
         if (c != 0) return c;
         final ac = a['created_at'] as String? ?? '';
@@ -2730,7 +3229,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
   }
 
   /// Próxima consulta futura (por `occurred_at`), ou `null`.
-  Future<Map<String, Object?>?> nextUpcomingConsultation({required int babyId}) async {
+  Future<Map<String, Object?>?> nextUpcomingConsultation(
+      {required int babyId}) async {
     final nowIso = DateTime.now().toIso8601String();
     if (kIsWeb) {
       final prefs = await _webPrefs();
@@ -2759,12 +3259,14 @@ ORDER BY m.created_at DESC, b.created_at DESC
     return rows.isEmpty ? null : rows.first;
   }
 
-  Future<Map<String, Object?>?> getConsultation({required int id, required int babyId}) async {
+  Future<Map<String, Object?>?> getConsultation(
+      {required int id, required int babyId}) async {
     if (kIsWeb) {
       final prefs = await _webPrefs();
       for (final raw in _webReadList(prefs, 'consultations')) {
         final m = Map<String, Object?>.from(raw as Map);
-        if ((m['id'] as num?)?.toInt() == id && (m['baby_id'] as num?)?.toInt() == babyId) {
+        if ((m['id'] as num?)?.toInt() == id &&
+            (m['baby_id'] as num?)?.toInt() == babyId) {
           return m;
         }
       }
@@ -2789,7 +3291,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
     String? address,
   }) async {
     final t = title.trim();
-    if (t.isEmpty) throw ArgumentError.value(title, 'title', 'Must be non-empty');
+    if (t.isEmpty)
+      throw ArgumentError.value(title, 'title', 'Must be non-empty');
     final n = notes?.trim().isEmpty == true ? null : notes?.trim();
     final ph = phone?.trim().isEmpty == true ? null : phone?.trim();
     final addr = address?.trim().isEmpty == true ? null : address?.trim();
@@ -2841,7 +3344,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
     String? address,
   }) async {
     final t = title.trim();
-    if (t.isEmpty) throw ArgumentError.value(title, 'title', 'Must be non-empty');
+    if (t.isEmpty)
+      throw ArgumentError.value(title, 'title', 'Must be non-empty');
     final n = notes?.trim().isEmpty == true ? null : notes?.trim();
     final ph = phone?.trim().isEmpty == true ? null : phone?.trim();
     final addr = address?.trim().isEmpty == true ? null : address?.trim();
@@ -2853,7 +3357,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
           final list = _webReadList(prefs, 'consultations');
           final idx = list.indexWhere((raw) {
             final m = Map<String, Object?>.from(raw as Map);
-            return ((m['id'] as num?)?.toInt() == id) && ((m['baby_id'] as num?)?.toInt() == babyId);
+            return ((m['id'] as num?)?.toInt() == id) &&
+                ((m['baby_id'] as num?)?.toInt() == babyId);
           });
           if (idx < 0) return 0;
           final prev = Map<String, Object?>.from(list[idx] as Map);
@@ -2897,7 +3402,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
           final before = list.length;
           list.removeWhere((raw) {
             final m = Map<String, Object?>.from(raw as Map);
-            return ((m['id'] as num?)?.toInt() == id) && ((m['baby_id'] as num?)?.toInt() == babyId);
+            return ((m['id'] as num?)?.toInt() == id) &&
+                ((m['baby_id'] as num?)?.toInt() == babyId);
           });
           if (list.length == before) return 0;
           await _webWriteList(prefs, 'consultations', list);
@@ -2915,13 +3421,18 @@ ORDER BY m.created_at DESC, b.created_at DESC
     }
   }
 
-  Future<List<Map<String, Object?>>> listSymptomReports({required int babyId}) async {
+  Future<List<Map<String, Object?>>> listSymptomReports(
+      {required int babyId}) async {
     if (kIsWeb) {
       final prefs = await _webPrefs();
-      final filtered = _webReadList(prefs, 'symptom_reports').where((r) => (r['baby_id'] as num?)?.toInt() == babyId).toList();
+      final filtered = _webReadList(prefs, 'symptom_reports')
+          .where((r) => (r['baby_id'] as num?)?.toInt() == babyId)
+          .toList();
       filtered.sort((a, b) {
-        final aa = DateTime.tryParse(a['occurred_at'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final bb = DateTime.tryParse(b['occurred_at'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final aa = DateTime.tryParse(a['occurred_at'] as String? ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        final bb = DateTime.tryParse(b['occurred_at'] as String? ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
         final c = bb.compareTo(aa);
         if (c != 0) return c;
         final ac = (a['id'] as num?)?.toInt() ?? 0;
@@ -2945,8 +3456,10 @@ ORDER BY m.created_at DESC, b.created_at DESC
     required DateTime periodStart,
     required DateTime periodEndInclusive,
   }) async {
-    final start = DateTime(periodStart.year, periodStart.month, periodStart.day);
-    final endDay = DateTime(periodEndInclusive.year, periodEndInclusive.month, periodEndInclusive.day);
+    final start =
+        DateTime(periodStart.year, periodStart.month, periodStart.day);
+    final endDay = DateTime(periodEndInclusive.year, periodEndInclusive.month,
+        periodEndInclusive.day);
     final periodEndExclusive = endDay.add(const Duration(days: 1));
     final startIso = start.toIso8601String();
     final endIso = periodEndExclusive.toIso8601String();
@@ -2958,12 +3471,16 @@ ORDER BY m.created_at DESC, b.created_at DESC
         final m = Map<String, Object?>.from(raw as Map);
         if ((m['baby_id'] as num?)?.toInt() != babyId) continue;
         final oc = DateTime.tryParse(m['occurred_at'] as String? ?? '');
-        if (oc == null || oc.isBefore(start) || !oc.isBefore(periodEndExclusive)) continue;
+        if (oc == null ||
+            oc.isBefore(start) ||
+            !oc.isBefore(periodEndExclusive)) continue;
         out.add(m);
       }
       out.sort((a, b) {
-        final aa = DateTime.tryParse(a['occurred_at'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final bb = DateTime.tryParse(b['occurred_at'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final aa = DateTime.tryParse(a['occurred_at'] as String? ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        final bb = DateTime.tryParse(b['occurred_at'] as String? ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
         final c = aa.compareTo(bb);
         if (c != 0) return c;
         final ac = (a['id'] as num?)?.toInt() ?? 0;
@@ -2982,12 +3499,14 @@ ORDER BY m.created_at DESC, b.created_at DESC
     );
   }
 
-  Future<Map<String, Object?>?> getSymptomReport({required int id, required int babyId}) async {
+  Future<Map<String, Object?>?> getSymptomReport(
+      {required int id, required int babyId}) async {
     if (kIsWeb) {
       final prefs = await _webPrefs();
       for (final raw in _webReadList(prefs, 'symptom_reports')) {
         final m = Map<String, Object?>.from(raw as Map);
-        if ((m['id'] as num?)?.toInt() == id && (m['baby_id'] as num?)?.toInt() == babyId) {
+        if ((m['id'] as num?)?.toInt() == id &&
+            (m['baby_id'] as num?)?.toInt() == babyId) {
           return m;
         }
       }
@@ -3015,7 +3534,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
     required bool reflux,
     String? otherNote,
   }) async {
-    final med = medicationNote?.trim().isEmpty == true ? null : medicationNote?.trim();
+    final med =
+        medicationNote?.trim().isEmpty == true ? null : medicationNote?.trim();
     final other = otherNote?.trim().isEmpty == true ? null : otherNote?.trim();
     final now = DateTime.now().toIso8601String();
 
@@ -3079,7 +3599,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
     required bool reflux,
     String? otherNote,
   }) async {
-    final med = medicationNote?.trim().isEmpty == true ? null : medicationNote?.trim();
+    final med =
+        medicationNote?.trim().isEmpty == true ? null : medicationNote?.trim();
     final other = otherNote?.trim().isEmpty == true ? null : otherNote?.trim();
     final now = DateTime.now().toIso8601String();
 
@@ -3090,7 +3611,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
           final list = _webReadList(prefs, 'symptom_reports');
           final idx = list.indexWhere((raw) {
             final m = Map<String, Object?>.from(raw as Map);
-            return ((m['id'] as num?)?.toInt() == id) && ((m['baby_id'] as num?)?.toInt() == babyId);
+            return ((m['id'] as num?)?.toInt() == id) &&
+                ((m['baby_id'] as num?)?.toInt() == babyId);
           });
           if (idx < 0) return 0;
           final prev = Map<String, Object?>.from(list[idx] as Map);
@@ -3135,7 +3657,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
     }
   }
 
-  Future<int> deleteSymptomReport({required int id, required int babyId}) async {
+  Future<int> deleteSymptomReport(
+      {required int id, required int babyId}) async {
     try {
       if (kIsWeb) {
         return await _webSerialized(() async {
@@ -3144,7 +3667,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
           final before = list.length;
           list.removeWhere((raw) {
             final m = Map<String, Object?>.from(raw as Map);
-            return ((m['id'] as num?)?.toInt() == id) && ((m['baby_id'] as num?)?.toInt() == babyId);
+            return ((m['id'] as num?)?.toInt() == id) &&
+                ((m['baby_id'] as num?)?.toInt() == babyId);
           });
           if (list.length == before) return 0;
           await _webWriteList(prefs, 'symptom_reports', list);
@@ -3224,7 +3748,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
   ///
   /// Ordena sempre por **fim**, não pela lista truncada por `started_at`: assim, ao **excluir** o último registro,
   /// o “último” volta corretamente ao anterior (evita janela de N linhas errada).
-  Future<DateTime?> latestBreastOrBottleFeedingEndedAt({required int babyId}) async {
+  Future<DateTime?> latestBreastOrBottleFeedingEndedAt(
+      {required int babyId}) async {
     if (kIsWeb) {
       final prefs = await _webPrefs();
       final feedings = _webReadList(prefs, 'feedings');
@@ -3293,7 +3818,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
     required int babyId,
     required DateTime calendarDay,
   }) async {
-    final start = DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
+    final start =
+        DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
     final end = start.add(const Duration(days: 1));
     final startIso = start.toIso8601String();
     final endIso = end.toIso8601String();
@@ -3349,7 +3875,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
       final rows = await db.query(
         'growth_records',
         columns: ['value'],
-        where: 'baby_id = ? AND kind = ? AND measured_at >= ? AND measured_at < ?',
+        where:
+            'baby_id = ? AND kind = ? AND measured_at >= ? AND measured_at < ?',
         whereArgs: [babyId, 'weight', startIso, endIso],
         orderBy: 'measured_at DESC',
         limit: 1,
@@ -3384,11 +3911,13 @@ ORDER BY m.created_at DESC, b.created_at DESC
         if ((m['baby_id'] as num?)?.toInt() != babyId) continue;
         if (!_rowIsBreastOrBottleForLatest(m)) continue;
         final endAt = DateTime.tryParse(m['ended_at'] as String? ?? '');
-        if (endAt == null || endAt.isBefore(start) || !endAt.isBefore(end)) continue;
+        if (endAt == null || endAt.isBefore(start) || !endAt.isBefore(end))
+          continue;
         feedCount++;
         feedDurationSec += (m['duration_sec'] as num?)?.toInt() ?? 0;
       }
-      final feedingMin = feedDurationSec <= 0 ? 0 : ((feedDurationSec + 30) ~/ 60);
+      final feedingMin =
+          feedDurationSec <= 0 ? 0 : ((feedDurationSec + 30) ~/ 60);
 
       var diaperCount = 0;
       var diaperPee = 0;
@@ -3410,7 +3939,8 @@ ORDER BY m.created_at DESC, b.created_at DESC
         final m = Map<String, Object?>.from(raw as Map);
         if ((m['baby_id'] as num?)?.toInt() != babyId) continue;
         final endAt = DateTime.tryParse(m['ended_at'] as String? ?? '');
-        if (endAt == null || endAt.isBefore(start) || !endAt.isBefore(end)) continue;
+        if (endAt == null || endAt.isBefore(start) || !endAt.isBefore(end))
+          continue;
         sleepSessions++;
         sleepSec += (m['duration_sec'] as num?)?.toInt() ?? 0;
       }
@@ -3554,15 +4084,19 @@ WHERE baby_id = ?
   }
 
   /// Grava o resumo de **ontem** uma vez (dia civil já encerrado), para histórico estável.
-  Future<void> ensureYesterdayDailySummarySnapshot({required int babyId}) async {
+  Future<void> ensureYesterdayDailySummarySnapshot(
+      {required int babyId}) async {
     if (kIsWeb) return;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
-    final existing = await getDailySummarySnapshot(babyId: babyId, calendarDay: yesterday);
+    final existing =
+        await getDailySummarySnapshot(babyId: babyId, calendarDay: yesterday);
     if (existing != null) return;
-    final s = await dailySummaryForCalendarDay(babyId: babyId, calendarDay: yesterday);
-    await upsertDailySummarySnapshot(babyId: babyId, calendarDay: yesterday, summary: s);
+    final s = await dailySummaryForCalendarDay(
+        babyId: babyId, calendarDay: yesterday);
+    await upsertDailySummarySnapshot(
+        babyId: babyId, calendarDay: yesterday, summary: s);
   }
 
   /// Resumo para a Home: dias passados preferem snapshot gravado; hoje é sempre em tempo real.
@@ -3579,7 +4113,8 @@ WHERE baby_id = ?
     if (kIsWeb) {
       return dailySummaryForCalendarDay(babyId: babyId, calendarDay: day);
     }
-    final snap = await getDailySummarySnapshot(babyId: babyId, calendarDay: day);
+    final snap =
+        await getDailySummarySnapshot(babyId: babyId, calendarDay: day);
     bool looksEmpty(DailySummary s) {
       final w = s.weight.trim();
       final weightEmpty = w.isEmpty || w == '—' || w.toLowerCase() == 'null';
@@ -3595,9 +4130,11 @@ WHERE baby_id = ?
     // Nesse caso, recalculamos e substituímos para não "travar" o dia como zerado.
     if (snap != null && !looksEmpty(snap)) return snap;
 
-    final computed = await dailySummaryForCalendarDay(babyId: babyId, calendarDay: day);
+    final computed =
+        await dailySummaryForCalendarDay(babyId: babyId, calendarDay: day);
     if (snap == null || looksEmpty(snap) || !looksEmpty(computed)) {
-      await upsertDailySummarySnapshot(babyId: babyId, calendarDay: day, summary: computed);
+      await upsertDailySummarySnapshot(
+          babyId: babyId, calendarDay: day, summary: computed);
     }
     return computed;
   }
@@ -3606,7 +4143,8 @@ WHERE baby_id = ?
     required int babyId,
     required DateTime calendarDay,
   }) async {
-    final start = DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
+    final start =
+        DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
     final end = start.add(const Duration(days: 1));
     final startIso = start.toIso8601String();
     final endIso = end.toIso8601String();
@@ -3619,7 +4157,8 @@ WHERE baby_id = ?
         if ((m['baby_id'] as num?)?.toInt() != babyId) continue;
         if (!_rowIsBreastOrBottleForLatest(m)) continue;
         final endAt = DateTime.tryParse(m['ended_at'] as String? ?? '');
-        if (endAt == null || endAt.isBefore(start) || !endAt.isBefore(end)) continue;
+        if (endAt == null || endAt.isBefore(start) || !endAt.isBefore(end))
+          continue;
         if (best == null || endAt.isAfter(best)) best = endAt;
       }
       return best;
@@ -3650,7 +4189,8 @@ LIMIT 1
     required int babyId,
     required DateTime calendarDay,
   }) async {
-    final start = DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
+    final start =
+        DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
     final end = start.add(const Duration(days: 1));
     final startIso = start.toIso8601String();
     final endIso = end.toIso8601String();
@@ -3686,7 +4226,8 @@ LIMIT 1
     required int babyId,
     required DateTime calendarDay,
   }) async {
-    final start = DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
+    final start =
+        DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
     final end = start.add(const Duration(days: 1));
     final startIso = start.toIso8601String();
     final endIso = end.toIso8601String();
@@ -3698,7 +4239,8 @@ LIMIT 1
         final m = Map<String, Object?>.from(raw as Map);
         if ((m['baby_id'] as num?)?.toInt() != babyId) continue;
         final endAt = DateTime.tryParse(m['ended_at'] as String? ?? '');
-        if (endAt == null || endAt.isBefore(start) || !endAt.isBefore(end)) continue;
+        if (endAt == null || endAt.isBefore(start) || !endAt.isBefore(end))
+          continue;
         if (best == null || endAt.isAfter(best)) best = endAt;
       }
       return best;
@@ -3783,7 +4325,8 @@ LIMIT 1
       return _webSerialized(() async {
         final prefs = await _webPrefs();
         final feedings = _webReadList(prefs, 'feedings');
-        final idx = feedings.indexWhere((f) => (f['id'] as num?)?.toInt() == id);
+        final idx =
+            feedings.indexWhere((f) => (f['id'] as num?)?.toInt() == id);
         if (idx < 0) return 0;
         final existing = Map<String, Object?>.from(feedings[idx] as Map);
         if ((existing['baby_id'] as num?)?.toInt() != babyId) return 0;
@@ -3830,7 +4373,8 @@ LIMIT 1
         final before = feedings.length;
         feedings.removeWhere((f) {
           final m = Map<String, Object?>.from(f as Map);
-          return ((m['id'] as num?)?.toInt() == id) && ((m['baby_id'] as num?)?.toInt() == babyId);
+          return ((m['id'] as num?)?.toInt() == id) &&
+              ((m['baby_id'] as num?)?.toInt() == babyId);
         });
         if (feedings.length == before) return 0;
         await _webWriteList(prefs, 'feedings', feedings);
@@ -3988,11 +4532,13 @@ LIMIT 1
     return raw == null ? null : DateTime.tryParse(raw);
   }
 
-  Future<List<Map<String, Object?>>> listDiapers({required int babyId, int limit = 100}) async {
+  Future<List<Map<String, Object?>>> listDiapers(
+      {required int babyId, int limit = 100}) async {
     if (kIsWeb) {
       final prefs = await _webPrefs();
       final list = _webReadList(prefs, 'diapers');
-      final filtered = list.where((r) => (r['baby_id'] as num?)?.toInt() == babyId).toList();
+      final filtered =
+          list.where((r) => (r['baby_id'] as num?)?.toInt() == babyId).toList();
       filtered.sort((a, b) {
         final am = a['changed_at'] as String? ?? '';
         final bm = b['changed_at'] as String? ?? '';
@@ -4029,7 +4575,8 @@ LIMIT 1
         final list = _webReadList(prefs, 'diapers');
         final idx = list.indexWhere((raw) {
           final m = Map<String, Object?>.from(raw as Map);
-          return ((m['id'] as num?)?.toInt() == id) && ((m['baby_id'] as num?)?.toInt() == babyId);
+          return ((m['id'] as num?)?.toInt() == id) &&
+              ((m['baby_id'] as num?)?.toInt() == babyId);
         });
         if (idx < 0) return 0;
         final prev = Map<String, Object?>.from(list[idx] as Map);
@@ -4068,7 +4615,8 @@ LIMIT 1
         final before = list.length;
         list.removeWhere((raw) {
           final m = Map<String, Object?>.from(raw as Map);
-          return ((m['id'] as num?)?.toInt() == id) && ((m['baby_id'] as num?)?.toInt() == babyId);
+          return ((m['id'] as num?)?.toInt() == id) &&
+              ((m['baby_id'] as num?)?.toInt() == babyId);
         });
         if (list.length == before) return 0;
         await _webWriteList(prefs, 'diapers', list);
@@ -4141,7 +4689,8 @@ LIMIT 1
       final prefs = await _webPrefs();
       final list = _webReadList(prefs, 'growth_records');
       final filtered = list.where((r) {
-        return (r['baby_id'] as num?)?.toInt() == babyId && (r['kind'] as String?) == k;
+        return (r['baby_id'] as num?)?.toInt() == babyId &&
+            (r['kind'] as String?) == k;
       }).toList();
       filtered.sort((a, b) {
         final am = a['measured_at'] as String?;
@@ -4169,7 +4718,8 @@ LIMIT 1
         final before = list.length;
         list.removeWhere((raw) {
           final m = Map<String, Object?>.from(raw as Map);
-          return ((m['id'] as num?)?.toInt() == id) && ((m['baby_id'] as num?)?.toInt() == babyId);
+          return ((m['id'] as num?)?.toInt() == id) &&
+              ((m['baby_id'] as num?)?.toInt() == babyId);
         });
         if (list.length == before) return 0;
         await _webWriteList(prefs, 'growth_records', list);
@@ -4190,7 +4740,8 @@ LIMIT 1
     required double value,
     required DateTime measuredAt,
   }) async {
-    if (value <= 0) throw ArgumentError.value(value, 'value', 'Must be positive');
+    if (value <= 0)
+      throw ArgumentError.value(value, 'value', 'Must be positive');
     final iso = measuredAt.toIso8601String();
     if (kIsWeb) {
       return _webSerialized(() async {
@@ -4198,7 +4749,8 @@ LIMIT 1
         final list = _webReadList(prefs, 'growth_records');
         final idx = list.indexWhere((raw) {
           final m = Map<String, Object?>.from(raw as Map);
-          return ((m['id'] as num?)?.toInt() == id) && ((m['baby_id'] as num?)?.toInt() == babyId);
+          return ((m['id'] as num?)?.toInt() == id) &&
+              ((m['baby_id'] as num?)?.toInt() == babyId);
         });
         if (idx < 0) return 0;
         final prev = Map<String, Object?>.from(list[idx] as Map);
@@ -4228,9 +4780,11 @@ LIMIT 1
     String? quality,
     String? note,
   }) async {
-    if (durationSec < 1) throw ArgumentError.value(durationSec, 'durationSec', 'Must be positive');
+    if (durationSec < 1)
+      throw ArgumentError.value(durationSec, 'durationSec', 'Must be positive');
     final created = DateTime.now().toIso8601String();
-    final q = (quality == null || quality.trim().isEmpty) ? 'good' : quality.trim();
+    final q =
+        (quality == null || quality.trim().isEmpty) ? 'good' : quality.trim();
     final n = (note == null || note.trim().isEmpty) ? null : note.trim();
 
     if (kIsWeb) {
@@ -4278,7 +4832,8 @@ LIMIT 1
     if (kIsWeb) {
       final prefs = await _webPrefs();
       final list = _webReadList(prefs, 'sleep_records');
-      final filtered = list.where((r) => (r['baby_id'] as num?)?.toInt() == babyId).toList();
+      final filtered =
+          list.where((r) => (r['baby_id'] as num?)?.toInt() == babyId).toList();
       filtered.sort((a, b) {
         final am = a['ended_at'] as String? ?? '';
         final bm = b['ended_at'] as String? ?? '';
@@ -4301,7 +4856,8 @@ LIMIT 1
     required int babyId,
     required DateTime calendarDay,
   }) async {
-    final start = DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
+    final start =
+        DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
     final end = start.add(const Duration(days: 1));
     final startIso = start.toIso8601String();
     final endIso = end.toIso8601String();
@@ -4314,7 +4870,8 @@ LIMIT 1
         final m = Map<String, Object?>.from(raw as Map);
         if ((m['baby_id'] as num?)?.toInt() != babyId) continue;
         final endAt = DateTime.tryParse(m['ended_at'] as String? ?? '');
-        if (endAt == null || endAt.isBefore(start) || !endAt.isBefore(end)) continue;
+        if (endAt == null || endAt.isBefore(start) || !endAt.isBefore(end))
+          continue;
         out.add(m);
       }
       out.sort((a, b) {
@@ -4327,7 +4884,8 @@ LIMIT 1
     final db = await database;
     return db.query(
       'sleep_records',
-      where: 'baby_id = ? AND ended_at >= ? AND ended_at < ? AND ended_at IS NOT NULL AND TRIM(ended_at) != ?',
+      where:
+          'baby_id = ? AND ended_at >= ? AND ended_at < ? AND ended_at IS NOT NULL AND TRIM(ended_at) != ?',
       whereArgs: [babyId, startIso, endIso, ''],
       orderBy: 'started_at ASC',
     );
@@ -4338,7 +4896,8 @@ LIMIT 1
     required int babyId,
     required DateTime calendarDay,
   }) async {
-    final start = DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
+    final start =
+        DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
     final end = start.add(const Duration(days: 1));
     final startIso = start.toIso8601String();
     final endIso = end.toIso8601String();
@@ -4352,7 +4911,8 @@ LIMIT 1
         if ((m['baby_id'] as num?)?.toInt() != babyId) continue;
         if (!_rowIsBreastOrBottleForLatest(m)) continue;
         final endAt = DateTime.tryParse(m['ended_at'] as String? ?? '');
-        if (endAt == null || endAt.isBefore(start) || !endAt.isBefore(end)) continue;
+        if (endAt == null || endAt.isBefore(start) || !endAt.isBefore(end))
+          continue;
         out.add(m);
       }
       out.sort((a, b) {
@@ -4384,7 +4944,8 @@ ORDER BY ended_at ASC
     required int babyId,
     required DateTime calendarDay,
   }) async {
-    final start = DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
+    final start =
+        DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
     final end = start.add(const Duration(days: 1));
     final startIso = start.toIso8601String();
     final endIso = end.toIso8601String();
@@ -4422,7 +4983,8 @@ ORDER BY ended_at ASC
     required DateTime calendarDay,
   }) async {
     final key = _dayKey(calendarDay);
-    final start = DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
+    final start =
+        DateTime(calendarDay.year, calendarDay.month, calendarDay.day);
     final end = start.add(const Duration(days: 1));
     final startIso = start.toIso8601String();
     final endIso = end.toIso8601String();
@@ -4436,7 +4998,8 @@ ORDER BY ended_at ASC
         if ((m['baby_id'] as num?)?.toInt() != babyId) continue;
         final dk = (m['day_key'] as String?)?.trim();
         final memDt = DateTime.tryParse(m['memory_date'] as String? ?? '');
-        final inDay = dk == key || (memDt != null && !memDt.isBefore(start) && memDt.isBefore(end));
+        final inDay = dk == key ||
+            (memDt != null && !memDt.isBefore(start) && memDt.isBefore(end));
         if (!inDay) continue;
         final mood = (m['mood_at_moment'] as String?)?.trim();
         if (mood == null || mood.isEmpty) continue;
@@ -4470,7 +5033,8 @@ WHERE baby_id = ?
     if (kIsWeb) {
       final prefs = await _webPrefs();
       final list = _webReadList(prefs, 'sleep_records');
-      final filtered = list.where((r) => (r['baby_id'] as num?)?.toInt() == babyId).toList();
+      final filtered =
+          list.where((r) => (r['baby_id'] as num?)?.toInt() == babyId).toList();
       filtered.sort((a, b) {
         final am = a['ended_at'] as String? ?? '';
         final bm = b['ended_at'] as String? ?? '';
@@ -4504,8 +5068,10 @@ WHERE baby_id = ?
     String? quality,
     String? note,
   }) async {
-    if (durationSec < 1) throw ArgumentError.value(durationSec, 'durationSec', 'Must be positive');
-    final q = (quality == null || quality.trim().isEmpty) ? 'good' : quality.trim();
+    if (durationSec < 1)
+      throw ArgumentError.value(durationSec, 'durationSec', 'Must be positive');
+    final q =
+        (quality == null || quality.trim().isEmpty) ? 'good' : quality.trim();
     final n = (note == null || note.trim().isEmpty) ? null : note.trim();
 
     if (kIsWeb) {
@@ -4514,7 +5080,8 @@ WHERE baby_id = ?
         final list = _webReadList(prefs, 'sleep_records');
         final idx = list.indexWhere((raw) {
           final m = Map<String, Object?>.from(raw as Map);
-          return ((m['id'] as num?)?.toInt() == id) && ((m['baby_id'] as num?)?.toInt() == babyId);
+          return ((m['id'] as num?)?.toInt() == id) &&
+              ((m['baby_id'] as num?)?.toInt() == babyId);
         });
         if (idx < 0) return 0;
         final prev = Map<String, Object?>.from(list[idx] as Map);
@@ -4557,7 +5124,8 @@ WHERE baby_id = ?
         final before = list.length;
         list.removeWhere((raw) {
           final m = Map<String, Object?>.from(raw as Map);
-          return ((m['id'] as num?)?.toInt() == id) && ((m['baby_id'] as num?)?.toInt() == babyId);
+          return ((m['id'] as num?)?.toInt() == id) &&
+              ((m['baby_id'] as num?)?.toInt() == babyId);
         });
         if (list.length == before) return 0;
         await _webWriteList(prefs, 'sleep_records', list);
@@ -4590,7 +5158,8 @@ WHERE baby_id = ?
       final list = _webReadList(prefs, 'daily_journals');
       for (final raw in list) {
         final m = Map<String, Object?>.from(raw as Map);
-        if ((m['baby_id'] as num?)?.toInt() == babyId && (m['day_key'] as String?) == key) {
+        if ((m['baby_id'] as num?)?.toInt() == babyId &&
+            (m['day_key'] as String?) == key) {
           return (m['text'] as String?)?.trim();
         }
       }
@@ -4624,7 +5193,8 @@ WHERE baby_id = ?
         final list = _webReadList(prefs, 'daily_journals');
         for (final row in list) {
           final m = Map<String, Object?>.from(row as Map);
-          if ((m['baby_id'] as num?)?.toInt() == babyId && (m['day_key'] as String?) == key) {
+          if ((m['baby_id'] as num?)?.toInt() == babyId &&
+              (m['day_key'] as String?) == key) {
             m['text'] = stored;
             m['updated_at'] = nowIso;
             await _webWriteList(prefs, 'daily_journals', list);
@@ -4688,7 +5258,9 @@ WHERE baby_id = ?
         final m = Map<String, Object?>.from(raw as Map);
         if ((m['baby_id'] as num?)?.toInt() != babyId) continue;
         final md = DateTime.tryParse(m['memory_date'] as String? ?? '');
-        if (md == null || md.isBefore(startInclusive) || !md.isBefore(endExclusive)) continue;
+        if (md == null ||
+            md.isBefore(startInclusive) ||
+            !md.isBefore(endExclusive)) continue;
         out.add(m);
       }
       out.sort((a, b) {
@@ -4707,13 +5279,15 @@ WHERE baby_id = ?
     );
   }
 
-  Future<Map<String, Object?>?> getDailyMemory({required int babyId, DateTime? day}) async {
+  Future<Map<String, Object?>?> getDailyMemory(
+      {required int babyId, DateTime? day}) async {
     final key = _dayKey(day ?? DateTime.now());
     if (kIsWeb) {
       final prefs = await _webPrefs();
       final memories = _webReadList(prefs, 'memories');
       for (final m in memories) {
-        if ((m['baby_id'] as num?)?.toInt() == babyId && (m['day_key'] as String?) == key) {
+        if ((m['baby_id'] as num?)?.toInt() == babyId &&
+            (m['day_key'] as String?) == key) {
           return m;
         }
       }
@@ -4743,11 +5317,13 @@ WHERE baby_id = ?
         final prefs = await _webPrefs();
         final memories = _webReadList(prefs, 'memories');
         for (final m in memories) {
-          if ((m['baby_id'] as num?)?.toInt() == babyId && (m['day_key'] as String?) == key) {
+          if ((m['baby_id'] as num?)?.toInt() == babyId &&
+              (m['day_key'] as String?) == key) {
             m['photo_b64'] = pb;
             m['title'] = m['title'] ?? 'Foto do dia';
             m['emoji'] = m['emoji'] ?? '📸';
-            m['happened_at'] = m['happened_at'] ?? (day ?? DateTime.now()).toIso8601String();
+            m['happened_at'] =
+                m['happened_at'] ?? (day ?? DateTime.now()).toIso8601String();
             await _webWriteList(prefs, 'memories', memories);
             return (m['id'] as num?)?.toInt() ?? 0;
           }
@@ -4801,11 +5377,14 @@ WHERE baby_id = ?
     });
   }
 
-  Future<List<Map<String, Object?>>> listDailyMemories({required int babyId, int limit = 60}) async {
+  Future<List<Map<String, Object?>>> listDailyMemories(
+      {required int babyId, int limit = 60}) async {
     if (kIsWeb) {
       final prefs = await _webPrefs();
       final memories = _webReadList(prefs, 'memories');
-      final filtered = memories.where((m) => (m['baby_id'] as num?)?.toInt() == babyId).toList();
+      final filtered = memories
+          .where((m) => (m['baby_id'] as num?)?.toInt() == babyId)
+          .toList();
       filtered.sort((a, b) {
         final ad = (a['day_key'] as String?) ?? '';
         final bd = (b['day_key'] as String?) ?? '';
@@ -4816,18 +5395,24 @@ WHERE baby_id = ?
     final db = await database;
     return db.query(
       'memories',
-      where: 'baby_id = ? AND (photo_b64 IS NOT NULL OR photo_path IS NOT NULL)',
+      where:
+          'baby_id = ? AND (photo_b64 IS NOT NULL OR photo_path IS NOT NULL)',
       whereArgs: [babyId],
       orderBy: 'day_key DESC, created_at DESC',
       limit: limit,
     );
   }
 
-  Future<List<Map<String, Object?>>> listBabyMemories({required int babyId}) async {
+  Future<List<Map<String, Object?>>> listBabyMemories(
+      {required int babyId}) async {
     if (kIsWeb) {
       final prefs = await _webPrefs();
       final memories = _webReadList(prefs, 'memories');
-      final filtered = memories.where((m) => (m['baby_id'] as num?)?.toInt() == babyId && (m['badge_id'] as String?) != null).toList();
+      final filtered = memories
+          .where((m) =>
+              (m['baby_id'] as num?)?.toInt() == babyId &&
+              (m['badge_id'] as String?) != null)
+          .toList();
       filtered.sort((a, b) {
         final ao = (a['created_at'] as String?) ?? '';
         final bo = (b['created_at'] as String?) ?? '';
@@ -4869,21 +5454,29 @@ WHERE baby_id = ?
     final created = DateTime.now().toIso8601String();
     final pb = photoB64?.trim().isEmpty == true ? null : photoB64?.trim();
     final purl = photoUrl?.trim().isEmpty == true ? null : photoUrl?.trim();
-    final desc = description?.trim().isEmpty == true ? null : description?.trim();
-    final age = babyAgeAtMoment?.trim().isEmpty == true ? null : babyAgeAtMoment?.trim();
-    final mood = moodAtMoment?.trim().isEmpty == true ? null : moodAtMoment?.trim();
-    final notes = motherNotes?.trim().isEmpty == true ? null : motherNotes?.trim();
+    final desc =
+        description?.trim().isEmpty == true ? null : description?.trim();
+    final age = babyAgeAtMoment?.trim().isEmpty == true
+        ? null
+        : babyAgeAtMoment?.trim();
+    final mood =
+        moodAtMoment?.trim().isEmpty == true ? null : moodAtMoment?.trim();
+    final notes =
+        motherNotes?.trim().isEmpty == true ? null : motherNotes?.trim();
     final memDt = memoryDate.toIso8601String();
     final pubEn = publicEnabledAt?.toIso8601String();
     final pubDis = publicDisabledAt?.toIso8601String();
-    final wwk = weeklyPhotoWeekId?.trim().isEmpty == true ? null : weeklyPhotoWeekId?.trim();
+    final wwk = weeklyPhotoWeekId?.trim().isEmpty == true
+        ? null
+        : weeklyPhotoWeekId?.trim();
 
     if (kIsWeb) {
       return _webSerialized(() async {
         final prefs = await _webPrefs();
         final memories = _webReadList(prefs, 'memories');
         for (final m in memories) {
-          if ((m['baby_id'] as num?)?.toInt() == babyId && (m['badge_id'] as String?) == badgeId) {
+          if ((m['baby_id'] as num?)?.toInt() == babyId &&
+              (m['badge_id'] as String?) == badgeId) {
             m['title'] = title;
             m['description'] = desc;
             m['photo_b64'] = pb;
@@ -5000,4 +5593,3 @@ WHERE baby_id = ?
     });
   }
 }
-

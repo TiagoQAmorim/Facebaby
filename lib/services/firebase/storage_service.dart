@@ -37,6 +37,14 @@ class StorageService {
     return _uploadWithRetry(path: path, bytes: bytes, fileExt: fileExt);
   }
 
+  Future<String> uploadFatherPhotoBytes({
+    required Uint8List bytes,
+    required String fileExt,
+  }) async {
+    final path = 'users/$_uid/profile/father_photo.$fileExt';
+    return _uploadWithRetry(path: path, bytes: bytes, fileExt: fileExt);
+  }
+
   Future<String> uploadMemoryPhotoBytes({
     required String babyId,
     required String badgeId,

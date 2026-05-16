@@ -1,3 +1,5 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 
 import '../../i18n/app_i18n.dart';
@@ -31,6 +33,7 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen> with Widget
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       PremiumService.instance.refreshStorePricing();
+      unawaited(PremiumService.instance.syncPremiumFromFirestore());
     });
   }
 
@@ -44,6 +47,7 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen> with Widget
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       PremiumService.instance.refreshStorePricing();
+      unawaited(PremiumService.instance.syncPremiumFromFirestore());
     }
   }
 
@@ -70,7 +74,11 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen> with Widget
           break;
         case PurchaseLifetimeResult.billingLaunchFailed:
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(S.of(context).plusPurchaseBillingLaunchFailedSnack)),
+            SnackBar(
+              content:
+                  Text(S.of(context).plusPurchaseBillingLaunchFailedSnack),
+              duration: const Duration(seconds: 8),
+            ),
           );
           break;
         case PurchaseLifetimeResult.billingUnavailable:

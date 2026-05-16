@@ -22,6 +22,12 @@ abstract final class FeatureAccess {
 
   static bool get canOpenAdvancedReports => _premium;
 
+  /// Textos de signo solar (pai, mãe, bebê) na árvore Família.
+  static bool get canViewFamilyZodiac => _premium;
+
+  /// Estimativa de altura adulta na árvore Família.
+  static bool get canViewFamilyHeightEstimate => _premium;
+
   static bool memoryHasBody(BabyMemory? m) {
     if (m == null) return false;
     final photo = m.photoB64?.trim().isNotEmpty == true || m.photoUrl?.trim().isNotEmpty == true;

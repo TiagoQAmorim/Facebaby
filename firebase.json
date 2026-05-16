@@ -1,1 +1,41 @@
-{"functions":{"source":"functions"},"firestore":{"rules":"firestore.rules"},"flutter":{"platforms":{"android":{"default":{"projectId":"facebaby-afc41","appId":"1:91181989163:android:5f4ca3cf26c344677c596e","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"facebaby-afc41","configurations":{"android":"1:91181989163:android:5f4ca3cf26c344677c596e","ios":"1:91181989163:ios:fca6ab95507293657c596e","macos":"1:91181989163:ios:fca6ab95507293657c596e","web":"1:91181989163:web:c0635f7dc0047ac17c596e","windows":"1:91181989163:web:1f68fde55ae0888a7c596e"}}}}}}
+{
+  "functions": {
+    "source": "functions"
+  },
+  "hosting": {
+    "public": "public",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "headers": [
+      {
+        "source": "/brand/**",
+        "headers": [{ "key": "Cache-Control", "value": "public,max-age=604800" }]
+      }
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "facebaby-afc41",
+          "appId": "1:91181989163:android:5f4ca3cf26c344677c596e",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "facebaby-afc41",
+          "configurations": {
+            "android": "1:91181989163:android:5f4ca3cf26c344677c596e",
+            "ios": "1:91181989163:ios:fca6ab95507293657c596e",
+            "macos": "1:91181989163:ios:fca6ab95507293657c596e",
+            "web": "1:91181989163:web:c0635f7dc0047ac17c596e",
+            "windows": "1:91181989163:web:1f68fde55ae0888a7c596e"
+          }
+        }
+      }
+    }
+  }
+}

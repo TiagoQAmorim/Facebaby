@@ -18,6 +18,12 @@ abstract final class NotificationNav {
   static const payloadDiaper = 'nav_diaper';
   static const payloadGrowth = 'nav_growth';
   static const payloadSleep = 'nav_sleep';
+  static const payloadSleepWakeOverduePrefix = 'nav_sleep_wake_overdue';
+
+  static String payloadSleepWakeOverdue(
+      {required String sex, required int hours}) {
+    return '$payloadSleepWakeOverduePrefix:$sex:$hours';
+  }
 
   /// Cold start pode montar o [Navigator] tarde — tenta algumas vezes com pequenos atrasos.
   /// Mesmo destino que ao tocar numa notificação push (ex.: lista em Início).
@@ -67,21 +73,35 @@ abstract final class NotificationNav {
 
     switch (payload) {
       case payloadFeeding:
-        pushOnTab(0, MaterialPageRoute<void>(builder: (_) => FeedingHubPage(appBarTitle: s.shortcutMilk)));
+        pushOnTab(
+            0,
+            MaterialPageRoute<void>(
+                builder: (_) => FeedingHubPage(appBarTitle: s.shortcutMilk)));
         return;
       case payloadDiaper:
-        pushOnTab(1, MaterialPageRoute<void>(builder: (_) => const DiaperPage()));
+        pushOnTab(
+            1, MaterialPageRoute<void>(builder: (_) => const DiaperPage()));
         return;
       case payloadGrowth:
-        pushOnTab(0, MaterialPageRoute<void>(builder: (_) => GrowthDashboardPage(appBarTitle: s.growth)));
+        pushOnTab(
+            0,
+            MaterialPageRoute<void>(
+                builder: (_) => GrowthDashboardPage(appBarTitle: s.growth)));
         return;
       case payloadSleep:
-        pushOnTab(1, MaterialPageRoute<void>(builder: (_) => const SleepPage()));
+        pushOnTab(
+            1, MaterialPageRoute<void>(builder: (_) => const SleepPage()));
         return;
       case 'nav_vaccines':
-        pushOnTab(0, MaterialPageRoute<void>(builder: (_) => const VaccinesPage()));
+        pushOnTab(
+            0, MaterialPageRoute<void>(builder: (_) => const VaccinesPage()));
         return;
       default:
+        if (payload.startsWith(payloadSleepWakeOverduePrefix)) {
+          pushOnTab(
+              1, MaterialPageRoute<void>(builder: (_) => const SleepPage()));
+          return;
+        }
         if (payload.startsWith('nav_consultation:')) {
           final rawId = payload.substring('nav_consultation:'.length).trim();
           final cid = int.tryParse(rawId);

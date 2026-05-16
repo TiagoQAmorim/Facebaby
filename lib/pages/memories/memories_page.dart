@@ -13,6 +13,7 @@ import '../../models/memory_badge.dart';
 import '../../services/app_database.dart';
 import '../../services/memory_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/portal_time_of_day.dart';
 import '../../utils/memory_album_pdf.dart';
 import '../../utils/memory_share_transport.dart';
 import '../premium/premium_paywall_screen.dart';
@@ -231,6 +232,9 @@ class _MemoriesPageState extends State<MemoriesPage> with AutomaticKeepAliveClie
   Widget build(BuildContext context) {
     super.build(context);
     final s = S.of(context);
+    final nightTitleColor = PortalTimeOfDay.isNight(DateTime.now())
+        ? PortalTimeOfDay.nightTextColor
+        : null;
     final babyId = currentBaby.currentBabyId;
     final babyRow = currentBaby.currentBabyRow;
     final badges = MemoryBadgesCatalog.all();
@@ -258,14 +262,24 @@ class _MemoriesPageState extends State<MemoriesPage> with AutomaticKeepAliveClie
                 children: [
                   Text(
                     s.memoriesTitle,
-                    style: TextStyle(fontSize: portalSp(context, 28), fontWeight: FontWeight.w900, height: 1.15),
+                    style: TextStyle(
+                      fontSize: portalSp(context, 28),
+                      fontWeight: FontWeight.w900,
+                      height: 1.15,
+                      color: nightTitleColor,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     s.memoriesSubtitle,
                     maxLines: 4,
                     softWrap: true,
-                    style: TextStyle(color: AppTheme.textPrimary.withAlpha(170), height: 1.35, fontSize: portalSp(context, 14)),
+                    style: TextStyle(
+                      color: nightTitleColor ??
+                          AppTheme.textPrimary.withAlpha(170),
+                      height: 1.35,
+                      fontSize: portalSp(context, 14),
+                    ),
                   ),
                 ],
               ),

@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/memory_badge.dart';
+import '../services/firebase/auth_registration_exception.dart';
+import '../utils/zodiac_element.dart';
+import '../utils/zodiac_keys.dart';
 import 'development_leaps_translated.dart';
 
 // Common languages across Play Store / App Store audiences.
@@ -126,7 +129,8 @@ class AppLanguageController extends ChangeNotifier {
 }
 
 class AppI18nScope extends InheritedNotifier<AppLanguageController> {
-  const AppI18nScope({super.key, required super.notifier, required super.child});
+  const AppI18nScope(
+      {super.key, required super.notifier, required super.child});
 
   static AppLanguageController of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppI18nScope>();
@@ -144,6 +148,15 @@ class S {
   const S(this.lang);
 
   static S of(BuildContext context) => S(AppI18nScope.of(context).lang);
+
+  static bool _isMaleBabySex(String? sex) {
+    final sx = sex?.trim().toUpperCase();
+    return sx == 'M' ||
+        sx == 'MALE' ||
+        sx == 'BOY' ||
+        sx == 'MASCULINO' ||
+        sx == 'MENINO';
+  }
 
   String get appName => _t('appName');
   String get home => _t('home');
@@ -210,7 +223,10 @@ class S {
   String get plusPurchaseUnavailableSnack => _t('plusPurchaseUnavailableSnack');
   String plusPurchaseSkuNotFoundSnack(String productId) =>
       _t('plusPurchaseSkuNotFoundSnack').replaceAll('{id}', productId);
-  String get plusPurchaseBillingLaunchFailedSnack => _t('plusPurchaseBillingLaunchFailedSnack');
+  String get plusPurchaseBillingLaunchFailedSnack =>
+      _t('plusPurchaseBillingLaunchFailedSnack');
+  String get plusPurchaseAlreadyInPlayAccountSnack =>
+      _t('plusPurchaseAlreadyInPlayAccountSnack');
   String plusPaywallSkuMissingHint(String productId) =>
       _t('plusPaywallSkuMissingHint').replaceAll('{id}', productId);
   String get plusRestoreOkSnack => _t('plusRestoreOkSnack');
@@ -225,7 +241,9 @@ class S {
   String get settingsPlusUpgradeCta => _t('settingsPlusUpgradeCta');
   String get settingsPlusManageCta => _t('settingsPlusManageCta');
   String plusMemoryCounterFree(int filled, int max) =>
-      _t('plusMemoryCounterFree').replaceAll('{n}', '$filled').replaceAll('{max}', '$max');
+      _t('plusMemoryCounterFree')
+          .replaceAll('{n}', '$filled')
+          .replaceAll('{max}', '$max');
 
   String get plusLifetimePaymentBadge => _t('plusLifetimePaymentBadge');
   String get plusNoMonthlyBadge => _t('plusNoMonthlyBadge');
@@ -237,25 +255,33 @@ class S {
   String get reportDailyScreenTitle => _t('reportDailyScreenTitle');
   String get reportDayDetailsTitle => _t('reportDayDetailsTitle');
   String get reportDailyPickDayTooltip => _t('reportDailyPickDayTooltip');
-  String get reportDailySubtitleSleepQuality => _t('reportDailySubtitleSleepQuality');
-  String get reportDailySubtitleTotalSleep => _t('reportDailySubtitleTotalSleep');
-  String get reportDailySubtitleLongestStretch => _t('reportDailySubtitleLongestStretch');
+  String get reportDailySubtitleSleepQuality =>
+      _t('reportDailySubtitleSleepQuality');
+  String get reportDailySubtitleTotalSleep =>
+      _t('reportDailySubtitleTotalSleep');
+  String get reportDailySubtitleLongestStretch =>
+      _t('reportDailySubtitleLongestStretch');
   String get reportDailySubtitleFeedTotal => _t('reportDailySubtitleFeedTotal');
   String get reportDailySubtitleFeedAvg => _t('reportDailySubtitleFeedAvg');
   String get reportDailySubtitleFeedLast => _t('reportDailySubtitleFeedLast');
-  String get reportDailySubtitleDiaperTotal => _t('reportDailySubtitleDiaperTotal');
+  String get reportDailySubtitleDiaperTotal =>
+      _t('reportDailySubtitleDiaperTotal');
   String get reportDailySubtitleDiaperWet => _t('reportDailySubtitleDiaperWet');
-  String get reportDailySubtitleDiaperDirty => _t('reportDailySubtitleDiaperDirty');
-  String get reportDailySubtitleMoodMajority => _t('reportDailySubtitleMoodMajority');
+  String get reportDailySubtitleDiaperDirty =>
+      _t('reportDailySubtitleDiaperDirty');
+  String get reportDailySubtitleMoodMajority =>
+      _t('reportDailySubtitleMoodMajority');
   String get reportDailySubtitleMoodIrrit => _t('reportDailySubtitleMoodIrrit');
-  String get reportDailySubtitleWeightLast => _t('reportDailySubtitleWeightLast');
+  String get reportDailySubtitleWeightLast =>
+      _t('reportDailySubtitleWeightLast');
   String get reportSleepQualityGood => _t('reportSleepQualityGood');
   String get reportSleepQualityOk => _t('reportSleepQualityOk');
   String get reportSleepQualityBad => _t('reportSleepQualityBad');
   String get reportSleepQualityMixed => _t('reportSleepQualityMixed');
   String get reportVsYesterdayShort => _t('reportVsYesterdayShort');
   String get reportVsYesterdayNA => _t('reportVsYesterdayNA');
-  String reportVsYesterdayPct(String pct) => _t('reportVsYesterdayPct').replaceAll('{pct}', pct);
+  String reportVsYesterdayPct(String pct) =>
+      _t('reportVsYesterdayPct').replaceAll('{pct}', pct);
   String get reportLongestStretchHint => _t('reportLongestStretchHint');
   String get reportNapsLabel => _t('reportNapsLabel');
   String get reportTotalSmallLabel => _t('reportTotalSmallLabel');
@@ -281,7 +307,8 @@ class S {
   String get reportInsightSleepAgeLow => _t('reportInsightSleepAgeLow');
   String get reportInsightFeedsOften => _t('reportInsightFeedsOften');
   String get reportInsightDiapersFrequent => _t('reportInsightDiapersFrequent');
-  String reportInsightMoodLine(String mood) => _t('reportInsightMoodLine').replaceAll('{mood}', mood);
+  String reportInsightMoodLine(String mood) =>
+      _t('reportInsightMoodLine').replaceAll('{mood}', mood);
 
   String get reportWeeklyScreenTitle => _t('reportWeeklyScreenTitle');
   String get reportWeekDetailsTitle => _t('reportWeekDetailsTitle');
@@ -296,71 +323,100 @@ class S {
   String get reportWeeklyToneCalm => _t('reportWeeklyToneCalm');
   String get reportWeeklyToneActive => _t('reportWeeklyToneActive');
   String get reportWeeklySleepUnknown => _t('reportWeeklySleepUnknown');
-  String get reportWeeklyFirstWeekSleepLine => _t('reportWeeklyFirstWeekSleepLine');
+  String get reportWeeklyFirstWeekSleepLine =>
+      _t('reportWeeklyFirstWeekSleepLine');
   String get reportWeeklySleepStableShort => _t('reportWeeklySleepStableShort');
-  String reportWeeklySleepUp(int pct) => _t('reportWeeklySleepUp').replaceAll('{pct}', '$pct');
-  String reportWeeklySleepDown(int pct) => _t('reportWeeklySleepDown').replaceAll('{pct}', '$pct');
+  String reportWeeklySleepUp(int pct) =>
+      _t('reportWeeklySleepUp').replaceAll('{pct}', '$pct');
+  String reportWeeklySleepDown(int pct) =>
+      _t('reportWeeklySleepDown').replaceAll('{pct}', '$pct');
   String get reportWeeklyFeedStableLine => _t('reportWeeklyFeedStableLine');
-  String reportWeeklyFeedUp(int pct) => _t('reportWeeklyFeedUp').replaceAll('{pct}', '$pct');
-  String reportWeeklyFeedDown(int pct) => _t('reportWeeklyFeedDown').replaceAll('{pct}', '$pct');
-  String reportWeeklyHeroTemplate(String name, String tone, String sleep, String feed) => _t('reportWeeklyHeroTemplate')
-      .replaceAll('{name}', name)
-      .replaceAll('{tone}', tone)
-      .replaceAll('{sleep}', sleep)
-      .replaceAll('{feed}', feed);
-  String get reportWeeklyTrendLabelImproved => _t('reportWeeklyTrendLabelImproved');
+  String reportWeeklyFeedUp(int pct) =>
+      _t('reportWeeklyFeedUp').replaceAll('{pct}', '$pct');
+  String reportWeeklyFeedDown(int pct) =>
+      _t('reportWeeklyFeedDown').replaceAll('{pct}', '$pct');
+  String reportWeeklyHeroTemplate(
+          String name, String tone, String sleep, String feed) =>
+      _t('reportWeeklyHeroTemplate')
+          .replaceAll('{name}', name)
+          .replaceAll('{tone}', tone)
+          .replaceAll('{sleep}', sleep)
+          .replaceAll('{feed}', feed);
+  String get reportWeeklyTrendLabelImproved =>
+      _t('reportWeeklyTrendLabelImproved');
   String get reportWeeklyTrendLabelWorse => _t('reportWeeklyTrendLabelWorse');
   String get reportWeeklyTrendLabelStable => _t('reportWeeklyTrendLabelStable');
-  String get reportWeeklyTrendLabelUnknown => _t('reportWeeklyTrendLabelUnknown');
-  String get reportWeeklyTrendLabelEvolving => _t('reportWeeklyTrendLabelEvolving');
-  String get reportWeeklyTrendLabelIncreased => _t('reportWeeklyTrendLabelIncreased');
+  String get reportWeeklyTrendLabelUnknown =>
+      _t('reportWeeklyTrendLabelUnknown');
+  String get reportWeeklyTrendLabelEvolving =>
+      _t('reportWeeklyTrendLabelEvolving');
+  String get reportWeeklyTrendLabelIncreased =>
+      _t('reportWeeklyTrendLabelIncreased');
   String get reportWeeklyTrendNA => _t('reportWeeklyTrendNA');
   String get reportWeeklyHighlightSleep => _t('reportWeeklyHighlightSleep');
-  String get reportWeeklyHighlightFeedingStable => _t('reportWeeklyHighlightFeedingStable');
-  String get reportWeeklyHighlightDiaperUp => _t('reportWeeklyHighlightDiaperUp');
+  String get reportWeeklyHighlightFeedingStable =>
+      _t('reportWeeklyHighlightFeedingStable');
+  String get reportWeeklyHighlightDiaperUp =>
+      _t('reportWeeklyHighlightDiaperUp');
   String get reportWeeklyHighlightWeight => _t('reportWeeklyHighlightWeight');
   String get reportWeeklyHighlightGeneric => _t('reportWeeklyHighlightGeneric');
-  String reportWeeklyAvgFeedsDay(String avg) => _t('reportWeeklyAvgFeedsDay').replaceAll('{avg}', avg);
-  String reportWeeklyAvgDiapersDay(String avg) => _t('reportWeeklyAvgDiapersDay').replaceAll('{avg}', avg);
-  String get reportWeeklySleepHoursChartTitle => _t('reportWeeklySleepHoursChartTitle');
+  String reportWeeklyAvgFeedsDay(String avg) =>
+      _t('reportWeeklyAvgFeedsDay').replaceAll('{avg}', avg);
+  String reportWeeklyAvgDiapersDay(String avg) =>
+      _t('reportWeeklyAvgDiapersDay').replaceAll('{avg}', avg);
+  String get reportWeeklySleepHoursChartTitle =>
+      _t('reportWeeklySleepHoursChartTitle');
   String get reportWeeklyAvgWeekLabel => _t('reportWeeklyAvgWeekLabel');
   String get reportWeeklyVsPrevWeekShort => _t('reportWeeklyVsPrevWeekShort');
-  String get reportWeeklyInsightsCardTitle => _t('reportWeeklyInsightsCardTitle');
+  String get reportWeeklyInsightsCardTitle =>
+      _t('reportWeeklyInsightsCardTitle');
   String get reportWeeklyPatternsTitle => _t('reportWeeklyPatternsTitle');
   String get reportWeeklySeeAllAnalyses => _t('reportWeeklySeeAllAnalyses');
   String get reportWeeklyHeatmapSoon => _t('reportWeeklyHeatmapSoon');
   String get reportWeeklyFeedChartCaption => _t('reportWeeklyFeedChartCaption');
-  String get reportWeeklyDiaperChartCaption => _t('reportWeeklyDiaperChartCaption');
+  String get reportWeeklyDiaperChartCaption =>
+      _t('reportWeeklyDiaperChartCaption');
   String get reportWeeklyPatternWeekend => _t('reportWeeklyPatternWeekend');
-  String get reportWeeklyPatternFeedingDown => _t('reportWeeklyPatternFeedingDown');
+  String get reportWeeklyPatternFeedingDown =>
+      _t('reportWeeklyPatternFeedingDown');
   String get reportWeeklyPatternDefault => _t('reportWeeklyPatternDefault');
-  String get reportWeeklyInsightSleepNeutral => _t('reportWeeklyInsightSleepNeutral');
-  String get reportWeeklyInsightSleepBetter => _t('reportWeeklyInsightSleepBetter');
+  String get reportWeeklyInsightSleepNeutral =>
+      _t('reportWeeklyInsightSleepNeutral');
+  String get reportWeeklyInsightSleepBetter =>
+      _t('reportWeeklyInsightSleepBetter');
   String get reportWeeklyInsightSleepLess => _t('reportWeeklyInsightSleepLess');
   String reportWeeklyInsightTemplate(String name, String sleep) =>
-      _t('reportWeeklyInsightTemplate').replaceAll('{name}', name).replaceAll('{sleep}', sleep);
+      _t('reportWeeklyInsightTemplate')
+          .replaceAll('{name}', name)
+          .replaceAll('{sleep}', sleep);
 
   String get reportMonthlyScreenTitle => _t('reportMonthlyScreenTitle');
   String get reportMonthlyAvgWeight => _t('reportMonthlyAvgWeight');
   String get reportMonthlyAvgHeight => _t('reportMonthlyAvgHeight');
-  String get reportMonthlyGrowthChartEmpty => _t('reportMonthlyGrowthChartEmpty');
+  String get reportMonthlyGrowthChartEmpty =>
+      _t('reportMonthlyGrowthChartEmpty');
   String get reportMonthlySleepSection => _t('reportMonthlySleepSection');
   String get reportMonthlySleepAvg => _t('reportMonthlySleepAvg');
   String get reportMonthlyVsPrevMonth => _t('reportMonthlyVsPrevMonth');
   String get reportMonthlyBestWeeks => _t('reportMonthlyBestWeeks');
   String get reportMonthlySleepTrendUp => _t('reportMonthlySleepTrendUp');
   String get reportMonthlySleepTrendDown => _t('reportMonthlySleepTrendDown');
-  String get reportMonthlySleepTrendStable => _t('reportMonthlySleepTrendStable');
-  String get reportMonthlySleepTrendUnknown => _t('reportMonthlySleepTrendUnknown');
+  String get reportMonthlySleepTrendStable =>
+      _t('reportMonthlySleepTrendStable');
+  String get reportMonthlySleepTrendUnknown =>
+      _t('reportMonthlySleepTrendUnknown');
   String get reportMonthlyFeedingSection => _t('reportMonthlyFeedingSection');
   String get reportMonthlyFeedFreq => _t('reportMonthlyFeedFreq');
   String get reportMonthlySleepExplain => _t('reportMonthlySleepExplain');
   String get reportMonthlyFeedingExplain => _t('reportMonthlyFeedingExplain');
-  String get reportMonthlyPredominantHours => _t('reportMonthlyPredominantHours');
+  String get reportMonthlyPredominantHours =>
+      _t('reportMonthlyPredominantHours');
   String get reportMonthlyMilestonesTitle => _t('reportMonthlyMilestonesTitle');
   String get reportMonthlyMilestonesEmpty => _t('reportMonthlyMilestonesEmpty');
-  String get reportMonthlyMilestoneConsultationDefault => _t('reportMonthlyMilestoneConsultationDefault');
+  String get reportMonthlyMilestoneConsultationDefault =>
+      _t('reportMonthlyMilestoneConsultationDefault');
   String get reportMonthlyMemoriesTitle => _t('reportMonthlyMemoriesTitle');
+  String get homeRecentMemoriesTitle => _t('homeRecentMemoriesTitle');
   String get reportMonthlySeeAllMemories => _t('reportMonthlySeeAllMemories');
   String get reportMonthlyMemoriesEmpty => _t('reportMonthlyMemoriesEmpty');
   String get reportMonthlyVideosHint => _t('reportMonthlyVideosHint');
@@ -369,34 +425,41 @@ class S {
   String get reportSleepAdvScoreTitle => _t('reportSleepAdvScoreTitle');
   String get reportSleepAdvMetricsTitle => _t('reportSleepAdvMetricsTitle');
   String get reportSleepAdvEfficiency => _t('reportSleepAdvEfficiency');
-  String reportSleepAdvVsPrevPct(int pct) =>
-      _t('reportSleepAdvVsPrevPct').replaceAll('{pct}', pct >= 0 ? '+$pct' : '$pct');
+  String reportSleepAdvVsPrevPct(int pct) => _t('reportSleepAdvVsPrevPct')
+      .replaceAll('{pct}', pct >= 0 ? '+$pct' : '$pct');
   String get reportSleepAdvOnset => _t('reportSleepAdvOnset');
   String get reportSleepAdvAwakenings => _t('reportSleepAdvAwakenings');
-  String reportSleepAdvAwakeningsTotal(int n) => _t('reportSleepAdvAwakeningsTotal').replaceAll('{n}', '$n');
+  String reportSleepAdvAwakeningsTotal(int n) =>
+      _t('reportSleepAdvAwakeningsTotal').replaceAll('{n}', '$n');
   String get reportSleepAdvLongest => _t('reportSleepAdvLongest');
   String get reportSleepAdvAvgDailySleep => _t('reportSleepAdvAvgDailySleep');
   String get reportSleepAdvIdealTitle => _t('reportSleepAdvIdealTitle');
   String get reportSleepAdvIdealFooter => _t('reportSleepAdvIdealFooter');
-  String get reportSleepAdvSeeFullAnalysis => _t('reportSleepAdvSeeFullAnalysis');
+  String get reportSleepAdvSeeFullAnalysis =>
+      _t('reportSleepAdvSeeFullAnalysis');
   String get reportSleepAdvChartsSection => _t('reportSleepAdvChartsSection');
-  String get reportSleepAdvChartsSleepTrend => _t('reportSleepAdvChartsSleepTrend');
+  String get reportSleepAdvChartsSleepTrend =>
+      _t('reportSleepAdvChartsSleepTrend');
   String get reportSleepAdvChartsCompare => _t('reportSleepAdvChartsCompare');
-  String get reportSleepAdvChartsDistribution => _t('reportSleepAdvChartsDistribution');
+  String get reportSleepAdvChartsDistribution =>
+      _t('reportSleepAdvChartsDistribution');
   String get reportSleepAdvChartsBars => _t('reportSleepAdvChartsBars');
   String get reportSleepAdvDayPhase => _t('reportSleepAdvDayPhase');
   String get reportSleepAdvNightPhase => _t('reportSleepAdvNightPhase');
-  String get reportSleepAdvDistributionEmpty => _t('reportSleepAdvDistributionEmpty');
+  String get reportSleepAdvDistributionEmpty =>
+      _t('reportSleepAdvDistributionEmpty');
   String get reportSleepAdvLegendThisWeek => _t('reportSleepAdvLegendThisWeek');
   String get reportSleepAdvLegendPrevWeek => _t('reportSleepAdvLegendPrevWeek');
   String get reportSleepAdvScoreBreakdown => _t('reportSleepAdvScoreBreakdown');
-  String reportSleepAdvBreakdownLine(int e, int s, int a, int c) => _t('reportSleepAdvBreakdownLine')
-      .replaceAll('{e}', '$e')
-      .replaceAll('{s}', '$s')
-      .replaceAll('{a}', '$a')
-      .replaceAll('{c}', '$c');
+  String reportSleepAdvBreakdownLine(int e, int s, int a, int c) =>
+      _t('reportSleepAdvBreakdownLine')
+          .replaceAll('{e}', '$e')
+          .replaceAll('{s}', '$s')
+          .replaceAll('{a}', '$a')
+          .replaceAll('{c}', '$c');
   String get reportSleepAdvNotEnoughData => _t('reportSleepAdvNotEnoughData');
-  String get reportSleepAdvStatusExcellent => _t('reportSleepAdvStatusExcellent');
+  String get reportSleepAdvStatusExcellent =>
+      _t('reportSleepAdvStatusExcellent');
   String get reportSleepAdvStatusGood => _t('reportSleepAdvStatusGood');
   String get reportSleepAdvStatusRegular => _t('reportSleepAdvStatusRegular');
   String get reportSleepAdvStatusPoor => _t('reportSleepAdvStatusPoor');
@@ -416,17 +479,24 @@ class S {
   String get reportPediatricDateFrom => _t('reportPediatricDateFrom');
   String get reportPediatricDateTo => _t('reportPediatricDateTo');
   String get reportPediatricPickRange => _t('reportPediatricPickRange');
-  String get reportPediatricFilterMaxDaysHint => _t('reportPediatricFilterMaxDaysHint');
-  String get reportPediatricSectionGeneral => _t('reportPediatricSectionGeneral');
-  String get reportPediatricSectionSummary => _t('reportPediatricSectionSummary');
+  String get reportPediatricFilterMaxDaysHint =>
+      _t('reportPediatricFilterMaxDaysHint');
+  String get reportPediatricSectionGeneral =>
+      _t('reportPediatricSectionGeneral');
+  String get reportPediatricSectionSummary =>
+      _t('reportPediatricSectionSummary');
   String get reportPediatricSectionSleep => _t('reportPediatricSectionSleep');
-  String get reportPediatricSectionFeeding => _t('reportPediatricSectionFeeding');
-  String get reportPediatricSectionSymptoms => _t('reportPediatricSectionSymptoms');
-  String get reportPediatricSectionObservations => _t('reportPediatricSectionObservations');
+  String get reportPediatricSectionFeeding =>
+      _t('reportPediatricSectionFeeding');
+  String get reportPediatricSectionSymptoms =>
+      _t('reportPediatricSectionSymptoms');
+  String get reportPediatricSectionObservations =>
+      _t('reportPediatricSectionObservations');
   String get reportPediatricLabelName => _t('reportPediatricLabelName');
   String get reportPediatricLabelAge => _t('reportPediatricLabelAge');
   String get reportPediatricLabelBirth => _t('reportPediatricLabelBirth');
-  String get reportPediatricLabelWeightCurrent => _t('reportPediatricLabelWeightCurrent');
+  String get reportPediatricLabelWeightCurrent =>
+      _t('reportPediatricLabelWeightCurrent');
   String get reportPediatricLabelHeight => _t('reportPediatricLabelHeight');
   String get reportPediatricWeightStart => _t('reportPediatricWeightStart');
   String get reportPediatricWeightEnd => _t('reportPediatricWeightEnd');
@@ -440,25 +510,34 @@ class S {
   String get reportPediatricVaccines => _t('reportPediatricVaccines');
   String get reportPediatricMedications => _t('reportPediatricMedications');
   String get reportPediatricSleepAvgDaily => _t('reportPediatricSleepAvgDaily');
-  String get reportPediatricSleepAwakenings => _t('reportPediatricSleepAwakenings');
+  String get reportPediatricSleepAwakenings =>
+      _t('reportPediatricSleepAwakenings');
   String get reportPediatricSleepPattern => _t('reportPediatricSleepPattern');
-  String get reportPediatricSleepPatternStable => _t('reportPediatricSleepPatternStable');
-  String get reportPediatricSleepPatternModerate => _t('reportPediatricSleepPatternModerate');
-  String get reportPediatricSleepPatternFragmented => _t('reportPediatricSleepPatternFragmented');
+  String get reportPediatricSleepPatternStable =>
+      _t('reportPediatricSleepPatternStable');
+  String get reportPediatricSleepPatternModerate =>
+      _t('reportPediatricSleepPatternModerate');
+  String get reportPediatricSleepPatternFragmented =>
+      _t('reportPediatricSleepPatternFragmented');
   String get reportPediatricSleepLongest => _t('reportPediatricSleepLongest');
   String get reportPediatricFeedingBreast => _t('reportPediatricFeedingBreast');
-  String get reportPediatricFeedingFormula => _t('reportPediatricFeedingFormula');
+  String get reportPediatricFeedingFormula =>
+      _t('reportPediatricFeedingFormula');
   String get reportPediatricFeedingSolid => _t('reportPediatricFeedingSolid');
-  String get reportPediatricFeedingSessions => _t('reportPediatricFeedingSessions');
+  String get reportPediatricFeedingSessions =>
+      _t('reportPediatricFeedingSessions');
   String get reportPediatricFeedingAvgDur => _t('reportPediatricFeedingAvgDur');
   String get reportPediatricSymptomReflux => _t('reportPediatricSymptomReflux');
   String get reportPediatricSymptomColic => _t('reportPediatricSymptomColic');
   String get reportPediatricSymptomIrrit => _t('reportPediatricSymptomIrrit');
   String get reportPediatricSymptomCrying => _t('reportPediatricSymptomCrying');
   String get reportPediatricSymptomPain => _t('reportPediatricSymptomPain');
-  String get reportPediatricSymptomFromJournal => _t('reportPediatricSymptomFromJournal');
-  String get reportPediatricStructuredSymptoms => _t('reportPediatricStructuredSymptoms');
-  String get reportPediatricStructuredSymptomsEmpty => _t('reportPediatricStructuredSymptomsEmpty');
+  String get reportPediatricSymptomFromJournal =>
+      _t('reportPediatricSymptomFromJournal');
+  String get reportPediatricStructuredSymptoms =>
+      _t('reportPediatricStructuredSymptoms');
+  String get reportPediatricStructuredSymptomsEmpty =>
+      _t('reportPediatricStructuredSymptomsEmpty');
   String get reportPediatricIrritHigh => _t('reportPediatricIrritHigh');
   String get reportPediatricIrritMedium => _t('reportPediatricIrritMedium');
   String get reportPediatricIrritLow => _t('reportPediatricIrritLow');
@@ -467,19 +546,22 @@ class S {
   String get reportPediatricNo => _t('reportPediatricNo');
   String get reportPediatricNa => _t('reportPediatricNa');
   String get reportPediatricJournalNote => _t('reportPediatricJournalNote');
-  String get reportPediatricJournalNoteHint => _t('reportPediatricJournalNoteHint');
+  String get reportPediatricJournalNoteHint =>
+      _t('reportPediatricJournalNoteHint');
   String get reportPediatricObsHint => _t('reportPediatricObsHint');
   String get reportPediatricBtnShare => _t('reportPediatricBtnShare');
   String get reportPediatricBtnExportPdf => _t('reportPediatricBtnExportPdf');
   String get reportPediatricBtnPrint => _t('reportPediatricBtnPrint');
   String get reportPediatricBtnEmail => _t('reportPediatricBtnEmail');
   String get reportPediatricBtnWhatsApp => _t('reportPediatricBtnWhatsApp');
-  String get reportPediatricScreenFootnote => _t('reportPediatricScreenFootnote');
+  String get reportPediatricScreenFootnote =>
+      _t('reportPediatricScreenFootnote');
   String get reportPediatricNone => _t('reportPediatricNone');
   String get reportPediatricPdfTitle => _t('reportPediatricPdfTitle');
   String get reportPediatricPdfPeriod => _t('reportPediatricPdfPeriod');
   String get reportPediatricPdfFooter => _t('reportPediatricPdfFooter');
-  String get reportPediatricFeverDisclaimerShort => _t('reportPediatricFeverDisclaimerShort');
+  String get reportPediatricFeverDisclaimerShort =>
+      _t('reportPediatricFeverDisclaimerShort');
 
   String get reportDevScreenTitle => _t('reportDevScreenTitle');
   String get reportDevSubtitle => _t('reportDevSubtitle');
@@ -516,7 +598,9 @@ class S {
   String get memoriesTitle => _t('memoriesTitle');
   String get memoriesSubtitle => _t('memoriesSubtitle');
   String memoriesProgressSaved(int filled, int total) =>
-      _t('memoriesProgressSaved').replaceAll('{filled}', '$filled').replaceAll('{total}', '$total');
+      _t('memoriesProgressSaved')
+          .replaceAll('{filled}', '$filled')
+          .replaceAll('{total}', '$total');
   String get memoriesCheerEmpty => _t('memoriesCheerEmpty');
   String get memoriesAlbumPromoTitle => _t('memoriesAlbumPromoTitle');
   String get memoriesAlbumPromoSubtitle => _t('memoriesAlbumPromoSubtitle');
@@ -538,9 +622,12 @@ class S {
   String get addMemory => _t('addMemory');
 
   String get memoryBadgeMonthOne => _t('memoryBadgeMonthOne');
-  String memoryBadgeMonthsMany(int n) => _t('memoryBadgeMonthsMany').replaceAll('{n}', '$n');
+  String memoryBadgeMonthsMany(int n) =>
+      _t('memoryBadgeMonthsMany').replaceAll('{n}', '$n');
   String get memoryBadgeYearOne => _t('memoryBadgeYearOne');
-  String memoryBadgeYearsMany(int n) => _t('memoryBadgeYearsMany').replaceAll('{n}', '$n');
+  String memoryBadgeYearsMany(int n) =>
+      _t('memoryBadgeYearsMany').replaceAll('{n}', '$n');
+
   /// Rótulo curto sob o número nos selos mensais na grelha (ex.: «mes» / «meses»).
   String get memoryBadgeMonthUnitSingular => _t('memoryBadgeMonthUnitSingular');
   String get memoryBadgeMonthUnitPlural => _t('memoryBadgeMonthUnitPlural');
@@ -561,7 +648,8 @@ class S {
   String get settingsTitle => _t('settingsTitle');
   String get dailyJournalTitle => _t('dailyJournalTitle');
   String get dailyJournalPickDay => _t('dailyJournalPickDay');
-  String dailyJournalOnDate(String date) => _t('dailyJournalOnDate').replaceAll('{d}', date);
+  String dailyJournalOnDate(String date) =>
+      _t('dailyJournalOnDate').replaceAll('{d}', date);
   String get dailyJournalHint => _t('dailyJournalHint');
   String get dailyJournalSave => _t('dailyJournalSave');
   String get dailyJournalSaving => _t('dailyJournalSaving');
@@ -638,6 +726,8 @@ class S {
   String get authErrUserNotFound => _t('authErrUserNotFound');
   String get authErrWrongPassword => _t('authErrWrongPassword');
   String get authErrEmailInUse => _t('authErrEmailInUse');
+  String get authErrAccountExistsDifferentCredential =>
+      _t('authErrAccountExistsDifferentCredential');
   String get authErrInvalidCredential => _t('authErrInvalidCredential');
   String get authErrCredentialsGeneric => _t('authErrCredentialsGeneric');
   String get authErrGoogleConfigAndroid => _t('authErrGoogleConfigAndroid');
@@ -646,8 +736,41 @@ class S {
   String get authErrLoginCancelled => _t('authErrLoginCancelled');
   String get authErrUnexpected => _t('authErrUnexpected');
 
+  String onb(String key) => _t('onb$key');
+  String onbWithName(String key, String name) =>
+      _t('onb$key').replaceAll('{name}', name);
+
+  /// Dica quando [fetchSignInMethodsForEmail] indicou métodos já associados ao e-mail.
+  String authEmailInUseHintForProviders(List<String> signInMethods) {
+    final set = signInMethods
+        .map((e) => e.toLowerCase().trim())
+        .where((e) => e.isNotEmpty)
+        .toSet();
+    final hasPassword = set.contains('password');
+    final hasGoogle = set.contains('google.com');
+    final hasApple = set.contains('apple.com');
+    final hasPhone = set.contains('phone');
+    final known = hasPassword || hasGoogle || hasApple || hasPhone;
+    if (set.isNotEmpty && !known) {
+      return _t('authErrEmailInUseMixed');
+    }
+    if (hasPhone && set.length == 1) {
+      return _t('authErrEmailInUseMixed');
+    }
+    if (set.length >= 2 || (hasPassword && (hasGoogle || hasApple))) {
+      return _t('authErrEmailInUseMixed');
+    }
+    if (hasGoogle) return _t('authErrEmailInUseGoogle');
+    if (hasApple) return _t('authErrEmailInUseApple');
+    if (hasPassword) return _t('authErrEmailInUsePassword');
+    return _t('authErrEmailInUse');
+  }
+
   /// Mensagens de erro de login/registo alinhadas ao idioma atual.
   String userFacingAuthError(Object error) {
+    if (error is EmailAlreadyRegisteredException) {
+      return authEmailInUseHintForProviders(error.signInMethods);
+    }
     if (error is FirebaseAuthException) {
       switch (error.code) {
         case 'weak-password':
@@ -660,6 +783,10 @@ class S {
           return authErrUserNotFound;
         case 'wrong-password':
           return authErrWrongPassword;
+        case 'account-exists-with-different-credential':
+          return authErrAccountExistsDifferentCredential;
+        case 'credential-already-in-use':
+          return authErrAccountExistsDifferentCredential;
         case 'email-already-in-use':
           return authErrEmailInUse;
         case 'invalid-credential':
@@ -671,7 +798,9 @@ class S {
       }
     }
     final s = error.toString();
-    if (s.contains('ApiException: 10') || s.contains('DEVELOPER_ERROR') || s.contains('sign_in_failed')) {
+    if (s.contains('ApiException: 10') ||
+        s.contains('DEVELOPER_ERROR') ||
+        s.contains('sign_in_failed')) {
       return authErrGoogleConfigAndroid;
     }
     if (s.contains('Login cancelado') ||
@@ -684,7 +813,8 @@ class S {
     if (s.contains('APPLE_UNAVAILABLE_PLATFORM')) {
       return authErrAppleUnavailable;
     }
-    if (s.contains('APPLE_MISSING_ID_TOKEN') || s.contains('APPLE_AUTH_FAILED')) {
+    if (s.contains('APPLE_MISSING_ID_TOKEN') ||
+        s.contains('APPLE_AUTH_FAILED')) {
       return authErrAppleFailed;
     }
     return '$authErrUnexpected\n$s';
@@ -703,7 +833,126 @@ class S {
   String get seeAll => _t('seeAll');
   String get changePhoto => _t('changePhoto');
   String get motherPhotoTitle => _t('motherPhotoTitle');
+  String get fatherPhotoTitle => _t('fatherPhotoTitle');
+  String get regFatherPhotoAdd => _t('regFatherPhotoAdd');
+  String get regFatherPhotoChange => _t('regFatherPhotoChange');
   String get babyPhotoTitle => _t('babyPhotoTitle');
+
+  // Família / árvore
+  String get familyTitle => _t('familyTitle');
+  String get familySubtitle => _t('familySubtitle');
+  String get familyEdit => _t('familyEdit');
+  String get familyEditData => _t('familyEditData');
+  String get familyTabMotherLabel => _t('familyTabMotherLabel');
+  String get familyTabFatherLabel => _t('familyTabFatherLabel');
+
+  String get familyRoleMother => _t('familyRoleMother');
+  String get familyRoleFather => _t('familyRoleFather');
+  String get familyRoleBaby => _t('familyRoleBaby');
+  String get familyZodiacSolar => _t('familyZodiacSolar');
+  String get familyEntertainmentNote => _t('familyEntertainmentNote');
+  String get familyChristianCardTitle => _t('familyChristianCardTitle');
+  String familyChristianLine(String reference) =>
+      _t('familyChristianLine').replaceAll('{ref}', reference);
+  String familyBornOn(String date) => _t('familyBornOn').replaceAll('{date}', date);
+  String familyAgeYears(int years) =>
+      years == 1 ? _t('familyAgeOneYear') : _t('familyAgeYears').replaceAll('{n}', '$years');
+  String familyHeight(String value) => _t('familyHeight').replaceAll('{value}', value);
+  String familyMotherBlurb(String sign, String traits) =>
+      _t('familyMotherBlurb').replaceAll('{sign}', sign).replaceAll('{traits}', traits);
+  String familyFatherBlurb(String sign, String traits) =>
+      _t('familyFatherBlurb').replaceAll('{sign}', sign).replaceAll('{traits}', traits);
+  String familyBabyBlurb(String sign, String traits) =>
+      _t('familyBabyBlurb').replaceAll('{sign}', sign).replaceAll('{traits}', traits);
+  String familyZodiacName(ZodiacId id) => _t('familyZodiacName_${id.name}');
+  String familyZodiacTrait(ZodiacId id) => _t('familyZodiacTrait_${id.name}');
+  String get familyFatherDataComplete => _t('familyFatherDataComplete');
+  String get familyFatherDataIncomplete => _t('familyFatherDataIncomplete');
+  String get familyAddFatherPrompt => _t('familyAddFatherPrompt');
+  String get familyAddFatherButton => _t('familyAddFatherButton');
+  String get familyCompleteBabySex => _t('familyCompleteBabySex');
+  String get familyEditBabyData => _t('familyEditBabyData');
+  String get familyCompleteHeights => _t('familyCompleteHeights');
+  String get familyCompleteHeightsButton => _t('familyCompleteHeightsButton');
+  String familyEstimatedHeightTitle(String name) =>
+      _t('familyEstimatedHeightTitle').replaceAll('{name}', name);
+  String get familyMotherHeightLabel => _t('familyMotherHeightLabel');
+  String get familyFatherHeightLabel => _t('familyFatherHeightLabel');
+  String get familyEstimatedGirl => _t('familyEstimatedGirl');
+  String get familyEstimatedBoy => _t('familyEstimatedBoy');
+  String familyEstimatedResult(String cm) =>
+      _t('familyEstimatedResult').replaceAll('{cm}', cm);
+  String get familyHowCalculated => _t('familyHowCalculated');
+  String get familyFormulaBoy => _t('familyFormulaBoy');
+  String get familyFormulaGirl => _t('familyFormulaGirl');
+  String familyFormulaExampleGirl(int father, int mother, int result) =>
+      _t('familyFormulaExampleGirl')
+          .replaceAll('{father}', '$father')
+          .replaceAll('{mother}', '$mother')
+          .replaceAll('{result}', '$result');
+  String familyFormulaExampleBoy(int father, int mother, int result) =>
+      _t('familyFormulaExampleBoy')
+          .replaceAll('{father}', '$father')
+          .replaceAll('{mother}', '$mother')
+          .replaceAll('{result}', '$result');
+  String get familyHeightDisclaimer => _t('familyHeightDisclaimer');
+  String get familyZodiacReadMore => _t('familyZodiacReadMore');
+  String get familyPremiumZodiacLocked => _t('familyPremiumZodiacLocked');
+  String get familyPremiumHeightLocked => _t('familyPremiumHeightLocked');
+  String get familyPremiumUnlockCta => _t('familyPremiumUnlockCta');
+  String get familyScreenTitle => _t('familyScreenTitle');
+  String get familyPersonalInfoTitle => _t('familyPersonalInfoTitle');
+  String familyHoroscopeCardTitle(ZodiacId id) =>
+      _t('familyHoroscopeCardTitle').replaceAll('{sign}', familyZodiacName(id));
+  String get familyBibleVerseCardTitle => _t('familyBibleVerseCardTitle');
+  String get familyDailySummaryTitle => _t('familyDailySummaryTitle');
+  String get familySummaryFeeding => _t('familySummaryFeeding');
+  String get familySummaryDiapers => _t('familySummaryDiapers');
+  String get familySummarySleep => _t('familySummarySleep');
+  String get familySummaryWeight => _t('familySummaryWeight');
+  String get familyQuickLabelBirth => _t('familyQuickLabelBirth');
+  String get familyQuickLabelTime => _t('familyQuickLabelTime');
+  String familySummaryFeedingsToday(int n) =>
+      _t('familySummaryFeedingsToday').replaceAll('{n}', '$n');
+  String familySummaryDiaperChangesCount(int n) =>
+      _t('familySummaryDiaperChangesCount').replaceAll('{n}', '$n');
+  String familySummaryLastAt(String time) =>
+      _t('familySummaryLastAt').replaceAll('{time}', time);
+  String familySummaryLastSleepAt(String time) =>
+      _t('familySummaryLastSleepAt').replaceAll('{time}', time);
+  String get familySummaryWeightDayLine => _t('familySummaryWeightDayLine');
+  String get familyFieldBirthDate => _t('familyFieldBirthDate');
+  String get familyFieldSign => _t('familyFieldSign');
+  String get familyFieldElement => _t('familyFieldElement');
+  String get familyFieldAge => _t('familyFieldAge');
+  String get familyFieldHeight => _t('familyFieldHeight');
+  String get familyFieldWeight => _t('familyFieldWeight');
+  String get familyPremiumShortBadge => _t('familyPremiumShortBadge');
+  String get familyPremiumFeatureLockedBody => _t('familyPremiumFeatureLockedBody');
+  String get familyPremiumBannerTitle => _t('familyPremiumBannerTitle');
+  String get familyPremiumBannerBody => _t('familyPremiumBannerBody');
+  String get familyPremiumViewPlans => _t('familyPremiumViewPlans');
+  String get familyAddFatherCardTitle => _t('familyAddFatherCardTitle');
+
+  String zodiacElementLabel(ZodiacElement element) {
+    switch (element) {
+      case ZodiacElement.fire:
+        return _t('familyElementFire');
+      case ZodiacElement.earth:
+        return _t('familyElementEarth');
+      case ZodiacElement.air:
+        return _t('familyElementAir');
+      case ZodiacElement.water:
+        return _t('familyElementWater');
+    }
+  }
+  String get familyTapToOpen => _t('familyTapToOpen');
+  String get familyCarouselSwipe => _t('familyCarouselSwipe');
+  /// Rótulo do separador do bebé quando só há um filho (ex.: «Nenê» em PT).
+  String get familyTabNene => _t('familyTabNene');
+  String get familyTabsHint => _t('familyTabsHint');
+  String get familyTapToClose => _t('familyTapToClose');
+  String get familyShareCard => _t('familyShareCard');
   String get changeBabyTooltip => _t('changeBabyTooltip');
   String get notificationsInboxTitle => _t('notificationsInboxTitle');
   String get notificationsInboxSubtitle => _t('notificationsInboxSubtitle');
@@ -719,24 +968,33 @@ class S {
   String get deleteAccountSuccess => _t('deleteAccountSuccess');
   String get deleteAccountReauthTitle => _t('deleteAccountReauthTitle');
   String get deleteAccountReauthBody => _t('deleteAccountReauthBody');
-  String get deleteAccountReauthPasswordHint => _t('deleteAccountReauthPasswordHint');
+  String get deleteAccountReauthPasswordHint =>
+      _t('deleteAccountReauthPasswordHint');
   String get deleteAccountReauthGoogle => _t('deleteAccountReauthGoogle');
   String get deleteAccountReauthContinue => _t('deleteAccountReauthContinue');
-  String get deleteAccountReauthCantPassword => _t('deleteAccountReauthCantPassword');
+  String get deleteAccountReauthCantPassword =>
+      _t('deleteAccountReauthCantPassword');
   String get deleteAccountTypeWordTitle => _t('deleteAccountTypeWordTitle');
-  String get deleteAccountTypeWordInstruction => _t('deleteAccountTypeWordInstruction');
-  String get deleteAccountTypeWordFieldLabel => _t('deleteAccountTypeWordFieldLabel');
+  String get deleteAccountTypeWordInstruction =>
+      _t('deleteAccountTypeWordInstruction');
+  String get deleteAccountTypeWordFieldLabel =>
+      _t('deleteAccountTypeWordFieldLabel');
   String get homeBabyBannerForecastSleep => _t('homeBabyBannerForecastSleep');
   String get homeBabyBannerForecastWake => _t('homeBabyBannerForecastWake');
-  String get homeBabyBannerForecastSubtitleSleep => _t('homeBabyBannerForecastSubtitleSleep');
-  String get homeBabyBannerForecastSubtitleWake => _t('homeBabyBannerForecastSubtitleWake');
-  String homeBabyBannerEtaIn(String d) => _t('homeBabyBannerEtaIn').replaceAll('{d}', d);
+  String get homeBabyBannerForecastSubtitleSleep =>
+      _t('homeBabyBannerForecastSubtitleSleep');
+  String get homeBabyBannerForecastSubtitleWake =>
+      _t('homeBabyBannerForecastSubtitleWake');
+  String homeBabyBannerEtaIn(String d) =>
+      _t('homeBabyBannerEtaIn').replaceAll('{d}', d);
   String get homeBabyBannerLastDiaper => _t('homeBabyBannerLastDiaper');
   String get homeBabyBannerNoRecordsYet => _t('homeBabyBannerNoRecordsYet');
-  String homeBabyBannerNextBetween(String range) => _t('homeBabyBannerNextBetween').replaceAll('{range}', range);
+  String homeBabyBannerNextBetween(String range) =>
+      _t('homeBabyBannerNextBetween').replaceAll('{range}', range);
   String homeBabyBannerDiaperRecommendedUntil(String d) =>
       _t('homeBabyBannerDiaperRecommendedUntil').replaceAll('{d}', d);
-  String homeBabyBannerIdealWindow(String range) => _t('homeBabyBannerIdealWindow').replaceAll('{range}', range);
+  String homeBabyBannerIdealWindow(String range) =>
+      _t('homeBabyBannerIdealWindow').replaceAll('{range}', range);
   String get homeConsultationScheduled => _t('homeConsultationScheduled');
   String get homeBannerChipConsultation => _t('homeBannerChipConsultation');
   String get homeBannerChipDiaper => _t('homeBannerChipDiaper');
@@ -772,23 +1030,23 @@ class S {
   String get weeklyPhotoConfirmBody => _t('weeklyPhotoConfirmBody');
   String get weeklyPhotoConfirmCancel => _t('weeklyPhotoConfirmCancel');
   String get weeklyPhotoConfirmOk => _t('weeklyPhotoConfirmOk');
-  String get weeklyPhotoParticipatingBadge => _t('weeklyPhotoParticipatingBadge');
+  String get weeklyPhotoParticipatingBadge =>
+      _t('weeklyPhotoParticipatingBadge');
   String get weeklyPhotoWinnerBadge => _t('weeklyPhotoWinnerBadge');
   String get weeklyPhotoShowBabyFirstName => _t('weeklyPhotoShowBabyFirstName');
   String get weeklyPhotoDisclaimerFooter => _t('weeklyPhotoDisclaimerFooter');
   String get weeklyPhotoSectionTitle => _t('weeklyPhotoSectionTitleFemale');
   String get weeklyPhotoSectionTitleMale => _t('weeklyPhotoSectionTitleMale');
-  String get weeklyPhotoSectionTitleFemale => _t('weeklyPhotoSectionTitleFemale');
+  String get weeklyPhotoSectionTitleFemale =>
+      _t('weeklyPhotoSectionTitleFemale');
   String weeklyPhotoSectionTitleForBabySex(String? sex) {
-    final sx = sex?.trim().toUpperCase();
-    if (sx == 'M') return _t('weeklyPhotoSectionTitleMale');
+    if (_isMaleBabySex(sex)) return _t('weeklyPhotoSectionTitleMale');
     return _t('weeklyPhotoSectionTitleFemale');
   }
 
   /// Título em destaque no banner da Home (maiúsculas; PT/EN nas maps, resto via fallback EN).
   String weeklyPhotoHomeHeroTitle(String? sex) {
-    final sx = sex?.trim().toUpperCase();
-    if (sx == 'M') return _t('weeklyPhotoHomeHeroMale');
+    if (_isMaleBabySex(sex)) return _t('weeklyPhotoHomeHeroMale');
     return _t('weeklyPhotoHomeHeroFemale');
   }
 
@@ -796,10 +1054,25 @@ class S {
   String get weeklyPhotoViewMemory => _t('weeklyPhotoViewMemory');
   String get weeklyPhotoBabyFallback => _t('weeklyPhotoBabyFallback');
   String get weeklyPhotoDisclaimerShort => _t('weeklyPhotoDisclaimerShort');
-  String get weeklyPhotoPublicDetailAppBar => _t('weeklyPhotoPublicDetailAppBar');
-  String get weeklyPhotoWinnerCongratsTitle => _t('weeklyPhotoWinnerCongratsTitle');
-  String get weeklyPhotoWinnerCongratsBody => _t('weeklyPhotoWinnerCongratsBody');
+  String get weeklyPhotoPublicDetailAppBar =>
+      _t('weeklyPhotoPublicDetailAppBar');
+  String get weeklyPhotoWinnerCongratsTitle =>
+      _t('weeklyPhotoWinnerCongratsTitle');
+  String get weeklyPhotoWinnerCongratsBody =>
+      weeklyPhotoWinnerCongratsBodyForBabySex(null);
+  String weeklyPhotoWinnerCongratsBodyForBabySex(String? sex) {
+    return _t(_isMaleBabySex(sex)
+        ? 'weeklyPhotoWinnerCongratsBodyMale'
+        : 'weeklyPhotoWinnerCongratsBodyFemale');
+  }
+
   String get weeklyPhotoWinnerCongratsOk => _t('weeklyPhotoWinnerCongratsOk');
+  String weeklyPhotoLikesCount(int count) =>
+      _t('weeklyPhotoLikesCount').replaceAll('{count}', '$count');
+  String get weeklyPhotoLikeButton => _t('weeklyPhotoLikeButton');
+  String get weeklyPhotoLikedButton => _t('weeklyPhotoLikedButton');
+  String get weeklyPhotoLikesWinnerHint => _t('weeklyPhotoLikesWinnerHint');
+  String get weeklyPhotoLikeNeedSignIn => _t('weeklyPhotoLikeNeedSignIn');
   String get memoryEditTitle => _t('memoryEditTitle');
   String get memoryNewTitle => _t('memoryNewTitle');
   String get memoryMomNotesFieldLabel => _t('memoryMomNotesFieldLabel');
@@ -819,8 +1092,10 @@ class S {
   String get memoryShareSheetJpegSubtitle => _t('memoryShareSheetJpegSubtitle');
   String get memoryShareSheetPdfTitle => _t('memoryShareSheetPdfTitle');
   String get memoryShareSheetPdfSubtitle => _t('memoryShareSheetPdfSubtitle');
-  String get memorySharePlatformUnavailable => _t('memorySharePlatformUnavailable');
-  String memoryShareError(Object e) => _t('memoryShareError').replaceAll('{error}', '$e');
+  String get memorySharePlatformUnavailable =>
+      _t('memorySharePlatformUnavailable');
+  String memoryShareError(Object e) =>
+      _t('memoryShareError').replaceAll('{error}', '$e');
 
   /// Rodapé do cartão de partilha.
   String get memoryFooterBranding => _t('memoryFooterBranding');
@@ -841,8 +1116,10 @@ class S {
   }
 
   /// Idade textual sugerida no formulário novo (automática a partir da data do momento).
-  String memorySuggestedAgeBetween({required DateTime birth, required DateTime when}) {
-    final days = when.difference(DateTime(birth.year, birth.month, birth.day)).inDays;
+  String memorySuggestedAgeBetween(
+      {required DateTime birth, required DateTime when}) {
+    final days =
+        when.difference(DateTime(birth.year, birth.month, birth.day)).inDays;
     if (days < 0) return '—';
     if (days < 60) {
       if (days == 1) return _t('memoryAgeOneDay');
@@ -866,24 +1143,36 @@ class S {
   String get summarySleep => _t('summarySleep');
   String get summaryDiapers => _t('summaryDiapers');
   String get summaryWeight => _t('summaryWeight');
-  String summaryFeedingsValue(int n, int minutes) =>
-      _t('summaryFeedingsValue').replaceAll('{n}', '$n').replaceAll('{m}', '$minutes');
+  String summaryFeedingsValue(int n, int minutes) => _t('summaryFeedingsValue')
+      .replaceAll('{n}', '$n')
+      .replaceAll('{m}', '$minutes');
   String summaryFeedingsCount(int n) =>
-      (n == 1 ? _t('summaryFeedingsCountOne') : _t('summaryFeedingsCountMany')).replaceAll('{n}', '$n');
-  String summaryFeedingsMinutes(int minutes) => _t('summaryFeedingsMinutes').replaceAll('{m}', '$minutes');
-  String summaryDiapersValue(int total, int pee, int poo) => _t('summaryDiapersValue')
-      .replaceAll('{total}', '$total')
+      (n == 1 ? _t('summaryFeedingsCountOne') : _t('summaryFeedingsCountMany'))
+          .replaceAll('{n}', '$n');
+  String summaryFeedingsMinutes(int minutes) =>
+      _t('summaryFeedingsMinutes').replaceAll('{m}', '$minutes');
+  String summaryDiapersValue(int total, int pee, int poo) =>
+      _t('summaryDiapersValue')
+          .replaceAll('{total}', '$total')
+          .replaceAll('{pee}', '$pee')
+          .replaceAll('{poo}', '$poo');
+  String summaryDiapersTotal(int total) =>
+      _t('summaryDiapersTotal').replaceAll('{total}', '$total');
+  String summaryDiapersChanges(int n) => (n == 1
+          ? _t('summaryDiapersChangesOne')
+          : _t('summaryDiapersChangesMany'))
+      .replaceAll('{n}', '$n');
+  String summaryDiapersPeePoo(int pee, int poo) => _t('summaryDiapersPeePoo')
       .replaceAll('{pee}', '$pee')
       .replaceAll('{poo}', '$poo');
-  String summaryDiapersTotal(int total) => _t('summaryDiapersTotal').replaceAll('{total}', '$total');
-  String summaryDiapersChanges(int n) =>
-      (n == 1 ? _t('summaryDiapersChangesOne') : _t('summaryDiapersChangesMany')).replaceAll('{n}', '$n');
-  String summaryDiapersPeePoo(int pee, int poo) =>
-      _t('summaryDiapersPeePoo').replaceAll('{pee}', '$pee').replaceAll('{poo}', '$poo');
   String summarySleepValue(int sessions, String totalCompact) =>
-      _t('summarySleepValue').replaceAll('{s}', '$sessions').replaceAll('{t}', totalCompact);
-  String summarySleepSessions(int sessions) =>
-      (sessions == 1 ? _t('summarySleepSessionsOne') : _t('summarySleepSessionsMany')).replaceAll('{s}', '$sessions');
+      _t('summarySleepValue')
+          .replaceAll('{s}', '$sessions')
+          .replaceAll('{t}', totalCompact);
+  String summarySleepSessions(int sessions) => (sessions == 1
+          ? _t('summarySleepSessionsOne')
+          : _t('summarySleepSessionsMany'))
+      .replaceAll('{s}', '$sessions');
   String get homeSummaryExtraHint => _t('homeSummaryExtraHint');
   String get homeTipTitle => _t('homeTipTitle');
   String get homeStatusOk => _t('homeStatusOk');
@@ -902,7 +1191,8 @@ class S {
   String get homeBannerAlertTimeToSleep => _t('homeBannerAlertTimeToSleep');
   String get homeBannerAlertSleepingLong => _t('homeBannerAlertSleepingLong');
   String get homeCriticalCareTitle => _t('homeCriticalCareTitle');
-  String homeCriticalCareCount(int n) => _t('homeCriticalCareCount').replaceAll('{n}', '$n');
+  String homeCriticalCareCount(int n) =>
+      _t('homeCriticalCareCount').replaceAll('{n}', '$n');
   String get homeCriticalFeedingTitle => _t('homeCriticalFeedingTitle');
   String get homeCriticalSleepTitle => _t('homeCriticalSleepTitle');
   String get homeCriticalDiaperTitle => _t('homeCriticalDiaperTitle');
@@ -913,32 +1203,79 @@ class S {
   String get homeSleepBarSleepTitle => _t('homeSleepBarSleepTitle');
   String get homeFeedingCounterTitle => _t('homeFeedingCounterTitle');
   String get homeFeedingCounterHint => _t('homeFeedingCounterHint');
-  String homeSleepBarAwakeHintEarly(int m) => _t('homeSleepBarAwakeHintEarly').replaceAll('{m}', '$m');
-  String homeSleepBarAwakeHintIdeal(int m) => _t('homeSleepBarAwakeHintIdeal').replaceAll('{m}', '$m');
+  String homeSleepBarAwakeHintEarly(int m) =>
+      _t('homeSleepBarAwakeHintEarly').replaceAll('{m}', '$m');
+  String homeSleepBarAwakeHintIdeal(int m) =>
+      _t('homeSleepBarAwakeHintIdeal').replaceAll('{m}', '$m');
   String get homeSleepBarAwakeHintOverdue => _t('homeSleepBarAwakeHintOverdue');
   String homeSleepBarSleepHint(String remaining, int cap) =>
-      _t('homeSleepBarSleepHint').replaceAll('{remaining}', remaining).replaceAll('{cap}', '$cap');
+      _t('homeSleepBarSleepHint')
+          .replaceAll('{remaining}', remaining)
+          .replaceAll('{cap}', '$cap');
   String get homeSleepBarNeedLastSleep => _t('homeSleepBarNeedLastSleep');
 
-  String helloMomNamed(String name) => _t('helloMomNamed').replaceAll('{name}', name.trim());
+  String helloMomNamed(String name) =>
+      _t('helloMomNamed').replaceAll('{name}', name.trim());
   String homeFedAgo(String when) => _t('homeFedAgo').replaceAll('{when}', when);
   String homePeeAgo(String when) => _t('homePeeAgo').replaceAll('{when}', when);
   String homePooAgo(String when) => _t('homePooAgo').replaceAll('{when}', when);
   String homeNextIn(int n) => _t('homeNextIn').replaceAll('{n}', '$n');
-  String summaryLastFeed(String time) => _t('summaryLastFeed').replaceAll('{time}', time);
-  String summaryLastSleep(String time) => _t('summaryLastSleep').replaceAll('{time}', time);
-  String homeTipBody(String name) => _t('homeTipBody').replaceAll('{name}', name);
+  String summaryLastFeed(String time) =>
+      _t('summaryLastFeed').replaceAll('{time}', time);
+  String summaryLastSleep(String time) =>
+      _t('summaryLastSleep').replaceAll('{time}', time);
+  String homeTipBody(String name) =>
+      _t('homeTipBody').replaceAll('{name}', name);
   String get homeGreetingSubtitle => _t('homeGreetingSubtitle');
   String get homeMotivationBanner => _t('homeMotivationBanner');
-  String get homeMotivationBannerOpenMemories => _t('homeMotivationBannerOpenMemories');
+  String get homeMotivationBannerOpenMemories =>
+      _t('homeMotivationBannerOpenMemories');
   String get summaryWeightNotYet => _t('summaryWeightNotYet');
   String get summarySleepNotYet => _t('summarySleepNotYet');
   String get shortcutMilkHomeSub => _t('shortcutMilkHomeSub');
   String get shortcutGrowthHomeSub => _t('shortcutGrowthHomeSub');
   String get shortcutSleepHomeSub => _t('shortcutSleepHomeSub');
   String get homeTileDiapers => _t('homeTileDiapers');
-  String homeDaysOld(int days) =>
-      days == 1 ? _t('homeOneDayOld') : _t('homeDaysOld').replaceAll('{d}', '$days');
+  String homeDaysOld(int days) => days == 1
+      ? _t('homeOneDayOld')
+      : _t('homeDaysOld').replaceAll('{d}', '$days');
+
+  String localizedAgeLabelFromStored(String? raw) {
+    final text = raw?.trim();
+    if (text == null || text.isEmpty || text == '—') return text ?? '';
+    final match = RegExp(r'^(\d+)\s*([a-zA-ZÀ-ÿ]+)$', caseSensitive: false)
+        .firstMatch(text);
+    if (match == null) return text;
+    final n = int.tryParse(match.group(1) ?? '');
+    if (n == null) return text;
+    final unit = (match.group(2) ?? '').toLowerCase();
+    if (unit == 'dia' || unit == 'dias' || unit == 'day' || unit == 'days') {
+      return homeDaysOld(n);
+    }
+    if (unit == 'semana' ||
+        unit == 'semanas' ||
+        unit == 'week' ||
+        unit == 'weeks') {
+      return n == 1
+          ? _t('babyAgeOneWeek')
+          : _t('babyAgeWeeks').replaceAll('{n}', '$n');
+    }
+    if (unit == 'mes' ||
+        unit == 'mês' ||
+        unit == 'meses' ||
+        unit == 'month' ||
+        unit == 'months') {
+      return n == 1
+          ? _t('babyAgeOneMonth')
+          : _t('babyAgeMonths').replaceAll('{n}', '$n');
+    }
+    if (unit == 'ano' || unit == 'anos' || unit == 'year' || unit == 'years') {
+      return n == 1
+          ? _t('babyAgeOneYear')
+          : _t('babyAgeYears').replaceAll('{n}', '$n');
+    }
+    return text;
+  }
 
   /// Idade do bebê no cartão/banner (dias → semanas → meses → anos), conforme o idioma.
   String babyAgeLabel(DateTime birthDate, DateTime now) {
@@ -947,37 +1284,55 @@ class S {
     if (days < 7) return homeDaysOld(days);
     final weeks = (days / 7).floor();
     if (weeks < 8) {
-      return weeks == 1 ? _t('babyAgeOneWeek') : _t('babyAgeWeeks').replaceAll('{n}', '$weeks');
+      return weeks == 1
+          ? _t('babyAgeOneWeek')
+          : _t('babyAgeWeeks').replaceAll('{n}', '$weeks');
     }
     final months = (days / 30).floor();
     if (months < 24) {
-      return months == 1 ? _t('babyAgeOneMonth') : _t('babyAgeMonths').replaceAll('{n}', '$months');
+      return months == 1
+          ? _t('babyAgeOneMonth')
+          : _t('babyAgeMonths').replaceAll('{n}', '$months');
     }
     final years = (days / 365).floor();
-    return years == 1 ? _t('babyAgeOneYear') : _t('babyAgeYears').replaceAll('{n}', '$years');
+    return years == 1
+        ? _t('babyAgeOneYear')
+        : _t('babyAgeYears').replaceAll('{n}', '$years');
   }
 
-  String homeSummaryOnDate(String date) => _t('homeSummaryOnDate').replaceAll('{date}', date);
+  String homeSummaryOnDate(String date) =>
+      _t('homeSummaryOnDate').replaceAll('{date}', date);
   String get homeSummaryPickDayTooltip => _t('homeSummaryPickDayTooltip');
   String homeFedAt(String time) => _t('homeFedAt').replaceAll('{time}', time);
   String homePeeAt(String time) => _t('homePeeAt').replaceAll('{time}', time);
   String homePooAt(String time) => _t('homePooAt').replaceAll('{time}', time);
-  String homeDiaperChangeAgo(String when) => _t('homeDiaperChangeAgo').replaceAll('{when}', when);
-  String homeDiaperChangeAt(String time) => _t('homeDiaperChangeAt').replaceAll('{time}', time);
-  String homeSleepEndedAgo(String when) => _t('homeSleepEndedAgo').replaceAll('{when}', when);
-  String homeSleepEndedAt(String time) => _t('homeSleepEndedAt').replaceAll('{time}', time);
-  String homeSleepInProgress(String elapsed) => _t('homeSleepInProgress').replaceAll('{elapsed}', elapsed);
-  String homeSleepPausedBanner(String elapsed) => _t('homeSleepPausedBanner').replaceAll('{elapsed}', elapsed);
+  String homeDiaperChangeAgo(String when) =>
+      _t('homeDiaperChangeAgo').replaceAll('{when}', when);
+  String homeDiaperChangeAt(String time) =>
+      _t('homeDiaperChangeAt').replaceAll('{time}', time);
+  String homeSleepEndedAgo(String when) =>
+      _t('homeSleepEndedAgo').replaceAll('{when}', when);
+  String homeSleepEndedAt(String time) =>
+      _t('homeSleepEndedAt').replaceAll('{time}', time);
+  String homeSleepInProgress(String elapsed) =>
+      _t('homeSleepInProgress').replaceAll('{elapsed}', elapsed);
+  String homeSleepPausedBanner(String elapsed) =>
+      _t('homeSleepPausedBanner').replaceAll('{elapsed}', elapsed);
   String get sleepBannerEmpty => _t('sleepBannerEmpty');
 
-  String growthHistoryTitle(String label) => _t('growthHistoryTitle').replaceAll('{label}', label);
-  String invalidGrowthValue(String label) => _t('invalidGrowthValue').replaceAll('{label}', label);
-  String growthSaved(String label) => _t('growthSaved').replaceAll('{label}', label);
-  String growthEmpty(String label) => _t('growthEmpty').replaceAll('{label}', label);
+  String growthHistoryTitle(String label) =>
+      _t('growthHistoryTitle').replaceAll('{label}', label);
+  String invalidGrowthValue(String label) =>
+      _t('invalidGrowthValue').replaceAll('{label}', label);
+  String growthSaved(String label) =>
+      _t('growthSaved').replaceAll('{label}', label);
+  String growthEmpty(String label) =>
+      _t('growthEmpty').replaceAll('{label}', label);
   String get notifyGrowthWeightDownTitle => _t('notifyGrowthWeightDownTitle');
   String get notifyGrowthWeightDownBody => _t('notifyGrowthWeightDownBody');
   String get notifyGrowthStaleTitle => _t('notifyGrowthStaleTitle');
-  String notifyGrowthStaleBody(int days) => _t('notifyGrowthStaleBody').replaceAll('{days}', '$days');
+  String notifyGrowthStaleBody(int days) =>
+      _t('notifyGrowthStaleBody').replaceAll('{days}', '$days');
   String get labelHead => _t('labelHead');
   String get growthTabWeight => _t('growthTabWeight');
   String get growthTabHeight => _t('growthTabHeight');
@@ -991,28 +1346,47 @@ class S {
   String get growthAddHead => _t('growthAddHead');
   String get growthSummaryIntro => _t('growthSummaryIntro');
   String growthChartCaption(String name, String metric) =>
-      _t('growthChartCaption').replaceAll('{name}', name).replaceAll('{metric}', metric);
+      _t('growthChartCaption')
+          .replaceAll('{name}', name)
+          .replaceAll('{metric}', metric);
   String get growthChartDeltaHint => _t('growthChartDeltaHint');
-  String feedingAgoMinutes(int m) => _t('feedingAgoMinutes').replaceAll('{m}', '$m');
-  String feedingAgoHours(int h, String mPadded) => _t('feedingAgoHours').replaceAll('{h}', '$h').replaceAll('{m}', mPadded);
-  String feedingNextInMinutes(int n) => _t('feedingNextIn').replaceAll('{n}', '$n');
+  String feedingAgoMinutes(int m) =>
+      _t('feedingAgoMinutes').replaceAll('{m}', '$m');
+  String feedingAgoHours(int h, String mPadded) =>
+      _t('feedingAgoHours').replaceAll('{h}', '$h').replaceAll('{m}', mPadded);
+  String feedingNextInMinutes(int n) =>
+      _t('feedingNextIn').replaceAll('{n}', '$n');
   String feedingHistoryLine(int minutes, String side) =>
-      _t('feedingHistoryLine').replaceAll('{time}', '$minutes').replaceAll('{side}', side);
-  String feedingAvgDurMinutes(int m) => _t('feedingAvgDurFmt').replaceAll('{m}', '$m');
+      _t('feedingHistoryLine')
+          .replaceAll('{time}', '$minutes')
+          .replaceAll('{side}', side);
+  String feedingAvgDurMinutes(int m) =>
+      _t('feedingAvgDurFmt').replaceAll('{m}', '$m');
   String feedingAvgIntervalFmt(int h, String mPadded) =>
-      _t('feedingAvgIntervalFmt').replaceAll('{h}', '$h').replaceAll('{m}', mPadded);
-  String regZodiacLine(String sign) => _t('regZodiacLine').replaceAll('{sign}', sign);
-  String regPromptBabyNameLine(String mom) => _t('regPromptBabyName').replaceAll('{mom}', mom);
-  String regListBabyLine(String name) => _t('regListBaby').replaceAll('{name}', name);
-  String regListBirthLine(String date) => _t('regListBirth').replaceAll('{date}', date);
-  String regListSignLine(String sign) => _t('regListSign').replaceAll('{sign}', sign);
-  String regListPhoneLine(String phone) => _t('regListPhone').replaceAll('{phone}', phone);
+      _t('feedingAvgIntervalFmt')
+          .replaceAll('{h}', '$h')
+          .replaceAll('{m}', mPadded);
+  String regZodiacLine(String sign) =>
+      _t('regZodiacLine').replaceAll('{sign}', sign);
+  String regPromptBabyNameLine(String mom) =>
+      _t('regPromptBabyName').replaceAll('{mom}', mom);
+  String regListBabyLine(String name) =>
+      _t('regListBaby').replaceAll('{name}', name);
+  String regListBirthLine(String date) =>
+      _t('regListBirth').replaceAll('{date}', date);
+  String regListSignLine(String sign) =>
+      _t('regListSign').replaceAll('{sign}', sign);
+  String regListPhoneLine(String phone) =>
+      _t('regListPhone').replaceAll('{phone}', phone);
   String regMomDisplay(String? mName) {
-    final t = (mName == null || mName.isEmpty) ? regMomGeneric : regMomWithName(mName);
+    final t = (mName == null || mName.isEmpty)
+        ? regMomGeneric
+        : regMomWithName(mName);
     return t;
   }
 
-  String regMomWithName(String name) => _t('regMomWithName').replaceAll('{name}', name);
+  String regMomWithName(String name) =>
+      _t('regMomWithName').replaceAll('{name}', name);
 
   String get add => _t('add');
   String get labelWeight => _t('labelWeight');
@@ -1022,6 +1396,9 @@ class S {
   String get diaperPagePlaceholder => _t('diaperPagePlaceholder');
   String get shortcutHealth => _t('shortcutHealth');
   String get shortcutHealthSubtitle => _t('shortcutHealthSubtitle');
+  String get shortcutFamily => _t('shortcutFamily');
+  String get shortcutFamilyHomeSub => _t('shortcutFamilyHomeSub');
+  String get shortcutHealthHomeSub => _t('shortcutHealthHomeSub');
   String get shortcutFeedingSession => _t('shortcutFeedingSession');
   String get shortcutFeedingSessionSub => _t('shortcutFeedingSessionSub');
   String get healthHubTitle => _t('healthHubTitle');
@@ -1030,7 +1407,8 @@ class S {
   String get healthHubVaccines => _t('healthHubVaccines');
   String get healthHubVaccinesSub => _t('healthHubVaccinesSub');
   String get vaccineReminderNotifTitle => _t('vaccineReminderNotifTitle');
-  String vaccineReminderNotifBody(String name) => _t('vaccineReminderNotifBody').replaceAll('{name}', name);
+  String vaccineReminderNotifBody(String name) =>
+      _t('vaccineReminderNotifBody').replaceAll('{name}', name);
   String get homeBannerChipVaccine => _t('homeBannerChipVaccine');
   String get vaccDueConfirmCheckbox => _t('vaccDueConfirmCheckbox');
   String get vaccDueSavedOk => _t('vaccDueSavedOk');
@@ -1056,8 +1434,10 @@ class S {
   String get symptomReportReflux => _t('symptomReportReflux');
   String get symptomReportOther => _t('symptomReportOther');
   String get symptomReportOtherHint => _t('symptomReportOtherHint');
-  String get symptomReportValidationNeedOne => _t('symptomReportValidationNeedOne');
-  String get symptomReportValidationFeverTemp => _t('symptomReportValidationFeverTemp');
+  String get symptomReportValidationNeedOne =>
+      _t('symptomReportValidationNeedOne');
+  String get symptomReportValidationFeverTemp =>
+      _t('symptomReportValidationFeverTemp');
   String get symptomReportDeleteTitle => _t('symptomReportDeleteTitle');
   String get symptomReportDeleteBody => _t('symptomReportDeleteBody');
   String get consultationsTitle => _t('consultationsTitle');
@@ -1076,14 +1456,23 @@ class S {
   String get consultationDetailPhone => _t('consultationDetailPhone');
   String get consultationDetailAddress => _t('consultationDetailAddress');
   String get consultationDetailNotes => _t('consultationDetailNotes');
-  String get consultationReminderNotifTitle => _t('consultationReminderNotifTitle');
+  String get consultationReminderNotifTitle =>
+      _t('consultationReminderNotifTitle');
   String consultationReminderNotifBody(String title, String whenFormatted) =>
-      _t('consultationReminderNotifBody').replaceAll('{title}', title).replaceAll('{when}', whenFormatted);
+      _t('consultationReminderNotifBody')
+          .replaceAll('{title}', title)
+          .replaceAll('{when}', whenFormatted);
+
   /// Lembrete no **dia** da consulta (push imediato / banner), por oposição a “amanhã”.
-  String consultationTodayReminderNotifBody(String title, String whenFormatted) =>
-      _t('consultationTodayReminderNotifBody').replaceAll('{title}', title).replaceAll('{when}', whenFormatted);
+  String consultationTodayReminderNotifBody(
+          String title, String whenFormatted) =>
+      _t('consultationTodayReminderNotifBody')
+          .replaceAll('{title}', title)
+          .replaceAll('{when}', whenFormatted);
   String homeConsultationBannerChip(String title, String timeHm) =>
-      _t('homeConsultationBannerChip').replaceAll('{title}', title).replaceAll('{t}', timeHm);
+      _t('homeConsultationBannerChip')
+          .replaceAll('{title}', title)
+          .replaceAll('{t}', timeHm);
   String get consultationsEmpty => _t('consultationsEmpty');
   String get consultationsDayEmpty => _t('consultationsDayEmpty');
   String get feedingSessionTitle => _t('feedingSessionTitle');
@@ -1107,6 +1496,7 @@ class S {
   String get memoriesWallSection => _t('memoriesWallSection');
   String get settingsMotherProfile => _t('settingsMotherProfile');
   String get profileEditMother => _t('profileEditMother');
+  String get profileEditFather => _t('profileEditFather');
   String get profileEditBaby => _t('profileEditBaby');
   String get profileDataSaved => _t('profileDataSaved');
   String get profileEditData => _t('profileEditData');
@@ -1127,22 +1517,31 @@ class S {
   String get contactValidationEmail => _t('contactValidationEmail');
   String get contactValidationAge => _t('contactValidationAge');
   String get motherProfileTabMother => _t('motherProfileTabMother');
+  String get motherProfileTabFather => _t('motherProfileTabFather');
   String get motherProfileTabBabies => _t('motherProfileTabBabies');
+  String get motherProfileFieldFatherName =>
+      _t('motherProfileFieldFatherName');
   String get motherProfileNoData => _t('motherProfileNoData');
   String get motherProfileSectionInfo => _t('motherProfileSectionInfo');
   String get motherProfileFieldPhone => _t('motherProfileFieldPhone');
   String get motherProfileFieldBirth => _t('motherProfileFieldBirth');
   String get motherProfileFieldHeight => _t('motherProfileFieldHeight');
-  String get motherProfileFieldFatherHeight => _t('motherProfileFieldFatherHeight');
+  String get motherProfileFieldFatherHeight =>
+      _t('motherProfileFieldFatherHeight');
+  String get profileFamilyMessagesTitle => _t('profileFamilyMessagesTitle');
+  String get profileShowChristian => _t('profileShowChristian');
+  String get profileShowHoroscope => _t('profileShowHoroscope');
   String get motherProfileAddBaby => _t('motherProfileAddBaby');
   String get motherProfileNoBabies => _t('motherProfileNoBabies');
-  String motherProfileBabyBornAt(String date) => _t('motherProfileBabyBornAt').replaceAll('{date}', date);
+  String motherProfileBabyBornAt(String date) =>
+      _t('motherProfileBabyBornAt').replaceAll('{date}', date);
   String get settingsBabyData => _t('settingsBabyData');
   String get settingsAlerts => _t('settingsAlerts');
   String get alertsScreenIntro => _t('alertsScreenIntro');
   String get alertsExactAlarmAndroidTitle => _t('alertsExactAlarmAndroidTitle');
   String get alertsExactAlarmAndroidBody => _t('alertsExactAlarmAndroidBody');
-  String get alertsExactAlarmAndroidOpenSettings => _t('alertsExactAlarmAndroidOpenSettings');
+  String get alertsExactAlarmAndroidOpenSettings =>
+      _t('alertsExactAlarmAndroidOpenSettings');
   String get alertsSectionFeeding => _t('alertsSectionFeeding');
   String get alertsRuleFeeding => _t('alertsRuleFeeding');
   String get alertsSectionDiaper => _t('alertsSectionDiaper');
@@ -1151,6 +1550,19 @@ class S {
   String get alertsRuleSleep => _t('alertsRuleSleep');
   String get alertsSectionGrowth => _t('alertsSectionGrowth');
   String get alertsRuleGrowth => _t('alertsRuleGrowth');
+  String get alertsTestTitle => _t('alertsTestTitle');
+  String get alertsTestBody => _t('alertsTestBody');
+  String get alertsTestRun => _t('alertsTestRun');
+  String get alertsTestResync => _t('alertsTestResync');
+  String get alertsTestImmediateTitle => _t('alertsTestImmediateTitle');
+  String get alertsTestImmediateBody => _t('alertsTestImmediateBody');
+  String get alertsTestScheduledTitle => _t('alertsTestScheduledTitle');
+  String get alertsTestScheduledBody => _t('alertsTestScheduledBody');
+  String get alertsTestAllScheduleModesFailed =>
+      _t('alertsTestAllScheduleModesFailed');
+  String get alertsTestSentOk => _t('alertsTestSentOk');
+  String alertsTestFailed(String errors) =>
+      _t('alertsTestFailed').replaceAll('{errors}', errors);
   String get settingsPrivacy => _t('settingsPrivacy');
   String get settingsSaaS => _t('settingsSaaS');
   String get loadingMotherPhoto => _t('loadingMotherPhoto');
@@ -1166,7 +1578,8 @@ class S {
   String get sleepComingTitle => _t('sleepComingTitle');
   String get sleepComingBody => _t('sleepComingBody');
   String get sleepSessionTitle => _t('sleepSessionTitle');
-  String sleepSessionStartedAt(String time) => _t('sleepSessionStartedAt').replaceAll('{time}', time);
+  String sleepSessionStartedAt(String time) =>
+      _t('sleepSessionStartedAt').replaceAll('{time}', time);
   String get sleepStatusSleeping => _t('sleepStatusSleeping');
   String get sleepStatusPaused => _t('sleepStatusPaused');
   String get sleepWakeButton => _t('sleepWakeButton');
@@ -1184,21 +1597,26 @@ class S {
   String get sleepSavedOk => _t('sleepSavedOk');
   String get sleepConfirmBackTitle => _t('sleepConfirmBackTitle');
   String get sleepConfirmBackBody => _t('sleepConfirmBackBody');
-  String get sleepConfirmCancelSessionTitle => _t('sleepConfirmCancelSessionTitle');
-  String get sleepConfirmCancelSessionBody => _t('sleepConfirmCancelSessionBody');
+  String get sleepConfirmCancelSessionTitle =>
+      _t('sleepConfirmCancelSessionTitle');
+  String get sleepConfirmCancelSessionBody =>
+      _t('sleepConfirmCancelSessionBody');
   String get sleepDiscard => _t('sleepDiscard');
   String get sleepHistoryTitle => _t('sleepHistoryTitle');
   String get sleepHistoryEmpty => _t('sleepHistoryEmpty');
   String get sleepUpdatedOk => _t('sleepUpdatedOk');
-  String sleepBannerNextNap(int min) => _t('sleepBannerNextNap').replaceAll('{min}', '$min');
+  String sleepBannerNextNap(int min) =>
+      _t('sleepBannerNextNap').replaceAll('{min}', '$min');
   String get sleepWindowTitle => _t('sleepWindowTitle');
   String get sleepWindowEarly => _t('sleepWindowEarly');
   String get sleepWindowIdeal => _t('sleepWindowIdeal');
   String get sleepWindowLate => _t('sleepWindowLate');
-  String sleepRoutineLastLabel(String ago) => _t('sleepRoutineLastLabel').replaceAll('{ago}', ago);
+  String sleepRoutineLastLabel(String ago) =>
+      _t('sleepRoutineLastLabel').replaceAll('{ago}', ago);
   String get sleepRoutineLastNever => _t('sleepRoutineLastNever');
   String get sleepRoutineNextPrefix => _t('sleepRoutineNextPrefix');
-  String sleepNextApproxMin(int min) => _t('sleepNextApproxMin').replaceAll('{min}', '$min');
+  String sleepNextApproxMin(int min) =>
+      _t('sleepNextApproxMin').replaceAll('{min}', '$min');
   String get sleepRoutineNextNow => _t('sleepRoutineNextNow');
   String get sleepStatusEarly => _t('sleepStatusEarly');
   String get sleepStatusIdeal => _t('sleepStatusIdeal');
@@ -1208,22 +1626,32 @@ class S {
   String get sleepHeroSleepingBadge => _t('sleepHeroSleepingBadge');
   String get sleepHeroSleepingCaption => _t('sleepHeroSleepingCaption');
   String get sleepRoutineCardTitle => _t('sleepRoutineCardTitle');
-  String sleepRoutineStatusLine(String status) => _t('sleepRoutineStatusLine').replaceAll('{status}', status);
+  String sleepRoutineStatusLine(String status) =>
+      _t('sleepRoutineStatusLine').replaceAll('{status}', status);
+
   /// Limites de vigília vêm da tabela fixa do app (ver `SleepRoutine`) — não há registo nas Definições.
   String sleepRoutineVigilHighlight(int min, int max) =>
-      _t('sleepRoutineVigilHighlight').replaceAll('{min}', '$min').replaceAll('{max}', '$max');
+      _t('sleepRoutineVigilHighlight')
+          .replaceAll('{min}', '$min')
+          .replaceAll('{max}', '$max');
   String get sleepIdealForAge => _t('sleepIdealForAge');
-  String sleepAgeMonthsLabel(int n) => _t('sleepAgeMonthsLabel').replaceAll('{n}', '$n');
-  String sleepWindowMinMax(int min, int max) => _t('sleepWindowMinMax').replaceAll('{min}', '$min').replaceAll('{max}', '$max');
+  String sleepAgeMonthsLabel(int n) =>
+      _t('sleepAgeMonthsLabel').replaceAll('{n}', '$n');
+  String sleepWindowMinMax(int min, int max) => _t('sleepWindowMinMax')
+      .replaceAll('{min}', '$min')
+      .replaceAll('{max}', '$max');
   String get sleepLegendG => _t('sleepLegendG');
   String get sleepLegendY => _t('sleepLegendY');
   String get sleepLegendR => _t('sleepLegendR');
   String get sleepWakeWindowExplainer => _t('sleepWakeWindowExplainer');
   String get sleepFinalizeButton => _t('sleepFinalizeButton');
-  String sleepSleepingFor(String when) => _t('sleepSleepingFor').replaceAll('{when}', when);
+  String sleepSleepingFor(String when) =>
+      _t('sleepSleepingFor').replaceAll('{when}', when);
   String get sleepInsightTitle => _t('sleepInsightTitle');
-  String sleepInsightNaps(int n) => _t('sleepInsightNaps').replaceAll('{n}', '$n');
-  String sleepInsightAvg(int min) => _t('sleepInsightAvg').replaceAll('{min}', '$min');
+  String sleepInsightNaps(int n) =>
+      _t('sleepInsightNaps').replaceAll('{n}', '$n');
+  String sleepInsightAvg(int min) =>
+      _t('sleepInsightAvg').replaceAll('{min}', '$min');
   String get sleepInsightTrendDown => _t('sleepInsightTrendDown');
   String get sleepInsightTrendOk => _t('sleepInsightTrendOk');
   String get sleepHistoryToday => _t('sleepHistoryToday');
@@ -1245,21 +1673,34 @@ class S {
       _t('sleepAlertsApproachSliderLabelDefault').replaceAll('{m}', '$m');
   String sleepAlertsApproachSliderLabelCustom(int m) =>
       _t('sleepAlertsApproachSliderLabelCustom').replaceAll('{m}', '$m');
-  String sleepAlertsWakeWindowAutomatic(int m) => _t('sleepAlertsWakeWindowAutomatic').replaceAll('{m}', '$m');
+  String sleepAlertsWakeWindowAutomatic(int m) =>
+      _t('sleepAlertsWakeWindowAutomatic').replaceAll('{m}', '$m');
   String sleepAlertsWakeWindowAutomaticNoBirth(int m) =>
       _t('sleepAlertsWakeWindowAutomaticNoBirth').replaceAll('{m}', '$m');
-  String sleepAlertsMonthsApprox(int n) => _t('sleepAlertsMonthsApprox').replaceAll('{n}', '$n');
-  String sleepAlertsWakeWindowCustom(int m) => _t('sleepAlertsWakeWindowCustom').replaceAll('{m}', '$m');
-  String sleepAlertsApproachAuto(int m) => _t('sleepAlertsApproachAuto').replaceAll('{m}', '$m');
-  String sleepAlertsApproachCustom(int m) => _t('sleepAlertsApproachCustom').replaceAll('{m}', '$m');
+  String sleepAlertsMonthsApprox(int n) =>
+      _t('sleepAlertsMonthsApprox').replaceAll('{n}', '$n');
+  String sleepAlertsWakeWindowCustom(int m) =>
+      _t('sleepAlertsWakeWindowCustom').replaceAll('{m}', '$m');
+  String sleepAlertsApproachAuto(int m) =>
+      _t('sleepAlertsApproachAuto').replaceAll('{m}', '$m');
+  String sleepAlertsApproachCustom(int m) =>
+      _t('sleepAlertsApproachCustom').replaceAll('{m}', '$m');
   String get diaperToggleAlerts => _t('diaperToggleAlerts');
   String get diaperToggleAlertsSubtitle => _t('diaperToggleAlertsSubtitle');
   String get healthGrowthToggleAlerts => _t('healthGrowthToggleAlerts');
-  String get healthGrowthToggleAlertsSubtitle => _t('healthGrowthToggleAlertsSubtitle');
+  String get healthGrowthToggleAlertsSubtitle =>
+      _t('healthGrowthToggleAlertsSubtitle');
   String get feedingScreenAlertsHint => _t('feedingScreenAlertsHint');
   String get sleepNotifTitle => _t('sleepNotifTitle');
   String get sleepNotifBeforeBody => _t('sleepNotifBeforeBody');
   String get sleepNotifOverdueBody => _t('sleepNotifOverdueBody');
+  String sleepNotifWakeOverdueBodyForBabySex(
+      {required String? sex, required int hours}) {
+    final key = _isMaleBabySex(sex)
+        ? 'sleepNotifWakeOverdueBodyMale'
+        : 'sleepNotifWakeOverdueBodyFemale';
+    return _t(key).replaceAll('{hours}', '$hours');
+  }
 
   /// Nomes/descrições dos canais Android (definições do sistema).
   String get notifChannelRemindersName => _t('notifChannelRemindersName');
@@ -1281,8 +1722,10 @@ class S {
   String get diaperDashLastPoo => _t('diaperDashLastPoo');
   String get diaperDashNoRecordYet => _t('diaperDashNoRecordYet');
   String get diaperDashJustNow => _t('diaperDashJustNow');
+
   /// Ex.: `{ago}` = `15\u00A0min` ou `2h\u00A005`.
-  String diaperDashAgoLine(String compactAgo) => _t('diaperDashAgoLine').replaceAll('{ago}', compactAgo);
+  String diaperDashAgoLine(String compactAgo) =>
+      _t('diaperDashAgoLine').replaceAll('{ago}', compactAgo);
   String get diaperChangedAtLabel => _t('diaperChangedAtLabel');
   String get diaperNoteOptional => _t('diaperNoteOptional');
   String get feedingTitle => _t('feedingTitle');
@@ -1374,7 +1817,8 @@ class S {
   String get commonPhone => _t('commonPhone');
   String get openingGallery => _t('openingGallery');
   String get devLeapsTitle => _t('devLeapsTitle');
-  String devLeapsIntro(String babyName) => _t('devLeapsIntro').replaceAll('{name}', babyName);
+  String devLeapsIntro(String babyName) =>
+      _t('devLeapsIntro').replaceAll('{name}', babyName);
   String get devLeapsNeedBirth => _t('devLeapsNeedBirth');
   String get devLeapsAllTitle => _t('devLeapsAllTitle');
   String get devLeapsCurrentPill => _t('devLeapsCurrentPill');
@@ -1387,16 +1831,21 @@ class S {
   String get devLeapsEmotionalLook => _t('devLeapsEmotionalLook');
 
   /// Textos traduzidos do banner/lista sobre saltos (chave por fase, ex.: [dv01]…[dv20]).
-  String developmentLeapBannerRange(String bannerKey) => _t('devLeap_${bannerKey}_range');
-  String developmentLeapBannerTitle(String bannerKey) => _t('devLeap_${bannerKey}_title');
-  String developmentLeapBannerLead(String bannerKey) => _t('devLeap_${bannerKey}_lead');
-  String developmentLeapBannerEmotion(String bannerKey) => _t('devLeap_${bannerKey}_emotion');
+  String developmentLeapBannerRange(String bannerKey) =>
+      _t('devLeap_${bannerKey}_range');
+  String developmentLeapBannerTitle(String bannerKey) =>
+      _t('devLeap_${bannerKey}_title');
+  String developmentLeapBannerLead(String bannerKey) =>
+      _t('devLeap_${bannerKey}_lead');
+  String developmentLeapBannerEmotion(String bannerKey) =>
+      _t('devLeap_${bannerKey}_emotion');
 
   /// Corpo da fase no card/página de detalhe (lista: uma linha por item).
   List<String> developmentLeapHomeBullets(String bannerKey) =>
       _splitLeapLines(_t('devLeap_${bannerKey}_homeBullets'));
 
-  String developmentLeapDetailWhats(String bannerKey) => _t('devLeap_${bannerKey}_detailWhats');
+  String developmentLeapDetailWhats(String bannerKey) =>
+      _t('devLeap_${bannerKey}_detailWhats');
 
   List<String> developmentLeapDetailKeywords(String bannerKey) =>
       _splitLeapLines(_t('devLeap_${bannerKey}_keywords'));
@@ -1423,7 +1872,11 @@ class S {
   String get regBabySection => _t('regBabySection');
   String get regBirthLabel => _t('regBirthLabel');
   String get regMotherHeight => _t('regMotherHeight');
+  String get regFatherSection => _t('regFatherSection');
+  String get regFatherName => _t('regFatherName');
+  String get regFatherBirthLabel => _t('regFatherBirthLabel');
   String get regFatherHeight => _t('regFatherHeight');
+  String get settingsFamilyTree => _t('settingsFamilyTree');
   String get regMotherPhotoAdd => _t('regMotherPhotoAdd');
   String get regMotherPhotoChange => _t('regMotherPhotoChange');
   String get regBabyPhotoAdd => _t('regBabyPhotoAdd');
@@ -1498,15 +1951,19 @@ const Map<AppLang, Map<String, String>> _strings = {
     'todaySummary': 'Resumo de hoje',
     'nextEvents': 'Próximos eventos',
     'quickRecordsTitle': 'Registros rápidos',
-    'quickRecordsSubtitle': 'Adicione eventos da rotina da bebê em poucos toques.',
+    'quickRecordsSubtitle':
+        'Adicione eventos da rotina da bebê em poucos toques.',
     'feedingAlertsSwitchTitle': 'Alerta de Amamentação',
     'feedingAlertsSwitchSubtitle':
         'Aviso quando passar o tempo desde a última amamentação ao seio ou mamadeira (push).',
-    'feedingAlertsIntervalCaption': 'Tempo para avisar após a última amamentação: {m} min (20–360)',
+    'feedingAlertsIntervalCaption':
+        'Tempo para avisar após a última amamentação: {m} min (20–360)',
     'feedingAlertsShortcutTitle': 'Alerta de alimentação',
-    'scheduledFeedingReminderBody': 'Momento do lembrete de amamentação. Toque para registar.',
+    'scheduledFeedingReminderBody':
+        'Momento do lembrete de amamentação. Toque para registar.',
     'scheduledDiaperReminderTitle': 'Troca de fralda',
-    'scheduledDiaperReminderBody': 'Já passou o tempo sugerido desde a última troca. Toque para registar.',
+    'scheduledDiaperReminderBody':
+        'Já passou o tempo sugerido desde a última troca. Toque para registar.',
     'whatHappenedNow': 'O que aconteceu agora?',
     'momNote': 'Observação da mamãe',
     'saveRecord': 'Salvar registro',
@@ -1520,7 +1977,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportListDaily': 'Relatório diário',
     'reportListDailySub': 'Resumo e detalhes do dia selecionado',
     'reportListWeekly': 'Relatório semanal',
-    'reportListWeeklySub': 'Resumo e detalhes da semana que contém o dia selecionado',
+    'reportListWeeklySub':
+        'Resumo e detalhes da semana que contém o dia selecionado',
     'reportListMonthly': 'Relatório mensal',
     'reportListMonthlySub': 'Agregados do mês do dia selecionado',
     'reportListSleepAdv': 'Relatório avançado de sono',
@@ -1540,13 +1998,16 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusCtaLater': 'Agora não',
     'plusSheetFootnote':
         'Compra única processada pela Google Play ou pela App Store. Nas definições da conta pode restaurar noutro telemóvel.',
-    'plusWelcomeSnack': 'Obrigada por confiar no FaceBaby Premium — as memórias do bebê ficam ainda mais seguras.',
+    'plusWelcomeSnack':
+        'Obrigada por confiar no FaceBaby Premium — as memórias do bebê ficam ainda mais seguras.',
     'plusPurchaseUnavailableSnack':
         'Não foi possível iniciar a compra. Confirme o produto nas lojas ou tente mais tarde.',
     'plusPurchaseSkuNotFoundSnack':
         'A Google Play não devolveu o produto "{id}". No Play Console crie um produto in-app gerido activo com este ID exacto (Monetizar → Produtos in-app), ou use --dart-define=FACEBABY_PREMIUM_SKU=… no build para igualar ao ID da loja.',
     'plusPurchaseBillingLaunchFailedSnack':
-        'Não foi possível abrir o pagamento na Google Play. Instale a app pela faixa de teste interno/fechado (ou loja), use uma conta de teste licenciada e tente de novo.',
+        'Não foi possível abrir o pagamento na Google Play. Confirme ligação à Internet, que a app veio da Play e que está com uma conta Google válida. Em testes internos/fechados, use conta licenciada. Se a mensagem da Play disser que o produto já foi comprado, use «Restaurar compras» abaixo.',
+    'plusPurchaseAlreadyInPlayAccountSnack':
+        'Se a Play disser que o produto já é seu, toque em «Restaurar compras» abaixo para ligar o Premium a esta conta FaceBaby. Se não funcionar, confira se está na mesma conta Google da compra.',
     'plusPaywallSkuMissingHint':
         'Ainda sem preço da loja para "{id}". Confirme o produto activo na Play Console ou aguarde sincronização (pode demorar algumas horas).',
     'plusRestoreOkSnack': 'Compras restauradas com sucesso.',
@@ -1561,12 +2022,14 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusPremiumActiveTitle': 'Obrigada pelo Premium',
     'plusPremiumActiveBody':
         'Tens todas as funções premium ativas para sempre neste dispositivo. Restaura compras noutro telemóvel quando precisares.',
-    'plusPurchaseErrorSnack': 'Algo correu mal. Tenta de novo ou usa Restaurar compras.',
+    'plusPurchaseErrorSnack':
+        'Algo correu mal. Tenta de novo ou usa Restaurar compras.',
     'plusDoneClose': 'Fechar',
     'settingsPlusCardTitle': 'FaceBaby Premium',
     'settingsPlusCardBodyFree':
         'PDFs, livro de recordações, mais fotos, backup na nuvem, relatório ao pediatra e estatísticas avançadas — um único pagamento.',
-    'settingsPlusCardBodyActive': 'Tem o FaceBaby Premium ativo — obrigada por apoiar o projeto.',
+    'settingsPlusCardBodyActive':
+        'Tem o FaceBaby Premium ativo — obrigada por apoiar o projeto.',
     'settingsPlusUpgradeCta': 'Desbloquear Premium',
     'settingsPlusManageCta': 'Ver Premium',
     'plusMemoryCounterFree': '{n} de {max} momentos no plano gratuito',
@@ -1621,28 +2084,36 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Muitas mamadas ao longo do dia — comum em fases de salto ou hidratação; registe duração para ver médias.',
     'reportInsightDiapersFrequent':
         'Várias trocas de fralda — pode indicar hidratação ok ou irritação de pele; vale observar o tipo (xixi/cocô).',
-    'reportInsightMoodLine': 'Humor predominante registrado nas memórias: {mood}.',
+    'reportInsightMoodLine':
+        'Humor predominante registrado nas memórias: {mood}.',
     'reportWeeklyScreenTitle': 'Relatório Semanal',
     'reportWeekDetailsTitle': 'Detalhes da Semana',
     'reportWeeklyPickWeekTooltip': 'Escolher semana (qualquer dia)',
     'reportWeeklySummaryTitle': 'Resumo da Semana',
     'reportWeeklyTrendsTitle': 'Tendências',
     'reportWeeklySeeFullDetails': 'Ver relatório completo',
-    'reportWeeklyPartialWeekHint': 'Médias e tendências: segunda a {weekday} (semana até agora).',
+    'reportWeeklyPartialWeekHint':
+        'Médias e tendências: segunda a {weekday} (semana até agora).',
     'reportWeeklyFutureWeekHint':
         'Esta semana ainda não começou no calendário — escolhe outra semana ou volta quando houver dias registados.',
     'reportWeeklyLoadErrorPrefix': 'Não foi possível carregar o relatório:',
     'reportWeeklyToneCalm': 'tranquila',
     'reportWeeklyToneActive': 'movimentada',
-    'reportWeeklySleepUnknown': 'Sem dados suficientes para comparar o sono entre semanas.',
+    'reportWeeklySleepUnknown':
+        'Sem dados suficientes para comparar o sono entre semanas.',
     'reportWeeklyFirstWeekSleepLine':
         'Esta é a primeira semana com registos: continue a anotar para vermos tendências em breve.',
-    'reportWeeklySleepStableShort': 'O sono manteve-se estável face à semana anterior.',
-    'reportWeeklySleepUp': 'O sono melhorou cerca de {pct}% face à semana anterior.',
-    'reportWeeklySleepDown': 'O sono reduziu cerca de {pct}% face à semana anterior.',
+    'reportWeeklySleepStableShort':
+        'O sono manteve-se estável face à semana anterior.',
+    'reportWeeklySleepUp':
+        'O sono melhorou cerca de {pct}% face à semana anterior.',
+    'reportWeeklySleepDown':
+        'O sono reduziu cerca de {pct}% face à semana anterior.',
     'reportWeeklyFeedStableLine': 'As mamadas mantiveram-se regulares.',
-    'reportWeeklyFeedUp': 'As mamadas aumentaram cerca de {pct}% na média diária.',
-    'reportWeeklyFeedDown': 'As mamadas diminuíram cerca de {pct}% na média diária.',
+    'reportWeeklyFeedUp':
+        'As mamadas aumentaram cerca de {pct}% na média diária.',
+    'reportWeeklyFeedDown':
+        'As mamadas diminuíram cerca de {pct}% na média diária.',
     'reportWeeklyHeroTemplate': '{name} teve uma semana {tone}! {sleep} {feed}',
     'reportWeeklyTrendLabelImproved': 'Melhorou',
     'reportWeeklyTrendLabelWorse': 'Piorou',
@@ -1651,11 +2122,15 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportWeeklyTrendLabelEvolving': 'Evoluindo',
     'reportWeeklyTrendLabelIncreased': 'Aumentou',
     'reportWeeklyTrendNA': '—',
-    'reportWeeklyHighlightSleep': 'Destaque positivo: sono mais recuperador esta semana.',
-    'reportWeeklyHighlightFeedingStable': 'Destaque positivo: ritmo de alimentação consistente.',
-    'reportWeeklyHighlightDiaperUp': 'Destaque: mais trocas — hidratação ou digestão mais ativa.',
+    'reportWeeklyHighlightSleep':
+        'Destaque positivo: sono mais recuperador esta semana.',
+    'reportWeeklyHighlightFeedingStable':
+        'Destaque positivo: ritmo de alimentação consistente.',
+    'reportWeeklyHighlightDiaperUp':
+        'Destaque: mais trocas — hidratação ou digestão mais ativa.',
     'reportWeeklyHighlightWeight': 'Destaque positivo: ganho de peso.',
-    'reportWeeklyHighlightGeneric': 'Continue a registar para tendências mais claras.',
+    'reportWeeklyHighlightGeneric':
+        'Continue a registar para tendências mais claras.',
     'reportWeeklyAvgFeedsDay': 'Média diária: {avg} mamadas.',
     'reportWeeklyAvgDiapersDay': 'Média diária: {avg} trocas.',
     'reportWeeklySleepHoursChartTitle': 'Horas de sono por dia',
@@ -1664,28 +2139,40 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportWeeklyInsightsCardTitle': 'Insights da IA',
     'reportWeeklyPatternsTitle': 'Padrões detectados',
     'reportWeeklySeeAllAnalyses': 'Ver todas as análises',
-    'reportWeeklyHeatmapSoon': 'Mapa de calor horário (opcional) disponível em breve.',
+    'reportWeeklyHeatmapSoon':
+        'Mapa de calor horário (opcional) disponível em breve.',
     'reportWeeklyFeedChartCaption': 'Mamadas por dia',
     'reportWeeklyDiaperChartCaption': 'Trocas por dia',
-    'reportWeeklyPatternWeekend': 'Ao fim de semana o sono tende a alongar um pouco.',
-    'reportWeeklyPatternFeedingDown': 'Menos mamadas na média — comum quando os intervalos aumentam.',
-    'reportWeeklyPatternDefault': 'Padrão semanal dentro do esperado — ajuste conforme o ritmo do bebê.',
-    'reportWeeklyInsightSleepNeutral': 'O sono foi semelhante ao da semana anterior.',
-    'reportWeeklyInsightSleepBetter': 'Há mais horas de sono do que na semana passada — bom sinal.',
-    'reportWeeklyInsightSleepLess': 'O sono total ficou abaixo da semana anterior — vale observar o descanso à noite.',
+    'reportWeeklyPatternWeekend':
+        'Ao fim de semana o sono tende a alongar um pouco.',
+    'reportWeeklyPatternFeedingDown':
+        'Menos mamadas na média — comum quando os intervalos aumentam.',
+    'reportWeeklyPatternDefault':
+        'Padrão semanal dentro do esperado — ajuste conforme o ritmo do bebê.',
+    'reportWeeklyInsightSleepNeutral':
+        'O sono foi semelhante ao da semana anterior.',
+    'reportWeeklyInsightSleepBetter':
+        'Há mais horas de sono do que na semana passada — bom sinal.',
+    'reportWeeklyInsightSleepLess':
+        'O sono total ficou abaixo da semana anterior — vale observar o descanso à noite.',
     'reportWeeklyInsightTemplate': '{name}: {sleep}',
     'reportMonthlyScreenTitle': 'Relatório Mensal',
     'reportMonthlyAvgWeight': 'Peso médio',
     'reportMonthlyAvgHeight': 'Altura média',
-    'reportMonthlyGrowthChartEmpty': 'Adicione pelo menos dois registos de peso no mês para ver o gráfico.',
+    'reportMonthlyGrowthChartEmpty':
+        'Adicione pelo menos dois registos de peso no mês para ver o gráfico.',
     'reportMonthlySleepSection': 'Sono',
     'reportMonthlySleepAvg': 'Média mensal (por dia)',
     'reportMonthlyVsPrevMonth': 'vs mês anterior',
     'reportMonthlyBestWeeks': 'Semanas com mais sono',
-    'reportMonthlySleepTrendUp': 'Tendência geral: mais sono recuperador este mês.',
-    'reportMonthlySleepTrendDown': 'Tendência geral: menos sono total que no mês anterior — vale acompanhar.',
-    'reportMonthlySleepTrendStable': 'Tendência geral: sono estável ao longo do mês.',
-    'reportMonthlySleepTrendUnknown': 'Sem dados suficientes para comparar com o mês anterior.',
+    'reportMonthlySleepTrendUp':
+        'Tendência geral: mais sono recuperador este mês.',
+    'reportMonthlySleepTrendDown':
+        'Tendência geral: menos sono total que no mês anterior — vale acompanhar.',
+    'reportMonthlySleepTrendStable':
+        'Tendência geral: sono estável ao longo do mês.',
+    'reportMonthlySleepTrendUnknown':
+        'Sem dados suficientes para comparar com o mês anterior.',
     'reportMonthlySleepExplain':
         'A média de sono por dia soma todo o tempo registado em cada dia civil do mês e divide pelo número de dias desse mês (sessões contadas pelo horário de fim). A percentagem compara essa média com a do mês anterior. «Semanas com mais sono» mostra até duas semanas (segunda a domingo) em que o total de sono foi maior.',
     'reportMonthlyFeedingSection': 'Alimentação',
@@ -1694,24 +2181,30 @@ const Map<AppLang, Map<String, String>> _strings = {
         'A frequência média é o total de mamadas ao peito ou à mamadeira registadas no mês dividido pelos dias do calendário desse mês (inclui dias sem registo). Alimentação sólida não entra nesta contagem. Os horários são até três faixas horárias em que mais mamadas terminaram neste mês.',
     'reportMonthlyPredominantHours': 'Horários predominantes (fim da mamada)',
     'reportMonthlyMilestonesTitle': 'Marcos do mês',
-    'reportMonthlyMilestonesEmpty': 'Sem vacinas, consultas ou memórias com selo neste mês.',
+    'reportMonthlyMilestonesEmpty':
+        'Sem vacinas, consultas ou memórias com selo neste mês.',
     'reportMonthlyMilestoneConsultationDefault': 'Consulta',
     'reportMonthlyMemoriesTitle': 'Memórias do mês',
+    'homeRecentMemoriesTitle': 'Últimas Memórias',
     'reportMonthlySeeAllMemories': 'Ver todas',
-    'reportMonthlyMemoriesEmpty': 'Sem fotos registadas nas memórias deste mês.',
-    'reportMonthlyVideosHint': 'Vídeos aparecem quando existirem nos momentos guardados.',
+    'reportMonthlyMemoriesEmpty':
+        'Sem fotos registadas nas memórias deste mês.',
+    'reportMonthlyVideosHint':
+        'Vídeos aparecem quando existirem nos momentos guardados.',
     'reportSleepAdvScreenTitle': 'Relatório de Sono',
     'reportSleepAdvScoreTitle': 'Score de Sono',
     'reportSleepAdvMetricsTitle': 'Métricas da semana',
     'reportSleepAdvEfficiency': 'Eficiência do sono',
-    'reportSleepAdvVsPrevPct': 'Variação da eficiência: {pct}% (vs semana anterior)',
+    'reportSleepAdvVsPrevPct':
+        'Variação da eficiência: {pct}% (vs semana anterior)',
     'reportSleepAdvOnset': 'Tempo até o primeiro sono da noite',
     'reportSleepAdvAwakenings': 'Despertares por noite (média)',
     'reportSleepAdvAwakeningsTotal': 'Soma de despertares na semana: {n}',
     'reportSleepAdvLongest': 'Maior período contínuo',
     'reportSleepAdvAvgDailySleep': 'Média de sono por dia',
     'reportSleepAdvIdealTitle': 'Melhor horário para adormecer',
-    'reportSleepAdvIdealFooter': 'Janela estimada a partir dos teus registos (não é aconselhamento médico).',
+    'reportSleepAdvIdealFooter':
+        'Janela estimada a partir dos teus registos (não é aconselhamento médico).',
     'reportSleepAdvSeeFullAnalysis': 'Ver análise completa',
     'reportSleepAdvChartsSection': 'Sessão sono',
     'reportSleepAdvChartsSleepTrend': 'Ritmo do sono (esta semana)',
@@ -1726,7 +2219,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportSleepAdvScoreBreakdown': 'O que o score reflete',
     'reportSleepAdvBreakdownLine':
         'Eficiência: {e} pts • Tramos longos: {s} pts • Despertares: {a} pts • Regularidade: {c} pts (indicativos).',
-    'reportSleepAdvNotEnoughData': 'Ainda há poucos registos esta semana — os valores são orientativos.',
+    'reportSleepAdvNotEnoughData':
+        'Ainda há poucos registos esta semana — os valores são orientativos.',
     'reportSleepAdvStatusExcellent': 'Excelente',
     'reportSleepAdvStatusGood': 'Bom',
     'reportSleepAdvStatusRegular': 'Regular',
@@ -1746,7 +2240,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricDateFrom': 'De',
     'reportPediatricDateTo': 'Até',
     'reportPediatricPickRange': 'Escolher datas',
-    'reportPediatricFilterMaxDaysHint': 'Toque para alterar. Intervalos muito longos são limitados a 366 dias.',
+    'reportPediatricFilterMaxDaysHint':
+        'Toque para alterar. Intervalos muito longos são limitados a 366 dias.',
     'reportPediatricSectionGeneral': 'Informações gerais',
     'reportPediatricSectionSummary': 'Resumo do período',
     'reportPediatricSectionSleep': 'Sono',
@@ -1769,7 +2264,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricFeverFootnote':
         'Contagem a partir dos relatos estruturados em Saúde › Relatar sintoma (com temperatura quando aplicável).',
     'reportPediatricVaccines': 'Vacinas aplicadas no período',
-    'reportPediatricMedications': 'Medicamentos (relatos e palavras-chave nas notas)',
+    'reportPediatricMedications':
+        'Medicamentos (relatos e palavras-chave nas notas)',
     'reportPediatricSleepAvgDaily': 'Média diária de sono',
     'reportPediatricSleepAwakenings': 'Despertares noturnos (média)',
     'reportPediatricSleepPattern': 'Padrão geral do sono',
@@ -1813,7 +2309,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricSymptomPain': 'Dor (relatos)',
     'reportPediatricSymptomFromJournal': 'mencionado no diário (sem hora)',
     'reportPediatricStructuredSymptoms': 'Relatos de sintomas (data e hora)',
-    'reportPediatricStructuredSymptomsEmpty': 'Nenhum relato estruturado neste período.',
+    'reportPediatricStructuredSymptomsEmpty':
+        'Nenhum relato estruturado neste período.',
     'reportDevScreenTitle': 'Desenvolvimento',
     'reportDevSubtitle': 'Marcos orientativos para acompanhar com calma.',
     'reportDevScoreTitle': 'Score de desenvolvimento',
@@ -1829,7 +2326,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportDevSeeAllMarcos': 'Ver todos os marcos',
     'reportDevFootnote':
         'Marcos são orientações gerais; cada bebê tem o seu tempo. Em dúvida, converse com o pediatra.',
-    'reportDevNeedBirth': 'Adiciona a data de nascimento do bebê para ver este relatório.',
+    'reportDevNeedBirth':
+        'Adiciona a data de nascimento do bebê para ver este relatório.',
     'devReport_motor_head': 'Sustenta a cabeça',
     'devReport_motor_roll': 'Rola (ex.: de bruços para costas)',
     'devReport_motor_sit': 'Senta (com ou sem apoio)',
@@ -1862,13 +2360,15 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoriesTitle': 'Livro de memórias',
     'memoriesSubtitle': 'Momentos importantes para transformar em recordações.',
     'memoriesProgressSaved': '{filled} de {total} momentos guardados',
-    'memoriesCheerEmpty': 'Toque num selo com + para registrar fotos e histórias.',
+    'memoriesCheerEmpty':
+        'Toque num selo com + para registrar fotos e histórias.',
     'memoriesAlbumPromoTitle': 'O seu livro de recordação completo',
     'memoriesAlbumPromoSubtitle':
         'Baixe um PDF elegante com capa FaceBaby, moldura decorativa e todas as badges que já preencheu — ideal para guardar ou partilhar.',
     'memoriesAlbumDownloadCta': 'Baixar PDF do álbum',
     'memoriesAlbumGenerating': 'Gerando o Álbum',
-    'memoriesAlbumNeedFilled': 'Preencha pelo menos um momento no álbum para gerar o PDF.',
+    'memoriesAlbumNeedFilled':
+        'Preencha pelo menos um momento no álbum para gerar o PDF.',
     'memoriesAlbumError': 'Não foi possível gerar o PDF.',
     'memoriesAlbumPdfReadyTitle': 'PDF do álbum pronto',
     'memoriesAlbumShareAction': 'Compartilhar',
@@ -1943,11 +2443,13 @@ const Map<AppLang, Map<String, String>> _strings = {
     'dailyJournalTitle': 'Resumo do dia',
     'dailyJournalPickDay': 'Escolher dia',
     'dailyJournalOnDate': 'Resumo em {d}',
-    'dailyJournalHint': 'Escreva aqui o resumo de hoje (ou do dia selecionado)…',
+    'dailyJournalHint':
+        'Escreva aqui o resumo de hoje (ou do dia selecionado)…',
     'dailyJournalSave': 'Salvar resumo',
     'dailyJournalSaving': 'Salvando resumo…',
     'dailyJournalSaved': 'Resumo salvo.',
-    'dailyJournalNoBaby': 'Cadastre/seleciona um bebê para usar o resumo do dia.',
+    'dailyJournalNoBaby':
+        'Cadastre/seleciona um bebê para usar o resumo do dia.',
     'registerMotherBaby': 'Cadastro (mãe e bebê)',
     'vaccinesCard': 'Vacinas (carteirinha)',
     'language': 'Idioma',
@@ -1962,10 +2464,13 @@ const Map<AppLang, Map<String, String>> _strings = {
     'settingsInviteShareText':
         'Experimente o FaceBaby — o diário da rotina e memórias do bebê.\nhttps://play.google.com/store/apps/details?id=com.facebaby.app',
     'settingsPremiumBenefitsTitle': 'Benefícios FaceBaby Premium',
-    'settingsPremiumBannerHint': 'Toque para ver o que está incluído no seu plano.',
-    'settingsRateCouldNotOpen': 'Não foi possível abrir a loja. Tente mais tarde.',
+    'settingsPremiumBannerHint':
+        'Toque para ver o que está incluído no seu plano.',
+    'settingsRateCouldNotOpen':
+        'Não foi possível abrir a loja. Tente mais tarde.',
     'unitsTitle': 'Unidades de medida',
-    'unitsIntro': 'Escolha como prefere ver as medidas. Começamos com um padrão automático baseado na região do seu celular.',
+    'unitsIntro':
+        'Escolha como prefere ver as medidas. Começamos com um padrão automático baseado na região do seu celular.',
     'unitsLengthTitle': 'Unidade de comprimento',
     'unitsLengthSubtitle': 'Altura, perímetro e medidas em geral.',
     'unitsWeightTitle': 'Unidade de peso',
@@ -1999,7 +2504,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'authForgotDialogTitle': 'Esqueci minha senha',
     'authForgotDialogBody': 'Vamos enviar um link para redefinir sua senha.',
     'authForgotSend': 'Enviar',
-    'authResetEmailSentSnackbar': 'E-mail enviado. Verifique sua caixa de entrada.',
+    'authResetEmailSentSnackbar':
+        'E-mail enviado. Verifique sua caixa de entrada.',
     'authRegisterAppBarTitle': 'Criar conta',
     'authRegisterTitle': 'Cadastro',
     'authRegisterNameLabel': 'Nome (como quer ser chamada)',
@@ -2017,7 +2523,18 @@ const Map<AppLang, Map<String, String>> _strings = {
     'authErrUserDisabled': 'Esta conta foi desativada.',
     'authErrUserNotFound': 'Não há conta com esse e-mail.',
     'authErrWrongPassword': 'Senha incorreta.',
-    'authErrEmailInUse': 'Já existe conta com esse e-mail.',
+    'authErrEmailInUse':
+        'Já existe conta com esse e-mail. Use «Já tenho conta» para entrar.',
+    'authErrAccountExistsDifferentCredential':
+        'Este e-mail já tem conta FaceBaby com outro método (por exemplo Google). Volte, toque em «Já tenho conta» e use o mesmo método de antes; se quiser criar com e-mail e senha, use outro e-mail.',
+    'authErrEmailInUseGoogle':
+        'Este e-mail já está registado com o Google. Volte e entre com o botão Google em «Já tenho conta».',
+    'authErrEmailInUsePassword':
+        'Este e-mail já tem senha FaceBaby. Use «Já tenho conta» com e-mail e senha; se esqueceu, «Esqueci a senha» no login.',
+    'authErrEmailInUseApple':
+        'Este e-mail já está ligado à Apple. Entre com o botão Apple em «Já tenho conta».',
+    'authErrEmailInUseMixed':
+        'Este e-mail já está registado com outro método de acesso. Use «Já tenho conta» e o mesmo Google, Apple ou e-mail/senha de sempre.',
     'authErrInvalidCredential': 'Credenciais inválidas. Tente novamente.',
     'authErrCredentialsGeneric': 'Não foi possível entrar. Tente novamente.',
     'authErrGoogleConfigAndroid':
@@ -2029,8 +2546,119 @@ const Map<AppLang, Map<String, String>> _strings = {
     'authErrLoginCancelled': 'Login cancelado.',
     'authErrAppleFailed':
         'Não foi possível entrar com a Apple. Tente novamente ou use outro método.',
-    'authErrAppleUnavailable': 'Entrar com a Apple só está disponível no iPhone ou iPad.',
+    'authErrAppleUnavailable':
+        'Entrar com a Apple só está disponível no iPhone ou iPad.',
     'authErrUnexpected': 'Ocorreu um erro inesperado.',
+    'onbSelectDate': 'Selecionar data',
+    'onbBabyFallback': 'bebê',
+    'onbMomFallback': 'mamãe',
+    'onbDadFallback': 'papai',
+    'onbWelcomeTitle': 'Acompanhando e monitorando',
+    'onbWelcomeSubtitle': 'o desenvolvimento com Amor.',
+    'onbFeatureSleep': 'Sono',
+    'onbFeatureFeeding': 'Alimentação',
+    'onbFeatureGrowth': 'Crescimento',
+    'onbFeatureMemories': 'Memórias',
+    'onbFeatureAlerts': 'Alertas',
+    'onbFeatureLove': 'Muito Amor',
+    'onbCreateBabyProfile': 'Criar perfil do bebê',
+    'onbExistingAccountLogin': 'Já tenho uma conta / Fazer login',
+    'onbContinue': 'Continuar',
+    'onbPrepareFaceBaby': 'Preparar FaceBaby',
+    'onbPreparingTitle': 'Preparando o FaceBaby para você...',
+    'onbPreparingSubtitle':
+        'Personalizando alertas, memórias e rotina do bebê.',
+    'onbAuthTitle': 'Seu perfil básico está pronto',
+    'onbAuthSubtitle':
+        'Agora crie sua conta para guardar tudo com segurança e sincronizar depois.',
+    'onbSignInGoogle': 'Entrar com Google',
+    'onbSignInApple': 'Entrar com Apple',
+    'onbContinueEmail': 'Continuar com e-mail',
+    'onbAlreadyHaveAccount': 'Já tenho conta',
+    'onbWait': 'Aguarde...',
+    'onbDoneTitle': 'Pronto! O perfil do bebê foi criado.',
+    'onbStartTracking': 'Começar a acompanhar',
+    'onbCouldNotPrepare':
+        'Não foi possível preparar o perfil agora. Tente novamente.',
+    'onbBabyNameTitle': 'Qual é o nome do bebê?',
+    'onbBabyNameSubtitle':
+        'Vamos deixar o FaceBaby com a carinha da sua família.',
+    'onbBabyNameHint': 'Nome do bebê',
+    'onbBabyBirthTitle': 'Qual é a data de nascimento?',
+    'onbBabyBirthSubtitle':
+        'Usamos a idade para personalizar sono, rotina e crescimento.',
+    'onbBabyWeightTitle': 'Qual é o peso do bebê?',
+    'onbBabyWeightSubtitle':
+        'Arraste a régua para escolher. Você pode alternar entre Kg e Lb.',
+    'onbBabyHeightTitle': 'Qual é a altura do bebê?',
+    'onbBabyHeightSubtitle':
+        'Use a régua para informar o tamanho aproximado na unidade que preferir.',
+    'onbMotherNameTitle': 'Qual é o nome da mamãe?',
+    'onbMotherNameSubtitle': 'Vamos usar o nome dela nas próximas perguntas.',
+    'onbMotherNameHint': 'Nome da mamãe',
+    'onbMotherBirthTitle': 'Qual é a data de nascimento da mamãe?',
+    'onbMotherBirthSubtitle': 'Depois disso vamos perguntar a altura dela.',
+    'onbMotherHeightTitle': 'Qual é a altura da {name}?',
+    'onbMotherHeightSubtitle':
+        'Essa informação ajuda nos relatórios de crescimento.',
+    'onbRegisterFatherTitle': 'Deseja cadastrar o pai também?',
+    'onbRegisterFatherSubtitle':
+        'Se quiser, o FaceBaby também personaliza os dados do papai.',
+    'onbFatherNameTitle': 'Qual é o nome do papai?',
+    'onbFatherNameSubtitle': 'Assim a régua dele também fica personalizada.',
+    'onbFatherNameHint': 'Nome do papai',
+    'onbFatherBirthTitle': 'Qual é a data de nascimento do papai?',
+    'onbFatherBirthSubtitle': 'Depois disso vamos perguntar a altura dele.',
+    'onbFatherHeightTitle': 'Qual é a altura do {name}?',
+    'onbFatherHeightSubtitle':
+        'Pode ser aproximada, você ajusta depois se quiser.',
+    'onbFatherPhotoTitle': 'Quer adicionar uma foto do papai?',
+    'onbFatherPhotoSubtitle':
+        'Opcional — você pode incluir depois em Família ou no cadastro.',
+    'onbBabyPhotoTitle': 'Quer adicionar uma foto do bebê?',
+    'onbBabyPhotoSubtitle':
+        'Opcional — você pode incluir depois no cadastro ou em Memórias.',
+    'onbMotherPhotoTitle': 'Quer adicionar uma foto da mamãe?',
+    'onbMotherPhotoSubtitle':
+        'Opcional — você pode incluir depois em Família ou no cadastro.',
+    'onbBabySexTitle': 'Qual é o sexo do bebê?',
+    'onbSexGirl': 'Menina',
+    'onbSexBoy': 'Menino',
+    'onbSexUnknown': 'Prefiro não informar',
+    'onbFirstBabyTitle': 'É seu primeiro bebê?',
+    'onbYes': 'Sim',
+    'onbNo': 'Não',
+    'onbConcernTitle': 'Qual é sua maior preocupação agora?',
+    'onbConcernSubtitle': 'Pode escolher mais de uma.',
+    'onbConcernSleep': 'Sono do bebê',
+    'onbConcernFeeding': 'Amamentação/alimentação',
+    'onbConcernGrowth': 'Peso e crescimento',
+    'onbConcernRoutine': 'Rotina do dia',
+    'onbConcernMemories': 'Memórias e fotos',
+    'onbConcernDevelopment': 'Desenvolvimento',
+    'onbGoalsTitle': 'Quais são seus objetivos?',
+    'onbGoalsSubtitle': 'Vamos usar isso para personalizar sua experiência.',
+    'onbGoalRoutine': 'Acompanhar melhor a rotina',
+    'onbGoalSleepAlerts': 'Receber alertas de sono',
+    'onbGoalMoments': 'Registrar momentos especiais',
+    'onbGoalReports': 'Gerar relatórios',
+    'onbGoalMemoryBook': 'Criar livro de memórias',
+    'onbMessagePrefTitle':
+        'Você prefere receber mensagens Cristãs, horóscopo ou ambas?',
+    'onbMessagePrefSubtitle': 'Você pode alterar isso depois em Meu Perfil.',
+    'onbMessagePrefChristian': 'Mensagens cristãs',
+    'onbMessagePrefHoroscope': 'Horóscopo',
+    'onbMessagePrefBoth': 'Ambas',
+    'onbDragToAdjust': 'Arraste para ajustar',
+    'onbEmailSheetTitle': 'Criar conta com e-mail',
+    'onbYourNameHint': 'Seu nome',
+    'onbEmailHint': 'E-mail',
+    'onbPasswordHint': 'Senha',
+    'onbCreateAccount': 'Criar conta',
+    'onbValYourName': 'Informe seu nome.',
+    'onbValEmailRequired': 'Informe seu e-mail.',
+    'onbValEmailInvalid': 'E-mail inválido.',
+    'onbValPasswordMin': 'Use pelo menos 6 caracteres.',
     'vaccinesTitle': 'Vacinas',
     'vaccinesSubtitle': 'Adicione vacinas, datas e próximas doses.',
     'baby': 'Bebê',
@@ -2042,9 +2670,130 @@ const Map<AppLang, Map<String, String>> _strings = {
     'changePhoto': 'Alterar foto',
     'motherPhotoTitle': 'Foto da mãe',
     'babyPhotoTitle': 'Foto da bebê',
+    'familyTabMotherLabel': 'Mamãe',
+    'familyTabFatherLabel': 'Papai',
+    'familyTitle': 'Família',
+    'familySubtitle': 'Aqui nasce o amor que cresce junto 💖',
+    'familyEdit': 'Editar',
+    'familyEditData': 'Editar dados >',
+    'familyRoleMother': 'Mãe',
+    'familyRoleFather': 'Pai',
+    'familyRoleBaby': 'Bebê',
+    'familyZodiacSolar': 'Signo solar',
+    'familyEntertainmentNote':
+        'Conteúdo leve e afetivo, para entretenimento — não substitui orientação profissional.',
+    'familyChristianCardTitle': 'Mensagem para a família',
+    'familyChristianLine': '📖 {ref}',
+    'familyBornOn': 'Nascimento: {date}',
+    'familyAgeOneYear': '1 ano',
+    'familyAgeYears': '{n} anos',
+    'familyHeight': 'Altura: {value}',
+    'familyMotherBlurb':
+        'Como mãe de {sign}, você tende a demonstrar amor de forma {traits}.',
+    'familyFatherBlurb':
+        'Como pai de {sign}, você tende a proteger, ensinar e se conectar com seu bebê de forma {traits}.',
+    'familyBabyBlurb':
+        'Como bebê de {sign}, pode demonstrar traços como {traits}.',
+    'familyZodiacName_capricorn': 'Capricórnio',
+    'familyZodiacName_aquarius': 'Aquário',
+    'familyZodiacName_pisces': 'Peixes',
+    'familyZodiacName_aries': 'Áries',
+    'familyZodiacName_taurus': 'Touro',
+    'familyZodiacName_gemini': 'Gêmeos',
+    'familyZodiacName_cancer': 'Câncer',
+    'familyZodiacName_leo': 'Leão',
+    'familyZodiacName_virgo': 'Virgem',
+    'familyZodiacName_libra': 'Libra',
+    'familyZodiacName_scorpio': 'Escorpião',
+    'familyZodiacName_sagittarius': 'Sagitário',
+    'familyZodiacTrait_capricorn': 'calma, responsável e acolhedora',
+    'familyZodiacTrait_aquarius': 'criativa, gentil e cheia de carinho',
+    'familyZodiacTrait_pisces': 'sensível, doce e muito empática',
+    'familyZodiacTrait_aries': 'energética, protetora e carinhosa',
+    'familyZodiacTrait_taurus': 'paciente, estável e muito presente',
+    'familyZodiacTrait_gemini': 'alegre, comunicativa e curiosa',
+    'familyZodiacTrait_cancer': 'afetuosa, intuitiva e protetora',
+    'familyZodiacTrait_leo': 'calorosa, orgulhosa e generosa',
+    'familyZodiacTrait_virgo': 'cuidadosa, atenta e dedicada',
+    'familyZodiacTrait_libra': 'harmoniosa, carinhosa e equilibrada',
+    'familyZodiacTrait_scorpio': 'intensa no amor, leal e protetora',
+    'familyZodiacTrait_sagittarius': 'otimista, divertida e cheia de esperança',
+    'familyFatherDataComplete': 'Dados do pai — completos e atualizados',
+    'familyFatherDataIncomplete': 'Dados do pai — ainda incompletos',
+    'familyAddFatherPrompt':
+        'Quer adicionar os dados do pai? Complete para ver a altura estimada do seu bebê.',
+    'familyAddFatherButton': 'Adicionar dados do pai',
+    'familyCompleteBabySex':
+        'Informe o sexo do bebê no cadastro para calcular a altura estimada.',
+    'familyEditBabyData': 'Editar dados do bebê',
+    'familyCompleteHeights':
+        'Para a estimativa, precisamos da altura da mãe e do pai.',
+    'familyCompleteHeightsButton': 'Completar alturas',
+    'familyEstimatedHeightTitle': 'Altura estimada da {name}',
+    'familyMotherHeightLabel': 'Altura da mãe',
+    'familyFatherHeightLabel': 'Altura do pai',
+    'familyEstimatedGirl': 'Altura estimada para menina',
+    'familyEstimatedBoy': 'Altura estimada para menino',
+    'familyEstimatedResult': 'aproximadamente {cm}',
+    'familyHowCalculated': 'Como é feito o cálculo?',
+    'familyFormulaBoy': 'Menino: (altura do pai + altura da mãe + 13) ÷ 2',
+    'familyFormulaGirl': 'Menina: (altura do pai + altura da mãe − 13) ÷ 2',
+    'familyFormulaExampleGirl':
+        '({father} + {mother} − 13) ÷ 2 = {result} cm',
+    'familyFormulaExampleBoy':
+        '({father} + {mother} + 13) ÷ 2 = {result} cm',
+    'familyHeightDisclaimer':
+        'Esta é uma estimativa simples usada como referência em pediatria. A altura final pode variar por genética, alimentação, sono, saúde, puberdade e outros fatores. O acompanhamento com pediatra continua sendo o mais importante.',
+    'familyZodiacReadMore': 'Ler texto completo',
+    'familyPremiumZodiacLocked':
+        'Signos solares e textos personalizados são exclusivos do FaceBaby Premium.',
+    'familyPremiumHeightLocked':
+        'A altura estimada na vida adulta é exclusiva do FaceBaby Premium.',
+    'familyPremiumUnlockCta': 'Desbloquear Premium',
+    'familyScreenTitle': 'Família 💜',
+    'familyPersonalInfoTitle': 'Informações pessoais',
+    'familyHoroscopeCardTitle': 'Horóscopo de {sign}',
+    'familyBibleVerseCardTitle': 'Frase bíblica do dia',
+    'familyDailySummaryTitle': 'Resumo do dia',
+    'familySummaryFeeding': 'Amamentação',
+    'familySummaryDiapers': 'Fraldas',
+    'familySummarySleep': 'Sono',
+    'familySummaryWeight': 'Peso',
+    'familyQuickLabelBirth': 'Nascimento',
+    'familyQuickLabelTime': 'Hora',
+    'familySummaryFeedingsToday': '{n}× hoje',
+    'familySummaryDiaperChangesCount': '{n} trocas',
+    'familySummaryLastAt': 'Última às {time}',
+    'familySummaryLastSleepAt': 'Último às {time}',
+    'familySummaryWeightDayLine': 'Total do dia',
+    'familyFieldBirthDate': 'Data de nascimento',
+    'familyFieldSign': 'Signo',
+    'familyFieldElement': 'Elemento',
+    'familyFieldAge': 'Idade',
+    'familyFieldHeight': 'Altura',
+    'familyFieldWeight': 'Peso',
+    'familyPremiumShortBadge': 'Premium',
+    'familyPremiumFeatureLockedBody':
+        'Este conteúdo faz parte do FaceBaby Premium. Toque para ver planos.',
+    'familyPremiumBannerTitle': 'Desbloqueie conteúdos da família',
+    'familyPremiumBannerBody':
+        'Horóscopos completos, frases bíblicas exclusivas e recomendações personalizadas.',
+    'familyPremiumViewPlans': 'Ver planos',
+    'familyAddFatherCardTitle': 'Adicionar dados do papai',
+    'familyElementFire': 'Fogo',
+    'familyElementEarth': 'Terra',
+    'familyElementAir': 'Ar',
+    'familyElementWater': 'Água',
+    'familyTapToOpen': 'Toque para ver detalhes',
+    'familyCarouselSwipe': 'Deslize para ver cada integrante',
+    'familyTabNene': 'Nenê',
+    'familyTabsHint': 'Toque num nome para ver os detalhes',
+    'familyTapToClose': 'Fechar',
+    'familyShareCard': 'Compartilhar',
     'changeBabyTooltip': 'Trocar bebê',
     'notificationsInboxTitle': 'Notificações',
-    'notificationsInboxSubtitle': 'Últimos 3 dias (enviadas e agendadas registadas na app)',
+    'notificationsInboxSubtitle':
+        'Últimos 3 dias (enviadas e agendadas registadas na app)',
     'notificationsEmpty': 'Ainda não há notificações registadas neste período.',
     'notificationsKindShown': 'Enviada',
     'notificationsKindScheduled': 'Agendada',
@@ -2070,8 +2819,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'deleteAccountTypeWordFieldLabel': 'delete',
     'homeBabyBannerForecastSleep': 'Previsão de dormir',
     'homeBabyBannerForecastWake': 'Previsão de acordar',
-    'homeBabyBannerForecastSubtitleSleep': 'Sinais de sono detectados\ncom base no horário atual',
-    'homeBabyBannerForecastSubtitleWake': 'Baseado no horário atual e padrão para a idade',
+    'homeBabyBannerForecastSubtitleSleep':
+        'Sinais de sono detectados\ncom base no horário atual',
+    'homeBabyBannerForecastSubtitleWake':
+        'Baseado no horário atual e padrão para a idade',
     'homeBabyBannerEtaIn': 'em {d}',
     'homeBabyBannerLastDiaper': 'Última fralda',
     'homeBabyBannerNoRecordsYet': 'Sem registros ainda',
@@ -2089,7 +2840,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeBannerDiaperDirty': 'Deve estar suja',
     'homeBannerExhausted': 'ESGOTADO',
     'memoryTellMomentTitle': 'Conte sobre esse momento',
-    'memoryTellMomentHint': 'Como foi esse momento? Conte detalhes que você quer guardar…',
+    'memoryTellMomentHint':
+        'Como foi esse momento? Conte detalhes que você quer guardar…',
     'memoryBabyInfoOptionalTitle': 'Informações do bebê (opcional)',
     'memoryBabyMoodLabel': 'Humor/estado',
     'memoryBabyMoodHint': 'Ex: Feliz',
@@ -2107,31 +2859,45 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Ao marcar como público, esta foto poderá participar da Foto da Semana e poderá ser vista por outras mães dentro do FaceBaby.',
     'weeklyPhotoPublicOff': 'Privado',
     'weeklyPhotoPublicOn': 'Público',
-    'weeklyPhotoPublicNeedPhoto': 'Adicione uma foto para marcar esta memória como pública.',
+    'weeklyPhotoPublicNeedPhoto':
+        'Adicione uma foto para marcar esta memória como pública.',
     'weeklyPhotoConfirmTitle': 'Tornar esta memória pública?',
     'weeklyPhotoConfirmBody':
         'Esta foto poderá ser escolhida como Foto da Semana e exibida para outras mães no app. Você pode remover essa opção quando quiser.',
     'weeklyPhotoConfirmCancel': 'Cancelar',
     'weeklyPhotoConfirmOk': 'Tornar pública',
     'weeklyPhotoParticipatingBadge': 'Participando da Foto da Semana',
-    'weeklyPhotoWinnerBadge': 'Esta memória foi escolhida como Foto da Semana 💜',
-    'weeklyPhotoShowBabyFirstName': 'Mostrar primeiro nome do bebê no mural público',
+    'weeklyPhotoWinnerBadge':
+        'Esta memória foi escolhida como Foto da Semana 💜',
+    'weeklyPhotoShowBabyFirstName':
+        'Mostrar primeiro nome do bebê no mural público',
     'weeklyPhotoDisclaimerFooter':
         'Somente fotos marcadas como públicas participam. Você pode remover a opção a qualquer momento.',
     'weeklyPhotoSectionTitleMale': 'Príncipe da Semana',
     'weeklyPhotoSectionTitleFemale': 'Princesa da Semana',
     'weeklyPhotoHomeHeroMale': 'PRÍNCIPE DA SEMANA',
     'weeklyPhotoHomeHeroFemale': 'PRINCESA DA SEMANA',
-    'weeklyPhotoSectionSubtitle': 'Uma memória especial compartilhada por uma mãe do FaceBaby.',
+    'weeklyPhotoSectionSubtitle':
+        'Uma memória especial compartilhada por uma mãe do FaceBaby.',
     'weeklyPhotoViewMemory': 'Ver memória',
     'weeklyPhotoBabyFallback': 'Um bebê FaceBaby',
     'weeklyPhotoDisclaimerShort':
         'Somente fotos marcadas como públicas participam. Você pode remover a opção a qualquer momento.',
     'weeklyPhotoPublicDetailAppBar': 'Memória da semana',
-    'weeklyPhotoWinnerCongratsTitle': 'Parabéns!',
+    'weeklyPhotoWinnerCongratsTitle': 'Parabéns Mamãe!',
     'weeklyPhotoWinnerCongratsBody':
-        'A sua foto foi escolhida como Foto da Semana (Princesa ou Príncipe da Semana) no FaceBaby. Obrigada por partilhar este momento connosco.',
-    'weeklyPhotoWinnerCongratsOk': 'Obrigada',
+        'A foto da sua Princesa foi a escolhida da semana! Vamos todos prestigiá-la.\n\nA família FaceBaby agradece por partilhar este lindo momento conosco! 💜',
+    'weeklyPhotoWinnerCongratsBodyMale':
+        'A foto do seu Príncipe foi a escolhida da semana! Vamos todos prestigiá-lo.\n\nA família FaceBaby agradece por partilhar este lindo momento conosco! 💜',
+    'weeklyPhotoWinnerCongratsBodyFemale':
+        'A foto da sua Princesa foi a escolhida da semana! Vamos todos prestigiá-la.\n\nA família FaceBaby agradece por partilhar este lindo momento conosco! 💜',
+    'weeklyPhotoWinnerCongratsOk': 'Confirmar',
+    'weeklyPhotoLikesCount': '{count} curtidas',
+    'weeklyPhotoLikeButton': 'Curtir',
+    'weeklyPhotoLikedButton': 'Curtido',
+    'weeklyPhotoLikesWinnerHint': 'Pessoas que curtiram a foto do seu bebê',
+    'weeklyPhotoLikeNeedSignIn':
+        'Inicie sessão com a mesma conta para curtir a Foto da Semana.',
     'memoryEditTitle': 'Editar memória',
     'memoryNewTitle': 'Nova memória',
     'memoryMomNotesFieldLabel': 'Observações da mamãe',
@@ -2144,7 +2910,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoryAgeHintExample': 'Ex: 10 dias',
     'memoryWeightHintExample': 'Ex: 3,28',
     'memoryHeightHintExample': 'Ex: 49',
-    'memorySaveNeedPhotoOrText': 'Adicione uma foto ou escreva uma descrição para salvar.',
+    'memorySaveNeedPhotoOrText':
+        'Adicione uma foto ou escreva uma descrição para salvar.',
     'memorySaveFail': 'Não foi possível salvar:',
     'memoryShareWebOnlyMobile':
         'Partilhar imagem ou PDF está disponível na app instalada (Android/iOS).',
@@ -2190,7 +2957,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeTodayLabel': 'Hoje',
     'homeYesterdayLabel': 'Ontem',
     'homeSummaryOnDate': 'Resumo — {date}',
-    'homeSummaryPickDayTooltip': 'Escolher dia do resumo (histórico guardado após o dia terminar)',
+    'homeSummaryPickDayTooltip':
+        'Escolher dia do resumo (histórico guardado após o dia terminar)',
     'homeFedAt': 'Amamentação às {time}',
     'homePeeAt': 'Xixi às {time}',
     'homePooAt': 'Cocô às {time}',
@@ -2211,22 +2979,28 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeCriticalFeedingTitle': 'Pode ser hora de mamar',
     'homeCriticalSleepTitle': 'Pode ser hora de dormir',
     'homeCriticalDiaperTitle': 'Pode ser hora de trocar a fralda',
-    'homeCriticalFeedingSubtitle': 'Passou do horário esperado desde a última mamada.',
+    'homeCriticalFeedingSubtitle':
+        'Passou do horário esperado desde a última mamada.',
     'homeCriticalSleepSubtitle': 'A janela de sono pode ter sido ultrapassada.',
     'homeCriticalDiaperSubtitle': 'Já faz um tempo desde a última troca.',
     'homeSleepBarAwakeTitle': 'Acordado · janela até dormir',
     'homeSleepBarSleepTitle': 'A dormir · tempo da sessão',
     'homeFeedingCounterTitle': 'Alimentação · tempo até ao próximo intervalo',
-    'homeFeedingCounterHint': 'Contagem decrescente (intervalo em Registos rápidos)',
+    'homeFeedingCounterHint':
+        'Contagem decrescente (intervalo em Registos rápidos)',
     'homeSleepBarAwakeHintEarly': '≈ {m} min até a janela ideal',
     'homeSleepBarAwakeHintIdeal': '≈ {m} min até o fim da janela',
-    'homeSleepBarAwakeHintOverdue': 'Janela ultrapassada · pode ser hora de dormir',
-    'homeSleepBarSleepHint': '{remaining} restantes · limite da sessão ~{cap} min',
+    'homeSleepBarAwakeHintOverdue':
+        'Janela ultrapassada · pode ser hora de dormir',
+    'homeSleepBarSleepHint':
+        '{remaining} restantes · limite da sessão ~{cap} min',
     'homeSleepBarNeedLastSleep': 'Registe o último sono para ver a linha',
     'homeTipTitle': 'Dica do dia',
-    'homeTipBody': 'Rotinas consistentes ajudam seu bebê a se sentir seguro e tranquilo.',
+    'homeTipBody':
+        'Rotinas consistentes ajudam seu bebê a se sentir seguro e tranquilo.',
     'homeGreetingSubtitle': 'Que bom te ver aqui hoje!',
-    'homeMotivationBanner': 'Você está fazendo um ótimo trabalho! Pequenos registros, grandes lembranças.',
+    'homeMotivationBanner':
+        'Você está fazendo um ótimo trabalho! Pequenos registros, grandes lembranças.',
     'homeMotivationBannerOpenMemories': 'Abrir livro de memórias',
     'summaryWeightNotYet': 'Ainda não registrado',
     'summarySleepNotYet': 'Sem registro hoje',
@@ -2295,6 +3069,9 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Em breve você poderá registrar trocas (xixi e cocô). Estamos preparando esta área.',
     'shortcutHealth': 'Saúde',
     'shortcutHealthSubtitle': 'Vacinas e consultas',
+    'shortcutFamily': 'Família',
+    'shortcutFamilyHomeSub': 'Árvore e perfil familiar',
+    'shortcutHealthHomeSub': 'Vacinas, consultas e sintomas',
     'shortcutFeedingSession': 'Alimentação',
     'shortcutFeedingSessionSub': 'Sessão / introdução',
     'healthHubTitle': 'Saúde',
@@ -2311,7 +3088,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'healthHubConsultations': 'Consultas',
     'healthHubConsultationsSub': 'Pediatra e retornos',
     'healthHubSymptomReports': 'Relatar sintoma',
-    'healthHubSymptomReportsSub': 'Febre, cólicas, medicamentos e outros — integrados no relatório pediátrico',
+    'healthHubSymptomReportsSub':
+        'Febre, cólicas, medicamentos e outros — integrados no relatório pediátrico',
     'symptomReportTitle': 'Relatar sintoma',
     'symptomReportEmpty': 'Ainda não há relatos. Toque em + para registar.',
     'symptomReportNew': 'Novo relato',
@@ -2329,17 +3107,21 @@ const Map<AppLang, Map<String, String>> _strings = {
     'symptomReportReflux': 'Refluxo',
     'symptomReportOther': 'Outro',
     'symptomReportOtherHint': 'Breve descrição',
-    'symptomReportValidationNeedOne': 'Seleccione pelo menos um sintoma ou preencha um campo.',
-    'symptomReportValidationFeverTemp': 'Indique a temperatura quando marcar febre.',
+    'symptomReportValidationNeedOne':
+        'Seleccione pelo menos um sintoma ou preencha um campo.',
+    'symptomReportValidationFeverTemp':
+        'Indique a temperatura quando marcar febre.',
     'symptomReportDeleteTitle': 'Eliminar relato?',
     'symptomReportDeleteBody': 'Esta acção não pode ser desfeita.',
     'consultationsTitle': 'Consultas',
-    'consultationsIntro': 'Registe consultas com data e hora; aparecem no resumo do dia na Home.',
+    'consultationsIntro':
+        'Registe consultas com data e hora; aparecem no resumo do dia na Home.',
     'consultationsSoonTitle': 'Em breve',
     'consultationsComingBody':
         'Em breve você poderá registrar consultas, anexar notas e lembretes de retorno.',
     'homeSummaryHealthStripTitle': 'Vacinas e consultas neste dia',
-    'homeSummaryHealthStripEmpty': 'Nenhuma vacina nem consulta registada neste dia.',
+    'homeSummaryHealthStripEmpty':
+        'Nenhuma Vacina ou Consulta registrada neste dia.',
     'consultationTitleLabel': 'Motivo ou especialidade',
     'consultationNotesHint': 'Notas (opcional)',
     'consultationWhenLabel': 'Data e hora',
@@ -2366,7 +3148,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'settingsFeedingEarlySub':
         'Mostra o atalho "Alimentação" na Home mesmo com bebê menor de 7 meses.',
     'settingsAiMicTitle': 'Assistente por voz (microfone)',
-    'settingsAiMicSub': 'Mostra o botão do microfone na tela inicial (em desenvolvimento).',
+    'settingsAiMicSub':
+        'Mostra o botão do microfone na tela inicial (em desenvolvimento).',
     'reportNoWeight': 'Sem dados de peso ainda.',
     'reportNoHeight': 'Sem dados de altura ainda.',
     'memoriesPhotoError': 'Não foi possível selecionar a foto.',
@@ -2375,16 +3158,19 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoriesNotYet': 'Ainda não',
     'memoriesAddPhotoDialog': 'Adicionar foto',
     'memoriesAlreadyPostedToday': 'Você já adicionou a foto de hoje.',
-    'memoriesWallEmpty': 'Seu mural ainda está vazio. Adicione a primeira foto do dia!',
+    'memoriesWallEmpty':
+        'Seu mural ainda está vazio. Adicione a primeira foto do dia!',
     'memoriesHighlights': 'Destaques',
     'memoriesWallSection': 'Mural',
     'settingsMotherProfile': 'Meu Perfil',
     'profileEditMother': 'Editar dados da mãe',
+    'profileEditFather': 'Editar dados do pai',
     'profileEditBaby': 'Editar dados do bebê',
     'profileDataSaved': 'Dados atualizados.',
     'profileEditData': 'Editar dados',
     'contactTitle': 'Contato',
-    'contactIntro': 'Envie uma mensagem por e-mail. Vamos abrir seu app de e-mail com os dados preenchidos.',
+    'contactIntro':
+        'Envie uma mensagem por e-mail. Vamos abrir seu app de e-mail com os dados preenchidos.',
     'contactFieldName': 'Nome',
     'contactFieldEmail': 'Email',
     'contactFieldAge': 'Idade',
@@ -2400,13 +3186,19 @@ const Map<AppLang, Map<String, String>> _strings = {
     'contactValidationEmail': 'Informe um email válido.',
     'contactValidationAge': 'Informe uma idade válida.',
     'motherProfileTabMother': 'Mãe',
+    'motherProfileTabFather': 'Pai',
     'motherProfileTabBabies': 'Bebês',
-    'motherProfileNoData': 'Nenhum perfil encontrado. Tente novamente em instantes.',
+    'motherProfileFieldFatherName': 'Nome',
+    'motherProfileNoData':
+        'Nenhum perfil encontrado. Tente novamente em instantes.',
     'motherProfileSectionInfo': 'Informações',
     'motherProfileFieldPhone': 'Telefone',
     'motherProfileFieldBirth': 'Nascimento',
     'motherProfileFieldHeight': 'Altura',
     'motherProfileFieldFatherHeight': 'Altura do pai',
+    'profileFamilyMessagesTitle': 'Mensagens na tela Família',
+    'profileShowChristian': 'Mensagens cristãs',
+    'profileShowHoroscope': 'Horóscopo',
     'motherProfileAddBaby': 'Adicionar outro bebê',
     'motherProfileNoBabies': 'Nenhum bebê encontrado para este perfil.',
     'motherProfileBabyBornAt': 'Nascimento: {date}',
@@ -2430,22 +3222,42 @@ const Map<AppLang, Map<String, String>> _strings = {
     'alertsSectionGrowth': 'Crescimento e medições',
     'alertsRuleGrowth':
         'Notificação quando o peso mais recente fica abaixo do registo de peso anterior (por data de medição). Outro aviso quando passam mais de 30 dias sem qualquer medição de peso, altura ou perímetro craniano guardada na app.',
-    'sleepToggleAlertsSubtitle': 'Lembretes com base no último sono terminado e na idade.',
-    'sleepAlertsWakeWindowRulerValueAuto': 'Tempo efetivo nesta régua: {m} min (automático pela idade).',
-    'sleepAlertsWakeWindowRulerValueCustom': 'Tempo nesta régua: {m} min (valor personalizado).',
+    'alertsTestTitle': 'Testar notificações',
+    'alertsTestBody':
+        'Dispara um aviso imediato e agenda outro daqui a 30 segundos. Útil para confirmar que o sistema está a entregar as notificações da app.',
+    'alertsTestRun': 'Disparar teste',
+    'alertsTestResync': 'Forçar reagendamento (lembretes reais)',
+    'alertsTestImmediateTitle': 'FaceBaby — teste imediato',
+    'alertsTestImmediateBody': 'Se vê esta mensagem, o canal imediato está OK.',
+    'alertsTestScheduledTitle': 'FaceBaby — teste agendado',
+    'alertsTestScheduledBody': 'Esta foi agendada via AlarmManager (~30s).',
+    'alertsTestAllScheduleModesFailed': 'AlarmManager recusou todos os modos',
+    'alertsTestSentOk':
+        'Enviado. Deve receber agora (imediato) e em ~30s (agendado).',
+    'alertsTestFailed': 'Falhou: {errors}',
+    'sleepToggleAlertsSubtitle':
+        'Lembretes com base no último sono terminado e na idade.',
+    'sleepAlertsWakeWindowRulerValueAuto':
+        'Tempo efetivo nesta régua: {m} min (automático pela idade).',
+    'sleepAlertsWakeWindowRulerValueCustom':
+        'Tempo nesta régua: {m} min (valor personalizado).',
     'sleepAlertsWakeWindowSliderLabelAuto': '{m} min · auto',
     'sleepAlertsWakeWindowSliderLabelCustom': '{m} min',
-    'sleepAlertsApproachRulerValueDefault': 'Antecedência efetiva nesta régua: {m} min (padrão).',
+    'sleepAlertsApproachRulerValueDefault':
+        'Antecedência efetiva nesta régua: {m} min (padrão).',
     'sleepAlertsApproachRulerValueCustom': 'Antecedência nesta régua: {m} min.',
     'sleepAlertsApproachSliderLabelDefault': '{m} min · padrão',
     'sleepAlertsApproachSliderLabelCustom': '{m} min',
-    'sleepAlertsWakeWindowAutomatic': 'Limite de vigília usado no alerta: {m} min (automático pela tabela por idade).',
+    'sleepAlertsWakeWindowAutomatic':
+        'Limite de vigília usado no alerta: {m} min (automático pela tabela por idade).',
     'sleepAlertsWakeWindowAutomaticNoBirth':
         'Adicione a data de nascimento do bebê no perfil para o padrão certo; até lá usamos referência de {m} min.',
     'sleepAlertsMonthsApprox': 'Tabela de referência: ~{n} meses',
     'sleepAlertsWakeWindowCustom': 'Limite de vigília personalizado: {m} min.',
-    'sleepAlertsApproachAuto': 'Aviso antes do limite: {m} min antecedência (valor padrão).',
-    'sleepAlertsApproachCustom': 'Aviso antes do limite: {m} min antecedência (personalizado).',
+    'sleepAlertsApproachAuto':
+        'Aviso antes do limite: {m} min antecedência (valor padrão).',
+    'sleepAlertsApproachCustom':
+        'Aviso antes do limite: {m} min antecedência (personalizado).',
     'settingsPrivacy': 'Privacidade',
     'settingsSaaS': 'Plano SaaS futuro',
     'loadingMotherPhoto': 'Atualizando foto da mãe…',
@@ -2480,7 +3292,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'sleepStartButton': 'INICIAR SONO',
     'sleepSavedOk': 'Sono registrado.',
     'sleepConfirmBackTitle': 'Sair do sono?',
-    'sleepConfirmBackBody': 'O registro ainda não foi salvo. Deseja descartar esta sessão?',
+    'sleepConfirmBackBody':
+        'O registro ainda não foi salvo. Deseja descartar esta sessão?',
     'sleepConfirmCancelSessionTitle': 'Cancelar sono?',
     'sleepConfirmCancelSessionBody': 'O tempo desta sessão será descartado.',
     'sleepDiscard': 'Descartar',
@@ -2504,7 +3317,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'sleepHeroAwakeCaption':
         'A faixa verde → amarela → vermelha mostra há quanto tempo está acordada e quando costuma ser hora de dormir de novo. Quando for deitar, toque em INICIAR SONO.',
     'sleepHeroSleepingBadge': 'A dormir',
-    'sleepHeroSleepingCaption': 'Quando acordar, toque em Terminar sono para gravar este período.',
+    'sleepHeroSleepingCaption':
+        'Quando acordar, toque em Terminar sono para gravar este período.',
     'sleepRoutineCardTitle': 'Próximo sono',
     'sleepRoutineVigilHighlight':
         'Vigília ideal neste app: {min}–{max} min acordado entre sonos (fixo por idade em meses — não é configurável).',
@@ -2529,17 +3343,23 @@ const Map<AppLang, Map<String, String>> _strings = {
     'diaperToggleAlerts': 'Notificações sobre fralda',
     'diaperToggleAlertsSubtitle': 'Lembrete quando sugerimos uma nova troca.',
     'healthGrowthToggleAlerts': 'Alertas de crescimento',
-    'healthGrowthToggleAlertsSubtitle': 'Avisos de peso e ausência prolongada de medições.',
+    'healthGrowthToggleAlertsSubtitle':
+        'Avisos de peso e ausência prolongada de medições.',
     'feedingScreenAlertsHint': 'Para mudar os minutos, use Mais › Alertas.',
     'sleepNotifTitle': 'Sono',
     'sleepNotifBeforeBody':
         'Pode ser um bom momento para colocar o bebê para dormir.',
     'sleepNotifOverdueBody':
         'Seu bebê pode estar cansado — tente iniciar o sono com calma.',
+    'sleepNotifWakeOverdueBodyMale':
+        'Já faz mais de {hours} h que está dormindo, dê uma olhada nele, mamãe.',
+    'sleepNotifWakeOverdueBodyFemale':
+        'Já faz mais de {hours} h que está dormindo, dê uma olhada nela, mamãe.',
     'notifChannelRemindersName': 'Lembretes',
     'notifChannelRemindersDesc': 'Alertas de alimentação, fraldas e sono.',
     'notifChannelGrowthName': 'Crescimento',
-    'notifChannelGrowthDesc': 'Alertas de peso e ausência prolongada de medições.',
+    'notifChannelGrowthDesc':
+        'Alertas de peso e ausência prolongada de medições.',
     'diaperIntro':
         'Registre uma troca para manter o lembrete funcionando. No histórico, pode editar ou excluir qualquer registo.',
     'diaperSavedOk': 'Troca registrada.',
@@ -2560,14 +3380,17 @@ const Map<AppLang, Map<String, String>> _strings = {
     'diaperNoteOptional': 'Nota (opcional)',
     'feedingTitle': 'Amamentação',
     'feedingSelectBabyFirst': 'Selecione um bebê antes de iniciar.',
-    'feedingNoRunning': 'Não foi possível finalizar: nenhuma amamentação em andamento.',
+    'feedingNoRunning':
+        'Não foi possível finalizar: nenhuma amamentação em andamento.',
     'feedingSavedOk': 'Amamentação registrada.',
     'feedingSaveFail': 'Não foi possível salvar:',
     'feedingSaving': 'Salvando amamentação…',
     'feedingQuickSummary': 'Resumo rápido',
-    'feedingNoBabyHint': 'Cadastre um bebê primeiro em "Mais > Cadastro (mãe e bebês)".',
+    'feedingNoBabyHint':
+        'Cadastre um bebê primeiro em "Mais > Cadastro (mãe e bebês)".',
     'feedingPickBabyLabel': 'Selecionar bebê',
-    'feedingEmptyDataHint': 'Sem dados ainda. Use "Iniciar amamentação" para registrar com 1 toque.',
+    'feedingEmptyDataHint':
+        'Sem dados ainda. Use "Iniciar amamentação" para registrar com 1 toque.',
     'feedingLast': 'Última amamentação',
     'feedingNextEst': 'Próxima estimada',
     'feedingNextIn': 'em ~{n} min',
@@ -2584,7 +3407,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'feedingTabBreastfeeding': 'Amamentação',
     'feedingTabBottle': 'Mamadeira',
     'feedingTabSolids': 'Sólidos',
-    'feedingHubTapSidesHint': 'Toque em E ou D para iniciar o cronômetro. Toque novamente para salvar.',
+    'feedingHubTapSidesHint':
+        'Toque em E ou D para iniciar o cronômetro. Toque novamente para salvar.',
     'feedingHubLetterLeft': 'E',
     'feedingHubLetterRight': 'D',
     'feedingHubAddManualEntry': 'Adicionar entrada manual',
@@ -2597,9 +3421,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'feedingHubSolidDescribe': 'O que foi oferecido? (opcional)',
     'feedingHubOverviewEmpty': 'Nenhum registro nesta faixa.',
     'feedingHubMlRequired': 'Informe a quantidade em ml.',
-    'feedingHubTimerTooShort': 'Espere pelo menos alguns segundos antes de salvar esta amamentação.',
+    'feedingHubTimerTooShort':
+        'Espere pelo menos alguns segundos antes de salvar esta amamentação.',
     'feedingHubBreastPieTitle': 'Qual lado está sendo mais usado?',
-    'feedingHubBreastPieEmpty': 'Registre algumas amamentações (E/D) para ver o gráfico.',
+    'feedingHubBreastPieEmpty':
+        'Registre algumas amamentações (E/D) para ver o gráfico.',
     'feedingHubFeedingUpdatedOk': 'Registro atualizado.',
     'feedingSideLeft': 'Esquerdo',
     'feedingSideRight': 'Direito',
@@ -2609,19 +3435,22 @@ const Map<AppLang, Map<String, String>> _strings = {
     'feedingQtyMl': 'Quantidade (ml) (opcional)',
     'feedingNote': 'Observação (opcional)',
     'feedingHintRunning': 'Finalize para salvar.',
-    'feedingHintIdle': 'Pronto para registrar a próxima amamentação com 1 toque.',
+    'feedingHintIdle':
+        'Pronto para registrar a próxima amamentação com 1 toque.',
     'feedingHistory': 'Histórico',
     'feedingNoRecords': 'Ainda sem registros.',
     'feedingHistoryLine': '{time} min • {side}',
     'feedingInsights': 'Insights',
-    'feedingInsightsNeed': 'Registre pelo menos 2 amamentações para ver padrões.',
+    'feedingInsightsNeed':
+        'Registre pelo menos 2 amamentações para ver padrões.',
     'feedingAvgDurFmt': 'Média de tempo: {m} min',
     'feedingAvgIntervalFmt': 'Intervalo médio: {h}h{m}',
     'feedingAlertSection': 'Alerta (opcional)',
     'feedingAlertTitle': 'Ativar alerta de próxima amamentação',
     'feedingModeAvg': 'Média automática',
     'feedingModeManual': 'Intervalo manual',
-    'feedingNotifyNote': 'Obs: por enquanto é só configuração visual. Depois a gente liga notificação.',
+    'feedingNotifyNote':
+        'Obs: por enquanto é só configuração visual. Depois a gente liga notificação.',
     'feedingAgoMinutes': 'há {m} min',
     'feedingAgoHours': 'há {h}h{m}',
     'feedingDurationShort': '{m}m {s}s',
@@ -2636,7 +3465,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'vaccNameEmpty': 'Informe o nome da vacina.',
     'vaccSaving': 'Salvando vacina…',
     'vaccUpdatedOk': 'Vacina atualizada.',
-    'vaccNoBabies': 'Nenhum bebê cadastrado ainda. Vá em "Mais > Cadastro (mãe e bebê)".',
+    'vaccNoBabies':
+        'Nenhum bebê cadastrado ainda. Vá em "Mais > Cadastro (mãe e bebê)".',
     'vaccTableVac': 'Vacina',
     'vaccTableDose': 'Dose',
     'vaccTableDate': 'Data',
@@ -2653,8 +3483,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'commonPhone': 'Telefone',
     'openingGallery': 'Abrindo galeria…',
     'devLeapsTitle': 'Saltos de desenvolvimento',
-    'devLeapsIntro': 'Fases comuns do desenvolvimento de {name}. Os textos são acolhedores e sem alarmismo.',
-    'devLeapsNeedBirth': 'Para mostrar as fases por idade, preencha a data de nascimento do bebê no perfil.',
+    'devLeapsIntro':
+        'Fases comuns do desenvolvimento de {name}. Os textos são acolhedores e sem alarmismo.',
+    'devLeapsNeedBirth':
+        'Para mostrar as fases por idade, preencha a data de nascimento do bebê no perfil.',
     'devLeapsAllTitle': 'Todas as fases',
     'devLeapsCurrentPill': 'Agora',
     'devLeapsSeeDetails': 'Ver detalhes da fase',
@@ -2672,7 +3504,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'devLeap_dv01_emotion': 'Tudo ainda é muito novo.',
     'devLeap_dv02_range': 'Semana 2',
     'devLeap_dv02_title': 'Mais atento',
-    'devLeap_dv02_lead': '{baby_name} pode estar começando a perceber melhor vozes e rostos.',
+    'devLeap_dv02_lead':
+        '{baby_name} pode estar começando a perceber melhor vozes e rostos.',
     'devLeap_dv02_emotion': 'O vínculo emocional continua crescendo.',
     'devLeap_dv03_range': 'Semana 3',
     'devLeap_dv03_title': 'Mais sensível',
@@ -2684,19 +3517,23 @@ const Map<AppLang, Map<String, String>> _strings = {
     'devLeap_dv04_emotion': 'O bebê começa a criar conexões sociais.',
     'devLeap_dv05_range': 'Semana 5',
     'devLeap_dv05_title': 'Novas descobertas',
-    'devLeap_dv05_lead': '{baby_name} pode estar percebendo mais os próprios movimentos.',
+    'devLeap_dv05_lead':
+        '{baby_name} pode estar percebendo mais os próprios movimentos.',
     'devLeap_dv05_emotion': 'O corpo começa a ganhar significado.',
     'devLeap_dv06_range': 'Semana 6',
     'devLeap_dv06_title': 'Mais conectado',
-    'devLeap_dv06_lead': '{baby_name} pode estar mais atento às emoções das pessoas.',
+    'devLeap_dv06_lead':
+        '{baby_name} pode estar mais atento às emoções das pessoas.',
     'devLeap_dv06_emotion': 'O vínculo emocional continua se fortalecendo.',
     'devLeap_dv07_range': 'Semana 7–8',
     'devLeap_dv07_title': 'Sono diferente',
-    'devLeap_dv07_lead': '{baby_name} pode estar passando por mudanças importantes no sono.',
+    'devLeap_dv07_lead':
+        '{baby_name} pode estar passando por mudanças importantes no sono.',
     'devLeap_dv07_emotion': 'O cérebro está amadurecendo rapidamente.',
     'devLeap_dv08_range': '2–3 meses',
     'devLeap_dv08_title': 'Mais consciente',
-    'devLeap_dv08_lead': '{baby_name} pode estar percebendo mais o próprio corpo e o ambiente.',
+    'devLeap_dv08_lead':
+        '{baby_name} pode estar percebendo mais o próprio corpo e o ambiente.',
     'devLeap_dv08_emotion': 'Pequenas descobertas acontecem todos os dias.',
     'devLeap_dv09_range': '3–4 meses',
     'devLeap_dv09_title': 'Muito mais interação',
@@ -2708,39 +3545,48 @@ const Map<AppLang, Map<String, String>> _strings = {
     'devLeap_dv10_emotion': 'O aprendizado acontece através da experiência.',
     'devLeap_dv11_range': '5–6 meses',
     'devLeap_dv11_title': 'Mais comunicação',
-    'devLeap_dv11_lead': '{baby_name} pode estar tentando interagir cada vez mais.',
+    'devLeap_dv11_lead':
+        '{baby_name} pode estar tentando interagir cada vez mais.',
     'devLeap_dv11_emotion': 'A comunicação começa a ganhar força.',
     'devLeap_dv12_range': '6–7 meses',
     'devLeap_dv12_title': 'Mundo maior',
-    'devLeap_dv12_lead': '{baby_name} pode estar percebendo melhor o espaço e o ambiente.',
+    'devLeap_dv12_lead':
+        '{baby_name} pode estar percebendo melhor o espaço e o ambiente.',
     'devLeap_dv12_emotion': 'O mundo parece cada vez maior.',
     'devLeap_dv13_range': '7–8 meses',
     'devLeap_dv13_title': 'Mais apego',
-    'devLeap_dv13_lead': '{baby_name} pode estar vivendo uma fase de maior necessidade emocional.',
+    'devLeap_dv13_lead':
+        '{baby_name} pode estar vivendo uma fase de maior necessidade emocional.',
     'devLeap_dv13_emotion': 'O vínculo emocional se fortalece.',
     'devLeap_dv14_range': '8–9 meses',
     'devLeap_dv14_title': 'Muitas conexões',
-    'devLeap_dv14_lead': '{baby_name} pode estar criando novas conexões rapidamente.',
+    'devLeap_dv14_lead':
+        '{baby_name} pode estar criando novas conexões rapidamente.',
     'devLeap_dv14_emotion': 'O cérebro está extremamente ativo.',
     'devLeap_dv15_range': '9–10 meses',
     'devLeap_dv15_title': 'Não para quieto',
-    'devLeap_dv15_lead': '{baby_name} pode estar em uma fase de muita movimentação.',
+    'devLeap_dv15_lead':
+        '{baby_name} pode estar em uma fase de muita movimentação.',
     'devLeap_dv15_emotion': 'O corpo e o cérebro trabalham juntos nessa fase.',
     'devLeap_dv16_range': '10–11 meses',
     'devLeap_dv16_title': 'Tentando se comunicar',
-    'devLeap_dv16_lead': '{baby_name} pode estar observando e imitando muito mais.',
+    'devLeap_dv16_lead':
+        '{baby_name} pode estar observando e imitando muito mais.',
     'devLeap_dv16_emotion': 'A comunicação ganha força.',
     'devLeap_dv17_range': '11–12 meses',
     'devLeap_dv17_title': 'Mais autonomia',
-    'devLeap_dv17_lead': '{baby_name} pode estar tentando fazer mais coisas sozinho.',
+    'devLeap_dv17_lead':
+        '{baby_name} pode estar tentando fazer mais coisas sozinho.',
     'devLeap_dv17_emotion': 'A independência começa a aparecer.',
     'devLeap_dv18_range': '12–18 meses',
     'devLeap_dv18_title': 'Muitas emoções',
-    'devLeap_dv18_lead': '{baby_name} pode estar vivendo emoções mais intensas.',
+    'devLeap_dv18_lead':
+        '{baby_name} pode estar vivendo emoções mais intensas.',
     'devLeap_dv18_emotion': 'O mundo emocional está crescendo rapidamente.',
     'devLeap_dv19_range': '18–24 meses',
     'devLeap_dv19_title': 'Faz de conta',
-    'devLeap_dv19_lead': '{baby_name} pode estar entrando em uma fase de imaginação intensa.',
+    'devLeap_dv19_lead':
+        '{baby_name} pode estar entrando em uma fase de imaginação intensa.',
     'devLeap_dv19_emotion': 'A imaginação começa a florescer.',
     'devLeap_dv20_range': '2–3 anos',
     'devLeap_dv20_title': 'Grande personalidade',
@@ -2753,52 +3599,72 @@ const Map<AppLang, Map<String, String>> _strings = {
         'quer muito colo\nacorda frequentemente\nestranha sons e luzes\nprecisa de contato constante',
     'devLeap_dv01_detailWhats':
         'Seu bebê passou muitos meses em um ambiente silencioso, protegido e quentinho. Agora tudo mudou — e o cérebro ainda está tentando entender luz, frio, fome, sono, toque e sons.',
-    'devLeap_dv01_keywords': 'adaptação\nvínculo\nsegurança\nsensibilidade\nacolhimento',
+    'devLeap_dv01_keywords':
+        'adaptação\nvínculo\nsegurança\nsensibilidade\nacolhimento',
     'devLeap_dv01_detailMay':
         'choros frequentes\ndespertares frequentes\nnecessidade constante de colo\nsono irregular\nmaior sensibilidade',
-    'devLeap_dv01_detailHelp': 'pele com pele\nvoz calma\npouca luz\nreduzir estímulos\nacolhimento constante',
-    'devLeap_dv01_detailSkills': 'reconhecer cheiro da mãe\nreagir a sons\nreflexos primitivos',
+    'devLeap_dv01_detailHelp':
+        'pele com pele\nvoz calma\npouca luz\nreduzir estímulos\nacolhimento constante',
+    'devLeap_dv01_detailSkills':
+        'reconhecer cheiro da mãe\nreagir a sons\nreflexos primitivos',
     'devLeap_dv01_detailEmotional':
         'Seu bebê ainda não entende rotina. Ele entende presença, calor e segurança.',
     'devLeap_dv02_homeBullets':
         'observa mais\nreconhece vozes\nfica atento ao colo\ncomeça pequenas interações',
     'devLeap_dv02_detailWhats':
         'O bebê começa lentamente a perceber rostos, vozes, cheiros e presença emocional. A voz da mãe costuma trazer conforto e previsibilidade.',
-    'devLeap_dv02_keywords': 'reconhecimento\nconexão\nconforto\npresença\nobservação',
+    'devLeap_dv02_keywords':
+        'reconhecimento\nconexão\nconforto\npresença\nobservação',
     'devLeap_dv02_detailMay':
         'mais observação\nperíodos acordado maior\nreação à voz\nmais calma no colo',
-    'devLeap_dv02_detailHelp': 'conversar olhando nos olhos\ncantar músicas suaves\ncontato visual\nacolhimento',
-    'devLeap_dv02_detailSkills': 'acompanhar rostos\nreconhecer vozes\nobservar movimentos',
-    'devLeap_dv02_detailEmotional': 'Mesmo pequeno, o bebê já começa a construir memórias emocionais.',
+    'devLeap_dv02_detailHelp':
+        'conversar olhando nos olhos\ncantar músicas suaves\ncontato visual\nacolhimento',
+    'devLeap_dv02_detailSkills':
+        'acompanhar rostos\nreconhecer vozes\nobservar movimentos',
+    'devLeap_dv02_detailEmotional':
+        'Mesmo pequeno, o bebê já começa a construir memórias emocionais.',
     'devLeap_dv03_homeBullets':
         'chora mais no fim do dia\nquer mais colo\nse irrita facilmente\ntem dificuldade para relaxar',
     'devLeap_dv03_detailWhats':
         'O sistema nervoso do bebê ainda está muito imaturo. Tudo pode parecer intenso: sons, luzes, fome, cansaço e estímulos.',
-    'devLeap_dv03_keywords': 'sensibilidade\nirritação\nacolhimento\nsobrecarga\nnecessidade emocional',
+    'devLeap_dv03_keywords':
+        'sensibilidade\nirritação\nacolhimento\nsobrecarga\nnecessidade emocional',
     'devLeap_dv03_detailMay':
         'choros no fim do dia\nagitação\ndificuldade para dormir\nnecessidade maior de colo',
-    'devLeap_dv03_detailHelp': 'ambiente silencioso\npouca luz\ncolo\nembalo suave\nreduzir estímulos',
-    'devLeap_dv03_detailSkills': 'mais expressões faciais\nmaior atenção ao ambiente',
+    'devLeap_dv03_detailHelp':
+        'ambiente silencioso\npouca luz\ncolo\nembalo suave\nreduzir estímulos',
+    'devLeap_dv03_detailSkills':
+        'mais expressões faciais\nmaior atenção ao ambiente',
     'devLeap_dv03_detailEmotional':
         'Seu bebê não está “difícil”. Ele ainda está aprendendo a lidar com o mundo.',
     'devLeap_dv04_homeBullets':
         'observa rostos\nacompanha movimentos\ndemonstra atenção\nreage mais às pessoas',
     'devLeap_dv04_detailWhats':
         'O bebê começa a prestar mais atenção, acompanhar pessoas, perceber expressões e reagir ao ambiente.',
-    'devLeap_dv04_keywords': 'interação\natenção\nobservação\nexpressões\nconexão',
+    'devLeap_dv04_keywords':
+        'interação\natenção\nobservação\nexpressões\nconexão',
     'devLeap_dv04_detailMay':
         'mais atenção visual\nsons diferentes\nmais períodos acordado\nreação social maior',
     'devLeap_dv04_detailHelp':
         'conversar bastante\nfazer expressões faciais\nmostrar objetos simples\nrespeitar sinais de sono',
-    'devLeap_dv04_detailSkills': 'acompanhar objetos\ndemonstrar interesse social\nreagir a expressões',
-    'devLeap_dv04_detailEmotional': 'O bebê aprende sobre o mundo através das relações.',
-    'devLeap_dv05_homeBullets': 'observa as mãos\nmovimenta mais os braços\nfaz novos sons\nfica mais curioso',
-    'devLeap_dv05_detailWhats': 'O bebê começa a perceber mãos, braços, movimentos e sensações corporais.',
-    'devLeap_dv05_keywords': 'corpo\ndescoberta\ncoordenação\ncuriosidade\nmovimento',
-    'devLeap_dv05_detailMay': 'observar as mãos\nmovimentos repetitivos\nnovos sons\nmais expressões',
-    'devLeap_dv05_detailHelp': 'tummy time\nbrinquedos leves\ncontato visual\nconversa constante',
-    'devLeap_dv05_detailSkills': 'levantar cabeça\nobservar mãos\nreagir ao próprio movimento',
-    'devLeap_dv05_detailEmotional': 'Cada descoberta ajuda o bebê a construir confiança.',
+    'devLeap_dv04_detailSkills':
+        'acompanhar objetos\ndemonstrar interesse social\nreagir a expressões',
+    'devLeap_dv04_detailEmotional':
+        'O bebê aprende sobre o mundo através das relações.',
+    'devLeap_dv05_homeBullets':
+        'observa as mãos\nmovimenta mais os braços\nfaz novos sons\nfica mais curioso',
+    'devLeap_dv05_detailWhats':
+        'O bebê começa a perceber mãos, braços, movimentos e sensações corporais.',
+    'devLeap_dv05_keywords':
+        'corpo\ndescoberta\ncoordenação\ncuriosidade\nmovimento',
+    'devLeap_dv05_detailMay':
+        'observar as mãos\nmovimentos repetitivos\nnovos sons\nmais expressões',
+    'devLeap_dv05_detailHelp':
+        'tummy time\nbrinquedos leves\ncontato visual\nconversa constante',
+    'devLeap_dv05_detailSkills':
+        'levantar cabeça\nobservar mãos\nreagir ao próprio movimento',
+    'devLeap_dv05_detailEmotional':
+        'Cada descoberta ajuda o bebê a construir confiança.',
     'devLeap_dv06_homeBullets':
         'observa expressões\nreage ao tom de voz\nquer mais interação\nfica mais sociável',
     'devLeap_dv06_detailWhats':
@@ -2808,7 +3674,8 @@ const Map<AppLang, Map<String, String>> _strings = {
         'mais sorrisos\nsons diferentes\nbusca por interação\nmais atenção social',
     'devLeap_dv06_detailHelp':
         'sorrir para o bebê\nconversar frequentemente\nusar voz tranquila\ninteragir com calma',
-    'devLeap_dv06_detailSkills': 'sorriso social\nreação emocional\ninteração maior',
+    'devLeap_dv06_detailSkills':
+        'sorriso social\nreação emocional\ninteração maior',
     'devLeap_dv06_detailEmotional':
         'Seu bebê aprende segurança através das interações diárias.',
     'devLeap_dv07_homeBullets':
@@ -2821,7 +3688,8 @@ const Map<AppLang, Map<String, String>> _strings = {
         'cochilos curtos\nmais despertares\nirritação\ndificuldade para relaxar',
     'devLeap_dv07_detailHelp':
         'rotina leve\nambiente escuro\nmenos estímulos\nrespeitar sinais de sono',
-    'devLeap_dv07_detailSkills': 'mais interação\ncuriosidade maior\nnovas expressões',
+    'devLeap_dv07_detailSkills':
+        'mais interação\ncuriosidade maior\nnovas expressões',
     'devLeap_dv07_detailEmotional':
         'Mudanças no sono não significam regressão. O cérebro está evoluindo.',
     'devLeap_dv08_homeBullets':
@@ -2836,34 +3704,42 @@ const Map<AppLang, Map<String, String>> _strings = {
         'tummy time\nbrinquedos simples\ninteração visual\nconversas suaves',
     'devLeap_dv08_detailSkills':
         'levantar mais a cabeça\nobservar objetos\nreagir ao ambiente',
-    'devLeap_dv08_detailEmotional': 'Cada nova descoberta fortalece a confiança do bebê.',
-    'devLeap_dv09_homeBullets': 'ri mais\nresponde às pessoas\nfaz sons\nquer brincar',
+    'devLeap_dv08_detailEmotional':
+        'Cada nova descoberta fortalece a confiança do bebê.',
+    'devLeap_dv09_homeBullets':
+        'ri mais\nresponde às pessoas\nfaz sons\nquer brincar',
     'devLeap_dv09_detailWhats':
         'O bebê começa a perceber melhor emoções, vozes, expressões e interação social.',
-    'devLeap_dv09_keywords': 'socialização\ngargalhadas\ncomunicação\nexpressões\nvínculo',
+    'devLeap_dv09_keywords':
+        'socialização\ngargalhadas\ncomunicação\nexpressões\nvínculo',
     'devLeap_dv09_detailMay':
         'mais risadas\nsons repetitivos\nmaior interação\nbusca por brincadeiras',
     'devLeap_dv09_detailHelp':
         'brincar bastante\nfazer expressões\nresponder aos sons\nconversar frequentemente',
-    'devLeap_dv09_detailSkills': 'gargalhadas\nreação emocional intensa\ninteresse social',
+    'devLeap_dv09_detailSkills':
+        'gargalhadas\nreação emocional intensa\ninteresse social',
     'devLeap_dv09_detailEmotional':
         'Seu bebê aprende amor e segurança através das interações.',
     'devLeap_dv10_homeBullets':
         'tenta pegar objetos\nleva coisas à boca\nobserva detalhes\nquer explorar',
     'devLeap_dv10_detailWhats':
         'O bebê desenvolve coordenação, curiosidade intensa, exploração sensorial e percepção espacial.',
-    'devLeap_dv10_keywords': 'exploração\ncoordenação\ncuriosidade\nsensações\ndescoberta',
+    'devLeap_dv10_keywords':
+        'exploração\ncoordenação\ncuriosidade\nsensações\ndescoberta',
     'devLeap_dv10_detailMay':
         'pegar objetos\nlevar itens à boca\nmais energia\nmais atenção visual',
     'devLeap_dv10_detailHelp':
         'brinquedos seguros\nestímulos variados\nsupervisão constante\npermitir exploração',
-    'devLeap_dv10_detailSkills': 'rolar\nalcançar objetos\nmanipular brinquedos',
-    'devLeap_dv10_detailEmotional': 'Explorar é a principal forma de aprendizado nessa fase.',
+    'devLeap_dv10_detailSkills':
+        'rolar\nalcançar objetos\nmanipular brinquedos',
+    'devLeap_dv10_detailEmotional':
+        'Explorar é a principal forma de aprendizado nessa fase.',
     'devLeap_dv11_homeBullets':
         'faz novos sons\nresponde às pessoas\nquer brincar\ndemonstra emoções',
     'devLeap_dv11_detailWhats':
         'O bebê aprende interação social, troca emocional, comunicação inicial e resposta ao ambiente.',
-    'devLeap_dv11_keywords': 'linguagem\ncomunicação\ninteração\nsocialização\nvínculo',
+    'devLeap_dv11_keywords':
+        'linguagem\ncomunicação\ninteração\nsocialização\nvínculo',
     'devLeap_dv11_detailMay':
         'balbucios\nmais risadas\ninteração constante\nbusca por atenção',
     'devLeap_dv11_detailHelp':
@@ -2882,7 +3758,8 @@ const Map<AppLang, Map<String, String>> _strings = {
         'querer se movimentar\nexplorar objetos\nmais atenção ao ambiente\nmais energia',
     'devLeap_dv12_detailHelp':
         'permitir exploração segura\nbrinquedos variados\nespaço livre supervisionado',
-    'devLeap_dv12_detailSkills': 'arrastar\nalcançar objetos distantes\nsentar melhor',
+    'devLeap_dv12_detailSkills':
+        'arrastar\nalcançar objetos distantes\nsentar melhor',
     'devLeap_dv12_detailEmotional':
         'Explorar o ambiente ajuda o bebê a construir confiança.',
     'devLeap_dv13_homeBullets':
@@ -2903,13 +3780,15 @@ const Map<AppLang, Map<String, String>> _strings = {
         'observa muito\nreage mais\naprende rápido\nexplora constantemente',
     'devLeap_dv14_detailWhats':
         'O bebê começa a desenvolver lógica básica, causa e efeito, permanência de objetos e reconhecimento de padrões.',
-    'devLeap_dv14_keywords': 'lógica\nconexões\nobservação\naprendizado\npadrões',
+    'devLeap_dv14_keywords':
+        'lógica\nconexões\nobservação\naprendizado\npadrões',
     'devLeap_dv14_detailMay':
         'brincar escondendo objetos\nrepetir ações\ncuriosidade intensa\nexplorar reações',
     'devLeap_dv14_detailHelp':
         'brincadeiras simples\nesconder brinquedos\nmúsicas repetitivas\ninteração constante',
     'devLeap_dv14_detailSkills': 'bater palmas\nengatinhar\nprocurar objetos',
-    'devLeap_dv14_detailEmotional': 'O bebê aprende muito através da repetição.',
+    'devLeap_dv14_detailEmotional':
+        'O bebê aprende muito através da repetição.',
     'devLeap_dv15_homeBullets':
         'quer explorar tudo\ntenta se mover constantemente\nmexe em objetos\ndemonstra muita energia',
     'devLeap_dv15_detailWhats':
@@ -2920,19 +3799,21 @@ const Map<AppLang, Map<String, String>> _strings = {
         'agitação\nexploração intensa\nmais tombos\ndificuldade para ficar parado',
     'devLeap_dv15_detailHelp':
         'ambiente seguro\npermitir exploração\nsupervisão constante\nbrinquedos sensoriais',
-    'devLeap_dv15_detailSkills':
-        'levantar\napoiar em móveis\nexplorar a casa',
-    'devLeap_dv15_detailEmotional': 'Explorar é a forma do bebê entender o mundo.',
+    'devLeap_dv15_detailSkills': 'levantar\napoiar em móveis\nexplorar a casa',
+    'devLeap_dv15_detailEmotional':
+        'Explorar é a forma do bebê entender o mundo.',
     'devLeap_dv16_homeBullets':
         'repete sons\nobserva expressões\ntenta interagir\nresponde mais às pessoas',
     'devLeap_dv16_detailWhats':
         'O bebê descobre que sons têm significado, gestos geram respostas e comunicação aproxima pessoas.',
-    'devLeap_dv16_keywords': 'linguagem\nimitação\ncomunicação\nexpressão\ninteração',
+    'devLeap_dv16_keywords':
+        'linguagem\nimitação\ncomunicação\nexpressão\ninteração',
     'devLeap_dv16_detailMay':
         'sons repetitivos\ntentativa de chamar atenção\nmais expressões\nobservação intensa',
     'devLeap_dv16_detailHelp':
         'conversar bastante\nnomear objetos\nresponder aos sons\nler livros simples',
-    'devLeap_dv16_detailSkills': 'apontar\nrepetir sons\nentender palavras simples',
+    'devLeap_dv16_detailSkills':
+        'apontar\nrepetir sons\nentender palavras simples',
     'devLeap_dv16_detailEmotional':
         'Antes das palavras, o bebê aprende conexão através da comunicação.',
     'devLeap_dv17_homeBullets':
@@ -2945,7 +3826,8 @@ const Map<AppLang, Map<String, String>> _strings = {
         'tentativas de andar\nresistência a ajuda\nexploração intensa\nfrustrações rápidas',
     'devLeap_dv17_detailHelp':
         'incentivar tentativas\nambiente seguro\nacolher frustrações\ncelebrar conquistas',
-    'devLeap_dv17_detailSkills': 'primeiros passos\nprimeiras palavras\nmais autonomia',
+    'devLeap_dv17_detailSkills':
+        'primeiros passos\nprimeiras palavras\nmais autonomia',
     'devLeap_dv17_detailEmotional': 'Cada tentativa constrói confiança.',
     'devLeap_dv18_homeBullets':
         'quer independência\nse frustra facilmente\nmuda rápido de humor\ndemonstra personalidade',
@@ -2999,7 +3881,14 @@ const Map<AppLang, Map<String, String>> _strings = {
     'regBabySection': '2) Cadastro do bebê',
     'regBirthLabel': 'Nascimento:',
     'regMotherHeight': 'Altura (cm)',
+    'regFatherSection': 'Dados do papai (opcional)',
+    'regFatherName': 'Nome do papai',
+    'regFatherBirthLabel': 'Nascimento do papai',
     'regFatherHeight': 'Altura do papai (cm)',
+    'settingsFamilyTree': 'Família',
+    'fatherPhotoTitle': 'Foto do papai',
+    'regFatherPhotoAdd': 'Adicionar foto do papai',
+    'regFatherPhotoChange': 'Trocar foto do papai',
     'regMotherPhotoAdd': 'Foto da mãe (opcional)',
     'regMotherPhotoChange': 'Trocar foto da mãe',
     'regBabyPhotoAdd': 'Foto do bebê (opcional)',
@@ -3071,9 +3960,11 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Notify when the set interval has passed since the last breast or bottle feed.',
     'feedingAlertsIntervalCaption': 'Remind after last feed: {m} min (20–360)',
     'feedingAlertsShortcutTitle': 'Feeding alert',
-    'scheduledFeedingReminderBody': 'Time for your feeding reminder. Tap to log.',
+    'scheduledFeedingReminderBody':
+        'Time for your feeding reminder. Tap to log.',
     'scheduledDiaperReminderTitle': 'Diaper change',
-    'scheduledDiaperReminderBody': 'It may be time for a diaper change. Tap to log.',
+    'scheduledDiaperReminderBody':
+        'It may be time for a diaper change. Tap to log.',
     'whatHappenedNow': 'What happened now?',
     'momNote': "Mom's note",
     'saveRecord': 'Save log',
@@ -3087,9 +3978,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportListDaily': 'Daily report',
     'reportListDailySub': 'Summary and details for the selected day',
     'reportListWeekly': 'Weekly report',
-    'reportListWeeklySub': 'Summary and details for the week containing the selected day',
+    'reportListWeeklySub':
+        'Summary and details for the week containing the selected day',
     'reportListMonthly': 'Monthly report',
-    'reportListMonthlySub': 'Monthly aggregates for the month of the selected day',
+    'reportListMonthlySub':
+        'Monthly aggregates for the month of the selected day',
     'reportListSleepAdv': 'Advanced sleep report',
     'reportListSleepAdvSub': 'Sleep patterns and metrics',
     'reportListPediatric': 'Pediatric report',
@@ -3107,13 +4000,16 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusCtaLater': 'Not now',
     'plusSheetFootnote':
         'One-time purchase processed by Google Play or the App Store. Restore from account settings on a new phone.',
-    'plusWelcomeSnack': 'Welcome to FaceBaby Premium — thank you for cherishing these memories together.',
+    'plusWelcomeSnack':
+        'Welcome to FaceBaby Premium — thank you for cherishing these memories together.',
     'plusPurchaseUnavailableSnack':
         'Could not start purchase. Check the store listing or try again later.',
     'plusPurchaseSkuNotFoundSnack':
         'Google Play did not return product "{id}". Create an active managed in-app product with this exact Product ID (Monetize → In-app products), or build with --dart-define=FACEBABY_PREMIUM_SKU=… to match your store ID.',
     'plusPurchaseBillingLaunchFailedSnack':
-        'Could not open Google Play billing. Install the app from an internal/closed testing track (or production), use a licensed test account, and try again.',
+        'Could not open Google Play billing. Check your internet connection, that you installed the app from Play, and that you use a valid Google account. For internal/closed testing, use a licensed tester. If the store says you already own the product, tap “Restore purchases” below.',
+    'plusPurchaseAlreadyInPlayAccountSnack':
+        'If the store says you already own this, tap “Restore purchases” below to link Premium to this FaceBaby account. If it still fails, use the same Google account you bought with.',
     'plusPaywallSkuMissingHint':
         'Store price not loaded yet for "{id}". Confirm the product is active in Play Console or wait for sync (can take a few hours).',
     'plusRestoreOkSnack': 'Purchases restored.',
@@ -3128,12 +4024,14 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusPremiumActiveTitle': 'Thank you for Premium',
     'plusPremiumActiveBody':
         'All premium features are unlocked forever on this device. Restore purchases when you switch phones.',
-    'plusPurchaseErrorSnack': 'Something went wrong. Try again or tap Restore purchases.',
+    'plusPurchaseErrorSnack':
+        'Something went wrong. Try again or tap Restore purchases.',
     'plusDoneClose': 'Close',
     'settingsPlusCardTitle': 'FaceBaby Premium',
     'settingsPlusCardBodyFree':
         'PDFs, keepsake book, more photos, cloud backup, pediatric report & advanced stats — single payment.',
-    'settingsPlusCardBodyActive': 'FaceBaby Premium is active — thank you for your support.',
+    'settingsPlusCardBodyActive':
+        'FaceBaby Premium is active — thank you for your support.',
     'settingsPlusUpgradeCta': 'Unlock Premium',
     'settingsPlusManageCta': 'View Premium',
     'plusMemoryCounterFree': '{n} of {max} moments on the free plan',
@@ -3195,7 +4093,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportWeeklySummaryTitle': 'Week summary',
     'reportWeeklyTrendsTitle': 'Trends',
     'reportWeeklySeeFullDetails': 'View full report',
-    'reportWeeklyPartialWeekHint': 'Averages and trends: Monday through {weekday} (week to date).',
+    'reportWeeklyPartialWeekHint':
+        'Averages and trends: Monday through {weekday} (week to date).',
     'reportWeeklyFutureWeekHint':
         "This week hasn't started on the calendar yet — pick another week, or come back when there are logged days.",
     'reportWeeklyLoadErrorPrefix': 'Could not load the report:',
@@ -3220,7 +4119,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportWeeklyTrendNA': '—',
     'reportWeeklyHighlightSleep': 'Positive: more restorative sleep this week.',
     'reportWeeklyHighlightFeedingStable': 'Positive: steady feeding rhythm.',
-    'reportWeeklyHighlightDiaperUp': 'Note: more changes — hydration or digestion may be more active.',
+    'reportWeeklyHighlightDiaperUp':
+        'Note: more changes — hydration or digestion may be more active.',
     'reportWeeklyHighlightWeight': 'Positive: healthy weight gain.',
     'reportWeeklyHighlightGeneric': 'Keep logging for clearer trends.',
     'reportWeeklyAvgFeedsDay': 'Daily average: {avg} feeds.',
@@ -3235,24 +4135,33 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportWeeklyFeedChartCaption': 'Feeds per day',
     'reportWeeklyDiaperChartCaption': 'Changes per day',
     'reportWeeklyPatternWeekend': 'Sleep tends to stretch a bit on weekends.',
-    'reportWeeklyPatternFeedingDown': 'Fewer feeds on average — common when intervals widen.',
-    'reportWeeklyPatternDefault': 'Weekly pattern looks steady — adjust routines as needed.',
+    'reportWeeklyPatternFeedingDown':
+        'Fewer feeds on average — common when intervals widen.',
+    'reportWeeklyPatternDefault':
+        'Weekly pattern looks steady — adjust routines as needed.',
     'reportWeeklyInsightSleepNeutral': 'Sleep was similar to last week.',
-    'reportWeeklyInsightSleepBetter': 'More sleep than last week — a good sign.',
-    'reportWeeklyInsightSleepLess': 'Total sleep dipped vs last week — worth watching nights.',
+    'reportWeeklyInsightSleepBetter':
+        'More sleep than last week — a good sign.',
+    'reportWeeklyInsightSleepLess':
+        'Total sleep dipped vs last week — worth watching nights.',
     'reportWeeklyInsightTemplate': '{name}: {sleep}',
     'reportMonthlyScreenTitle': 'Monthly report',
     'reportMonthlyAvgWeight': 'Average weight',
     'reportMonthlyAvgHeight': 'Average height',
-    'reportMonthlyGrowthChartEmpty': 'Add at least two weight logs this month to see the chart.',
+    'reportMonthlyGrowthChartEmpty':
+        'Add at least two weight logs this month to see the chart.',
     'reportMonthlySleepSection': 'Sleep',
     'reportMonthlySleepAvg': 'Monthly average (per day)',
     'reportMonthlyVsPrevMonth': 'vs previous month',
     'reportMonthlyBestWeeks': 'Weeks with the most sleep',
-    'reportMonthlySleepTrendUp': 'Overall trend: more restorative sleep this month.',
-    'reportMonthlySleepTrendDown': 'Overall trend: less total sleep than last month — worth watching.',
-    'reportMonthlySleepTrendStable': 'Overall trend: steady sleep through the month.',
-    'reportMonthlySleepTrendUnknown': 'Not enough data to compare with last month.',
+    'reportMonthlySleepTrendUp':
+        'Overall trend: more restorative sleep this month.',
+    'reportMonthlySleepTrendDown':
+        'Overall trend: less total sleep than last month — worth watching.',
+    'reportMonthlySleepTrendStable':
+        'Overall trend: steady sleep through the month.',
+    'reportMonthlySleepTrendUnknown':
+        'Not enough data to compare with last month.',
     'reportMonthlySleepExplain':
         'Average sleep per day adds up every logged sleep session by calendar day this month and divides by the number of days in the month (sessions counted by end time). The percentage compares that average with the previous month. “Weeks with the most sleep” highlights up to two Monday–Sunday weeks with the highest total sleep.',
     'reportMonthlyFeedingSection': 'Feeding',
@@ -3261,9 +4170,11 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Average frequency is total breast or bottle feeds logged this month divided by the number of calendar days in that month (days with no logs still count). Solid feeds are not included. The times are up to three clock hours when the most feeds ended this month.',
     'reportMonthlyPredominantHours': 'Most common times (feed ended)',
     'reportMonthlyMilestonesTitle': 'Milestones this month',
-    'reportMonthlyMilestonesEmpty': 'No vaccines, visits or badge memories this month.',
+    'reportMonthlyMilestonesEmpty':
+        'No vaccines, visits or badge memories this month.',
     'reportMonthlyMilestoneConsultationDefault': 'Visit',
     'reportMonthlyMemoriesTitle': 'Memories this month',
+    'homeRecentMemoriesTitle': 'Latest Memories',
     'reportMonthlySeeAllMemories': 'See all',
     'reportMonthlyMemoriesEmpty': 'No photos in memories for this month.',
     'reportMonthlyVideosHint': 'Videos will appear when saved in your moments.',
@@ -3278,7 +4189,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportSleepAdvLongest': 'Longest continuous sleep',
     'reportSleepAdvAvgDailySleep': 'Average sleep per day',
     'reportSleepAdvIdealTitle': 'Best time to fall asleep',
-    'reportSleepAdvIdealFooter': 'Window estimated from your logs (not medical advice).',
+    'reportSleepAdvIdealFooter':
+        'Window estimated from your logs (not medical advice).',
     'reportSleepAdvSeeFullAnalysis': 'See full analysis',
     'reportSleepAdvChartsSection': 'Sleep session',
     'reportSleepAdvChartsSleepTrend': 'Sleep rhythm (this week)',
@@ -3293,7 +4205,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportSleepAdvScoreBreakdown': 'What the score reflects',
     'reportSleepAdvBreakdownLine':
         'Efficiency: {e} pts • Long stretches: {s} pts • Wake-ups: {a} pts • Steadiness: {c} pts (indicative).',
-    'reportSleepAdvNotEnoughData': 'Still few entries this week — numbers are indicative.',
+    'reportSleepAdvNotEnoughData':
+        'Still few entries this week — numbers are indicative.',
     'reportSleepAdvStatusExcellent': 'Excellent',
     'reportSleepAdvStatusGood': 'Good',
     'reportSleepAdvStatusRegular': 'Fair',
@@ -3313,7 +4226,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricDateFrom': 'From',
     'reportPediatricDateTo': 'To',
     'reportPediatricPickRange': 'Choose dates',
-    'reportPediatricFilterMaxDaysHint': 'Tap to change. Very long ranges are limited to 366 days.',
+    'reportPediatricFilterMaxDaysHint':
+        'Tap to change. Very long ranges are limited to 366 days.',
     'reportPediatricSectionGeneral': 'General information',
     'reportPediatricSectionSummary': 'Period summary',
     'reportPediatricSectionSleep': 'Sleep',
@@ -3336,7 +4250,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricFeverFootnote':
         'Counted from structured symptom logs (Health › Report symptom), with temperature when provided.',
     'reportPediatricVaccines': 'Vaccines given in period',
-    'reportPediatricMedications': 'Medications (structured logs & keywords in notes)',
+    'reportPediatricMedications':
+        'Medications (structured logs & keywords in notes)',
     'reportPediatricSleepAvgDaily': 'Average daily sleep',
     'reportPediatricSleepAwakenings': 'Night awakenings (avg.)',
     'reportPediatricSleepPattern': 'Overall sleep pattern',
@@ -3361,7 +4276,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricNa': '—',
     'reportPediatricJournalNote': 'Daily journals',
     'reportPediatricJournalNoteHint': 'Keyword detection in free text.',
-    'reportPediatricObsHint': 'Notes for the visit: symptoms, meds, behaviour changes…',
+    'reportPediatricObsHint':
+        'Notes for the visit: symptoms, meds, behaviour changes…',
     'reportPediatricBtnShare': 'Share',
     'reportPediatricBtnExportPdf': 'Export PDF',
     'reportPediatricBtnPrint': 'Print',
@@ -3378,8 +4294,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricSymptomCrying': 'Unexplained crying (structured logs)',
     'reportPediatricSymptomPain': 'Pain (structured logs)',
     'reportPediatricSymptomFromJournal': 'mentioned in journal (no time)',
-    'reportPediatricStructuredSymptoms': 'Structured symptom logs (date & time)',
-    'reportPediatricStructuredSymptomsEmpty': 'No structured symptom logs this period.',
+    'reportPediatricStructuredSymptoms':
+        'Structured symptom logs (date & time)',
+    'reportPediatricStructuredSymptomsEmpty':
+        'No structured symptom logs this period.',
     'reportDevScreenTitle': 'Development',
     'reportDevSubtitle': 'Gentle milestones to follow at your own pace.',
     'reportDevScoreTitle': 'Development score',
@@ -3434,7 +4352,8 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Download an elegant PDF with a FaceBaby cover, decorative frame, and every badge you have filled in — perfect to keep or share.',
     'memoriesAlbumDownloadCta': 'Download album PDF',
     'memoriesAlbumGenerating': 'Creating your album…',
-    'memoriesAlbumNeedFilled': 'Fill in at least one moment in the album to generate the PDF.',
+    'memoriesAlbumNeedFilled':
+        'Fill in at least one moment in the album to generate the PDF.',
     'memoriesAlbumError': 'Could not generate the PDF.',
     'memoriesAlbumPdfReadyTitle': 'Album PDF ready',
     'memoriesAlbumShareAction': 'Share…',
@@ -3531,7 +4450,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'settingsPremiumBannerHint': 'Tap to see what is included in your plan.',
     'settingsRateCouldNotOpen': 'Could not open the store. Try again later.',
     'unitsTitle': 'Measurement units',
-    'unitsIntro': 'Choose how you want measurements to be shown. We start with an automatic default based on your device region.',
+    'unitsIntro':
+        'Choose how you want measurements to be shown. We start with an automatic default based on your device region.',
     'unitsLengthTitle': 'Length unit',
     'unitsLengthSubtitle': 'Height, circumference and general measurements.',
     'unitsWeightTitle': 'Weight unit',
@@ -3583,7 +4503,18 @@ const Map<AppLang, Map<String, String>> _strings = {
     'authErrUserDisabled': 'This account has been disabled.',
     'authErrUserNotFound': 'No account found for this email.',
     'authErrWrongPassword': 'Incorrect password.',
-    'authErrEmailInUse': 'An account already exists with this email.',
+    'authErrEmailInUse':
+        'An account already exists with this email. Use “Already have an account” to sign in.',
+    'authErrAccountExistsDifferentCredential':
+        'This email already has a FaceBaby account with a different sign-in method (for example Google). Go back, tap “Already have an account,” and use the same method as before; to use email/password, try another email.',
+    'authErrEmailInUseGoogle':
+        'This email is already registered with Google. Go back and sign in with the Google button under “Already have an account.”',
+    'authErrEmailInUsePassword':
+        'This email already has a FaceBaby password. Use “Already have an account” with email and password; if you forgot, use “Forgot password” on the login screen.',
+    'authErrEmailInUseApple':
+        'This email is already linked to Apple. Sign in with the Apple button under “Already have an account.”',
+    'authErrEmailInUseMixed':
+        'This email is already registered with another sign-in method. Use “Already have an account” with the same Google, Apple, or email/password you used before.',
     'authErrInvalidCredential': 'Invalid credentials. Try again.',
     'authErrCredentialsGeneric': 'Could not sign in. Try again.',
     'authErrGoogleConfigAndroid':
@@ -3593,9 +4524,119 @@ const Map<AppLang, Map<String, String>> _strings = {
             '3) Authentication → enable Google provider.\n'
             '4) Download google-services.json again into android/app/.',
     'authErrLoginCancelled': 'Sign-in cancelled.',
-    'authErrAppleFailed': 'Could not sign in with Apple. Try again or use another method.',
-    'authErrAppleUnavailable': 'Sign in with Apple is only available on iPhone or iPad.',
+    'authErrAppleFailed':
+        'Could not sign in with Apple. Try again or use another method.',
+    'authErrAppleUnavailable':
+        'Sign in with Apple is only available on iPhone or iPad.',
     'authErrUnexpected': 'Something went wrong.',
+    'onbSelectDate': 'Select date',
+    'onbBabyFallback': 'baby',
+    'onbMomFallback': 'mom',
+    'onbDadFallback': 'dad',
+    'onbWelcomeTitle': 'Accompanying and monitoring',
+    'onbWelcomeSubtitle': 'development with Love.',
+    'onbFeatureSleep': 'Sleep',
+    'onbFeatureFeeding': 'Feeding',
+    'onbFeatureGrowth': 'Growth',
+    'onbFeatureMemories': 'Memories',
+    'onbFeatureAlerts': 'Alerts',
+    'onbFeatureLove': 'Lots of Love',
+    'onbCreateBabyProfile': "Create baby's profile",
+    'onbExistingAccountLogin': 'I already have an account / Sign in',
+    'onbContinue': 'Continue',
+    'onbPrepareFaceBaby': 'Prepare FaceBaby',
+    'onbPreparingTitle': 'Preparing FaceBaby for you...',
+    'onbPreparingSubtitle':
+        "Personalizing your baby's alerts, memories and routine.",
+    'onbAuthTitle': 'Your basic profile is ready',
+    'onbAuthSubtitle':
+        'Now create your account to keep everything safe and sync later.',
+    'onbSignInGoogle': 'Sign in with Google',
+    'onbSignInApple': 'Sign in with Apple',
+    'onbContinueEmail': 'Continue with email',
+    'onbAlreadyHaveAccount': 'I already have an account',
+    'onbWait': 'Please wait...',
+    'onbDoneTitle': "Done! Your baby's profile was created.",
+    'onbStartTracking': 'Start tracking',
+    'onbCouldNotPrepare':
+        'Could not prepare the profile right now. Please try again.',
+    'onbBabyNameTitle': "What is your baby's name?",
+    'onbBabyNameSubtitle': 'Let’s make FaceBaby feel like your family.',
+    'onbBabyNameHint': "Baby's name",
+    'onbBabyBirthTitle': 'What is the date of birth?',
+    'onbBabyBirthSubtitle':
+        'We use age to personalize sleep, routine and growth.',
+    'onbBabyWeightTitle': "What is your baby's weight?",
+    'onbBabyWeightSubtitle':
+        'Drag the ruler to choose. You can switch between Kg and Lb.',
+    'onbBabyHeightTitle': "What is your baby's height?",
+    'onbBabyHeightSubtitle':
+        'Use the ruler to enter the approximate size in your preferred unit.',
+    'onbMotherNameTitle': "What is mom's name?",
+    'onbMotherNameSubtitle': 'We will use her name in the next questions.',
+    'onbMotherNameHint': "Mom's name",
+    'onbMotherBirthTitle': "What is mom's date of birth?",
+    'onbMotherBirthSubtitle': 'After this, we will ask her height.',
+    'onbMotherHeightTitle': 'What is {name}’s height?',
+    'onbMotherHeightSubtitle': 'This helps with growth reports.',
+    'onbRegisterFatherTitle': 'Do you also want to add dad?',
+    'onbRegisterFatherSubtitle':
+        'If you want, FaceBaby can personalize dad’s information too.',
+    'onbFatherNameTitle': "What is dad's name?",
+    'onbFatherNameSubtitle': 'This makes his ruler personalized too.',
+    'onbFatherNameHint': "Dad's name",
+    'onbFatherBirthTitle': "What is dad's date of birth?",
+    'onbFatherBirthSubtitle': 'After this, we will ask his height.',
+    'onbFatherHeightTitle': 'What is {name}’s height?',
+    'onbFatherHeightSubtitle':
+        'An approximate value is fine. You can adjust it later.',
+    'onbFatherPhotoTitle': "Would you like to add a photo of dad?",
+    'onbFatherPhotoSubtitle':
+        'Optional — you can add it later in Family or registration.',
+    'onbBabyPhotoTitle': "Would you like to add a photo of your baby?",
+    'onbBabyPhotoSubtitle':
+        'Optional — you can add it later during registration or in Memories.',
+    'onbMotherPhotoTitle': "Would you like to add a photo of mom?",
+    'onbMotherPhotoSubtitle':
+        'Optional — you can add it later in Family or registration.',
+    'onbBabySexTitle': "What is your baby's sex?",
+    'onbSexGirl': 'Girl',
+    'onbSexBoy': 'Boy',
+    'onbSexUnknown': 'Prefer not to say',
+    'onbFirstBabyTitle': 'Is this your first baby?',
+    'onbYes': 'Yes',
+    'onbNo': 'No',
+    'onbConcernTitle': 'What is your biggest concern right now?',
+    'onbConcernSubtitle': 'You can choose more than one.',
+    'onbConcernSleep': "Baby's sleep",
+    'onbConcernFeeding': 'Breastfeeding/feeding',
+    'onbConcernGrowth': 'Weight and growth',
+    'onbConcernRoutine': 'Daily routine',
+    'onbConcernMemories': 'Memories and photos',
+    'onbConcernDevelopment': 'Development',
+    'onbGoalsTitle': 'What are your goals?',
+    'onbGoalsSubtitle': 'We will use this to personalize your experience.',
+    'onbGoalRoutine': 'Track the routine better',
+    'onbGoalSleepAlerts': 'Receive sleep alerts',
+    'onbGoalMoments': 'Log special moments',
+    'onbGoalReports': 'Generate reports',
+    'onbGoalMemoryBook': 'Create a memory book',
+    'onbMessagePrefTitle':
+        'Do you prefer Christian messages, horoscope, or both?',
+    'onbMessagePrefSubtitle': 'You can change this later in My Profile.',
+    'onbMessagePrefChristian': 'Christian messages',
+    'onbMessagePrefHoroscope': 'Horoscope',
+    'onbMessagePrefBoth': 'Both',
+    'onbDragToAdjust': 'Drag to adjust',
+    'onbEmailSheetTitle': 'Create account with email',
+    'onbYourNameHint': 'Your name',
+    'onbEmailHint': 'Email',
+    'onbPasswordHint': 'Password',
+    'onbCreateAccount': 'Create account',
+    'onbValYourName': 'Enter your name.',
+    'onbValEmailRequired': 'Enter your email.',
+    'onbValEmailInvalid': 'Invalid email.',
+    'onbValPasswordMin': 'Use at least 6 characters.',
     'vaccinesTitle': 'Vaccines',
     'vaccinesSubtitle': 'Add vaccines, dates and next doses.',
     'baby': 'Baby',
@@ -3607,9 +4648,130 @@ const Map<AppLang, Map<String, String>> _strings = {
     'changePhoto': 'Change photo',
     'motherPhotoTitle': "Mom's photo",
     'babyPhotoTitle': "Baby's photo",
+    'familyTabMotherLabel': 'Mom',
+    'familyTabFatherLabel': 'Dad',
+    'familyTitle': 'Family',
+    'familySubtitle': 'Where love grows together 💖',
+    'familyEdit': 'Edit',
+    'familyEditData': 'Edit data >',
+    'familyRoleMother': 'Mom',
+    'familyRoleFather': 'Dad',
+    'familyRoleBaby': 'Baby',
+    'familyZodiacSolar': 'Sun sign',
+    'familyEntertainmentNote':
+        'Light, affectionate content for entertainment — not professional advice.',
+    'familyChristianCardTitle': 'Message for the family',
+    'familyChristianLine': '📖 {ref}',
+    'familyBornOn': 'Born: {date}',
+    'familyAgeOneYear': '1 year',
+    'familyAgeYears': '{n} years',
+    'familyHeight': 'Height: {value}',
+    'familyMotherBlurb':
+        'As a {sign} mom, you tend to show love in a {traits} way.',
+    'familyFatherBlurb':
+        'As a {sign} dad, you tend to protect, teach and bond with your baby in a {traits} way.',
+    'familyBabyBlurb':
+        'As a {sign} baby, they may show traits like {traits}.',
+    'familyZodiacName_capricorn': 'Capricorn',
+    'familyZodiacName_aquarius': 'Aquarius',
+    'familyZodiacName_pisces': 'Pisces',
+    'familyZodiacName_aries': 'Aries',
+    'familyZodiacName_taurus': 'Taurus',
+    'familyZodiacName_gemini': 'Gemini',
+    'familyZodiacName_cancer': 'Cancer',
+    'familyZodiacName_leo': 'Leo',
+    'familyZodiacName_virgo': 'Virgo',
+    'familyZodiacName_libra': 'Libra',
+    'familyZodiacName_scorpio': 'Scorpio',
+    'familyZodiacName_sagittarius': 'Sagittarius',
+    'familyZodiacTrait_capricorn': 'calm, responsible and nurturing',
+    'familyZodiacTrait_aquarius': 'creative, gentle and affectionate',
+    'familyZodiacTrait_pisces': 'sensitive, sweet and empathetic',
+    'familyZodiacTrait_aries': 'energetic, protective and loving',
+    'familyZodiacTrait_taurus': 'patient, steady and present',
+    'familyZodiacTrait_gemini': 'cheerful, communicative and curious',
+    'familyZodiacTrait_cancer': 'affectionate, intuitive and protective',
+    'familyZodiacTrait_leo': 'warm, proud and generous',
+    'familyZodiacTrait_virgo': 'caring, attentive and dedicated',
+    'familyZodiacTrait_libra': 'harmonious, loving and balanced',
+    'familyZodiacTrait_scorpio': 'deeply loving, loyal and protective',
+    'familyZodiacTrait_sagittarius': 'optimistic, playful and hopeful',
+    'familyFatherDataComplete': "Dad's data — complete and up to date",
+    'familyFatherDataIncomplete': "Dad's data — still incomplete",
+    'familyAddFatherPrompt':
+        "Add dad's details to see your baby's estimated adult height.",
+    'familyAddFatherButton': "Add dad's details",
+    'familyCompleteBabySex':
+        "Add your baby's sex in their profile to calculate estimated height.",
+    'familyEditBabyData': "Edit baby's profile",
+    'familyCompleteHeights':
+        'We need both parents\' heights for the estimate.',
+    'familyCompleteHeightsButton': 'Complete heights',
+    'familyEstimatedHeightTitle': 'Estimated height for {name}',
+    'familyMotherHeightLabel': "Mom's height",
+    'familyFatherHeightLabel': "Dad's height",
+    'familyEstimatedGirl': 'Estimated height for a girl',
+    'familyEstimatedBoy': 'Estimated height for a boy',
+    'familyEstimatedResult': 'approximately {cm}',
+    'familyHowCalculated': 'How is it calculated?',
+    'familyFormulaBoy': 'Boy: (father + mother + 13) ÷ 2',
+    'familyFormulaGirl': 'Girl: (father + mother − 13) ÷ 2',
+    'familyFormulaExampleGirl':
+        '({father} + {mother} − 13) ÷ 2 = {result} cm',
+    'familyFormulaExampleBoy':
+        '({father} + {mother} + 13) ÷ 2 = {result} cm',
+    'familyHeightDisclaimer':
+        'This is a simple estimate used as a pediatric reference. Final height can vary with genetics, nutrition, sleep, health, puberty and other factors. Follow-up with your pediatrician remains essential.',
+    'familyZodiacReadMore': 'Read full text',
+    'familyPremiumZodiacLocked':
+        'Solar signs and personalized texts are included in FaceBaby Premium.',
+    'familyPremiumHeightLocked':
+        'Estimated adult height is included in FaceBaby Premium.',
+    'familyPremiumUnlockCta': 'Unlock Premium',
+    'familyScreenTitle': 'Family 💜',
+    'familyPersonalInfoTitle': 'Personal information',
+    'familyHoroscopeCardTitle': 'Horoscope for {sign}',
+    'familyBibleVerseCardTitle': 'Bible verse of the day',
+    'familyDailySummaryTitle': 'Today summary',
+    'familySummaryFeeding': 'Feedings',
+    'familySummaryDiapers': 'Diapers',
+    'familySummarySleep': 'Sleep',
+    'familySummaryWeight': 'Weight',
+    'familyQuickLabelBirth': 'Birth',
+    'familyQuickLabelTime': 'Time',
+    'familySummaryFeedingsToday': '{n}× today',
+    'familySummaryDiaperChangesCount': '{n} changes',
+    'familySummaryLastAt': 'Last at {time}',
+    'familySummaryLastSleepAt': 'Last at {time}',
+    'familySummaryWeightDayLine': 'Day total',
+    'familyFieldBirthDate': 'Date of birth',
+    'familyFieldSign': 'Sign',
+    'familyFieldElement': 'Element',
+    'familyFieldAge': 'Age',
+    'familyFieldHeight': 'Height',
+    'familyFieldWeight': 'Weight',
+    'familyPremiumShortBadge': 'Premium',
+    'familyPremiumFeatureLockedBody':
+        'This content is part of FaceBaby Premium. Tap to see plans.',
+    'familyPremiumBannerTitle': 'Unlock family content',
+    'familyPremiumBannerBody':
+        'Full horoscopes, exclusive Bible verses and tailored suggestions.',
+    'familyPremiumViewPlans': 'See plans',
+    'familyAddFatherCardTitle': 'Add dad’s details',
+    'familyElementFire': 'Fire',
+    'familyElementEarth': 'Earth',
+    'familyElementAir': 'Air',
+    'familyElementWater': 'Water',
+    'familyTapToOpen': 'Tap for details',
+    'familyCarouselSwipe': 'Swipe to browse each member',
+    'familyTabNene': 'Baby',
+    'familyTabsHint': 'Tap a name to see details',
+    'familyTapToClose': 'Close',
+    'familyShareCard': 'Share',
     'changeBabyTooltip': 'Switch baby',
     'notificationsInboxTitle': 'Notifications',
-    'notificationsInboxSubtitle': 'Last 3 days (delivered and scheduled, logged in the app)',
+    'notificationsInboxSubtitle':
+        'Last 3 days (delivered and scheduled, logged in the app)',
     'notificationsEmpty': 'No notifications logged in this period yet.',
     'notificationsKindShown': 'Delivered',
     'notificationsKindScheduled': 'Scheduled',
@@ -3635,8 +4797,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'deleteAccountTypeWordFieldLabel': 'delete',
     'homeBabyBannerForecastSleep': 'Sleep forecast',
     'homeBabyBannerForecastWake': 'Wake-up forecast',
-    'homeBabyBannerForecastSubtitleSleep': 'Sleep cues detected\nbased on the current time',
-    'homeBabyBannerForecastSubtitleWake': 'Based on current time and age pattern',
+    'homeBabyBannerForecastSubtitleSleep':
+        'Sleep cues detected\nbased on the current time',
+    'homeBabyBannerForecastSubtitleWake':
+        'Based on current time and age pattern',
     'homeBabyBannerEtaIn': 'in {d}',
     'homeBabyBannerLastDiaper': 'Last diaper',
     'homeBabyBannerNoRecordsYet': 'No records yet',
@@ -3672,7 +4836,8 @@ const Map<AppLang, Map<String, String>> _strings = {
         'When you mark this as public, the photo may enter Photo of the Week and be seen by other moms in FaceBaby.',
     'weeklyPhotoPublicOff': 'Private',
     'weeklyPhotoPublicOn': 'Public',
-    'weeklyPhotoPublicNeedPhoto': 'Add a photo before marking this memory public.',
+    'weeklyPhotoPublicNeedPhoto':
+        'Add a photo before marking this memory public.',
     'weeklyPhotoConfirmTitle': 'Make this memory public?',
     'weeklyPhotoConfirmBody':
         'This photo may be picked as Photo of the Week and shown to other moms in the app. You can turn this off anytime.',
@@ -3680,7 +4845,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'weeklyPhotoConfirmOk': 'Make public',
     'weeklyPhotoParticipatingBadge': 'Entered for Photo of the Week',
     'weeklyPhotoWinnerBadge': 'This memory was chosen as Photo of the Week 💜',
-    'weeklyPhotoShowBabyFirstName': "Show baby's first name on the public gallery",
+    'weeklyPhotoShowBabyFirstName':
+        "Show baby's first name on the public gallery",
     'weeklyPhotoDisclaimerFooter':
         'Only photos marked public participate. You can remove this anytime.',
     'weeklyPhotoSectionTitleMale': 'Prince of the Week',
@@ -3693,10 +4859,20 @@ const Map<AppLang, Map<String, String>> _strings = {
     'weeklyPhotoDisclaimerShort':
         'Only photos marked public participate. You can remove this anytime.',
     'weeklyPhotoPublicDetailAppBar': 'Weekly memory',
-    'weeklyPhotoWinnerCongratsTitle': 'Congratulations!',
+    'weeklyPhotoWinnerCongratsTitle': 'Congratulations, Mom!',
     'weeklyPhotoWinnerCongratsBody':
-        'Your photo was chosen as Photo of the Week (Princess or Prince of the Week) in FaceBaby. Thank you for sharing this moment with us.',
-    'weeklyPhotoWinnerCongratsOk': 'Thanks',
+        "Your Princess's photo was chosen as Photo of the Week! Let's all celebrate her.\n\nThe FaceBaby family thanks you for sharing this beautiful moment with us! 💜",
+    'weeklyPhotoWinnerCongratsBodyMale':
+        "Your Prince's photo was chosen as Photo of the Week! Let's all celebrate him.\n\nThe FaceBaby family thanks you for sharing this beautiful moment with us! 💜",
+    'weeklyPhotoWinnerCongratsBodyFemale':
+        "Your Princess's photo was chosen as Photo of the Week! Let's all celebrate her.\n\nThe FaceBaby family thanks you for sharing this beautiful moment with us! 💜",
+    'weeklyPhotoWinnerCongratsOk': 'Confirm',
+    'weeklyPhotoLikesCount': '{count} likes',
+    'weeklyPhotoLikeButton': 'Like',
+    'weeklyPhotoLikedButton': 'Liked',
+    'weeklyPhotoLikesWinnerHint': 'People who liked your baby’s photo',
+    'weeklyPhotoLikeNeedSignIn':
+        'Sign in with the same account to like the Weekly Photo.',
     'memoryEditTitle': 'Edit memory',
     'memoryNewTitle': 'New memory',
     'memoryMomNotesFieldLabel': "Mom's notes",
@@ -3711,9 +4887,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoryHeightHintExample': 'e.g. 49',
     'memorySaveNeedPhotoOrText': 'Add a photo or write a description to save.',
     'memorySaveFail': 'Could not save:',
-    'memoryShareWebOnlyMobile': 'Sharing image or PDF is available in the installed app (Android/iOS).',
+    'memoryShareWebOnlyMobile':
+        'Sharing image or PDF is available in the installed app (Android/iOS).',
     'memoryShareSheetJpegTitle': 'Image (JPG)',
-    'memoryShareSheetJpegSubtitle': 'Choose WhatsApp, email, Bluetooth… in the system sheet',
+    'memoryShareSheetJpegSubtitle':
+        'Choose WhatsApp, email, Bluetooth… in the system sheet',
     'memoryShareSheetPdfTitle': 'PDF (one page)',
     'memoryShareSheetPdfSubtitle': 'Handy for email or archives',
     'memorySharePlatformUnavailable': 'Not available on this platform.',
@@ -3753,7 +4931,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeTodayLabel': 'Today',
     'homeYesterdayLabel': 'Yesterday',
     'homeSummaryOnDate': 'Summary — {date}',
-    'homeSummaryPickDayTooltip': 'Pick summary day (history saved after each day ends)',
+    'homeSummaryPickDayTooltip':
+        'Pick summary day (history saved after each day ends)',
     'homeFedAt': 'Feeding at {time}',
     'homePeeAt': 'Pee at {time}',
     'homePooAt': 'Poop at {time}',
@@ -3774,9 +4953,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeCriticalFeedingTitle': 'It may be time to feed',
     'homeCriticalSleepTitle': 'It may be time to sleep',
     'homeCriticalDiaperTitle': 'It may be time to change the diaper',
-    'homeCriticalFeedingSubtitle': 'It may have passed the expected time since the last feeding.',
+    'homeCriticalFeedingSubtitle':
+        'It may have passed the expected time since the last feeding.',
     'homeCriticalSleepSubtitle': 'The awake window may have been exceeded.',
-    'homeCriticalDiaperSubtitle': 'It may have been a while since the last change.',
+    'homeCriticalDiaperSubtitle':
+        'It may have been a while since the last change.',
     'homeSleepBarAwakeTitle': 'Awake · window until sleep',
     'homeSleepBarSleepTitle': 'Sleeping · session time',
     'homeFeedingCounterTitle': 'Feeding · time until next interval',
@@ -3789,7 +4970,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeTipTitle': 'Tip of the day',
     'homeTipBody': 'Consistent routines help your baby feel safe and calm.',
     'homeGreetingSubtitle': 'Good to see you here today!',
-    'homeMotivationBanner': "You're doing a great job! Small logs, big memories.",
+    'homeMotivationBanner':
+        "You're doing a great job! Small logs, big memories.",
     'homeMotivationBannerOpenMemories': 'Open memory book',
     'summaryWeightNotYet': 'Not logged yet',
     'summarySleepNotYet': 'No sleep logged today',
@@ -3840,7 +5022,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'growthAddHead': 'Add head',
     'growthSummaryIntro': 'Overview of weight and height.',
     'growthChartCaption': '{name} — {metric}',
-    'growthChartDeltaHint': 'Vertical axis: change from the at-birth value (0 = at birth).',
+    'growthChartDeltaHint':
+        'Vertical axis: change from the at-birth value (0 = at birth).',
     'growthHistoryTitle': '{label} (history)',
     'invalidGrowthValue': 'Enter a valid {label} value.',
     'growthSaved': '{label} saved successfully.',
@@ -3853,9 +5036,13 @@ const Map<AppLang, Map<String, String>> _strings = {
         'It has been over 30 days since the last growth measurement (weight, height, or head). It has been {days} days — add a new entry.',
     'momNoteHint': 'E.g. slept better after bath...',
     'shortcutDiaper': 'Diaper',
-    'diaperPagePlaceholder': 'Soon you will be able to log diaper changes. This section is coming.',
+    'diaperPagePlaceholder':
+        'Soon you will be able to log diaper changes. This section is coming.',
     'shortcutHealth': 'Health',
     'shortcutHealthSubtitle': 'Vaccines & visits',
+    'shortcutFamily': 'Family',
+    'shortcutFamilyHomeSub': 'Family tree and profiles',
+    'shortcutHealthHomeSub': 'Vaccines, visits and symptoms',
     'shortcutFeedingSession': 'Feeding',
     'shortcutFeedingSessionSub': 'Session timing & meals',
     'healthHubTitle': 'Health',
@@ -3872,7 +5059,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'healthHubConsultations': 'Checkups',
     'healthHubConsultationsSub': 'Pediatrician and follow-ups',
     'healthHubSymptomReports': 'Report symptom',
-    'healthHubSymptomReportsSub': 'Fever, colic, medications and more — included in the pediatric report',
+    'healthHubSymptomReportsSub':
+        'Fever, colic, medications and more — included in the pediatric report',
     'symptomReportTitle': 'Report symptom',
     'symptomReportEmpty': 'No entries yet. Tap + to add one.',
     'symptomReportNew': 'New entry',
@@ -3890,17 +5078,21 @@ const Map<AppLang, Map<String, String>> _strings = {
     'symptomReportReflux': 'Reflux',
     'symptomReportOther': 'Other',
     'symptomReportOtherHint': 'Short description',
-    'symptomReportValidationNeedOne': 'Select at least one symptom or fill a field.',
-    'symptomReportValidationFeverTemp': 'Enter temperature when fever is checked.',
+    'symptomReportValidationNeedOne':
+        'Select at least one symptom or fill a field.',
+    'symptomReportValidationFeverTemp':
+        'Enter temperature when fever is checked.',
     'symptomReportDeleteTitle': 'Delete entry?',
     'symptomReportDeleteBody': 'This cannot be undone.',
     'consultationsTitle': 'Checkups',
-    'consultationsIntro': 'Log visits with date and time; they show in the Home day summary.',
+    'consultationsIntro':
+        'Log visits with date and time; they show in the Home day summary.',
     'consultationsSoonTitle': 'Coming soon',
     'consultationsComingBody':
         'Soon you will be able to log visits, attach notes and return reminders.',
     'homeSummaryHealthStripTitle': 'Vaccines and checkups this day',
-    'homeSummaryHealthStripEmpty': 'No vaccines or checkups logged for this day.',
+    'homeSummaryHealthStripEmpty':
+        'No vaccines or checkups logged for this day.',
     'consultationTitleLabel': 'Reason or specialty',
     'consultationNotesHint': 'Notes (optional)',
     'consultationWhenLabel': 'Date and time',
@@ -3927,7 +5119,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'settingsFeedingEarlySub':
         'Shows the “Solids” shortcut on Home even if your baby is under 7 months.',
     'settingsAiMicTitle': 'Voice assistant (microphone)',
-    'settingsAiMicSub': 'Shows the microphone button on Home (work in progress).',
+    'settingsAiMicSub':
+        'Shows the microphone button on Home (work in progress).',
     'reportNoWeight': 'No weight data yet.',
     'reportNoHeight': 'No height data yet.',
     'memoriesPhotoError': 'Could not select the photo.',
@@ -3936,16 +5129,19 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoriesNotYet': 'Not yet',
     'memoriesAddPhotoDialog': 'Add photo',
     'memoriesAlreadyPostedToday': "You've already added today's photo.",
-    'memoriesWallEmpty': 'Your wall is still empty. Add the first photo of the day!',
+    'memoriesWallEmpty':
+        'Your wall is still empty. Add the first photo of the day!',
     'memoriesHighlights': 'Highlights',
     'memoriesWallSection': 'Wall',
     'settingsMotherProfile': 'My profile',
     'profileEditMother': 'Edit mother\'s details',
+    'profileEditFather': 'Edit father\'s details',
     'profileEditBaby': 'Edit baby\'s details',
     'profileDataSaved': 'Saved.',
     'profileEditData': 'Edit details',
     'contactTitle': 'Contact',
-    'contactIntro': 'Send a message by email. We will open your email app with the fields filled in.',
+    'contactIntro':
+        'Send a message by email. We will open your email app with the fields filled in.',
     'contactFieldName': 'Name',
     'contactFieldEmail': 'Email',
     'contactFieldAge': 'Age',
@@ -3961,13 +5157,18 @@ const Map<AppLang, Map<String, String>> _strings = {
     'contactValidationEmail': 'Enter a valid email.',
     'contactValidationAge': 'Enter a valid age.',
     'motherProfileTabMother': 'Mom',
+    'motherProfileTabFather': 'Dad',
     'motherProfileTabBabies': 'Babies',
+    'motherProfileFieldFatherName': 'Name',
     'motherProfileNoData': 'No profile found. Please try again in a moment.',
     'motherProfileSectionInfo': 'Info',
     'motherProfileFieldPhone': 'Phone',
     'motherProfileFieldBirth': 'Birth date',
     'motherProfileFieldHeight': 'Height',
     'motherProfileFieldFatherHeight': "Father's height",
+    'profileFamilyMessagesTitle': 'Messages on Family screen',
+    'profileShowChristian': 'Christian messages',
+    'profileShowHoroscope': 'Horoscope',
     'motherProfileAddBaby': 'Add another baby',
     'motherProfileNoBabies': 'No babies found for this profile.',
     'motherProfileBabyBornAt': 'Born: {date}',
@@ -3991,22 +5192,42 @@ const Map<AppLang, Map<String, String>> _strings = {
     'alertsSectionGrowth': 'Growth & measurements',
     'alertsRuleGrowth':
         'Notifies when the newest weight is below the previous weight entry (by measurement date). Also warns when more than 30 days pass without any weight, height, or head circumference saved in the app.',
-    'sleepToggleAlertsSubtitle': 'Reminders based on last sleep ended and baby’s age.',
-    'sleepAlertsWakeWindowRulerValueAuto': 'Effective value on this ruler: {m} min (automatic by age).',
-    'sleepAlertsWakeWindowRulerValueCustom': 'Value on this ruler: {m} min (custom).',
+    'alertsTestTitle': 'Test notifications',
+    'alertsTestBody':
+        'Sends one notification now and schedules another for 30 seconds from now. Useful to confirm the system is delivering app notifications.',
+    'alertsTestRun': 'Run test',
+    'alertsTestResync': 'Force reschedule (real reminders)',
+    'alertsTestImmediateTitle': 'FaceBaby — immediate test',
+    'alertsTestImmediateBody':
+        'If you see this message, the immediate channel is OK.',
+    'alertsTestScheduledTitle': 'FaceBaby — scheduled test',
+    'alertsTestScheduledBody': 'This was scheduled with AlarmManager (~30s).',
+    'alertsTestAllScheduleModesFailed': 'AlarmManager rejected every mode',
+    'alertsTestSentOk': 'Sent. You should receive one now and another in ~30s.',
+    'alertsTestFailed': 'Failed: {errors}',
+    'sleepToggleAlertsSubtitle':
+        'Reminders based on last sleep ended and baby’s age.',
+    'sleepAlertsWakeWindowRulerValueAuto':
+        'Effective value on this ruler: {m} min (automatic by age).',
+    'sleepAlertsWakeWindowRulerValueCustom':
+        'Value on this ruler: {m} min (custom).',
     'sleepAlertsWakeWindowSliderLabelAuto': '{m} min · auto',
     'sleepAlertsWakeWindowSliderLabelCustom': '{m} min',
-    'sleepAlertsApproachRulerValueDefault': 'Lead time on this ruler: {m} min (default).',
+    'sleepAlertsApproachRulerValueDefault':
+        'Lead time on this ruler: {m} min (default).',
     'sleepAlertsApproachRulerValueCustom': 'Lead time on this ruler: {m} min.',
     'sleepAlertsApproachSliderLabelDefault': '{m} min · default',
     'sleepAlertsApproachSliderLabelCustom': '{m} min',
-    'sleepAlertsWakeWindowAutomatic': 'Awake-window limit for the alert: {m} min (automatic from age table).',
+    'sleepAlertsWakeWindowAutomatic':
+        'Awake-window limit for the alert: {m} min (automatic from age table).',
     'sleepAlertsWakeWindowAutomaticNoBirth':
         'Add your baby’s birth date in Profile for accurate timing; for now using a fallback of {m} min.',
     'sleepAlertsMonthsApprox': 'Age table bracket: ~{n} mo',
     'sleepAlertsWakeWindowCustom': 'Custom awake-window limit: {m} min.',
-    'sleepAlertsApproachAuto': 'Reminder before limit: default {m} min lead time.',
-    'sleepAlertsApproachCustom': 'Reminder before limit: custom {m} min lead time.',
+    'sleepAlertsApproachAuto':
+        'Reminder before limit: default {m} min lead time.',
+    'sleepAlertsApproachCustom':
+        'Reminder before limit: custom {m} min lead time.',
     'settingsPrivacy': 'Privacy',
     'settingsSaaS': 'Future SaaS plan',
     'loadingMotherPhoto': "Updating mom's photo…",
@@ -4043,7 +5264,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'sleepConfirmBackTitle': 'Leave sleep tracking?',
     'sleepConfirmBackBody': 'This session is not saved yet. Discard it?',
     'sleepConfirmCancelSessionTitle': 'Cancel sleep?',
-    'sleepConfirmCancelSessionBody': 'Time recorded in this session will be lost.',
+    'sleepConfirmCancelSessionBody':
+        'Time recorded in this session will be lost.',
     'sleepDiscard': 'Discard',
     'sleepHistoryTitle': 'Sleep history',
     'sleepHistoryEmpty': 'No sleep sessions yet.',
@@ -4065,7 +5287,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'sleepHeroAwakeCaption':
         'The green → yellow → red bar shows how long she has been awake and when a nap is usually due. When she lies down to sleep, tap START SLEEP.',
     'sleepHeroSleepingBadge': 'Sleeping',
-    'sleepHeroSleepingCaption': 'When she wakes up, tap End sleep to save this session.',
+    'sleepHeroSleepingCaption':
+        'When she wakes up, tap End sleep to save this session.',
     'sleepRoutineCardTitle': 'Next sleep',
     'sleepRoutineVigilHighlight':
         'App awake-time window: {min}–{max} min between sleeps (fixed by age in months — not configurable).',
@@ -4088,17 +5311,27 @@ const Map<AppLang, Map<String, String>> _strings = {
     'sleepHistoryToday': 'Today',
     'sleepToggleAlerts': 'Enable sleep reminders',
     'diaperToggleAlerts': 'Diaper reminders',
-    'diaperToggleAlertsSubtitle': 'Get notified around the suggested next change.',
+    'diaperToggleAlertsSubtitle':
+        'Get notified around the suggested next change.',
     'healthGrowthToggleAlerts': 'Growth alerts',
-    'healthGrowthToggleAlertsSubtitle': 'Weight-loss vs. last log and overdue measurements.',
+    'healthGrowthToggleAlertsSubtitle':
+        'Weight-loss vs. last log and overdue measurements.',
     'feedingScreenAlertsHint': 'To change timing, open More › Alerts.',
     'sleepNotifTitle': 'Sleep',
-    'sleepNotifBeforeBody': 'It may be a good time to help baby settle to sleep.',
-    'sleepNotifOverdueBody': 'Your baby may be tired — try starting sleep gently.',
+    'sleepNotifBeforeBody':
+        'It may be a good time to help baby settle to sleep.',
+    'sleepNotifOverdueBody':
+        'Your baby may be tired — try starting sleep gently.',
+    'sleepNotifWakeOverdueBodyMale':
+        'It has been more than {hours} h since he fell asleep. Check on him, Mom.',
+    'sleepNotifWakeOverdueBodyFemale':
+        'It has been more than {hours} h since she fell asleep. Check on her, Mom.',
     'notifChannelRemindersName': 'Reminders',
-    'notifChannelRemindersDesc': 'Alerts for feeding, diapers, sleep, visits, and vaccines.',
+    'notifChannelRemindersDesc':
+        'Alerts for feeding, diapers, sleep, visits, and vaccines.',
     'notifChannelGrowthName': 'Growth',
-    'notifChannelGrowthDesc': 'Weight alerts and long gaps between measurements.',
+    'notifChannelGrowthDesc':
+        'Weight alerts and long gaps between measurements.',
     'diaperIntro':
         'Log a change to keep reminders working. In the list below you can edit or delete any entry.',
     'diaperSavedOk': 'Change saved.',
@@ -4124,9 +5357,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'feedingSaveFail': 'Could not save:',
     'feedingSaving': 'Saving feeding…',
     'feedingQuickSummary': 'Quick summary',
-    'feedingNoBabyHint': 'Register a baby first in "More > Register (mom & babies)".',
+    'feedingNoBabyHint':
+        'Register a baby first in "More > Register (mom & babies)".',
     'feedingPickBabyLabel': 'Select baby',
-    'feedingEmptyDataHint': 'No data yet. Use "Start feeding" to log with one tap.',
+    'feedingEmptyDataHint':
+        'No data yet. Use "Start feeding" to log with one tap.',
     'feedingLast': 'Last feeding',
     'feedingNextEst': 'Next estimate',
     'feedingNextIn': 'in ~{n} min',
@@ -4157,7 +5392,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'feedingHubSolidDescribe': 'What was offered? (optional)',
     'feedingHubOverviewEmpty': 'No entries in this list yet.',
     'feedingHubMlRequired': 'Enter amount in ml.',
-    'feedingHubTimerTooShort': 'Keep the timer running a few seconds before saving this feeding.',
+    'feedingHubTimerTooShort':
+        'Keep the timer running a few seconds before saving this feeding.',
     'feedingHubBreastPieTitle': 'Which side is used more?',
     'feedingHubBreastPieEmpty': 'Log a few (L/R) feedings to see the chart.',
     'feedingHubFeedingUpdatedOk': 'Entry updated.',
@@ -4181,7 +5417,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'feedingAlertTitle': 'Enable next-feeding alert',
     'feedingModeAvg': 'Auto average',
     'feedingModeManual': 'Manual interval',
-    'feedingNotifyNote': 'Note: for now this is visual only. Notifications will come later.',
+    'feedingNotifyNote':
+        'Note: for now this is visual only. Notifications will come later.',
     'feedingAgoMinutes': '{m} min ago',
     'feedingAgoHours': '{h}h{m} ago',
     'feedingDurationShort': '{m}m {s}s',
@@ -4196,7 +5433,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'vaccNameEmpty': 'Enter the vaccine name.',
     'vaccSaving': 'Saving vaccine…',
     'vaccUpdatedOk': 'Vaccine updated.',
-    'vaccNoBabies': 'No baby registered yet. Go to "More > Register (mom & baby)".',
+    'vaccNoBabies':
+        'No baby registered yet. Go to "More > Register (mom & baby)".',
     'vaccTableVac': 'Vaccine',
     'vaccTableDose': 'Dose',
     'vaccTableDate': 'Date',
@@ -4213,8 +5451,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'commonPhone': 'Phone',
     'openingGallery': 'Opening gallery…',
     'devLeapsTitle': 'Development leaps',
-    'devLeapsIntro': 'Common development phases for {name}. The text is supportive and not alarmist.',
-    'devLeapsNeedBirth': 'To show phases by age, add the baby’s birth date in the profile.',
+    'devLeapsIntro':
+        'Common development phases for {name}. The text is supportive and not alarmist.',
+    'devLeapsNeedBirth':
+        'To show phases by age, add the baby’s birth date in the profile.',
     'devLeapsAllTitle': 'All phases',
     'devLeapsCurrentPill': 'Now',
     'devLeapsSeeDetails': 'See phase details',
@@ -4227,15 +5467,18 @@ const Map<AppLang, Map<String, String>> _strings = {
     // Development leap banner (EN = fallback for langs without own map entry)
     'devLeap_dv01_range': 'Week 1',
     'devLeap_dv01_title': 'Early adjustment',
-    'devLeap_dv01_lead': '{baby_name} may be having an intense adjustment to the new surroundings.',
+    'devLeap_dv01_lead':
+        '{baby_name} may be having an intense adjustment to the new surroundings.',
     'devLeap_dv01_emotion': 'Everything is still very new.',
     'devLeap_dv02_range': 'Week 2',
     'devLeap_dv02_title': 'More alert',
-    'devLeap_dv02_lead': '{baby_name} may be starting to notice voices and faces a little better.',
+    'devLeap_dv02_lead':
+        '{baby_name} may be starting to notice voices and faces a little better.',
     'devLeap_dv02_emotion': 'The emotional bond keeps growing.',
     'devLeap_dv03_range': 'Week 3',
     'devLeap_dv03_title': 'More sensitive',
-    'devLeap_dv03_lead': '{baby_name} may be more sensitive to the environment around them.',
+    'devLeap_dv03_lead':
+        '{baby_name} may be more sensitive to the environment around them.',
     'devLeap_dv03_emotion': 'The brain is maturing quickly.',
     'devLeap_dv04_range': 'Week 4',
     'devLeap_dv04_title': 'Small interactions',
@@ -4243,19 +5486,23 @@ const Map<AppLang, Map<String, String>> _strings = {
     'devLeap_dv04_emotion': 'Your baby starts building social connections.',
     'devLeap_dv05_range': 'Week 5',
     'devLeap_dv05_title': 'New discoveries',
-    'devLeap_dv05_lead': '{baby_name} may be noticing more of their own movements.',
+    'devLeap_dv05_lead':
+        '{baby_name} may be noticing more of their own movements.',
     'devLeap_dv05_emotion': 'Their body starts to gain meaning.',
     'devLeap_dv06_range': 'Week 6',
     'devLeap_dv06_title': 'More connected',
-    'devLeap_dv06_lead': '{baby_name} may be more tuned in to people\'s emotions.',
+    'devLeap_dv06_lead':
+        '{baby_name} may be more tuned in to people\'s emotions.',
     'devLeap_dv06_emotion': 'The emotional bond keeps strengthening.',
     'devLeap_dv07_range': 'Weeks 7–8',
     'devLeap_dv07_title': 'Changing sleep',
-    'devLeap_dv07_lead': '{baby_name} may be going through important sleep shifts.',
+    'devLeap_dv07_lead':
+        '{baby_name} may be going through important sleep shifts.',
     'devLeap_dv07_emotion': 'The brain is maturing quickly.',
     'devLeap_dv08_range': '2–3 months',
     'devLeap_dv08_title': 'More awareness',
-    'devLeap_dv08_lead': '{baby_name} may be noticing more of their body and the world around them.',
+    'devLeap_dv08_lead':
+        '{baby_name} may be noticing more of their body and the world around them.',
     'devLeap_dv08_emotion': 'Small discoveries happen every day.',
     'devLeap_dv09_range': '3–4 months',
     'devLeap_dv09_title': 'Much more social',
@@ -4271,11 +5518,13 @@ const Map<AppLang, Map<String, String>> _strings = {
     'devLeap_dv11_emotion': 'Communication is starting to take off.',
     'devLeap_dv12_range': '6–7 months',
     'devLeap_dv12_title': 'A bigger world',
-    'devLeap_dv12_lead': '{baby_name} may be understanding space and the environment better.',
+    'devLeap_dv12_lead':
+        '{baby_name} may be understanding space and the environment better.',
     'devLeap_dv12_emotion': 'The world feels bigger each day.',
     'devLeap_dv13_range': '7–8 months',
     'devLeap_dv13_title': 'More attachment',
-    'devLeap_dv13_lead': '{baby_name} may be in a phase of greater emotional need.',
+    'devLeap_dv13_lead':
+        '{baby_name} may be in a phase of greater emotional need.',
     'devLeap_dv13_emotion': 'The emotional bond strengthens.',
     'devLeap_dv14_range': '8–9 months',
     'devLeap_dv14_title': 'Many connections',
@@ -4299,7 +5548,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'devLeap_dv18_emotion': 'The emotional world grows fast.',
     'devLeap_dv19_range': '18–24 months',
     'devLeap_dv19_title': 'Pretend play',
-    'devLeap_dv19_lead': '{baby_name} may be entering a phase of vivid imagination.',
+    'devLeap_dv19_lead':
+        '{baby_name} may be entering a phase of vivid imagination.',
     'devLeap_dv19_emotion': 'Imagination starts to bloom.',
     'devLeap_dv20_range': '2–3 years',
     'devLeap_dv20_title': 'A big personality',
@@ -4311,24 +5561,28 @@ const Map<AppLang, Map<String, String>> _strings = {
         'wants lots of cuddling\nwakes frequently\nunsettled by sounds and lights\nneeds constant contact',
     'devLeap_dv01_detailWhats':
         'Your baby spent many months in a quiet, protected, cosy space. Now everything has changed — and the brain is still learning light, cold, hunger, sleep, touch, and sounds.',
-    'devLeap_dv01_keywords': 'adjustment\nbond\nsecurity\nsensitivity\nwelcoming calm',
+    'devLeap_dv01_keywords':
+        'adjustment\nbond\nsecurity\nsensitivity\nwelcoming calm',
     'devLeap_dv01_detailMay':
         'frequent crying\nfrequent wake-ups\nconstant need for cuddling\nirregular sleep\ngreater sensitivity',
     'devLeap_dv01_detailHelp':
         'skin-to-skin\ncalm voice\ndim light\nfewer stimuli\nsteady soothing',
-    'devLeap_dv01_detailSkills': 'notice caregiver scent\nreact to sounds\nprimitive reflexes',
+    'devLeap_dv01_detailSkills':
+        'notice caregiver scent\nreact to sounds\nprimitive reflexes',
     'devLeap_dv01_detailEmotional':
         'Your baby does not grasp routines yet. They understand presence, warmth, and safety.',
     'devLeap_dv02_homeBullets':
         'watches more\nrecognises voices\nattentive when held\nbegins tiny interactions',
     'devLeap_dv02_detailWhats':
         'Little by little babies notice faces, voices, scents, and emotional presence. Mom’s voice usually brings comfort and predictability.',
-    'devLeap_dv02_keywords': 'recognition\nconnection\ncomfort\npresence\nobservation',
+    'devLeap_dv02_keywords':
+        'recognition\nconnection\ncomfort\npresence\nobservation',
     'devLeap_dv02_detailMay':
         'more watching\nlonger awake periods\nreaction to voice\ncalm in arms',
     'devLeap_dv02_detailHelp':
         'talk eye-to-eye\nsing softly\neye contact\nsoothing',
-    'devLeap_dv02_detailSkills': 'track faces\nrecognise voices\nwatch movements',
+    'devLeap_dv02_detailSkills':
+        'track faces\nrecognise voices\nwatch movements',
     'devLeap_dv02_detailEmotional':
         'Even tiny, your baby begins building emotional memories.',
     'devLeap_dv03_homeBullets':
@@ -4341,14 +5595,16 @@ const Map<AppLang, Map<String, String>> _strings = {
         'evening fussiness\nrestlessness\nharder sleep\nextra need for cuddles',
     'devLeap_dv03_detailHelp':
         'quiet room\ngentle light\nhold and sway gently\nfewer stimuli',
-    'devLeap_dv03_detailSkills': 'more facial expressions\nmore attention to surroundings',
+    'devLeap_dv03_detailSkills':
+        'more facial expressions\nmore attention to surroundings',
     'devLeap_dv03_detailEmotional':
         'Your baby is not “difficult”; they’re still learning the world.',
     'devLeap_dv04_homeBullets':
         'watches faces\nfollows movements\nshows attention\nresponds more to people',
     'devLeap_dv04_detailWhats':
         'They pay closer attention follow people spot expressions and react to what is around.',
-    'devLeap_dv04_keywords': 'interaction\nattention\nobservation\nexpressions\nbond',
+    'devLeap_dv04_keywords':
+        'interaction\nattention\nobservation\nexpressions\nbond',
     'devLeap_dv04_detailMay':
         'more eye contact\nnew sounds\nlonger awake stretches\nsocial responses',
     'devLeap_dv04_detailHelp':
@@ -4390,7 +5646,8 @@ const Map<AppLang, Map<String, String>> _strings = {
         'short naps\nmore wake-ups\nirritability\ntrickier settling',
     'devLeap_dv07_detailHelp':
         'gentle rhythm\ndark room\nless stimulation\nfollow sleepy cues',
-    'devLeap_dv07_detailSkills': 'stronger interplay curiosity richer expressions',
+    'devLeap_dv07_detailSkills':
+        'stronger interplay curiosity richer expressions',
     'devLeap_dv07_detailEmotional':
         'Sleep shifts are not regressions—they’re growth.',
     'devLeap_dv08_homeBullets':
@@ -4405,14 +5662,16 @@ const Map<AppLang, Map<String, String>> _strings = {
     'devLeap_dv08_detailSkills':
         'steady head lifts\nobject watching\nresponds to scenery',
     'devLeap_dv08_detailEmotional': 'Tiny wins deepen trust.',
-    'devLeap_dv09_homeBullets': 'laughs more answers people makes sounds seeks play',
+    'devLeap_dv09_homeBullets':
+        'laughs more answers people makes sounds seeks play',
     'devLeap_dv09_detailWhats':
         'They read emotions voices faces and joyful back-and-forth better.',
     'devLeap_dv09_keywords':
         'social life laughter communication expressions attachment',
     'devLeap_dv09_detailMay':
         'big giggles\nlooping sounds\nspirited play\nseeks playful games',
-    'devLeap_dv09_detailHelp': 'play often mirror moods echo coos chatter daily',
+    'devLeap_dv09_detailHelp':
+        'play often mirror moods echo coos chatter daily',
     'devLeap_dv09_detailSkills':
         'belly laughs deeper feelings social curiosity',
     'devLeap_dv09_detailEmotional': 'Love and safety rehearse during play.',
@@ -4427,8 +5686,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'devLeap_dv10_detailHelp':
         'safe toys\ninteresting textures\nwatch closely\nencourage roaming',
     'devLeap_dv10_detailSkills': 'rolls\nreaches toys\nhands-on manipulation',
-    'devLeap_dv10_detailEmotional':
-        'Exploring is central learning here.',
+    'devLeap_dv10_detailEmotional': 'Exploring is central learning here.',
     'devLeap_dv11_homeBullets':
         'new sounds\nresponds to people\nwants play\nshows feelings',
     'devLeap_dv11_detailWhats':
@@ -4441,8 +5699,7 @@ const Map<AppLang, Map<String, String>> _strings = {
         'mirror sounds\nlots of play\nsing simple songs\nanswer often',
     'devLeap_dv11_detailSkills':
         'babbling\nresponds to name\nricher expression',
-    'devLeap_dv11_detailEmotional':
-        'Connection blossoms before fluent words.',
+    'devLeap_dv11_detailEmotional': 'Connection blossoms before fluent words.',
     'devLeap_dv12_homeBullets':
         'wants to roam\nstudies surroundings\nreaches farther intense curiosity',
     'devLeap_dv12_detailWhats':
@@ -4455,7 +5712,8 @@ const Map<AppLang, Map<String, String>> _strings = {
         'safe roaming varied toys supervised open floor time',
     'devLeap_dv12_detailSkills':
         'scooting toward toys\nreaching far\nsteady sitting',
-    'devLeap_dv12_detailEmotional': 'Exploring the space around them builds confidence.',
+    'devLeap_dv12_detailEmotional':
+        'Exploring the space around them builds confidence.',
     'devLeap_dv13_homeBullets':
         'needs more cuddling\nwary of strangers\ncries when you leave\nextra sensitive',
     'devLeap_dv13_detailWhats':
@@ -4480,10 +5738,8 @@ const Map<AppLang, Map<String, String>> _strings = {
         'peek-a-boo\nhides objects\nrepeats actions\ntests reactions',
     'devLeap_dv14_detailHelp':
         'simple cause games\nhide toys\nrepeatable songs\nconsistent play',
-    'devLeap_dv14_detailSkills':
-        'clapping\ncrawling\nfinds hidden objects',
-    'devLeap_dv14_detailEmotional':
-        'Repetition anchors big learning leaps.',
+    'devLeap_dv14_detailSkills': 'clapping\ncrawling\nfinds hidden objects',
+    'devLeap_dv14_detailEmotional': 'Repetition anchors big learning leaps.',
     'devLeap_dv15_homeBullets':
         'into everything\nbusy hands\nalways moving\nhigh energy',
     'devLeap_dv15_detailWhats':
@@ -4494,8 +5750,7 @@ const Map<AppLang, Map<String, String>> _strings = {
         'lots of energy\nroaming\ntumbles\ntrouble staying still',
     'devLeap_dv15_detailHelp':
         'baby-proof space\nsupervise\nsensory play\nencourage movement',
-    'devLeap_dv15_detailSkills':
-        'pulls up\ncruises furniture\nmaps the room',
+    'devLeap_dv15_detailSkills': 'pulls up\ncruises furniture\nmaps the room',
     'devLeap_dv15_detailEmotional':
         'Motion is how they decode the wider world.',
     'devLeap_dv16_homeBullets':
@@ -4508,8 +5763,7 @@ const Map<AppLang, Map<String, String>> _strings = {
         'repeating sounds\nbids for attention\nstudies faces\nfocuses on speech',
     'devLeap_dv16_detailHelp':
         'narrate days\nname objects\nanswer babble\nsimple board books',
-    'devLeap_dv16_detailSkills':
-        'points\nrepeats sounds\nnotices simple words',
+    'devLeap_dv16_detailSkills': 'points\nrepeats sounds\nnotices simple words',
     'devLeap_dv16_detailEmotional':
         'Bonding drills through chatter before fluent speech.',
     'devLeap_dv17_homeBullets':
@@ -4522,10 +5776,8 @@ const Map<AppLang, Map<String, String>> _strings = {
         'walking tries\nresists help\nintense roaming quick frustration',
     'devLeap_dv17_detailHelp':
         'cheer attempts\nsafe spaces\nname frustration\ncelebrate wins',
-    'devLeap_dv17_detailSkills':
-        'first steps first words\nmore independence',
-    'devLeap_dv17_detailEmotional':
-        'Each brave try strengthens self-trust.',
+    'devLeap_dv17_detailSkills': 'first steps first words\nmore independence',
+    'devLeap_dv17_detailEmotional': 'Each brave try strengthens self-trust.',
     'devLeap_dv18_homeBullets':
         'wants independence\nfrustrates fast\nmood swings\nbig personality',
     'devLeap_dv18_detailWhats':
@@ -4578,7 +5830,14 @@ const Map<AppLang, Map<String, String>> _strings = {
     'regBabySection': '2) Baby registration',
     'regBirthLabel': 'Birth:',
     'regMotherHeight': 'Height (cm)',
+    'regFatherSection': "Dad's details (optional)",
+    'regFatherName': "Dad's name",
+    'regFatherBirthLabel': "Dad's date of birth",
     'regFatherHeight': "Dad's height (cm)",
+    'settingsFamilyTree': 'Family',
+    'fatherPhotoTitle': "Dad's photo",
+    'regFatherPhotoAdd': "Add dad's photo",
+    'regFatherPhotoChange': "Change dad's photo",
     'regMotherPhotoAdd': "Mom's photo (optional)",
     'regMotherPhotoChange': "Change mom's photo",
     'regBabyPhotoAdd': "Baby's photo (optional)",
@@ -4640,6 +5899,12 @@ const Map<AppLang, Map<String, String>> _strings = {
     'nextEvents': 'Próximos eventos',
     'quickRecordsTitle': 'Registros rápidos',
     'quickRecordsSubtitle': 'Agrega la rutina del bebé en pocos toques.',
+    'feedingAlertsSwitchTitle': 'Alerta de alimentación',
+    'feedingAlertsSwitchSubtitle':
+        'Notifica cuando pasa el intervalo definido desde la última toma al pecho o biberón.',
+    'feedingAlertsIntervalCaption':
+        'Recordar después de la última toma: {m} min (20–360)',
+    'feedingAlertsShortcutTitle': 'Alerta de alimentación',
     'scheduledFeedingReminderBody':
         'Momento del recordatorio de alimentación. Toca para registrar.',
     'scheduledDiaperReminderTitle': 'Cambio de pañal',
@@ -4647,9 +5912,14 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Puede ser hora de cambiar el pañal desde la última vez. Toca para registrar.',
     'homeTimeToFeed': '¡Hora de alimentar!',
     'sleepNotifTitle': 'Sueño',
-    'sleepNotifBeforeBody': 'Puede ser un buen momento para ayudar al bebé a dormir.',
+    'sleepNotifBeforeBody':
+        'Puede ser un buen momento para ayudar al bebé a dormir.',
     'sleepNotifOverdueBody':
         'Tu bebé puede estar cansado — intenta iniciar el sueño con calma.',
+    'sleepNotifWakeOverdueBodyMale':
+        'Ya hace más de {hours} h que está durmiendo, míralo, mamá.',
+    'sleepNotifWakeOverdueBodyFemale':
+        'Ya hace más de {hours} h que está durmiendo, mírala, mamá.',
     'notifyGrowthWeightDownTitle': 'Peso menor que antes',
     'notifyGrowthWeightDownBody':
         'El último peso está por debajo del anterior. Consulta al pediatra si tienes dudas.',
@@ -4664,12 +5934,29 @@ const Map<AppLang, Map<String, String>> _strings = {
     'notifChannelRemindersName': 'Recordatorios',
     'notifChannelRemindersDesc': 'Alertas de alimentación, pañales y sueño.',
     'notifChannelGrowthName': 'Crecimiento',
-    'notifChannelGrowthDesc': 'Alertas de peso y ausencia prolongada de mediciones.',
+    'notifChannelGrowthDesc':
+        'Alertas de peso y ausencia prolongada de mediciones.',
     'whatHappenedNow': '¿Qué pasó ahora?',
     'momNote': 'Nota de mamá',
     'saveRecord': 'Guardar registro',
     'reportsTitle': 'Informes',
     'reportsSubtitle': 'Resumen para mamá y el pediatra.',
+    'reportsHubAnchorLabel': 'Referencia',
+    'reportsHubPickDayTooltip': 'Elegir día de referencia para los informes',
+    'reportsHubSectionTitle': 'Informes disponibles',
+    'reportStubComingSoon':
+        'Este informe se actualizará automáticamente con los datos de la app para el periodo seleccionado. El diseño y las métricas se definirán a continuación.',
+    'reportListDaily': 'Informe diario',
+    'reportListDailySub': 'Resumen y detalles del día seleccionado',
+    'reportListWeekly': 'Informe semanal',
+    'reportListWeeklySub':
+        'Resumen y detalles de la semana que contiene el día seleccionado',
+    'reportListMonthly': 'Informe mensual',
+    'reportListMonthlySub': 'Agregados mensuales del mes del día seleccionado',
+    'reportListSleepAdv': 'Informe avanzado de sueño',
+    'reportListSleepAdvSub': 'Patrones y métricas de sueño',
+    'reportListDevelopment': 'Informe de desarrollo',
+    'reportListDevelopmentSub': 'Hitos y saltos del desarrollo',
     'growth': 'Crecimiento',
     'pediatricReport': 'Informe pediátrico',
     'pediatricReportDesc':
@@ -4696,8 +5983,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'symptomReportReflux': 'Reflujo',
     'symptomReportOther': 'Otro',
     'symptomReportOtherHint': 'Breve descripción',
-    'symptomReportValidationNeedOne': 'Selecciona al menos un síntoma o rellena un campo.',
-    'symptomReportValidationFeverTemp': 'Indica la temperatura si marcas fiebre.',
+    'symptomReportValidationNeedOne':
+        'Selecciona al menos un síntoma o rellena un campo.',
+    'symptomReportValidationFeverTemp':
+        'Indica la temperatura si marcas fiebre.',
     'symptomReportDeleteTitle': '¿Eliminar registro?',
     'symptomReportDeleteBody': 'Esta acción no se puede deshacer.',
     'reportPediatricScreenTitle': 'Informe pediátrico',
@@ -4725,12 +6014,14 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricAvgFeeds': 'Tomas/comidas por día (media)',
     'reportPediatricAvgSleep': 'Sueño por día (media)',
     'reportPediatricAvgDiapers': 'Cambios de pañal por día (media)',
-    'reportPediatricFeverEpisodes': 'Episodios de fiebre (registro estructurado)',
+    'reportPediatricFeverEpisodes':
+        'Episodios de fiebre (registro estructurado)',
     'reportPediatricFeverNote': 'Nota',
     'reportPediatricFeverFootnote':
         'Recuento desde registros estructurados en Salud › Registrar síntoma (con temperatura si aplica).',
     'reportPediatricVaccines': 'Vacunas administradas en el periodo',
-    'reportPediatricMedications': 'Medicamentos (registros y palabras clave en notas)',
+    'reportPediatricMedications':
+        'Medicamentos (registros y palabras clave en notas)',
     'reportPediatricSleepAvgDaily': 'Promedio diario de sueño',
     'reportPediatricSleepAwakenings': 'Despertares nocturnos (media)',
     'reportPediatricSleepPattern': 'Patrón general del sueño',
@@ -4773,16 +6064,21 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricSymptomCrying': 'Llanto sin causa aparente (registros)',
     'reportPediatricSymptomPain': 'Dolor (registros)',
     'reportPediatricStructuredSymptoms': 'Registros de síntomas (fecha y hora)',
-    'reportPediatricStructuredSymptomsEmpty': 'No hay registros estructurados en este periodo.',
+    'reportPediatricStructuredSymptomsEmpty':
+        'No hay registros estructurados en este periodo.',
     'generatePdf': 'Generar PDF',
     'memoriesTitle': 'Libro de recuerdos',
     'memoriesSubtitle': 'Momentos importantes para guardar para siempre.',
-    'memoriesAlbumPromoTitle': 'O seu livro de recordação completo',
+    'memoriesProgressSaved': '{filled} de {total} momentos guardados',
+    'memoriesCheerEmpty':
+        'Toca una insignia con + para añadir fotos e historias.',
+    'memoriesAlbumPromoTitle': 'Tu libro de recuerdos completo',
     'memoriesAlbumPromoSubtitle':
-        'Descarregue un PDF elegante con cubierta FaceBaby, marco decorativo y todas las insignias que ya completó.',
+        'Descarga un PDF elegante con portada FaceBaby, marco decorativo y todas las insignias que ya completaste.',
     'memoriesAlbumDownloadCta': 'Descargar PDF del álbum',
     'memoriesAlbumGenerating': 'Generando su álbum…',
-    'memoriesAlbumNeedFilled': 'Complete al menos un momento en el álbum para generar el PDF.',
+    'memoriesAlbumNeedFilled':
+        'Complete al menos un momento en el álbum para generar el PDF.',
     'memoriesAlbumError': 'No se pudo generar el PDF.',
     'memoriesAlbumPdfReadyTitle': 'PDF del álbum listo',
     'memoriesAlbumShareAction': 'Compartir…',
@@ -4885,6 +6181,56 @@ const Map<AppLang, Map<String, String>> _strings = {
     'settingsPrivacyPolicy': 'Política de privacidad',
     'settingsSpecialThanks': 'Agradecimientos especiales',
     'settingsTellFriend': 'Cuéntale a un amigo',
+    'settingsMotherProfile': 'Mi perfil',
+    'profileEditMother': 'Editar datos de la mamá',
+    'profileEditFather': 'Editar datos del papá',
+    'profileEditBaby': 'Editar datos del bebé',
+    'profileDataSaved': 'Datos guardados.',
+    'profileEditData': 'Editar datos',
+    'plusBrandTitle': 'Premium de FaceBaby',
+    'plusSheetHero':
+        'Desbloquea informes, libro de recuerdos en PDF, más fotos y copia en la nube con un pago único.',
+    'plusSheetPriceLabel': 'Pago único',
+    'plusSheetBullets':
+        '• Informes en PDF (sueño, rutina, crecimiento)\n• Libro de recuerdos en PDF\n• Exportar insignias (PNG / PDF)\n• Copia de seguridad en la nube entre dispositivos\n• Más recuerdos y fotos\n• Insights inteligentes en los informes\n• Informe para el pediatra\n• Estadísticas avanzadas\n• Temas premium del libro',
+    'plusCtaSubscribe': 'Desbloquear ahora',
+    'plusCtaRestore': 'Restaurar compra',
+    'plusCtaLater': 'Ahora no',
+    'plusSheetFootnote':
+        'Pago único. Sin mensualidad. La compra se puede restaurar con la misma cuenta de la tienda.',
+    'plusWelcomeSnack': 'Premium activado. Gracias por apoyar FaceBaby.',
+    'plusPurchaseUnavailableSnack':
+        'La compra no está disponible en este dispositivo.',
+    'plusPurchaseSkuNotFoundSnack': 'Producto no encontrado en la tienda: {id}',
+    'plusPurchaseBillingLaunchFailedSnack':
+        'No se pudo abrir el pago. Inténtalo de nuevo.',
+    'plusPaywallSkuMissingHint': 'Configura el producto en la tienda: {id}',
+    'plusRestoreOkSnack': 'Compra restaurada.',
+    'plusRestoreEmptySnack': 'No encontramos una compra para restaurar.',
+    'plusSnackLockedFeature': 'Esta función forma parte de FaceBaby Premium.',
+    'plusMemoryLimitSnack':
+        'Has alcanzado el límite de recuerdos del plan gratuito.',
+    'plusReportsLockedHint':
+        'Los informes en PDF forman parte de FaceBaby Premium.',
+    'plusExportLockedHint':
+        'Exportar insignias forma parte de FaceBaby Premium.',
+    'plusLifetimePaymentBadge': 'Pago único',
+    'plusNoMonthlyBadge': 'Sin mensualidad',
+    'plusPremiumActiveTitle': 'Gracias por Premium',
+    'plusPremiumActiveBody':
+        'Tienes todas las funciones premium activas para siempre en este dispositivo. Restaura compras cuando cambies de teléfono.',
+    'plusPurchaseErrorSnack':
+        'No se pudo completar la compra. Inténtalo de nuevo.',
+    'plusDoneClose': 'Cerrar',
+    'settingsPlusCardTitle': 'Premium de FaceBaby',
+    'settingsPlusCardBodyFree':
+        'PDFs, libro de recuerdos, más fotos, copia en la nube, informe al pediatra y estadísticas avanzadas — un único pago.',
+    'settingsPlusCardBodyActive':
+        'Tienes FaceBaby Premium activo — gracias por apoyar el proyecto.',
+    'settingsPlusUpgradeCta': 'Desbloquear Premium',
+    'settingsPlusManageCta': 'Ver Premium',
+    'settingsPremiumBenefitsTitle': 'Beneficios de FaceBaby Premium',
+    'settingsPremiumBannerHint': 'Toca para ver lo que incluye tu plan.',
     'authLoginTitle': 'Entrar',
     'authWelcome': 'Bienvenida',
     'authEmailLabel': 'Correo electrónico',
@@ -4895,9 +6241,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'authSignInGoogle': 'Entrar con Google',
     'authCreateAccount': 'Crear cuenta',
     'authForgotDialogTitle': 'Olvidé mi contraseña',
-    'authForgotDialogBody': 'Te enviaremos un enlace para restablecer tu contraseña.',
+    'authForgotDialogBody':
+        'Te enviaremos un enlace para restablecer tu contraseña.',
     'authForgotSend': 'Enviar',
-    'authResetEmailSentSnackbar': 'Correo enviado. Revisa tu bandeja de entrada.',
+    'authResetEmailSentSnackbar':
+        'Correo enviado. Revisa tu bandeja de entrada.',
     'authRegisterAppBarTitle': 'Crear cuenta',
     'authRegisterTitle': 'Registro',
     'authRegisterNameLabel': 'Nombre (cómo quieres que te llamen)',
@@ -4917,7 +6265,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'authErrWrongPassword': 'Contraseña incorrecta.',
     'authErrEmailInUse': 'Ya existe una cuenta con ese correo.',
     'authErrInvalidCredential': 'Credenciales no válidas. Inténtalo de nuevo.',
-    'authErrCredentialsGeneric': 'No se pudo iniciar sesión. Inténtalo de nuevo.',
+    'authErrCredentialsGeneric':
+        'No se pudo iniciar sesión. Inténtalo de nuevo.',
     'authErrGoogleConfigAndroid':
         'El inicio con Google falló por configuración de la app (error 10).\n\n'
             '1) Firebase: Ajustes del proyecto → app Android → añade el SHA-1 del keystore de depuración.\n'
@@ -4927,8 +6276,104 @@ const Map<AppLang, Map<String, String>> _strings = {
     'authErrLoginCancelled': 'Inicio de sesión cancelado.',
     'authErrAppleFailed':
         'No se pudo iniciar sesión con Apple. Inténtalo de nuevo u otro método.',
-    'authErrAppleUnavailable': 'Iniciar sesión con Apple solo está disponible en iPhone o iPad.',
+    'authErrAppleUnavailable':
+        'Iniciar sesión con Apple solo está disponible en iPhone o iPad.',
     'authErrUnexpected': 'Ocurrió un error inesperado.',
+    'onbSelectDate': 'Seleccionar fecha',
+    'onbBabyFallback': 'bebé',
+    'onbMomFallback': 'mamá',
+    'onbDadFallback': 'papá',
+    'onbWelcomeTitle': 'Acompañando y monitoreando',
+    'onbWelcomeSubtitle': 'el desarrollo con Amor.',
+    'onbFeatureSleep': 'Sueño',
+    'onbFeatureFeeding': 'Alimentación',
+    'onbFeatureGrowth': 'Crecimiento',
+    'onbFeatureMemories': 'Recuerdos',
+    'onbFeatureAlerts': 'Alertas',
+    'onbFeatureLove': 'Mucho Amor',
+    'onbCreateBabyProfile': 'Crear perfil del bebé',
+    'onbExistingAccountLogin': 'Ya tengo una cuenta / Iniciar sesión',
+    'onbContinue': 'Continuar',
+    'onbPrepareFaceBaby': 'Preparar FaceBaby',
+    'onbPreparingTitle': 'Preparando FaceBaby para ti...',
+    'onbPreparingSubtitle':
+        'Personalizando alertas, recuerdos y rutina del bebé.',
+    'onbAuthTitle': 'Tu perfil básico está listo',
+    'onbAuthSubtitle':
+        'Ahora crea tu cuenta para guardar todo con seguridad y sincronizar después.',
+    'onbSignInGoogle': 'Entrar con Google',
+    'onbSignInApple': 'Entrar con Apple',
+    'onbContinueEmail': 'Continuar con correo',
+    'onbAlreadyHaveAccount': 'Ya tengo cuenta',
+    'onbWait': 'Espera...',
+    'onbDoneTitle': '¡Listo! El perfil del bebé fue creado.',
+    'onbStartTracking': 'Empezar a acompañar',
+    'onbCouldNotPrepare':
+        'No se pudo preparar el perfil ahora. Inténtalo de nuevo.',
+    'onbBabyNameTitle': '¿Cuál es el nombre del bebé?',
+    'onbBabyNameSubtitle':
+        'Vamos a hacer que FaceBaby tenga la carita de tu familia.',
+    'onbBabyNameHint': 'Nombre del bebé',
+    'onbBabyBirthTitle': '¿Cuál es la fecha de nacimiento?',
+    'onbBabyBirthSubtitle':
+        'Usamos la edad para personalizar sueño, rutina y crecimiento.',
+    'onbBabyWeightTitle': '¿Cuál es el peso del bebé?',
+    'onbBabyWeightSubtitle':
+        'Arrastra la regla para elegir. Puedes alternar entre Kg y Lb.',
+    'onbBabyHeightTitle': '¿Cuál es la altura del bebé?',
+    'onbBabyHeightSubtitle':
+        'Usa la regla para indicar el tamaño aproximado en la unidad que prefieras.',
+    'onbMotherNameTitle': '¿Cuál es el nombre de mamá?',
+    'onbMotherNameSubtitle': 'Usaremos su nombre en las próximas preguntas.',
+    'onbMotherNameHint': 'Nombre de mamá',
+    'onbMotherBirthTitle': '¿Cuál es la fecha de nacimiento de mamá?',
+    'onbMotherBirthSubtitle': 'Después preguntaremos su altura.',
+    'onbMotherHeightTitle': '¿Cuál es la altura de {name}?',
+    'onbMotherHeightSubtitle':
+        'Esta información ayuda en los informes de crecimiento.',
+    'onbRegisterFatherTitle': '¿Deseas registrar también al papá?',
+    'onbRegisterFatherSubtitle':
+        'Si quieres, FaceBaby también personaliza los datos de papá.',
+    'onbFatherNameTitle': '¿Cuál es el nombre de papá?',
+    'onbFatherNameSubtitle': 'Así su regla también queda personalizada.',
+    'onbFatherNameHint': 'Nombre de papá',
+    'onbFatherBirthTitle': '¿Cuál es la fecha de nacimiento de papá?',
+    'onbFatherBirthSubtitle': 'Después preguntaremos su altura.',
+    'onbFatherHeightTitle': '¿Cuál es la altura de {name}?',
+    'onbFatherHeightSubtitle':
+        'Puede ser aproximada; puedes ajustarla después.',
+    'onbBabySexTitle': '¿Cuál es el sexo del bebé?',
+    'onbSexGirl': 'Niña',
+    'onbSexBoy': 'Niño',
+    'onbSexUnknown': 'Prefiero no informar',
+    'onbFirstBabyTitle': '¿Es tu primer bebé?',
+    'onbYes': 'Sí',
+    'onbNo': 'No',
+    'onbConcernTitle': '¿Cuál es tu mayor preocupación ahora?',
+    'onbConcernSubtitle': 'Puedes elegir más de una.',
+    'onbConcernSleep': 'Sueño del bebé',
+    'onbConcernFeeding': 'Lactancia/alimentación',
+    'onbConcernGrowth': 'Peso y crecimiento',
+    'onbConcernRoutine': 'Rutina del día',
+    'onbConcernMemories': 'Recuerdos y fotos',
+    'onbConcernDevelopment': 'Desarrollo',
+    'onbGoalsTitle': '¿Cuáles son tus objetivos?',
+    'onbGoalsSubtitle': 'Usaremos esto para personalizar tu experiencia.',
+    'onbGoalRoutine': 'Acompañar mejor la rutina',
+    'onbGoalSleepAlerts': 'Recibir alertas de sueño',
+    'onbGoalMoments': 'Registrar momentos especiales',
+    'onbGoalReports': 'Generar informes',
+    'onbGoalMemoryBook': 'Crear libro de recuerdos',
+    'onbDragToAdjust': 'Arrastra para ajustar',
+    'onbEmailSheetTitle': 'Crear cuenta con correo',
+    'onbYourNameHint': 'Tu nombre',
+    'onbEmailHint': 'Correo electrónico',
+    'onbPasswordHint': 'Contraseña',
+    'onbCreateAccount': 'Crear cuenta',
+    'onbValYourName': 'Informa tu nombre.',
+    'onbValEmailRequired': 'Informa tu correo.',
+    'onbValEmailInvalid': 'Correo inválido.',
+    'onbValPasswordMin': 'Usa al menos 6 caracteres.',
     'vaccinesTitle': 'Vacunas',
     'vaccinesSubtitle': 'Agrega vacunas, fechas y próximas dosis.',
     'baby': 'Bebé',
@@ -4942,8 +6387,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'babyPhotoTitle': 'Foto del bebé',
     'changeBabyTooltip': 'Cambiar bebé',
     'notificationsInboxTitle': 'Notificaciones',
-    'notificationsInboxSubtitle': 'Últimos 3 días (entregadas y programadas, registradas en la app)',
-    'notificationsEmpty': 'Aún no hay notificaciones registradas en este período.',
+    'notificationsInboxSubtitle':
+        'Últimos 3 días (entregadas y programadas, registradas en la app)',
+    'notificationsEmpty':
+        'Aún no hay notificaciones registradas en este período.',
     'notificationsKindShown': 'Entregada',
     'notificationsKindScheduled': 'Programada',
     'notificationsOpenTarget': 'Toca para abrir',
@@ -4964,8 +6411,10 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Usa el botón del mismo método de entrada (ej. Google) con el que creaste la cuenta.',
     'homeBabyBannerForecastSleep': 'Previsión de sueño',
     'homeBabyBannerForecastWake': 'Previsión de despertar',
-    'homeBabyBannerForecastSubtitleSleep': 'Señales de sueño detectadas\nsegún la hora actual',
-    'homeBabyBannerForecastSubtitleWake': 'Según la hora actual y el patrón por edad',
+    'homeBabyBannerForecastSubtitleSleep':
+        'Señales de sueño detectadas\nsegún la hora actual',
+    'homeBabyBannerForecastSubtitleWake':
+        'Según la hora actual y el patrón por edad',
     'homeBabyBannerEtaIn': 'en {d}',
     'homeBabyBannerLastDiaper': 'Último pañal',
     'homeBabyBannerNoRecordsYet': 'Sin registros todavía',
@@ -4982,6 +6431,22 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeBannerHungry': 'Hambriento',
     'homeBannerDiaperDirty': 'Puede estar sucio',
     'homeBannerExhausted': 'AGOTADO',
+    'homeBannerChipVaccine': 'Vacuna hoy',
+    'homeMotivationBanner':
+        '¡Lo estás haciendo muy bien! Pequeños registros, grandes recuerdos.',
+    'homeMotivationBannerOpenMemories': 'Abrir libro de recuerdos',
+    'healthHubTitle': 'Salud',
+    'healthHubIntro':
+        'Vacunas, consultas y cuidados del bebé en un solo lugar.',
+    'healthHubSection': 'Acceso rápido',
+    'healthHubVaccines': 'Cartilla de vacunación',
+    'healthHubVaccinesSub': 'Registra y revisa las vacunas del bebé',
+    'vaccDueConfirmCheckbox': 'Confirmo que esta dosis ya fue aplicada.',
+    'vaccDueSavedOk': 'Vacuna registrada como aplicada.',
+    'vaccDuePickTitle': 'Vacunas previstas para hoy',
+    'homeSummaryHealthStripTitle': 'Vacunas y consultas en este día',
+    'homeSummaryHealthStripEmpty':
+        'No hay vacunas ni consultas registradas en este día.',
     'memoryTellMomentTitle': 'Cuenta sobre este momento',
     'memoryTellMomentHint': '¿Cómo fue? Comparte detalles que quieres guardar…',
     'memoryBabyInfoOptionalTitle': 'Información del bebé (opcional)',
@@ -4997,6 +6462,43 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoryShareButton': 'Compartir',
     'memoryFavoriteButton': 'Favorito',
     'memoryFavoritedButton': 'En favoritos',
+    'weeklyPhotoPublicExplainer':
+        'Al marcarla como pública, esta foto podrá participar en la Foto de la Semana y podrá ser vista por otras mamás dentro de FaceBaby.',
+    'weeklyPhotoPublicOff': 'Privada',
+    'weeklyPhotoPublicOn': 'Pública',
+    'weeklyPhotoPublicNeedPhoto':
+        'Añade una foto para marcar este recuerdo como público.',
+    'weeklyPhotoConfirmTitle': '¿Hacer público este recuerdo?',
+    'weeklyPhotoConfirmBody':
+        'Esta foto podrá ser elegida como Foto de la Semana y mostrarse a otras mamás en la app. Puedes quitar esta opción cuando quieras.',
+    'weeklyPhotoConfirmCancel': 'Cancelar',
+    'weeklyPhotoConfirmOk': 'Hacer pública',
+    'weeklyPhotoParticipatingBadge': 'Participando en la Foto de la Semana',
+    'weeklyPhotoWinnerBadge':
+        'Este recuerdo fue elegido como Foto de la Semana 💜',
+    'weeklyPhotoShowBabyFirstName':
+        'Mostrar el primer nombre del bebé en el mural público',
+    'weeklyPhotoDisclaimerFooter':
+        'Solo participan las fotos marcadas como públicas. Puedes quitar esta opción en cualquier momento.',
+    'weeklyPhotoSectionTitleMale': 'Príncipe de la Semana',
+    'weeklyPhotoSectionTitleFemale': 'Princesa de la Semana',
+    'weeklyPhotoHomeHeroMale': 'PRÍNCIPE DE LA SEMANA',
+    'weeklyPhotoHomeHeroFemale': 'PRINCESA DE LA SEMANA',
+    'weeklyPhotoSectionSubtitle':
+        'Un recuerdo especial compartido por una mamá de FaceBaby.',
+    'weeklyPhotoViewMemory': 'Ver recuerdo',
+    'weeklyPhotoBabyFallback': 'Un bebé FaceBaby',
+    'weeklyPhotoDisclaimerShort':
+        'Solo participan las fotos marcadas como públicas. Puedes quitar esta opción en cualquier momento.',
+    'weeklyPhotoPublicDetailAppBar': 'Recuerdo de la semana',
+    'weeklyPhotoWinnerCongratsTitle': '¡Felicidades, Mamá!',
+    'weeklyPhotoWinnerCongratsBody':
+        'La foto de tu Princesa fue la elegida de la semana. Vamos todos a celebrarla.\n\n¡La familia FaceBaby agradece que compartas este hermoso momento con nosotros! 💜',
+    'weeklyPhotoWinnerCongratsBodyMale':
+        'La foto de tu Príncipe fue la elegida de la semana. Vamos todos a celebrarlo.\n\n¡La familia FaceBaby agradece que compartas este hermoso momento con nosotros! 💜',
+    'weeklyPhotoWinnerCongratsBodyFemale':
+        'La foto de tu Princesa fue la elegida de la semana. Vamos todos a celebrarla.\n\n¡La familia FaceBaby agradece que compartas este hermoso momento con nosotros! 💜',
+    'weeklyPhotoWinnerCongratsOk': 'Confirmar',
     'memoryEditTitle': 'Editar recuerdo',
     'memoryNewTitle': 'Nuevo recuerdo',
     'memoryMomNotesFieldLabel': 'Observaciones de mamá',
@@ -5009,7 +6511,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoryAgeHintExample': 'Ej.: 10 días',
     'memoryWeightHintExample': 'Ej.: 3,28',
     'memoryHeightHintExample': 'Ej.: 49',
-    'memorySaveNeedPhotoOrText': 'Añade una foto o una descripción para guardar.',
+    'memorySaveNeedPhotoOrText':
+        'Añade una foto o una descripción para guardar.',
     'memorySaveFail': 'No se pudo guardar:',
     'memoryShareWebOnlyMobile':
         'Compartir imagen o PDF está disponible en la app instalada (Android/iOS).',
@@ -5048,24 +6551,190 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeStatusWarn': 'Alerta leve',
     'homeStatusHungry': 'Puede tener hambre',
     'homeTipTitle': 'Consejo de hoy',
-    'homeTipBody': 'Rutinas suaves ayudan a {name} a dormir mejor por la noche.',
+    'homeTipBody':
+        'Rutinas suaves ayudan a {name} a dormir mejor por la noche.',
     'summaryFeedings': 'TOMAS',
     'summarySleep': 'SUEÑO TOTAL',
     'summaryLastFeed': 'Última a las {time}',
     'summaryLastSleep': 'Último a las {time}',
+    'summaryDiapers': 'PAÑALES',
+    'summaryFeedingsValue': '{n} · {m} min',
+    'summaryFeedingsCountOne': '1 toma',
+    'summaryFeedingsCountMany': '{n} tomas',
+    'summaryFeedingsMinutes': '{m} min',
+    'summaryDiapersValue': 'Total {total} · Pipí {pee} · Popó {poo}',
+    'summaryDiapersTotal': 'Total {total} cambios',
+    'summaryDiapersChangesOne': '1 cambio',
+    'summaryDiapersChangesMany': '{n} cambios',
+    'summaryDiapersPeePoo': '{pee} - Pipí    {poo} - Popó',
+    'summarySleepValue': '{s} · {t}',
+    'summarySleepSessionsOne': '1 siesta',
+    'summarySleepSessionsMany': '{s} siestas',
+    'summaryWeight': 'PESO',
+    'homeSummaryExtraHint': 'Totales del día seleccionado',
+    'add': 'Agregar',
+    'labelWeight': 'Peso',
+    'labelHeight': 'Altura',
+    'labelHead': 'Perímetro de la cabeza',
+    'growthTabWeight': 'Peso',
+    'growthTabHeight': 'Altura',
+    'growthTabHead': 'Cabeza',
+    'growthTabSummary': 'Resumen',
+    'growthAtBirth': 'Al nacer',
+    'growthCardCurrent': 'Actual',
+    'growthCardChange': 'Cambio',
+    'growthAddWeight': 'Agregar peso',
+    'growthAddHeight': 'Agregar altura',
+    'growthAddHead': 'Agregar cabeza',
+    'growthSummaryIntro': 'Visión general de peso y altura.',
+    'growthChartCaption': '{name} — {metric}',
+    'growthChartDeltaHint':
+        'Eje vertical: variación respecto al valor al nacer (0 = al nacer).',
+    'growthHistoryTitle': '{label} (historial)',
+    'invalidGrowthValue': 'Introduce un valor válido de {label}.',
+    'growthSaved': '{label} guardado correctamente.',
+    'growthEmpty': 'Aún no hay registros de {label}.',
     'exampleCard': 'Ejemplo de cartilla:',
+    'reportDailyScreenTitle': 'Informe diario',
+    'reportDayDetailsTitle': 'Detalles del día',
+    'reportDailyPickDayTooltip': 'Elegir día',
+    'reportDailySubtitleSleepQuality': 'Calidad del sueño',
+    'reportDailySubtitleTotalSleep': 'Total dormido',
+    'reportDailySubtitleLongestStretch': 'Mayor periodo continuo',
+    'reportDailySubtitleFeedTotal': 'Total de tomas',
+    'reportDailySubtitleFeedAvg': 'Duración media',
+    'reportDailySubtitleFeedLast': 'Última toma',
+    'reportDailySubtitleDiaperTotal': 'Total de cambios',
+    'reportDailySubtitleDiaperWet': 'Pañales mojados',
+    'reportDailySubtitleDiaperDirty': 'Pañales sucios',
+    'reportDailySubtitleMoodMajority': 'La mayor parte del día',
+    'reportDailySubtitleMoodIrrit': 'Irritabilidad',
+    'reportDailySubtitleWeightLast': 'Última medición',
+    'reportSleepQualityGood': 'Buena',
+    'reportSleepQualityOk': 'Ok',
+    'reportSleepQualityBad': 'Frágil',
+    'reportSleepQualityMixed': 'Variable',
+    'reportVsYesterdayShort': 'vs ayer',
+    'reportVsYesterdayNA': '—',
+    'reportVsYesterdayPct': '{pct}%',
+    'reportLongestStretchHint': '{start} – {end}',
+    'reportNapsLabel': 'Siestas',
+    'reportTotalSmallLabel': 'Total',
+    'reportComparedAgeLabel': 'Comparado con la media de la edad',
+    'reportBenchmarkAbove': 'Por encima de la media',
+    'reportBenchmarkNear': 'Cerca de la media',
+    'reportBenchmarkBelow': 'Por debajo de la media',
+    'reportIrritLow': 'Baja',
+    'reportIrritMedium': 'Moderada',
+    'reportIrritHigh': 'Alta',
+    'reportIrritUnknown': 'Sin datos',
+    'reportTabSleep': 'Sueño',
+    'reportTabFeedings': 'Tomas',
+    'reportTabDiapers': 'Pañales',
+    'reportTabMood': 'Ánimo',
+    'reportAiInsightsTitle': 'Insights',
+    'reportTimelineTitle': 'Línea de tiempo del día',
+    'reportShareSoon': 'Compartir (pronto)',
+    'reportFeedingChartCaption': 'Tomas por hora',
+    'reportSleepChartCaption': 'Sueño por hora',
+    'reportNoDataHint': 'No hay registros suficientes para esta métrica.',
+    'reportInsightSleepAgeGood':
+        'El sueño total está cerca de lo esperado para la edad — buena señal de descanso reparador.',
+    'reportInsightSleepAgeLow':
+        'El sueño quedó por debajo de lo habitual para esta edad; observa señales de cansancio y la rutina nocturna.',
+    'reportInsightFeedsOften':
+        'Muchas tomas durante el día — común en etapas de crecimiento; registrar la duración ayuda a ver promedios.',
+    'reportInsightDiapersFrequent':
+        'Cambios de pañal frecuentes — puede indicar buena hidratación o necesidad de cuidar la piel; observa si son de pipí o popó.',
+    'reportInsightMoodLine':
+        'Ánimo predominante guardado en recuerdos: {mood}.',
+    'reportWeeklyScreenTitle': 'Informe semanal',
+    'reportWeekDetailsTitle': 'Detalles de la semana',
+    'reportWeeklyPickWeekTooltip': 'Elegir semana (cualquier día)',
+    'reportWeeklySummaryTitle': 'Resumen de la semana',
+    'reportWeeklyTrendsTitle': 'Tendencias',
+    'reportWeeklySeeFullDetails': 'Ver informe completo',
+    'reportWeeklyPartialWeekHint':
+        'Promedios y tendencias: lunes a {weekday} (semana hasta ahora).',
+    'reportWeeklyFutureWeekHint':
+        'Esta semana aún no empezó en el calendario — elige otra semana o vuelve cuando haya días registrados.',
+    'reportWeeklyLoadErrorPrefix': 'No se pudo cargar el informe:',
+    'reportWeeklyToneCalm': 'tranquila',
+    'reportWeeklyToneActive': 'movida',
+    'reportWeeklySleepUnknown':
+        'No hay suficientes datos de sueño para comparar semanas.',
+    'reportWeeklyFirstWeekSleepLine':
+        'Esta es la primera semana con registros: sigue anotando para ver tendencias pronto.',
+    'reportWeeklySleepStableShort':
+        'El sueño se mantuvo estable frente a la semana anterior.',
+    'reportWeeklySleepUp':
+        'El sueño mejoró cerca de {pct}% frente a la semana anterior.',
+    'reportWeeklySleepDown':
+        'El sueño bajó cerca de {pct}% frente a la semana anterior.',
+    'reportWeeklyFeedStableLine': 'Las tomas se mantuvieron regulares.',
+    'reportWeeklyFeedUp':
+        'Las tomas diarias aumentaron cerca de {pct}% en promedio.',
+    'reportWeeklyFeedDown':
+        'Las tomas diarias disminuyeron cerca de {pct}% en promedio.',
+    'reportWeeklyHeroTemplate':
+        '¡{name} tuvo una semana {tone}! {sleep} {feed}',
+    'reportWeeklyTrendLabelImproved': 'Mejoró',
+    'reportWeeklyTrendLabelWorse': 'Empeoró',
+    'reportWeeklyTrendLabelStable': 'Estable',
+    'reportWeeklyTrendLabelUnknown': '—',
+    'reportWeeklyTrendLabelEvolving': 'Evolucionando',
+    'reportWeeklyTrendLabelIncreased': 'Aumentó',
+    'reportWeeklyTrendNA': '—',
+    'reportWeeklyHighlightSleep':
+        'Punto positivo: sueño más reparador esta semana.',
+    'reportWeeklyHighlightFeedingStable':
+        'Punto positivo: ritmo de alimentación constante.',
+    'reportWeeklyHighlightDiaperUp':
+        'Nota: más cambios — hidratación o digestión más activa.',
+    'reportWeeklyHighlightWeight': 'Punto positivo: aumento saludable de peso.',
+    'reportWeeklyHighlightGeneric':
+        'Sigue registrando para ver tendencias más claras.',
+    'reportWeeklyAvgFeedsDay': 'Promedio diario: {avg} tomas.',
+    'reportWeeklyAvgDiapersDay': 'Promedio diario: {avg} cambios.',
+    'reportWeeklySleepHoursChartTitle': 'Horas de sueño por día',
+    'reportWeeklyAvgWeekLabel': 'Promedio semanal',
+    'reportWeeklyVsPrevWeekShort': 'vs semana anterior',
+    'reportWeeklyInsightsCardTitle': 'Insights de IA',
+    'reportWeeklyPatternsTitle': 'Patrones detectados',
+    'reportWeeklySeeAllAnalyses': 'Ver todos los análisis',
+    'reportWeeklyHeatmapSoon': 'Mapa de calor por hora disponible pronto.',
+    'reportWeeklyFeedChartCaption': 'Tomas por día',
+    'reportWeeklyDiaperChartCaption': 'Cambios por día',
+    'reportWeeklyPatternWeekend':
+        'El sueño suele alargarse un poco los fines de semana.',
+    'reportWeeklyPatternFeedingDown':
+        'Menos tomas en promedio — común cuando los intervalos se amplían.',
+    'reportWeeklyPatternDefault':
+        'El patrón semanal parece estable — ajusta la rutina según el ritmo del bebé.',
+    'reportWeeklyInsightSleepNeutral':
+        'El sueño fue similar al de la semana anterior.',
+    'reportWeeklyInsightSleepBetter':
+        'Hay más horas de sueño que la semana pasada — buena señal.',
+    'reportWeeklyInsightSleepLess':
+        'El sueño total bajó frente a la semana anterior — conviene observar las noches.',
+    'reportWeeklyInsightTemplate': '{name}: {sleep}',
     'reportMonthlyScreenTitle': 'Informe mensual',
     'reportMonthlyAvgWeight': 'Peso medio',
     'reportMonthlyAvgHeight': 'Altura media',
-    'reportMonthlyGrowthChartEmpty': 'Añade al menos dos registros de peso este mes para ver el gráfico.',
+    'reportMonthlyGrowthChartEmpty':
+        'Añade al menos dos registros de peso este mes para ver el gráfico.',
     'reportMonthlySleepSection': 'Sueño',
     'reportMonthlySleepAvg': 'Media mensual (por día)',
     'reportMonthlyVsPrevMonth': 'vs mes anterior',
     'reportMonthlyBestWeeks': 'Semanas con más sueño',
-    'reportMonthlySleepTrendUp': 'Tendencia general: más sueño reparador este mes.',
-    'reportMonthlySleepTrendDown': 'Tendencia general: menos sueño total que el mes pasado — conviene vigilar.',
-    'reportMonthlySleepTrendStable': 'Tendencia general: sueño estable durante el mes.',
-    'reportMonthlySleepTrendUnknown': 'No hay datos suficientes para comparar con el mes anterior.',
+    'reportMonthlySleepTrendUp':
+        'Tendencia general: más sueño reparador este mes.',
+    'reportMonthlySleepTrendDown':
+        'Tendencia general: menos sueño total que el mes pasado — conviene vigilar.',
+    'reportMonthlySleepTrendStable':
+        'Tendencia general: sueño estable durante el mes.',
+    'reportMonthlySleepTrendUnknown':
+        'No hay datos suficientes para comparar con el mes anterior.',
     'reportMonthlySleepExplain':
         'La media de sueño por día suma todas las sesiones registradas por día civil del mes y divide entre el número de días de ese mes (sesiones contadas por hora de fin). El porcentaje compara esa media con la del mes anterior. «Semanas con más sueño» muestra hasta dos semanas (lunes a domingo) con mayor sueño total.',
     'reportMonthlyFeedingSection': 'Alimentación',
@@ -5074,15 +6743,174 @@ const Map<AppLang, Map<String, String>> _strings = {
         'La frecuencia media es el total de tomas al pecho o biberón registradas en el mes dividido entre los días del calendario de ese mes (incluye días sin registro). La comida sólida no entra en este recuento. Los horarios son hasta tres franjas en las que más tomas terminaron este mes.',
     'reportMonthlyPredominantHours': 'Horarios predominantes (fin de la toma)',
     'reportMonthlyMilestonesTitle': 'Hitos del mes',
-    'reportMonthlyMilestonesEmpty': 'Sin vacunas, consultas o recuerdos con insignia este mes.',
+    'reportMonthlyMilestonesEmpty':
+        'Sin vacunas, consultas o recuerdos con insignia este mes.',
     'reportMonthlyMilestoneConsultationDefault': 'Consulta',
     'reportMonthlyMemoriesTitle': 'Recuerdos del mes',
     'reportMonthlySeeAllMemories': 'Ver todas',
     'reportMonthlyMemoriesEmpty': 'Sin fotos en los recuerdos de este mes.',
-    'reportMonthlyVideosHint': 'Los vídeos aparecerán cuando existan en los momentos guardados.',
+    'reportMonthlyVideosHint':
+        'Los vídeos aparecerán cuando existan en los momentos guardados.',
+    'reportSleepAdvScreenTitle': 'Informe de sueño',
+    'reportSleepAdvScoreTitle': 'Puntuación de sueño',
+    'reportSleepAdvMetricsTitle': 'Métricas de la semana',
+    'reportSleepAdvEfficiency': 'Eficiencia del sueño',
+    'reportSleepAdvVsPrevPct':
+        'Variación de eficiencia: {pct}% (vs semana anterior)',
+    'reportSleepAdvOnset': 'Tiempo hasta el primer sueño nocturno',
+    'reportSleepAdvAwakenings': 'Despertares por noche (promedio)',
+    'reportSleepAdvAwakeningsTotal': 'Despertares esta semana: {n}',
+    'reportSleepAdvLongest': 'Mayor periodo continuo',
+    'reportSleepAdvAvgDailySleep': 'Promedio de sueño por día',
+    'reportSleepAdvIdealTitle': 'Mejor hora para dormirse',
+    'reportSleepAdvIdealFooter':
+        'Ventana estimada a partir de tus registros (no es consejo médico).',
+    'reportSleepAdvSeeFullAnalysis': 'Ver análisis completo',
+    'reportSleepAdvChartsSection': 'Sesión de sueño',
+    'reportSleepAdvChartsSleepTrend': 'Ritmo del sueño (esta semana)',
+    'reportSleepAdvChartsCompare': 'Comparación con la semana anterior',
+    'reportSleepAdvChartsDistribution': 'Día y noche (suma de la semana)',
+    'reportSleepAdvChartsBars': 'Volumen de sueño: esta semana vs anterior',
+    'reportSleepAdvDayPhase': 'Sueño diurno (6h–18h)',
+    'reportSleepAdvNightPhase': 'Sueño nocturno (18h–6h)',
+    'reportSleepAdvDistributionEmpty': 'Sin datos para distribuir.',
+    'reportSleepAdvLegendThisWeek': 'Esta semana',
+    'reportSleepAdvLegendPrevWeek': 'Semana anterior',
+    'reportSleepAdvScoreBreakdown': 'Qué refleja la puntuación',
+    'reportSleepAdvBreakdownLine':
+        'Eficiencia: {e} pts • Tramos largos: {s} pts • Despertares: {a} pts • Regularidad: {c} pts (orientativos).',
+    'reportSleepAdvNotEnoughData':
+        'Aún hay pocos registros esta semana — los valores son orientativos.',
+    'reportSleepAdvStatusExcellent': 'Excelente',
+    'reportSleepAdvStatusGood': 'Bueno',
+    'reportSleepAdvStatusRegular': 'Regular',
+    'reportSleepAdvStatusPoor': 'Frágil',
+    'reportSleepAdvBadgeVeryGood': 'Muy bueno',
+    'reportSleepAdvBadgeGood': 'Bueno',
+    'reportSleepAdvBadgeOk': 'Moderado',
+    'reportSleepAdvBadgeAttention': 'Acompañar',
+    'reportSleepAdvBadgeIdeal': 'Ideal',
+    'reportSleepAdvBadgeUnknown': 'Sin datos',
+    'reportSleepAdvBadgeLow': 'Bajo',
+    'reportSleepAdvBadgeModerate': 'Moderado',
+    'reportSleepAdvBadgeHigh': 'Elevado',
+    'alertsSectionFeeding': 'Alimentación',
+    'alertsRuleFeeding':
+        'Con la alerta activada, la app agenda una notificación local cuando pasan los minutos elegidos desde el fin del último registro de pecho o biberón. Al registrar una nueva toma, el plazo se recalcula desde esa hora.',
+    'alertsSectionDiaper': 'Pañal',
+    'alertsRuleDiaper':
+        'La app sugiere un recordatorio unas 3 horas y 30 minutos después del último cambio registrado. Al guardar un nuevo cambio, el recordatorio se cancela y se agenda de nuevo.',
+    'alertsSectionSleep': 'Sueño',
+    'alertsRuleSleep':
+        'Usando la última hora registrada de fin de sueño y la edad del bebé, la app puede agendar avisos antes o después de la ventana habitual de vigilia. Al guardar un nuevo sueño, los horarios se actualizan.',
+    'alertsSectionGrowth': 'Crecimiento y mediciones',
+    'alertsRuleGrowth':
+        'Notifica cuando el peso más reciente queda por debajo del registro anterior. También avisa cuando pasan más de 30 días sin mediciones de peso, altura o perímetro guardadas en la app.',
+    'diaperToggleAlerts': 'Recordatorios de pañal',
+    'diaperToggleAlertsSubtitle': 'Aviso cerca del próximo cambio sugerido.',
+    'healthGrowthToggleAlerts': 'Alertas de crecimiento',
+    'healthGrowthToggleAlertsSubtitle':
+        'Avisos de peso y ausencia prolongada de mediciones.',
   },
   AppLang.fr: {
     'appName': 'FaceBaby',
+    'onbSelectDate': 'Sélectionner une date',
+    'onbBabyFallback': 'bébé',
+    'onbMomFallback': 'maman',
+    'onbDadFallback': 'papa',
+    'onbWelcomeTitle': 'Accompagner et suivre',
+    'onbWelcomeSubtitle': 'le développement avec Amour.',
+    'onbFeatureSleep': 'Sommeil',
+    'onbFeatureFeeding': 'Alimentation',
+    'onbFeatureGrowth': 'Croissance',
+    'onbFeatureMemories': 'Souvenirs',
+    'onbFeatureAlerts': 'Alertes',
+    'onbFeatureLove': 'Beaucoup d’amour',
+    'onbCreateBabyProfile': 'Créer le profil du bébé',
+    'onbExistingAccountLogin': 'J’ai déjà un compte / Me connecter',
+    'onbContinue': 'Continuer',
+    'onbPrepareFaceBaby': 'Préparer FaceBaby',
+    'onbPreparingTitle': 'Préparation de FaceBaby pour vous...',
+    'onbPreparingSubtitle':
+        'Personnalisation des alertes, souvenirs et routines du bébé.',
+    'onbAuthTitle': 'Votre profil de base est prêt',
+    'onbAuthSubtitle':
+        'Créez maintenant votre compte pour tout garder en sécurité et synchroniser ensuite.',
+    'onbSignInGoogle': 'Se connecter avec Google',
+    'onbSignInApple': 'Se connecter avec Apple',
+    'onbContinueEmail': 'Continuer avec e-mail',
+    'onbAlreadyHaveAccount': 'J’ai déjà un compte',
+    'onbWait': 'Veuillez patienter...',
+    'onbDoneTitle': 'C’est prêt ! Le profil du bébé a été créé.',
+    'onbStartTracking': 'Commencer le suivi',
+    'onbCouldNotPrepare':
+        'Impossible de préparer le profil maintenant. Réessayez.',
+    'onbBabyNameTitle': 'Quel est le prénom du bébé ?',
+    'onbBabyNameSubtitle': 'Rendons FaceBaby plus proche de votre famille.',
+    'onbBabyNameHint': 'Prénom du bébé',
+    'onbBabyBirthTitle': 'Quelle est la date de naissance ?',
+    'onbBabyBirthSubtitle':
+        'Nous utilisons l’âge pour personnaliser le sommeil, la routine et la croissance.',
+    'onbBabyWeightTitle': 'Quel est le poids du bébé ?',
+    'onbBabyWeightSubtitle':
+        'Faites glisser la règle pour choisir. Vous pouvez passer de Kg à Lb.',
+    'onbBabyHeightTitle': 'Quelle est la taille du bébé ?',
+    'onbBabyHeightSubtitle':
+        'Utilisez la règle pour indiquer la taille approximative dans l’unité souhaitée.',
+    'onbMotherNameTitle': 'Quel est le prénom de maman ?',
+    'onbMotherNameSubtitle':
+        'Nous utiliserons son prénom dans les prochaines questions.',
+    'onbMotherNameHint': 'Prénom de maman',
+    'onbMotherBirthTitle': 'Quelle est la date de naissance de maman ?',
+    'onbMotherBirthSubtitle': 'Ensuite, nous demanderons sa taille.',
+    'onbMotherHeightTitle': 'Quelle est la taille de {name} ?',
+    'onbMotherHeightSubtitle':
+        'Cette information aide pour les rapports de croissance.',
+    'onbRegisterFatherTitle': 'Souhaitez-vous aussi ajouter papa ?',
+    'onbRegisterFatherSubtitle':
+        'Si vous le souhaitez, FaceBaby personnalise aussi les informations de papa.',
+    'onbFatherNameTitle': 'Quel est le prénom de papa ?',
+    'onbFatherNameSubtitle': 'Sa règle sera ainsi personnalisée aussi.',
+    'onbFatherNameHint': 'Prénom de papa',
+    'onbFatherBirthTitle': 'Quelle est la date de naissance de papa ?',
+    'onbFatherBirthSubtitle': 'Ensuite, nous demanderons sa taille.',
+    'onbFatherHeightTitle': 'Quelle est la taille de {name} ?',
+    'onbFatherHeightSubtitle':
+        'Une valeur approximative suffit, vous pourrez l’ajuster plus tard.',
+    'onbBabySexTitle': 'Quel est le sexe du bébé ?',
+    'onbSexGirl': 'Fille',
+    'onbSexBoy': 'Garçon',
+    'onbSexUnknown': 'Je préfère ne pas répondre',
+    'onbFirstBabyTitle': 'Est-ce votre premier bébé ?',
+    'onbYes': 'Oui',
+    'onbNo': 'Non',
+    'onbConcernTitle':
+        'Quelle est votre plus grande préoccupation maintenant ?',
+    'onbConcernSubtitle': 'Vous pouvez en choisir plusieurs.',
+    'onbConcernSleep': 'Sommeil du bébé',
+    'onbConcernFeeding': 'Allaitement/alimentation',
+    'onbConcernGrowth': 'Poids et croissance',
+    'onbConcernRoutine': 'Routine quotidienne',
+    'onbConcernMemories': 'Souvenirs et photos',
+    'onbConcernDevelopment': 'Développement',
+    'onbGoalsTitle': 'Quels sont vos objectifs ?',
+    'onbGoalsSubtitle':
+        'Nous utiliserons cela pour personnaliser votre expérience.',
+    'onbGoalRoutine': 'Mieux suivre la routine',
+    'onbGoalSleepAlerts': 'Recevoir des alertes de sommeil',
+    'onbGoalMoments': 'Enregistrer les moments spéciaux',
+    'onbGoalReports': 'Générer des rapports',
+    'onbGoalMemoryBook': 'Créer un livre de souvenirs',
+    'onbDragToAdjust': 'Faites glisser pour ajuster',
+    'onbEmailSheetTitle': 'Créer un compte avec e-mail',
+    'onbYourNameHint': 'Votre nom',
+    'onbEmailHint': 'E-mail',
+    'onbPasswordHint': 'Mot de passe',
+    'onbCreateAccount': 'Créer un compte',
+    'onbValYourName': 'Indiquez votre nom.',
+    'onbValEmailRequired': 'Indiquez votre e-mail.',
+    'onbValEmailInvalid': 'E-mail invalide.',
+    'onbValPasswordMin': 'Utilisez au moins 6 caractères.',
     'memoriesAlbumBackCoverBody':
         'FaceBaby est né pour transformer de simples instants en souvenirs éternels. Chaque sourire, découverte, câlin et moment précieux de votre bébé mérite d\u2019être conservé avec amour et tendresse.\n\nCe livre a été créé pour accompagner les premiers pas de cette merveilleuse aventure et préserver des souvenirs uniques pour toute une vie.\n\nBien plus que des photos et des notes, ces pages renferment des émotions, des histoires et des souvenirs que le temps n\u2019effacera jamais.\n\nMerci de permettre à FaceBaby de faire partie de l\u2019histoire de votre famille. 💛',
     'memoriesAlbumBackCoverFinale':
@@ -5101,11 +6929,38 @@ const Map<AppLang, Map<String, String>> _strings = {
     'nextEvents': 'Événements à venir',
     'quickRecordsTitle': 'Journaux rapides',
     'quickRecordsSubtitle': 'Ajoutez la routine de bébé en quelques touches.',
+    'feedingAlertsSwitchTitle': 'Alerte alimentation',
+    'feedingAlertsSwitchSubtitle':
+        'Prévenir lorsque l’intervalle défini est écoulé depuis la dernière tétée ou le dernier biberon.',
+    'feedingAlertsIntervalCaption':
+        'Rappeler après la dernière tétée : {m} min (20–360)',
+    'feedingAlertsShortcutTitle': 'Alerte alimentation',
+    'scheduledFeedingReminderBody':
+        'C’est l’heure du rappel d’alimentation. Touchez pour enregistrer.',
+    'scheduledDiaperReminderTitle': 'Change de couche',
+    'scheduledDiaperReminderBody':
+        'Il est peut-être temps de changer la couche. Touchez pour enregistrer.',
     'whatHappenedNow': "Que s'est-il passé ?",
     'momNote': 'Note de maman',
     'saveRecord': 'Enregistrer',
     'reportsTitle': 'Rapports',
     'reportsSubtitle': 'Un résumé pour maman et le pédiatre.',
+    'reportsHubAnchorLabel': 'Référence',
+    'reportsHubPickDayTooltip': 'Choisir le jour de référence des rapports',
+    'reportsHubSectionTitle': 'Rapports disponibles',
+    'reportStubComingSoon':
+        'Ce rapport sera mis à jour automatiquement avec les données de l’app pour la période sélectionnée.',
+    'reportListDaily': 'Rapport quotidien',
+    'reportListDailySub': 'Résumé et détails du jour sélectionné',
+    'reportListWeekly': 'Rapport hebdomadaire',
+    'reportListWeeklySub':
+        'Résumé et détails de la semaine contenant le jour sélectionné',
+    'reportListMonthly': 'Rapport mensuel',
+    'reportListMonthlySub': 'Agrégats mensuels du mois du jour sélectionné',
+    'reportListSleepAdv': 'Rapport avancé sur le sommeil',
+    'reportListSleepAdvSub': 'Rythmes et métriques du sommeil',
+    'reportListDevelopment': 'Rapport de développement',
+    'reportListDevelopmentSub': 'Jalons et bonds de développement',
     'growth': 'Croissance',
     'pediatricReport': 'Rapport pédiatrique',
     'pediatricReportDesc':
@@ -5116,7 +6971,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'healthHubSymptomReportsSub':
         'Fièvre, coliques, médicaments et plus — inclus dans le rapport pédiatrique',
     'symptomReportTitle': 'Signaler un symptôme',
-    'symptomReportEmpty': 'Aucune entrée pour le moment. Touchez + pour ajouter.',
+    'symptomReportEmpty':
+        'Aucune entrée pour le moment. Touchez + pour ajouter.',
     'symptomReportNew': 'Nouvelle entrée',
     'symptomReportSave': 'Enregistrer',
     'symptomReportOccurredAt': 'Date et heure',
@@ -5132,8 +6988,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'symptomReportReflux': 'Reflux',
     'symptomReportOther': 'Autre',
     'symptomReportOtherHint': 'Brève description',
-    'symptomReportValidationNeedOne': 'Sélectionnez au moins un symptôme ou remplissez un champ.',
-    'symptomReportValidationFeverTemp': 'Indiquez la température si la fièvre est cochée.',
+    'symptomReportValidationNeedOne':
+        'Sélectionnez au moins un symptôme ou remplissez un champ.',
+    'symptomReportValidationFeverTemp':
+        'Indiquez la température si la fièvre est cochée.',
     'symptomReportDeleteTitle': 'Supprimer l’entrée ?',
     'symptomReportDeleteBody': 'Cette action est irréversible.',
     'reportPediatricScreenTitle': 'Rapport pédiatrique',
@@ -5166,7 +7024,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricFeverFootnote':
         'Comptage à partir des suivis structurés dans Santé › Signaler un symptôme (température si fournie).',
     'reportPediatricVaccines': 'Vaccins administrés durant la période',
-    'reportPediatricMedications': 'Médicaments (suivis et mots-clés dans les notes)',
+    'reportPediatricMedications':
+        'Médicaments (suivis et mots-clés dans les notes)',
     'reportPediatricSleepAvgDaily': 'Sommeil quotidien moyen',
     'reportPediatricSleepAwakenings': 'Réveils nocturnes (moy.)',
     'reportPediatricSleepPattern': 'Schéma global du sommeil',
@@ -5190,7 +7049,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricNo': 'Non',
     'reportPediatricNa': '—',
     'reportPediatricJournalNote': 'Journaux du jour',
-    'reportPediatricJournalNoteHint': 'Détection par mots-clés dans le texte libre.',
+    'reportPediatricJournalNoteHint':
+        'Détection par mots-clés dans le texte libre.',
     'reportPediatricObsHint':
         'Notes pour la consultation : symptômes, médicaments, changements de comportement…',
     'reportPediatricBtnShare': 'Partager',
@@ -5209,10 +7069,12 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricSymptomCrying': 'Pleurs sans cause apparente (suivis)',
     'reportPediatricSymptomPain': 'Douleur (suivis)',
     'reportPediatricStructuredSymptoms': 'Suivis de symptômes (date et heure)',
-    'reportPediatricStructuredSymptomsEmpty': 'Aucun suivi structuré sur cette période.',
+    'reportPediatricStructuredSymptomsEmpty':
+        'Aucun suivi structuré sur cette période.',
     'generatePdf': 'Générer PDF',
     'reportMonthlyMilestonesTitle': 'Jalons du mois',
-    'reportMonthlyMilestonesEmpty': 'Aucun vaccin, consultation ou souvenir avec badge ce mois-ci.',
+    'reportMonthlyMilestonesEmpty':
+        'Aucun vaccin, consultation ou souvenir avec badge ce mois-ci.',
     'reportMonthlyMilestoneConsultationDefault': 'Consultation',
     'memoriesTitle': 'Livre de souvenirs',
     'memoriesSubtitle': 'Des moments importants à garder.',
@@ -5262,7 +7124,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'babyPhotoTitle': 'Photo de bébé',
     'changeBabyTooltip': 'Changer de bébé',
     'notificationsInboxTitle': 'Notifications',
-    'notificationsInboxSubtitle': '3 derniers jours (envoyées et programmées, enregistrées dans l’app)',
+    'notificationsInboxSubtitle':
+        '3 derniers jours (envoyées et programmées, enregistrées dans l’app)',
     'notificationsEmpty': 'Aucune notification enregistrée pour cette période.',
     'notificationsKindShown': 'Envoyée',
     'notificationsKindScheduled': 'Programmée',
@@ -5284,8 +7147,10 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Utilisez le bouton correspondant au fournisseur avec lequel le compte a été créé (ex. Google).',
     'homeBabyBannerForecastSleep': 'Prévision de sommeil',
     'homeBabyBannerForecastWake': 'Prévision de réveil',
-    'homeBabyBannerForecastSubtitleSleep': 'Signes de sommeil détectés\nselon l’heure actuelle',
-    'homeBabyBannerForecastSubtitleWake': 'Selon l’heure actuelle et le modèle par âge',
+    'homeBabyBannerForecastSubtitleSleep':
+        'Signes de sommeil détectés\nselon l’heure actuelle',
+    'homeBabyBannerForecastSubtitleWake':
+        'Selon l’heure actuelle et le modèle par âge',
     'homeBabyBannerEtaIn': 'dans {d}',
     'homeBabyBannerLastDiaper': 'Dernière couche',
     'homeBabyBannerNoRecordsYet': 'Aucun enregistrement',
@@ -5302,8 +7167,31 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeBannerHungry': 'Affamé',
     'homeBannerDiaperDirty': 'Peut être sale',
     'homeBannerExhausted': 'ÉPUISÉ',
+    'homeBannerChipVaccine': 'Vaccin aujourd’hui',
+    'homeMotivationBanner':
+        'Vous faites un excellent travail ! Petits suivis, grands souvenirs.',
+    'homeMotivationBannerOpenMemories': 'Ouvrir le livre de souvenirs',
+    'healthHubTitle': 'Santé',
+    'healthHubIntro':
+        'Vaccins, consultations et soins de bébé au même endroit.',
+    'healthHubSection': 'Accès rapide',
+    'healthHubVaccines': 'Carnet de vaccination',
+    'healthHubVaccinesSub': 'Enregistrez et consultez les vaccins de bébé',
+    'vaccineReminderNotifTitle': 'Vaccin',
+    'vaccineReminderNotifBody': 'Vaccin prévu aujourd’hui : {name}.',
+    'vaccDueConfirmCheckbox':
+        'Je confirme que cette dose a déjà été administrée.',
+    'vaccDueSavedOk': 'Vaccin marqué comme administré.',
+    'vaccDuePickTitle': 'Vaccins prévus pour aujourd’hui',
+    'homeSummaryHealthStripTitle': 'Vaccins et consultations ce jour',
+    'homeSummaryHealthStripEmpty':
+        'Aucun vaccin ni consultation enregistré ce jour.',
+    'consultationReminderNotifTitle': 'Consultation programmée',
+    'consultationReminderNotifBody': 'Demain · {title} · {when}',
+    'consultationTodayReminderNotifBody': 'Aujourd’hui · {title} · {when}',
     'memoryTellMomentTitle': 'Racontez ce moment',
-    'memoryTellMomentHint': 'Comment cela s’est-il passé ? Partagez les détails à garder…',
+    'memoryTellMomentHint':
+        'Comment cela s’est-il passé ? Partagez les détails à garder…',
     'memoryBabyInfoOptionalTitle': 'Infos bébé (optionnel)',
     'memoryBabyMoodLabel': 'Humeur/état',
     'memoryBabyMoodHint': 'Ex. : Heureux',
@@ -5317,6 +7205,43 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoryShareButton': 'Partager',
     'memoryFavoriteButton': 'Mettre en favori',
     'memoryFavoritedButton': 'En favori',
+    'weeklyPhotoPublicExplainer':
+        'En la marquant comme publique, cette photo pourra participer à la Photo de la semaine et être vue par d’autres mamans dans FaceBaby.',
+    'weeklyPhotoPublicOff': 'Privée',
+    'weeklyPhotoPublicOn': 'Publique',
+    'weeklyPhotoPublicNeedPhoto':
+        'Ajoutez une photo pour rendre ce souvenir public.',
+    'weeklyPhotoConfirmTitle': 'Rendre ce souvenir public ?',
+    'weeklyPhotoConfirmBody':
+        'Cette photo pourra être choisie comme Photo de la semaine et affichée aux autres mamans dans l’app. Vous pouvez retirer cette option à tout moment.',
+    'weeklyPhotoConfirmCancel': 'Annuler',
+    'weeklyPhotoConfirmOk': 'Rendre publique',
+    'weeklyPhotoParticipatingBadge': 'Participe à la Photo de la semaine',
+    'weeklyPhotoWinnerBadge':
+        'Ce souvenir a été choisi comme Photo de la semaine 💜',
+    'weeklyPhotoShowBabyFirstName':
+        'Afficher le prénom de bébé sur le mur public',
+    'weeklyPhotoDisclaimerFooter':
+        'Seules les photos marquées comme publiques participent. Vous pouvez retirer cette option à tout moment.',
+    'weeklyPhotoSectionTitleMale': 'Prince de la semaine',
+    'weeklyPhotoSectionTitleFemale': 'Princesse de la semaine',
+    'weeklyPhotoHomeHeroMale': 'PRINCE DE LA SEMAINE',
+    'weeklyPhotoHomeHeroFemale': 'PRINCESSE DE LA SEMAINE',
+    'weeklyPhotoSectionSubtitle':
+        'Un souvenir spécial partagé par une maman FaceBaby.',
+    'weeklyPhotoViewMemory': 'Voir le souvenir',
+    'weeklyPhotoBabyFallback': 'Un bébé FaceBaby',
+    'weeklyPhotoDisclaimerShort':
+        'Seules les photos marquées comme publiques participent. Vous pouvez retirer cette option à tout moment.',
+    'weeklyPhotoPublicDetailAppBar': 'Souvenir de la semaine',
+    'weeklyPhotoWinnerCongratsTitle': 'Félicitations, Maman !',
+    'weeklyPhotoWinnerCongratsBody':
+        'La photo de votre Princesse a été choisie cette semaine ! Allons tous la célébrer.\n\nLa famille FaceBaby vous remercie de partager ce beau moment avec nous ! 💜',
+    'weeklyPhotoWinnerCongratsBodyMale':
+        'La photo de votre Prince a été choisie cette semaine ! Allons tous le célébrer.\n\nLa famille FaceBaby vous remercie de partager ce beau moment avec nous ! 💜',
+    'weeklyPhotoWinnerCongratsBodyFemale':
+        'La photo de votre Princesse a été choisie cette semaine ! Allons tous la célébrer.\n\nLa famille FaceBaby vous remercie de partager ce beau moment avec nous ! 💜',
+    'weeklyPhotoWinnerCongratsOk': 'Confirmer',
     'memoryEditTitle': 'Modifier le souvenir',
     'memoryNewTitle': 'Nouveau souvenir',
     'memoryMomNotesFieldLabel': 'Remarques de maman',
@@ -5329,7 +7254,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoryAgeHintExample': 'Ex. : 10 jours',
     'memoryWeightHintExample': 'Ex. : 3,28',
     'memoryHeightHintExample': 'Ex. : 49',
-    'memorySaveNeedPhotoOrText': 'Ajoutez une photo ou une description pour enregistrer.',
+    'memorySaveNeedPhotoOrText':
+        'Ajoutez une photo ou une description pour enregistrer.',
     'memorySaveFail': 'Enregistrement impossible :',
     'memoryShareWebOnlyMobile':
         'Le partage image/PDF est disponible dans l’app installée (Android/iOS).',
@@ -5372,10 +7298,403 @@ const Map<AppLang, Map<String, String>> _strings = {
     'summarySleep': 'SOMMEIL TOTAL',
     'summaryLastFeed': 'Dernière à {time}',
     'summaryLastSleep': 'Dernier à {time}',
+    'summaryDiapers': 'COUCHES',
+    'summaryFeedingsValue': '{n} · {m} min',
+    'summaryFeedingsCountOne': '1 tétée',
+    'summaryFeedingsCountMany': '{n} tétées',
+    'summaryFeedingsMinutes': '{m} min',
+    'summaryDiapersValue': 'Total {total} · Pipi {pee} · Caca {poo}',
+    'summaryDiapersTotal': 'Total {total} changes',
+    'summaryDiapersChangesOne': '1 change',
+    'summaryDiapersChangesMany': '{n} changes',
+    'summaryDiapersPeePoo': '{pee} - Pipi    {poo} - Caca',
+    'summarySleepValue': '{s} · {t}',
+    'summarySleepSessionsOne': '1 sieste',
+    'summarySleepSessionsMany': '{s} siestes',
+    'summaryWeight': 'POIDS',
+    'homeSummaryExtraHint': 'Totaux du jour sélectionné',
+    'add': 'Ajouter',
+    'labelWeight': 'Poids',
+    'labelHeight': 'Taille',
+    'labelHead': 'Périmètre crânien',
+    'growthTabWeight': 'Poids',
+    'growthTabHeight': 'Taille',
+    'growthTabHead': 'Tête',
+    'growthTabSummary': 'Résumé',
+    'growthAtBirth': 'À la naissance',
+    'growthCardCurrent': 'Actuel',
+    'growthCardChange': 'Variation',
+    'growthAddWeight': 'Ajouter le poids',
+    'growthAddHeight': 'Ajouter la taille',
+    'growthAddHead': 'Ajouter le périmètre',
+    'growthSummaryIntro': 'Vue d’ensemble du poids et de la taille.',
+    'growthChartCaption': '{name} — {metric}',
+    'growthChartDeltaHint':
+        'Axe vertical : variation par rapport à la valeur de naissance (0 = naissance).',
+    'growthHistoryTitle': '{label} (historique)',
+    'invalidGrowthValue': 'Saisissez une valeur valide pour {label}.',
+    'growthSaved': '{label} enregistré avec succès.',
+    'growthEmpty': 'Aucun enregistrement de {label} pour le moment.',
+    'notifyGrowthWeightDownTitle': 'Poids inférieur au précédent',
+    'notifyGrowthWeightDownBody':
+        'Le dernier poids enregistré est inférieur au précédent. En cas de doute, contactez votre pédiatre.',
+    'notifyGrowthStaleTitle': 'Aucune mesure de croissance depuis un moment',
+    'notifyGrowthStaleBody':
+        'Plus de 30 jours se sont écoulés depuis la dernière mesure de croissance (poids, taille ou périmètre crânien). Cela fait {days} jours — ajoutez une nouvelle mesure.',
+    'reportDailyScreenTitle': 'Rapport quotidien',
+    'reportDayDetailsTitle': 'Détails du jour',
+    'reportDailyPickDayTooltip': 'Choisir le jour',
+    'reportDailySubtitleSleepQuality': 'Qualité du sommeil',
+    'reportDailySubtitleTotalSleep': 'Sommeil total',
+    'reportDailySubtitleLongestStretch': 'Plus longue période continue',
+    'reportDailySubtitleFeedTotal': 'Total des tétées',
+    'reportDailySubtitleFeedAvg': 'Durée moyenne',
+    'reportDailySubtitleFeedLast': 'Dernière tétée',
+    'reportDailySubtitleDiaperTotal': 'Total des changes',
+    'reportDailySubtitleDiaperWet': 'Couches mouillées',
+    'reportDailySubtitleDiaperDirty': 'Couches sales',
+    'reportDailySubtitleMoodMajority': 'La plupart du jour',
+    'reportDailySubtitleMoodIrrit': 'Irritabilité',
+    'reportDailySubtitleWeightLast': 'Dernière mesure',
+    'reportSleepQualityGood': 'Bonne',
+    'reportSleepQualityOk': 'Ok',
+    'reportSleepQualityBad': 'Fragile',
+    'reportSleepQualityMixed': 'Variable',
+    'reportVsYesterdayShort': 'vs hier',
+    'reportVsYesterdayNA': '—',
+    'reportVsYesterdayPct': '{pct}%',
+    'reportLongestStretchHint': '{start} – {end}',
+    'reportNapsLabel': 'Siestes',
+    'reportTotalSmallLabel': 'Total',
+    'reportComparedAgeLabel': 'Comparé à la moyenne d’âge',
+    'reportBenchmarkAbove': 'Au-dessus de la moyenne',
+    'reportBenchmarkNear': 'Proche de la moyenne',
+    'reportBenchmarkBelow': 'Sous la moyenne',
+    'reportIrritLow': 'Faible',
+    'reportIrritMedium': 'Modérée',
+    'reportIrritHigh': 'Élevée',
+    'reportIrritUnknown': 'Pas de données',
+    'reportTabSleep': 'Sommeil',
+    'reportTabFeedings': 'Tétées',
+    'reportTabDiapers': 'Couches',
+    'reportTabMood': 'Humeur',
+    'reportAiInsightsTitle': 'Insights',
+    'reportTimelineTitle': 'Chronologie du jour',
+    'reportShareSoon': 'Partager (bientôt)',
+    'reportFeedingChartCaption': 'Tétées par heure',
+    'reportSleepChartCaption': 'Sommeil par heure',
+    'reportNoDataHint':
+        'Pas assez de données enregistrées pour cette métrique.',
+    'reportInsightSleepAgeGood':
+        'Le sommeil total est proche de ce qui est attendu pour l’âge — bon signe de repos récupérateur.',
+    'reportInsightSleepAgeLow':
+        'Le sommeil est sous la plage habituelle pour cet âge ; surveillez les signes de fatigue et le rythme du soir.',
+    'reportInsightFeedsOften':
+        'Beaucoup de tétées dans la journée — fréquent lors des poussées de croissance ; noter la durée aide à voir les moyennes.',
+    'reportInsightDiapersFrequent':
+        'Changes fréquents — l’hydratation peut être bonne ou la peau peut nécessiter de l’attention.',
+    'reportInsightMoodLine':
+        'Humeur dominante enregistrée dans les souvenirs : {mood}.',
+    'reportWeeklyScreenTitle': 'Rapport hebdomadaire',
+    'reportWeekDetailsTitle': 'Détails de la semaine',
+    'reportWeeklyPickWeekTooltip': 'Choisir une semaine (n’importe quel jour)',
+    'reportWeeklySummaryTitle': 'Résumé de la semaine',
+    'reportWeeklyTrendsTitle': 'Tendances',
+    'reportWeeklySeeFullDetails': 'Voir le rapport complet',
+    'reportWeeklyPartialWeekHint':
+        'Moyennes et tendances : lundi à {weekday} (semaine en cours).',
+    'reportWeeklyFutureWeekHint':
+        'Cette semaine n’a pas encore commencé dans le calendrier — choisissez une autre semaine.',
+    'reportWeeklyLoadErrorPrefix': 'Impossible de charger le rapport :',
+    'reportWeeklyToneCalm': 'calme',
+    'reportWeeklyToneActive': 'chargée',
+    'reportWeeklySleepUnknown':
+        'Pas assez de données de sommeil pour comparer les semaines.',
+    'reportWeeklyFirstWeekSleepLine':
+        'C’est la première semaine avec des entrées : continuez à noter pour voir les tendances.',
+    'reportWeeklySleepStableShort':
+        'Le sommeil est resté stable par rapport à la semaine précédente.',
+    'reportWeeklySleepUp':
+        'Le sommeil s’est amélioré d’environ {pct}% par rapport à la semaine précédente.',
+    'reportWeeklySleepDown':
+        'Le sommeil a baissé d’environ {pct}% par rapport à la semaine précédente.',
+    'reportWeeklyFeedStableLine': 'Les tétées sont restées régulières.',
+    'reportWeeklyFeedUp':
+        'Les tétées quotidiennes ont augmenté d’environ {pct}% en moyenne.',
+    'reportWeeklyFeedDown':
+        'Les tétées quotidiennes ont diminué d’environ {pct}% en moyenne.',
+    'reportWeeklyHeroTemplate':
+        '{name} a eu une semaine {tone} ! {sleep} {feed}',
+    'reportWeeklyTrendLabelImproved': 'Amélioré',
+    'reportWeeklyTrendLabelWorse': 'Moins bien',
+    'reportWeeklyTrendLabelStable': 'Stable',
+    'reportWeeklyTrendLabelUnknown': '—',
+    'reportWeeklyTrendLabelEvolving': 'En évolution',
+    'reportWeeklyTrendLabelIncreased': 'Augmenté',
+    'reportWeeklyTrendNA': '—',
+    'reportWeeklyHighlightSleep':
+        'Point positif : sommeil plus récupérateur cette semaine.',
+    'reportWeeklyHighlightFeedingStable':
+        'Point positif : rythme d’alimentation stable.',
+    'reportWeeklyHighlightDiaperUp':
+        'Note : plus de changes — hydratation ou digestion plus active.',
+    'reportWeeklyHighlightWeight': 'Point positif : prise de poids saine.',
+    'reportWeeklyHighlightGeneric':
+        'Continuez à enregistrer pour des tendances plus claires.',
+    'reportWeeklyAvgFeedsDay': 'Moyenne quotidienne : {avg} tétées.',
+    'reportWeeklyAvgDiapersDay': 'Moyenne quotidienne : {avg} changes.',
+    'reportWeeklySleepHoursChartTitle': 'Heures de sommeil par jour',
+    'reportWeeklyAvgWeekLabel': 'Moyenne hebdomadaire',
+    'reportWeeklyVsPrevWeekShort': 'vs semaine précédente',
+    'reportWeeklyInsightsCardTitle': 'Insights IA',
+    'reportWeeklyPatternsTitle': 'Schémas détectés',
+    'reportWeeklySeeAllAnalyses': 'Voir toutes les analyses',
+    'reportWeeklyHeatmapSoon': 'Carte thermique horaire bientôt disponible.',
+    'reportWeeklyFeedChartCaption': 'Tétées par jour',
+    'reportWeeklyDiaperChartCaption': 'Changes par jour',
+    'reportWeeklyPatternWeekend':
+        'Le sommeil tend à s’allonger un peu le week-end.',
+    'reportWeeklyPatternFeedingDown':
+        'Moins de tétées en moyenne — fréquent quand les intervalles s’allongent.',
+    'reportWeeklyPatternDefault':
+        'Le schéma hebdomadaire semble stable — ajustez selon le rythme de bébé.',
+    'reportWeeklyInsightSleepNeutral':
+        'Le sommeil était similaire à la semaine précédente.',
+    'reportWeeklyInsightSleepBetter':
+        'Plus de sommeil que la semaine dernière — bon signe.',
+    'reportWeeklyInsightSleepLess':
+        'Le sommeil total a baissé — à surveiller la nuit.',
+    'reportWeeklyInsightTemplate': '{name} : {sleep}',
+    'reportMonthlyScreenTitle': 'Rapport mensuel',
+    'reportMonthlyAvgWeight': 'Poids moyen',
+    'reportMonthlyAvgHeight': 'Taille moyenne',
+    'reportMonthlyGrowthChartEmpty':
+        'Ajoutez au moins deux relevés de poids ce mois-ci pour voir le graphique.',
+    'reportMonthlySleepSection': 'Sommeil',
+    'reportMonthlySleepAvg': 'Moyenne mensuelle (par jour)',
+    'reportMonthlyVsPrevMonth': 'vs mois précédent',
+    'reportMonthlyBestWeeks': 'Semaines avec le plus de sommeil',
+    'reportMonthlySleepTrendUp':
+        'Tendance générale : sommeil plus récupérateur ce mois-ci.',
+    'reportMonthlySleepTrendDown':
+        'Tendance générale : moins de sommeil total que le mois précédent.',
+    'reportMonthlySleepTrendStable':
+        'Tendance générale : sommeil stable durant le mois.',
+    'reportMonthlySleepTrendUnknown':
+        'Pas assez de données pour comparer avec le mois précédent.',
+    'reportMonthlySleepExplain':
+        'La moyenne de sommeil par jour additionne les sessions enregistrées par jour civil du mois et divise par le nombre de jours du mois.',
+    'reportMonthlyFeedingSection': 'Alimentation',
+    'reportMonthlyFeedFreq': 'Fréquence moyenne (tétées/jour)',
+    'reportMonthlyFeedingExplain':
+        'La fréquence moyenne correspond au total des tétées ou biberons du mois divisé par les jours du calendrier.',
+    'reportMonthlyPredominantHours':
+        'Horaires les plus fréquents (fin de tétée)',
+    'reportMonthlyMemoriesTitle': 'Souvenirs du mois',
+    'reportMonthlySeeAllMemories': 'Voir tout',
+    'reportMonthlyMemoriesEmpty': 'Aucune photo dans les souvenirs de ce mois.',
+    'reportMonthlyVideosHint':
+        'Les vidéos apparaîtront lorsqu’elles seront enregistrées dans vos moments.',
+    'reportSleepAdvScreenTitle': 'Rapport de sommeil',
+    'reportSleepAdvScoreTitle': 'Score de sommeil',
+    'reportSleepAdvMetricsTitle': 'Métriques de la semaine',
+    'reportSleepAdvEfficiency': 'Efficacité du sommeil',
+    'reportSleepAdvVsPrevPct':
+        'Variation d’efficacité : {pct}% (vs semaine précédente)',
+    'reportSleepAdvOnset': 'Temps jusqu’au premier sommeil nocturne',
+    'reportSleepAdvAwakenings': 'Réveils par nuit (moy.)',
+    'reportSleepAdvAwakeningsTotal': 'Réveils cette semaine : {n}',
+    'reportSleepAdvLongest': 'Plus longue période continue',
+    'reportSleepAdvAvgDailySleep': 'Sommeil moyen par jour',
+    'reportSleepAdvIdealTitle': 'Meilleure heure pour s’endormir',
+    'reportSleepAdvIdealFooter':
+        'Fenêtre estimée depuis vos données (pas un avis médical).',
+    'reportSleepAdvSeeFullAnalysis': 'Voir l’analyse complète',
+    'reportSleepAdvChartsSection': 'Session de sommeil',
+    'reportSleepAdvChartsSleepTrend': 'Rythme du sommeil (cette semaine)',
+    'reportSleepAdvChartsCompare': 'Comparaison avec la semaine précédente',
+    'reportSleepAdvChartsDistribution': 'Jour et nuit (total semaine)',
+    'reportSleepAdvChartsBars':
+        'Volume de sommeil : cette semaine vs précédente',
+    'reportSleepAdvDayPhase': 'Sommeil de jour (6h–18h)',
+    'reportSleepAdvNightPhase': 'Sommeil de nuit (18h–6h)',
+    'reportSleepAdvDistributionEmpty': 'Pas de données à répartir.',
+    'reportSleepAdvLegendThisWeek': 'Cette semaine',
+    'reportSleepAdvLegendPrevWeek': 'Semaine précédente',
+    'reportSleepAdvScoreBreakdown': 'Ce que reflète le score',
+    'reportSleepAdvBreakdownLine':
+        'Efficacité : {e} pts • Longues périodes : {s} pts • Réveils : {a} pts • Régularité : {c} pts.',
+    'reportSleepAdvNotEnoughData':
+        'Encore peu de données cette semaine — valeurs indicatives.',
+    'reportSleepAdvStatusExcellent': 'Excellent',
+    'reportSleepAdvStatusGood': 'Bon',
+    'reportSleepAdvStatusRegular': 'Régulier',
+    'reportSleepAdvStatusPoor': 'Fragile',
+    'reportSleepAdvBadgeVeryGood': 'Très bon',
+    'reportSleepAdvBadgeGood': 'Bon',
+    'reportSleepAdvBadgeOk': 'Modéré',
+    'reportSleepAdvBadgeAttention': 'À suivre',
+    'reportSleepAdvBadgeIdeal': 'Idéal',
+    'reportSleepAdvBadgeUnknown': 'Pas de données',
+    'reportSleepAdvBadgeLow': 'Faible',
+    'reportSleepAdvBadgeModerate': 'Modéré',
+    'reportSleepAdvBadgeHigh': 'Élevé',
+    'alertsScreenIntro':
+        'Choisissez quels rappels FaceBaby peut vous envoyer. Toutes les notifications restent locales sur cet appareil.',
+    'alertsExactAlarmAndroidTitle': 'Autorisation d’alarmes exactes (Android)',
+    'alertsExactAlarmAndroidBody':
+        'Pour recevoir les rappels à l’heure prévue, autorisez FaceBaby à utiliser les alarmes exactes / « Alarmes et rappels » dans les paramètres du système. Sans cela, Android peut retarder ou ignorer la notification.',
+    'alertsExactAlarmAndroidOpenSettings': 'Ouvrir les paramètres',
+    'alertsSectionFeeding': 'Alimentation',
+    'alertsRuleFeeding':
+        'Lorsque l’alerte est activée, l’app programme une notification après le délai choisi depuis la dernière tétée ou le dernier biberon.',
+    'alertsSectionDiaper': 'Couche',
+    'alertsRuleDiaper':
+        'L’app suggère un rappel environ 3 h 30 après le dernier change enregistré. Un nouveau change annule et reprogramme le rappel.',
+    'alertsSectionSleep': 'Sommeil',
+    'alertsRuleSleep':
+        'Avec la fin du dernier sommeil enregistré et l’âge de bébé, l’app peut programmer des rappels autour de la fenêtre d’éveil.',
+    'alertsSectionGrowth': 'Croissance et mesures',
+    'alertsRuleGrowth':
+        'Avertit si le dernier poids est inférieur au précédent, ou si aucune mesure n’a été enregistrée depuis plus de 30 jours.',
+    'alertsTestTitle': 'Tester les notifications',
+    'alertsTestBody':
+        'Déclenche une notification immédiate et en programme une autre dans environ 30 secondes. Utile pour vérifier que le système délivre les notifications de l’app.',
+    'alertsTestRun': 'Lancer le test',
+    'alertsTestResync': 'Forcer la reprogrammation (rappels réels)',
+    'alertsTestImmediateTitle': 'FaceBaby — test immédiat',
+    'alertsTestImmediateBody':
+        'Si vous voyez ce message, le canal immédiat fonctionne.',
+    'alertsTestScheduledTitle': 'FaceBaby — test programmé',
+    'alertsTestScheduledBody':
+        'Cette notification a été programmée via AlarmManager (~30 s).',
+    'alertsTestAllScheduleModesFailed': 'AlarmManager a refusé tous les modes',
+    'alertsTestSentOk':
+        'Envoyé. Vous devriez recevoir maintenant l’immédiate et dans ~30 s la programmée.',
+    'alertsTestFailed': 'Échec : {errors}',
+    'sleepToggleAlertsSubtitle':
+        'Rappels basés sur la fin du dernier sommeil et l’âge de bébé.',
+    'diaperToggleAlerts': 'Rappels de couche',
+    'diaperToggleAlertsSubtitle':
+        'Notification autour du prochain change suggéré.',
+    'healthGrowthToggleAlerts': 'Alertes de croissance',
+    'healthGrowthToggleAlertsSubtitle':
+        'Alertes de poids et d’absence prolongée de mesures.',
+    'feedingScreenAlertsHint': 'Pour modifier le délai, ouvrez Plus › Alertes.',
+    'sleepNotifTitle': 'Sommeil',
+    'sleepNotifBeforeBody': 'C’est peut-être un bon moment pour coucher bébé.',
+    'sleepNotifOverdueBody':
+        'Votre bébé peut être fatigué — essayez de commencer le sommeil calmement.',
+    'sleepNotifWakeOverdueBodyMale':
+        'Cela fait plus de {hours} h qu’il dort, va le voir, Maman.',
+    'sleepNotifWakeOverdueBodyFemale':
+        'Cela fait plus de {hours} h qu’elle dort, va la voir, Maman.',
+    'notifChannelRemindersName': 'Rappels',
+    'notifChannelRemindersDesc':
+        'Alertes d’alimentation, de couches et de sommeil.',
+    'notifChannelGrowthName': 'Croissance',
+    'notifChannelGrowthDesc':
+        'Alertes de poids et d’absence prolongée de mesures.',
     'exampleCard': 'Exemple de carnet :',
   },
   AppLang.de: {
     'appName': 'FaceBaby',
+    'onbSelectDate': 'Datum auswählen',
+    'onbBabyFallback': 'Baby',
+    'onbMomFallback': 'Mama',
+    'onbDadFallback': 'Papa',
+    'onbWelcomeTitle': 'Begleiten und beobachten',
+    'onbWelcomeSubtitle': 'die Entwicklung mit Liebe.',
+    'onbFeatureSleep': 'Schlaf',
+    'onbFeatureFeeding': 'Ernährung',
+    'onbFeatureGrowth': 'Wachstum',
+    'onbFeatureMemories': 'Erinnerungen',
+    'onbFeatureAlerts': 'Warnungen',
+    'onbFeatureLove': 'Viel Liebe',
+    'onbCreateBabyProfile': 'Babyprofil erstellen',
+    'onbExistingAccountLogin': 'Ich habe bereits ein Konto / Einloggen',
+    'onbContinue': 'Weiter',
+    'onbPrepareFaceBaby': 'FaceBaby vorbereiten',
+    'onbPreparingTitle': 'FaceBaby wird für dich vorbereitet...',
+    'onbPreparingSubtitle':
+        'Benachrichtigungen, Erinnerungen und Routinen werden personalisiert.',
+    'onbAuthTitle': 'Dein Basisprofil ist fertig',
+    'onbAuthSubtitle':
+        'Erstelle jetzt dein Konto, um alles sicher zu speichern und später zu synchronisieren.',
+    'onbSignInGoogle': 'Mit Google einloggen',
+    'onbSignInApple': 'Mit Apple einloggen',
+    'onbContinueEmail': 'Mit E-Mail fortfahren',
+    'onbAlreadyHaveAccount': 'Ich habe schon ein Konto',
+    'onbWait': 'Bitte warten...',
+    'onbDoneTitle': 'Fertig! Das Babyprofil wurde erstellt.',
+    'onbStartTracking': 'Begleitung starten',
+    'onbCouldNotPrepare':
+        'Das Profil konnte gerade nicht vorbereitet werden. Bitte versuche es erneut.',
+    'onbBabyNameTitle': 'Wie heißt das Baby?',
+    'onbBabyNameSubtitle':
+        'So fühlt sich FaceBaby mehr nach deiner Familie an.',
+    'onbBabyNameHint': 'Name des Babys',
+    'onbBabyBirthTitle': 'Wie lautet das Geburtsdatum?',
+    'onbBabyBirthSubtitle':
+        'Wir nutzen das Alter, um Schlaf, Routine und Wachstum zu personalisieren.',
+    'onbBabyWeightTitle': 'Wie viel wiegt das Baby?',
+    'onbBabyWeightSubtitle':
+        'Ziehe am Lineal, um auszuwählen. Du kannst zwischen Kg und Lb wechseln.',
+    'onbBabyHeightTitle': 'Wie groß ist das Baby?',
+    'onbBabyHeightSubtitle':
+        'Nutze das Lineal, um die ungefähre Größe in deiner bevorzugten Einheit einzugeben.',
+    'onbMotherNameTitle': 'Wie heißt Mama?',
+    'onbMotherNameSubtitle':
+        'Wir verwenden ihren Namen in den nächsten Fragen.',
+    'onbMotherNameHint': 'Name der Mama',
+    'onbMotherBirthTitle': 'Wie lautet Mamas Geburtsdatum?',
+    'onbMotherBirthSubtitle': 'Danach fragen wir nach ihrer Größe.',
+    'onbMotherHeightTitle': 'Wie groß ist {name}?',
+    'onbMotherHeightSubtitle':
+        'Diese Information hilft bei den Wachstumsberichten.',
+    'onbRegisterFatherTitle': 'Möchtest du den Papa auch eintragen?',
+    'onbRegisterFatherSubtitle':
+        'Wenn du möchtest, personalisiert FaceBaby auch Papas Daten.',
+    'onbFatherNameTitle': 'Wie heißt Papa?',
+    'onbFatherNameSubtitle': 'So wird auch sein Lineal personalisiert.',
+    'onbFatherNameHint': 'Name des Papas',
+    'onbFatherBirthTitle': 'Wie lautet Papas Geburtsdatum?',
+    'onbFatherBirthSubtitle': 'Danach fragen wir nach seiner Größe.',
+    'onbFatherHeightTitle': 'Wie groß ist {name}?',
+    'onbFatherHeightSubtitle':
+        'Ein ungefährer Wert reicht, du kannst ihn später anpassen.',
+    'onbBabySexTitle': 'Welches Geschlecht hat das Baby?',
+    'onbSexGirl': 'Mädchen',
+    'onbSexBoy': 'Junge',
+    'onbSexUnknown': 'Möchte ich nicht angeben',
+    'onbFirstBabyTitle': 'Ist es dein erstes Baby?',
+    'onbYes': 'Ja',
+    'onbNo': 'Nein',
+    'onbConcernTitle': 'Was ist gerade deine größte Sorge?',
+    'onbConcernSubtitle': 'Du kannst mehrere auswählen.',
+    'onbConcernSleep': 'Schlaf des Babys',
+    'onbConcernFeeding': 'Stillen/Ernährung',
+    'onbConcernGrowth': 'Gewicht und Wachstum',
+    'onbConcernRoutine': 'Tagesroutine',
+    'onbConcernMemories': 'Erinnerungen und Fotos',
+    'onbConcernDevelopment': 'Entwicklung',
+    'onbGoalsTitle': 'Was sind deine Ziele?',
+    'onbGoalsSubtitle': 'Damit personalisieren wir deine Erfahrung.',
+    'onbGoalRoutine': 'Routine besser verfolgen',
+    'onbGoalSleepAlerts': 'Schlafhinweise erhalten',
+    'onbGoalMoments': 'Besondere Momente festhalten',
+    'onbGoalReports': 'Berichte erstellen',
+    'onbGoalMemoryBook': 'Erinnerungsbuch erstellen',
+    'onbDragToAdjust': 'Zum Anpassen ziehen',
+    'onbEmailSheetTitle': 'Konto mit E-Mail erstellen',
+    'onbYourNameHint': 'Dein Name',
+    'onbEmailHint': 'E-Mail',
+    'onbPasswordHint': 'Passwort',
+    'onbCreateAccount': 'Konto erstellen',
+    'onbValYourName': 'Gib deinen Namen ein.',
+    'onbValEmailRequired': 'Gib deine E-Mail ein.',
+    'onbValEmailInvalid': 'Ungültige E-Mail.',
+    'onbValPasswordMin': 'Verwende mindestens 6 Zeichen.',
     'memoriesAlbumBackCoverBody':
         'FaceBaby wurde geschaffen, um kleine Momente in unvergessliche Erinnerungen zu verwandeln. Jedes Lächeln, jede Entdeckung, jede Umarmung und jeder besondere Meilenstein Ihres Babys verdient es, mit Liebe bewahrt zu werden.\n\nDieses Buch begleitet die ersten Schritte dieser wundervollen Reise und hält Erinnerungen fest, die ein Leben lang bleiben können.\n\nMehr als nur Fotos und Notizen – diese Seiten bewahren Gefühle, Geschichten und Emotionen, die die Zeit niemals auslöschen wird.\n\nDanke, dass FaceBaby Teil der Geschichte Ihrer Familie sein darf. 💛',
     'memoriesAlbumBackCoverFinale':
@@ -5394,11 +7713,39 @@ const Map<AppLang, Map<String, String>> _strings = {
     'nextEvents': 'Nächste Ereignisse',
     'quickRecordsTitle': 'Schnellprotokolle',
     'quickRecordsSubtitle': 'Erfasse die Baby-Routine in wenigen Tipps.',
+    'feedingAlertsSwitchTitle': 'Ernährungsalarm',
+    'feedingAlertsSwitchSubtitle':
+        'Benachrichtigt, wenn das eingestellte Intervall seit dem letzten Stillen oder Fläschchen vergangen ist.',
+    'feedingAlertsIntervalCaption':
+        'Nach der letzten Mahlzeit erinnern: {m} Min. (20–360)',
+    'feedingAlertsShortcutTitle': 'Ernährungsalarm',
+    'scheduledFeedingReminderBody':
+        'Zeit für die Erinnerung zur Mahlzeit. Tippe zum Eintragen.',
+    'scheduledDiaperReminderTitle': 'Windelwechsel',
+    'scheduledDiaperReminderBody':
+        'Es ist vielleicht Zeit für einen Windelwechsel. Tippe zum Eintragen.',
     'whatHappenedNow': 'Was ist gerade passiert?',
     'momNote': 'Notiz der Mama',
     'saveRecord': 'Speichern',
     'reportsTitle': 'Berichte',
     'reportsSubtitle': 'Zusammenfassung für Mama und Kinderarzt.',
+    'reportsHubAnchorLabel': 'Referenz',
+    'reportsHubPickDayTooltip': 'Referenztag für Berichte wählen',
+    'reportsHubSectionTitle': 'Verfügbare Berichte',
+    'reportStubComingSoon':
+        'Dieser Bericht wird automatisch mit den App-Daten des ausgewählten Zeitraums aktualisiert.',
+    'reportListDaily': 'Tagesbericht',
+    'reportListDailySub': 'Zusammenfassung und Details des ausgewählten Tages',
+    'reportListWeekly': 'Wochenbericht',
+    'reportListWeeklySub':
+        'Zusammenfassung und Details der Woche des ausgewählten Tages',
+    'reportListMonthly': 'Monatsbericht',
+    'reportListMonthlySub':
+        'Monatliche Werte für den Monat des ausgewählten Tages',
+    'reportListSleepAdv': 'Erweiterter Schlafbericht',
+    'reportListSleepAdvSub': 'Schlafmuster und Kennzahlen',
+    'reportListDevelopment': 'Entwicklungsbericht',
+    'reportListDevelopmentSub': 'Meilensteine und Entwicklungsschübe',
     'growth': 'Wachstum',
     'pediatricReport': 'Kinderarztbericht',
     'pediatricReportDesc':
@@ -5418,15 +7765,18 @@ const Map<AppLang, Map<String, String>> _strings = {
     'symptomReportMedicationHint': 'Name oder kurze Notiz',
     'symptomReportFever': 'Fieber',
     'symptomReportTemp': 'Temperatur',
-    'symptomReportTempHint': 'Entsprechend deinen Einheiten in den Einstellungen',
+    'symptomReportTempHint':
+        'Entsprechend deinen Einheiten in den Einstellungen',
     'symptomReportCrying': 'Weinen ohne erkennbare Ursache',
     'symptomReportPain': 'Schmerzen',
     'symptomReportColic': 'Koliken',
     'symptomReportReflux': 'Reflux',
     'symptomReportOther': 'Sonstiges',
     'symptomReportOtherHint': 'Kurze Beschreibung',
-    'symptomReportValidationNeedOne': 'Wähle mindestens ein Symptom oder fülle ein Feld aus.',
-    'symptomReportValidationFeverTemp': 'Gib die Temperatur an, wenn Fieber aktiviert ist.',
+    'symptomReportValidationNeedOne':
+        'Wähle mindestens ein Symptom oder fülle ein Feld aus.',
+    'symptomReportValidationFeverTemp':
+        'Gib die Temperatur an, wenn Fieber aktiviert ist.',
     'symptomReportDeleteTitle': 'Eintrag löschen?',
     'symptomReportDeleteBody': 'Das kann nicht rückgängig gemacht werden.',
     'reportPediatricScreenTitle': 'Kinderarztbericht',
@@ -5459,7 +7809,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricFeverFootnote':
         'Zählung aus strukturierten Einträgen unter Gesundheit › Symptom melden (mit Temperatur, falls angegeben).',
     'reportPediatricVaccines': 'Impfungen im Zeitraum',
-    'reportPediatricMedications': 'Medikamente (strukturierte Einträge & Stichworte in Notizen)',
+    'reportPediatricMedications':
+        'Medikamente (strukturierte Einträge & Stichworte in Notizen)',
     'reportPediatricSleepAvgDaily': 'Durchschnittlicher Tageschlaf',
     'reportPediatricSleepAwakenings': 'Nächtliches Aufwachen (Ø)',
     'reportPediatricSleepPattern': 'Schlafmuster insgesamt',
@@ -5501,12 +7852,73 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricFeverDisclaimerShort': '0',
     'reportPediatricSymptomCrying': 'Weinen ohne Ursache (strukturiert)',
     'reportPediatricSymptomPain': 'Schmerzen (strukturiert)',
-    'reportPediatricStructuredSymptoms': 'Strukturierte Symptomeinträge (Datum und Uhrzeit)',
-    'reportPediatricStructuredSymptomsEmpty': 'Keine strukturierten Einträge in diesem Zeitraum.',
+    'reportPediatricStructuredSymptoms':
+        'Strukturierte Symptomeinträge (Datum und Uhrzeit)',
+    'reportPediatricStructuredSymptomsEmpty':
+        'Keine strukturierten Einträge in diesem Zeitraum.',
     'generatePdf': 'PDF erstellen',
     'reportMonthlyMilestonesTitle': 'Meilensteine des Monats',
-    'reportMonthlyMilestonesEmpty': 'Keine Impfungen, Termine oder Erinnerungen mit Abzeichen in diesem Monat.',
+    'reportMonthlyMilestonesEmpty':
+        'Keine Impfungen, Termine oder Erinnerungen mit Abzeichen in diesem Monat.',
     'reportMonthlyMilestoneConsultationDefault': 'Termin',
+    'homeBannerChipVaccine': 'Impfung heute',
+    'homeMotivationBanner':
+        'Du machst das großartig! Kleine Einträge, große Erinnerungen.',
+    'homeMotivationBannerOpenMemories': 'Erinnerungsbuch öffnen',
+    'healthHubTitle': 'Gesundheit',
+    'healthHubIntro': 'Impfungen, Termine und Babypflege an einem Ort.',
+    'healthHubSection': 'Schnellzugriff',
+    'healthHubVaccines': 'Impfpass',
+    'healthHubVaccinesSub': 'Impfungen des Babys eintragen und prüfen',
+    'vaccineReminderNotifTitle': 'Impfung',
+    'vaccineReminderNotifBody': 'Impfung heute fällig: {name}.',
+    'vaccDueConfirmCheckbox':
+        'Ich bestätige, dass diese Dosis bereits verabreicht wurde.',
+    'vaccDueSavedOk': 'Impfung als verabreicht gespeichert.',
+    'vaccDuePickTitle': 'Für heute geplante Impfungen',
+    'homeSummaryHealthStripTitle': 'Impfungen und Termine an diesem Tag',
+    'homeSummaryHealthStripEmpty':
+        'Keine Impfungen oder Termine für diesen Tag eingetragen.',
+    'consultationReminderNotifTitle': 'Geplanter Termin',
+    'consultationReminderNotifBody': 'Morgen · {title} · {when}',
+    'consultationTodayReminderNotifBody': 'Heute · {title} · {when}',
+    'weeklyPhotoPublicExplainer':
+        'Wenn du diese Erinnerung öffentlich machst, kann das Foto am Foto der Woche teilnehmen und von anderen Mamas in FaceBaby gesehen werden.',
+    'weeklyPhotoPublicOff': 'Privat',
+    'weeklyPhotoPublicOn': 'Öffentlich',
+    'weeklyPhotoPublicNeedPhoto':
+        'Füge ein Foto hinzu, um diese Erinnerung öffentlich zu machen.',
+    'weeklyPhotoConfirmTitle': 'Diese Erinnerung öffentlich machen?',
+    'weeklyPhotoConfirmBody':
+        'Dieses Foto kann als Foto der Woche ausgewählt und anderen Mamas in der App angezeigt werden. Du kannst diese Option jederzeit entfernen.',
+    'weeklyPhotoConfirmCancel': 'Abbrechen',
+    'weeklyPhotoConfirmOk': 'Öffentlich machen',
+    'weeklyPhotoParticipatingBadge': 'Nimmt am Foto der Woche teil',
+    'weeklyPhotoWinnerBadge':
+        'Diese Erinnerung wurde als Foto der Woche ausgewählt 💜',
+    'weeklyPhotoShowBabyFirstName':
+        'Vornamen des Babys auf der öffentlichen Pinnwand anzeigen',
+    'weeklyPhotoDisclaimerFooter':
+        'Nur als öffentlich markierte Fotos nehmen teil. Du kannst diese Option jederzeit entfernen.',
+    'weeklyPhotoSectionTitleMale': 'Prinz der Woche',
+    'weeklyPhotoSectionTitleFemale': 'Prinzessin der Woche',
+    'weeklyPhotoHomeHeroMale': 'PRINZ DER WOCHE',
+    'weeklyPhotoHomeHeroFemale': 'PRINZESSIN DER WOCHE',
+    'weeklyPhotoSectionSubtitle':
+        'Eine besondere Erinnerung, geteilt von einer FaceBaby-Mama.',
+    'weeklyPhotoViewMemory': 'Erinnerung ansehen',
+    'weeklyPhotoBabyFallback': 'Ein FaceBaby-Baby',
+    'weeklyPhotoDisclaimerShort':
+        'Nur als öffentlich markierte Fotos nehmen teil. Du kannst diese Option jederzeit entfernen.',
+    'weeklyPhotoPublicDetailAppBar': 'Erinnerung der Woche',
+    'weeklyPhotoWinnerCongratsTitle': 'Herzlichen Glückwunsch, Mama!',
+    'weeklyPhotoWinnerCongratsBody':
+        'Das Foto deiner Prinzessin wurde zum Foto der Woche gewählt! Lasst uns sie gemeinsam feiern.\n\nDie FaceBaby-Familie dankt dir, dass du diesen schönen Moment mit uns teilst! 💜',
+    'weeklyPhotoWinnerCongratsBodyMale':
+        'Das Foto deines Prinzen wurde zum Foto der Woche gewählt! Lasst uns ihn gemeinsam feiern.\n\nDie FaceBaby-Familie dankt dir, dass du diesen schönen Moment mit uns teilst! 💜',
+    'weeklyPhotoWinnerCongratsBodyFemale':
+        'Das Foto deiner Prinzessin wurde zum Foto der Woche gewählt! Lasst uns sie gemeinsam feiern.\n\nDie FaceBaby-Familie dankt dir, dass du diesen schönen Moment mit uns teilst! 💜',
+    'weeklyPhotoWinnerCongratsOk': 'Bestätigen',
     'memoriesTitle': 'Erinnerungsbuch',
     'memoriesSubtitle': 'Wichtige Momente für später.',
     'addMemory': 'Erinnerung hinzufügen',
@@ -5533,6 +7945,37 @@ const Map<AppLang, Map<String, String>> _strings = {
     'motherPhotoTitle': 'Mamas Foto',
     'babyPhotoTitle': 'Babyfoto',
     'changeBabyTooltip': 'Baby wechseln',
+    'notificationsInboxTitle': 'Benachrichtigungen',
+    'notificationsInboxSubtitle':
+        'Letzte 3 Tage (zugestellte und geplante Benachrichtigungen, in der App erfasst)',
+    'notificationsEmpty':
+        'In diesem Zeitraum sind noch keine Benachrichtigungen erfasst.',
+    'notificationsKindShown': 'Zugestellt',
+    'notificationsKindScheduled': 'Geplant',
+    'notificationsOpenTarget': 'Zum Öffnen tippen',
+    'notificationsSelectAll': 'Alle auswählen',
+    'homeBabyBannerForecastSleep': 'Schlafprognose',
+    'homeBabyBannerForecastWake': 'Aufwachprognose',
+    'homeBabyBannerForecastSubtitleSleep':
+        'Schlafsignale erkannt\nbasierend auf der aktuellen Uhrzeit',
+    'homeBabyBannerForecastSubtitleWake':
+        'Basierend auf aktueller Uhrzeit und Altersmuster',
+    'homeBabyBannerEtaIn': 'in {d}',
+    'homeBabyBannerLastDiaper': 'Letzte Windel',
+    'homeBabyBannerNoRecordsYet': 'Noch keine Einträge',
+    'homeBabyBannerNextBetween': 'Nächste zwischen {range}',
+    'homeBabyBannerDiaperRecommendedUntil': 'Wechsel empfohlen bis {d}',
+    'homeBabyBannerIdealWindow': 'Ideales Fenster: {range}',
+    'homeConsultationScheduled': 'Termin geplant',
+    'homeBannerChipConsultation': 'Termin',
+    'homeBannerChipDiaper': 'Windel',
+    'homeBannerChipFeed': 'Mahlzeit',
+    'homeBannerChipSleep': 'Schlaf',
+    'homeBannerOverdueSleep': 'Schlafenszeit überschritten',
+    'homeBannerOverdueWake': 'Aufwachzeit überschritten',
+    'homeBannerHungry': 'Vielleicht hungrig',
+    'homeBannerDiaperDirty': 'Vielleicht schmutzig',
+    'homeBannerExhausted': 'ERSCHÖPFT',
     'helloMomNamed': 'Hallo, Mama {name}!',
     'registerVerb': 'Eintragen',
     'viewCalendar': 'Kalender ansehen',
@@ -5542,17 +7985,367 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeFedAgo': 'Gefüttert vor {when}',
     'homePeeAgo': 'Pipi vor {when}',
     'homePooAgo': 'Windel vor {when}',
+    'homeFedAt': 'Mahlzeit um {time}',
+    'homePeeAt': 'Pipi um {time}',
+    'homePooAt': 'Stuhl um {time}',
+    'homeDiaperChangeAgo': 'Windelwechsel vor {when}',
+    'homeDiaperChangeAt': 'Windelwechsel um {time}',
+    'homeSleepEndedAgo': 'Letzter Schlaf vor {when}',
+    'homeSleepEndedAt': 'Letzter Schlaf um {time}',
+    'homeSleepInProgress': 'Schläft · {elapsed}',
+    'homeSleepPausedBanner': 'Schlaf pausiert · {elapsed}',
     'homeNextNow': 'Nächste: jetzt.',
     'homeNextIn': 'Nächste in {n} Min.',
     'homeStatusOk': 'Alles gut',
     'homeStatusWarn': 'Leichte Warnung',
     'homeStatusHungry': 'Vielleicht hungrig',
+    'homeTimeToFeed': 'Zeit zum Füttern!',
+    'homeStatusDetailFed': 'Kürzlich gefüttert',
+    'homeStatusDetailNear': 'Kurz vor der Mahlzeit',
+    'homeStatusDetailLate': 'Schon eine Weile her',
+    'homePickDayLabel': 'Übersichtstag',
+    'homeTodayLabel': 'Heute',
+    'homeYesterdayLabel': 'Gestern',
+    'homeSummaryOnDate': 'Übersicht — {date}',
+    'homeSummaryPickDayTooltip': 'Tag für die Übersicht wählen',
+    'sleepBannerEmpty': 'Noch keine Schlafaufzeichnungen.',
+    'homePastDayBadge': 'Vergangener Tag',
+    'homePastDayDetail': 'An diesem Tag erfasste Zeiten',
+    'homeBannerAlertCheckDiaper': 'Windel prüfen',
+    'homeBannerAlertTimeToSleep': 'Zeit zum Schlafen',
+    'homeBannerAlertSleepingLong': 'Schläft schon lange',
+    'homeCriticalCareTitle': 'Pflegepunkte mit Aufmerksamkeit',
+    'homeCriticalCareCount': '{n} Pflegepunkte brauchen Aufmerksamkeit',
+    'homeCriticalFeedingTitle': 'Vielleicht ist es Zeit zu füttern',
+    'homeCriticalSleepTitle': 'Vielleicht ist es Zeit zu schlafen',
+    'homeCriticalDiaperTitle': 'Vielleicht ist es Zeit für einen Windelwechsel',
+    'homeCriticalFeedingSubtitle':
+        'Seit der letzten Mahlzeit ist möglicherweise mehr Zeit als erwartet vergangen.',
+    'homeCriticalSleepSubtitle': 'Das Wachfenster könnte überschritten sein.',
+    'homeCriticalDiaperSubtitle':
+        'Seit dem letzten Wechsel ist möglicherweise eine Weile vergangen.',
+    'homeSleepBarAwakeTitle': 'Wach · Fenster bis zum Schlaf',
+    'homeSleepBarSleepTitle': 'Schläft · Sitzungszeit',
+    'homeFeedingCounterTitle': 'Mahlzeit · Zeit bis zum nächsten Intervall',
+    'homeFeedingCounterHint': 'Countdown (Intervall in Schnellprotokolle)',
+    'homeSleepBarAwakeHintEarly': '≈ {m} Min. bis zum idealen Fenster',
+    'homeSleepBarAwakeHintIdeal': '≈ {m} Min. bis zum Ende des Fensters',
+    'homeSleepBarAwakeHintOverdue': 'Fenster überschritten · Schlaf erwägen',
+    'homeSleepBarSleepHint': '{remaining} übrig · Sitzungsgrenze ~{cap} Min.',
+    'homeSleepBarNeedLastSleep':
+        'Letzten Schlaf eintragen, um die Leiste zu sehen',
     'homeTipTitle': 'Tipp für heute',
     'homeTipBody': 'Sanfte Routinen helfen {name}, nachts besser zu schlafen.',
-    'summaryFeedings': 'MAHIZEITEN',
+    'homeGreetingSubtitle': 'Schön, dich heute hier zu sehen!',
+    'summaryWeightNotYet': 'Noch nicht eingetragen',
+    'summarySleepNotYet': 'Heute noch kein Schlaf eingetragen',
+    'shortcutMilkHomeSub': 'Mahlzeit eintragen',
+    'shortcutGrowthHomeSub': 'Gewicht und Größe eintragen',
+    'shortcutSleepHomeSub': 'Schlaf eintragen',
+    'homeTileDiapers': 'Windelwechsel',
+    'homeOneDayOld': '1 Tag',
+    'homeDaysOld': '{d} Tage',
+    'babyAgeOneWeek': '1 Woche',
+    'babyAgeWeeks': '{n} Wochen',
+    'babyAgeOneMonth': '1 Monat',
+    'babyAgeMonths': '{n} Monate',
+    'babyAgeOneYear': '1 Jahr',
+    'babyAgeYears': '{n} Jahre',
+    'summaryFeedings': 'MAHLZEITEN',
     'summarySleep': 'SCHLAF GESAMT',
     'summaryLastFeed': 'Letzte um {time}',
     'summaryLastSleep': 'Letzter um {time}',
+    'summaryDiapers': 'WINDELN',
+    'summaryFeedingsValue': '{n} · {m} Min.',
+    'summaryFeedingsCountOne': '1 Mahlzeit',
+    'summaryFeedingsCountMany': '{n} Mahlzeiten',
+    'summaryFeedingsMinutes': '{m} Min.',
+    'summaryDiapersValue': 'Gesamt {total} · Pipi {pee} · Stuhl {poo}',
+    'summaryDiapersTotal': 'Gesamt {total} Wechsel',
+    'summaryDiapersChangesOne': '1 Wechsel',
+    'summaryDiapersChangesMany': '{n} Wechsel',
+    'summaryDiapersPeePoo': '{pee} - Pipi    {poo} - Stuhl',
+    'summarySleepValue': '{s} · {t}',
+    'summarySleepSessionsOne': '1 Nickerchen',
+    'summarySleepSessionsMany': '{s} Nickerchen',
+    'summaryWeight': 'GEWICHT',
+    'homeSummaryExtraHint': 'Summen des ausgewählten Tages',
+    'add': 'Hinzufügen',
+    'labelWeight': 'Gewicht',
+    'labelHeight': 'Größe',
+    'labelHead': 'Kopfumfang',
+    'growthTabWeight': 'Gewicht',
+    'growthTabHeight': 'Größe',
+    'growthTabHead': 'Kopf',
+    'growthTabSummary': 'Zusammenfassung',
+    'growthAtBirth': 'Bei Geburt',
+    'growthCardCurrent': 'Aktuell',
+    'growthCardChange': 'Änderung',
+    'growthAddWeight': 'Gewicht hinzufügen',
+    'growthAddHeight': 'Größe hinzufügen',
+    'growthAddHead': 'Kopfumfang hinzufügen',
+    'growthSummaryIntro': 'Übersicht über Gewicht und Größe.',
+    'growthChartCaption': '{name} — {metric}',
+    'growthChartDeltaHint':
+        'Vertikale Achse: Änderung gegenüber dem Geburtswert (0 = Geburt).',
+    'growthHistoryTitle': '{label} (Verlauf)',
+    'invalidGrowthValue': 'Gib einen gültigen Wert für {label} ein.',
+    'growthSaved': '{label} erfolgreich gespeichert.',
+    'growthEmpty': 'Noch keine Einträge für {label}.',
+    'notifyGrowthWeightDownTitle': 'Gewicht niedriger als zuvor',
+    'notifyGrowthWeightDownBody':
+        'Der letzte Gewichtseintrag liegt unter dem vorherigen. Wende dich bei Unsicherheit an den Kinderarzt.',
+    'notifyGrowthStaleTitle': 'Seit einiger Zeit kein Wachstumseintrag',
+    'notifyGrowthStaleBody':
+        'Seit der letzten Wachstumsmessung (Gewicht, Größe oder Kopfumfang) sind mehr als 30 Tage vergangen. Es sind {days} Tage — füge einen neuen Eintrag hinzu.',
+    'reportDailyScreenTitle': 'Tagesbericht',
+    'reportDayDetailsTitle': 'Tagesdetails',
+    'reportDailyPickDayTooltip': 'Tag wählen',
+    'reportDailySubtitleSleepQuality': 'Schlafqualität',
+    'reportDailySubtitleTotalSleep': 'Gesamtschlaf',
+    'reportDailySubtitleLongestStretch': 'Längste durchgehende Phase',
+    'reportDailySubtitleFeedTotal': 'Mahlzeiten gesamt',
+    'reportDailySubtitleFeedAvg': 'Durchschnittsdauer',
+    'reportDailySubtitleFeedLast': 'Letzte Mahlzeit',
+    'reportDailySubtitleDiaperTotal': 'Wechsel gesamt',
+    'reportDailySubtitleDiaperWet': 'Nasse Windeln',
+    'reportDailySubtitleDiaperDirty': 'Schmutzige Windeln',
+    'reportDailySubtitleMoodMajority': 'Meiste Zeit',
+    'reportDailySubtitleMoodIrrit': 'Reizbarkeit',
+    'reportDailySubtitleWeightLast': 'Letzte Messung',
+    'reportSleepQualityGood': 'Gut',
+    'reportSleepQualityOk': 'Ok',
+    'reportSleepQualityBad': 'Fragil',
+    'reportSleepQualityMixed': 'Gemischt',
+    'reportVsYesterdayShort': 'vs gestern',
+    'reportVsYesterdayNA': '—',
+    'reportVsYesterdayPct': '{pct}%',
+    'reportLongestStretchHint': '{start} – {end}',
+    'reportNapsLabel': 'Nickerchen',
+    'reportTotalSmallLabel': 'Gesamt',
+    'reportComparedAgeLabel': 'Verglichen mit dem Altersdurchschnitt',
+    'reportBenchmarkAbove': 'Über dem Durchschnitt',
+    'reportBenchmarkNear': 'Nahe am Durchschnitt',
+    'reportBenchmarkBelow': 'Unter dem Durchschnitt',
+    'reportIrritLow': 'Niedrig',
+    'reportIrritMedium': 'Mittel',
+    'reportIrritHigh': 'Hoch',
+    'reportIrritUnknown': 'Keine Daten',
+    'reportTabSleep': 'Schlaf',
+    'reportTabFeedings': 'Mahlzeiten',
+    'reportTabDiapers': 'Windeln',
+    'reportTabMood': 'Stimmung',
+    'reportAiInsightsTitle': 'Insights',
+    'reportTimelineTitle': 'Tagesverlauf',
+    'reportShareSoon': 'Teilen (bald)',
+    'reportFeedingChartCaption': 'Mahlzeiten pro Stunde',
+    'reportSleepChartCaption': 'Schlaf pro Stunde',
+    'reportNoDataHint': 'Nicht genug Daten für diese Kennzahl.',
+    'reportInsightSleepAgeGood':
+        'Der Gesamtschlaf liegt nahe am typischen Bereich für dieses Alter — ein gutes Zeichen für Erholung.',
+    'reportInsightSleepAgeLow':
+        'Der Schlaf lag unter dem üblichen Bereich für dieses Alter; achte auf Müdigkeitssignale und Abendroutine.',
+    'reportInsightFeedsOften':
+        'Viele Mahlzeiten am Tag — häufig bei Wachstumsschüben; die Dauer hilft beim Erkennen von Durchschnittswerten.',
+    'reportInsightDiapersFrequent':
+        'Häufige Windelwechsel — Hydration kann gut sein oder die Haut braucht Pflege.',
+    'reportInsightMoodLine': 'Überwiegende Stimmung in Erinnerungen: {mood}.',
+    'reportWeeklyScreenTitle': 'Wochenbericht',
+    'reportWeekDetailsTitle': 'Wochendetails',
+    'reportWeeklyPickWeekTooltip': 'Woche wählen (beliebiger Tag)',
+    'reportWeeklySummaryTitle': 'Wochenübersicht',
+    'reportWeeklyTrendsTitle': 'Trends',
+    'reportWeeklySeeFullDetails': 'Vollständigen Bericht ansehen',
+    'reportWeeklyPartialWeekHint':
+        'Durchschnitte und Trends: Montag bis {weekday} (laufende Woche).',
+    'reportWeeklyFutureWeekHint':
+        'Diese Woche hat im Kalender noch nicht begonnen — wähle eine andere Woche.',
+    'reportWeeklyLoadErrorPrefix': 'Bericht konnte nicht geladen werden:',
+    'reportWeeklyToneCalm': 'ruhige',
+    'reportWeeklyToneActive': 'bewegte',
+    'reportWeeklySleepUnknown':
+        'Nicht genug Schlafdaten für den Wochenvergleich.',
+    'reportWeeklyFirstWeekSleepLine':
+        'Dies ist die erste Woche mit Einträgen — weiter protokollieren, damit Trends sichtbar werden.',
+    'reportWeeklySleepStableShort':
+        'Der Schlaf blieb gegenüber der Vorwoche stabil.',
+    'reportWeeklySleepUp':
+        'Der Schlaf verbesserte sich um etwa {pct}% gegenüber der Vorwoche.',
+    'reportWeeklySleepDown':
+        'Der Schlaf sank um etwa {pct}% gegenüber der Vorwoche.',
+    'reportWeeklyFeedStableLine': 'Die Mahlzeiten blieben regelmäßig.',
+    'reportWeeklyFeedUp':
+        'Die täglichen Mahlzeiten stiegen im Schnitt um etwa {pct}%.',
+    'reportWeeklyFeedDown':
+        'Die täglichen Mahlzeiten sanken im Schnitt um etwa {pct}%.',
+    'reportWeeklyHeroTemplate':
+        '{name} hatte eine {tone} Woche! {sleep} {feed}',
+    'reportWeeklyTrendLabelImproved': 'Verbessert',
+    'reportWeeklyTrendLabelWorse': 'Schlechter',
+    'reportWeeklyTrendLabelStable': 'Stabil',
+    'reportWeeklyTrendLabelUnknown': '—',
+    'reportWeeklyTrendLabelEvolving': 'Entwickelt sich',
+    'reportWeeklyTrendLabelIncreased': 'Gestiegen',
+    'reportWeeklyTrendNA': '—',
+    'reportWeeklyHighlightSleep':
+        'Positiv: erholsamerer Schlaf in dieser Woche.',
+    'reportWeeklyHighlightFeedingStable':
+        'Positiv: stabiler Ernährungsrhythmus.',
+    'reportWeeklyHighlightDiaperUp':
+        'Hinweis: mehr Wechsel — Hydration oder Verdauung aktiver.',
+    'reportWeeklyHighlightWeight': 'Positiv: gesunde Gewichtszunahme.',
+    'reportWeeklyHighlightGeneric': 'Weiter protokollieren für klarere Trends.',
+    'reportWeeklyAvgFeedsDay': 'Tagesdurchschnitt: {avg} Mahlzeiten.',
+    'reportWeeklyAvgDiapersDay': 'Tagesdurchschnitt: {avg} Wechsel.',
+    'reportWeeklySleepHoursChartTitle': 'Schlafstunden pro Tag',
+    'reportWeeklyAvgWeekLabel': 'Wochendurchschnitt',
+    'reportWeeklyVsPrevWeekShort': 'vs Vorwoche',
+    'reportWeeklyInsightsCardTitle': 'KI-Insights',
+    'reportWeeklyPatternsTitle': 'Erkannte Muster',
+    'reportWeeklySeeAllAnalyses': 'Alle Analysen ansehen',
+    'reportWeeklyHeatmapSoon': 'Optionale Stunden-Heatmap kommt bald.',
+    'reportWeeklyFeedChartCaption': 'Mahlzeiten pro Tag',
+    'reportWeeklyDiaperChartCaption': 'Wechsel pro Tag',
+    'reportWeeklyPatternWeekend':
+        'Am Wochenende dehnt sich der Schlaf oft etwas aus.',
+    'reportWeeklyPatternFeedingDown':
+        'Weniger Mahlzeiten im Schnitt — häufig, wenn Intervalle länger werden.',
+    'reportWeeklyPatternDefault':
+        'Das Wochenmuster wirkt stabil — passe Routinen nach Bedarf an.',
+    'reportWeeklyInsightSleepNeutral':
+        'Der Schlaf war ähnlich wie in der Vorwoche.',
+    'reportWeeklyInsightSleepBetter':
+        'Mehr Schlaf als letzte Woche — ein gutes Zeichen.',
+    'reportWeeklyInsightSleepLess':
+        'Der Gesamtschlaf sank gegenüber letzter Woche — nachts beobachten.',
+    'reportWeeklyInsightTemplate': '{name}: {sleep}',
+    'reportMonthlyScreenTitle': 'Monatsbericht',
+    'reportMonthlyAvgWeight': 'Durchschnittsgewicht',
+    'reportMonthlyAvgHeight': 'Durchschnittsgröße',
+    'reportMonthlyGrowthChartEmpty':
+        'Füge diesen Monat mindestens zwei Gewichtseinträge hinzu, um das Diagramm zu sehen.',
+    'reportMonthlySleepSection': 'Schlaf',
+    'reportMonthlySleepAvg': 'Monatsdurchschnitt (pro Tag)',
+    'reportMonthlyVsPrevMonth': 'vs Vormonat',
+    'reportMonthlyBestWeeks': 'Wochen mit dem meisten Schlaf',
+    'reportMonthlySleepTrendUp':
+        'Gesamttrend: mehr erholsamer Schlaf in diesem Monat.',
+    'reportMonthlySleepTrendDown':
+        'Gesamttrend: weniger Gesamtschlaf als im Vormonat.',
+    'reportMonthlySleepTrendStable':
+        'Gesamttrend: stabiler Schlaf im Monatsverlauf.',
+    'reportMonthlySleepTrendUnknown':
+        'Nicht genug Daten für den Vergleich mit dem Vormonat.',
+    'reportMonthlySleepExplain':
+        'Der Durchschnitt pro Tag addiert alle Schlafsessions des Monats und teilt durch die Anzahl der Kalendertage.',
+    'reportMonthlyFeedingSection': 'Ernährung',
+    'reportMonthlyFeedFreq': 'Durchschnittliche Häufigkeit (Mahlzeiten/Tag)',
+    'reportMonthlyFeedingExplain':
+        'Die durchschnittliche Häufigkeit ist die Summe der Still- oder Fläschcheneinträge im Monat geteilt durch die Kalendertage.',
+    'reportMonthlyPredominantHours': 'Häufigste Zeiten (Ende der Mahlzeit)',
+    'reportMonthlyMemoriesTitle': 'Erinnerungen dieses Monats',
+    'reportMonthlySeeAllMemories': 'Alle anzeigen',
+    'reportMonthlyMemoriesEmpty':
+        'Keine Fotos in Erinnerungen für diesen Monat.',
+    'reportMonthlyVideosHint':
+        'Videos erscheinen, wenn sie in Momenten gespeichert sind.',
+    'reportSleepAdvScreenTitle': 'Schlafbericht',
+    'reportSleepAdvScoreTitle': 'Schlafscore',
+    'reportSleepAdvMetricsTitle': 'Wochenkennzahlen',
+    'reportSleepAdvEfficiency': 'Schlafeffizienz',
+    'reportSleepAdvVsPrevPct': 'Effizienzänderung: {pct}% (vs Vorwoche)',
+    'reportSleepAdvOnset': 'Zeit bis zum ersten Nachtschlaf',
+    'reportSleepAdvAwakenings': 'Aufwachen pro Nacht (Ø)',
+    'reportSleepAdvAwakeningsTotal': 'Aufwachen diese Woche: {n}',
+    'reportSleepAdvLongest': 'Längste durchgehende Phase',
+    'reportSleepAdvAvgDailySleep': 'Durchschnittlicher Schlaf pro Tag',
+    'reportSleepAdvIdealTitle': 'Beste Einschlafzeit',
+    'reportSleepAdvIdealFooter':
+        'Fenster aus deinen Einträgen geschätzt (kein medizinischer Rat).',
+    'reportSleepAdvSeeFullAnalysis': 'Vollständige Analyse ansehen',
+    'reportSleepAdvChartsSection': 'Schlafsession',
+    'reportSleepAdvChartsSleepTrend': 'Schlafrhythmus (diese Woche)',
+    'reportSleepAdvChartsCompare': 'Vergleich mit der Vorwoche',
+    'reportSleepAdvChartsDistribution': 'Tag und Nacht (Wochensumme)',
+    'reportSleepAdvChartsBars': 'Schlafvolumen: diese Woche vs vorherige',
+    'reportSleepAdvDayPhase': 'Tagschlaf (6–18 Uhr)',
+    'reportSleepAdvNightPhase': 'Nachtschlaf (18–6 Uhr)',
+    'reportSleepAdvDistributionEmpty': 'Keine Daten zur Verteilung.',
+    'reportSleepAdvLegendThisWeek': 'Diese Woche',
+    'reportSleepAdvLegendPrevWeek': 'Vorwoche',
+    'reportSleepAdvScoreBreakdown': 'Was der Score abbildet',
+    'reportSleepAdvBreakdownLine':
+        'Effizienz: {e} Pkt. • Lange Phasen: {s} Pkt. • Aufwachen: {a} Pkt. • Regelmäßigkeit: {c} Pkt.',
+    'reportSleepAdvNotEnoughData':
+        'Noch wenige Einträge diese Woche — Werte sind Richtwerte.',
+    'reportSleepAdvStatusExcellent': 'Ausgezeichnet',
+    'reportSleepAdvStatusGood': 'Gut',
+    'reportSleepAdvStatusRegular': 'Regelmäßig',
+    'reportSleepAdvStatusPoor': 'Fragil',
+    'reportSleepAdvBadgeVeryGood': 'Sehr gut',
+    'reportSleepAdvBadgeGood': 'Gut',
+    'reportSleepAdvBadgeOk': 'Moderat',
+    'reportSleepAdvBadgeAttention': 'Beobachten',
+    'reportSleepAdvBadgeIdeal': 'Ideal',
+    'reportSleepAdvBadgeUnknown': 'Keine Daten',
+    'reportSleepAdvBadgeLow': 'Niedrig',
+    'reportSleepAdvBadgeModerate': 'Moderat',
+    'reportSleepAdvBadgeHigh': 'Hoch',
+    'alertsScreenIntro':
+        'Wähle, welche Erinnerungen FaceBaby senden darf. Alle Benachrichtigungen bleiben lokal auf diesem Gerät.',
+    'alertsExactAlarmAndroidTitle': 'Berechtigung für genaue Alarme (Android)',
+    'alertsExactAlarmAndroidBody':
+        'Damit Erinnerungen pünktlich ankommen, erlaube FaceBaby in den Systemeinstellungen genaue Alarme / „Alarme & Erinnerungen“. Ohne diese Berechtigung kann Android Benachrichtigungen verzögern oder überspringen.',
+    'alertsExactAlarmAndroidOpenSettings': 'Einstellungen öffnen',
+    'alertsSectionFeeding': 'Ernährung',
+    'alertsRuleFeeding':
+        'Wenn aktiviert, plant die App eine lokale Benachrichtigung nach dem gewählten Intervall seit der letzten Still- oder Fläschchenmahlzeit.',
+    'alertsSectionDiaper': 'Windel',
+    'alertsRuleDiaper':
+        'Die App schlägt etwa 3 h 30 nach dem letzten gespeicherten Wechsel eine Erinnerung vor. Ein neuer Wechsel plant sie neu.',
+    'alertsSectionSleep': 'Schlaf',
+    'alertsRuleSleep':
+        'Mit dem Ende des letzten gespeicherten Schlafs und dem Alter des Babys kann die App Erinnerungen rund um das Wachfenster planen.',
+    'alertsSectionGrowth': 'Wachstum und Messungen',
+    'alertsRuleGrowth':
+        'Benachrichtigt, wenn das neueste Gewicht unter dem vorherigen liegt oder mehr als 30 Tage keine Messung gespeichert wurde.',
+    'alertsTestTitle': 'Benachrichtigungen testen',
+    'alertsTestBody':
+        'Löst eine sofortige Benachrichtigung aus und plant eine weitere in etwa 30 Sekunden. Nützlich, um zu prüfen, ob das System App-Benachrichtigungen zustellt.',
+    'alertsTestRun': 'Test auslösen',
+    'alertsTestResync': 'Neuplanung erzwingen (echte Erinnerungen)',
+    'alertsTestImmediateTitle': 'FaceBaby — Soforttest',
+    'alertsTestImmediateBody':
+        'Wenn du diese Nachricht siehst, funktioniert der Sofortkanal.',
+    'alertsTestScheduledTitle': 'FaceBaby — geplanter Test',
+    'alertsTestScheduledBody':
+        'Diese Benachrichtigung wurde über AlarmManager geplant (~30 s).',
+    'alertsTestAllScheduleModesFailed': 'AlarmManager hat alle Modi abgelehnt',
+    'alertsTestSentOk':
+        'Gesendet. Du solltest jetzt die sofortige und in ~30 s die geplante Benachrichtigung erhalten.',
+    'alertsTestFailed': 'Fehlgeschlagen: {errors}',
+    'sleepToggleAlertsSubtitle':
+        'Erinnerungen basierend auf dem letzten Schlafende und dem Alter des Babys.',
+    'diaperToggleAlerts': 'Windel-Erinnerungen',
+    'diaperToggleAlertsSubtitle':
+        'Benachrichtigung rund um den empfohlenen nächsten Wechsel.',
+    'healthGrowthToggleAlerts': 'Wachstumsalarme',
+    'healthGrowthToggleAlertsSubtitle': 'Gewichts- und Messpausen-Hinweise.',
+    'feedingScreenAlertsHint': 'Zum Ändern der Zeit öffne Mehr › Alarme.',
+    'sleepNotifTitle': 'Schlaf',
+    'sleepNotifBeforeBody':
+        'Es könnte ein guter Moment sein, das Baby schlafen zu legen.',
+    'sleepNotifOverdueBody':
+        'Dein Baby könnte müde sein — versuche, den Schlaf ruhig einzuleiten.',
+    'sleepNotifWakeOverdueBodyMale':
+        'Er schläft schon seit mehr als {hours} Std., schau bitte nach ihm, Mama.',
+    'sleepNotifWakeOverdueBodyFemale':
+        'Sie schläft schon seit mehr als {hours} Std., schau bitte nach ihr, Mama.',
+    'notifChannelRemindersName': 'Erinnerungen',
+    'notifChannelRemindersDesc': 'Alarme für Ernährung, Windeln und Schlaf.',
+    'notifChannelGrowthName': 'Wachstum',
+    'notifChannelGrowthDesc':
+        'Alarme zu Gewicht und längeren Pausen bei Messungen.',
     'exampleCard': 'Beispiel-Impfheft:',
   },
   AppLang.it: {
@@ -5571,15 +8364,92 @@ const Map<AppLang, Map<String, String>> _strings = {
     'shortcuts': 'Scorciatoie',
     'registerNow': 'Registra ora',
     'edit': 'Modifica',
+    'delete': 'Elimina',
+    'cancel': 'Annulla',
+    'confirmDelete': 'Sei sicura di voler eliminare questo registro?',
+    'deletedOk': 'Eliminato correttamente.',
+    'deleteFail': 'Impossibile eliminare:',
     'todaySummary': 'Riepilogo di oggi',
     'nextEvents': 'Prossimi eventi',
     'quickRecordsTitle': 'Registri rapidi',
     'quickRecordsSubtitle': 'Aggiungi la routine del bimbo in pochi tocchi.',
+    'feedingAlertsSwitchTitle': 'Avviso alimentazione',
+    'feedingAlertsSwitchSubtitle':
+        'Avvisa quando è passato l’intervallo impostato dall’ultima poppata o biberon.',
+    'feedingAlertsIntervalCaption':
+        'Ricorda dopo l’ultima poppata: {m} min (20–360)',
+    'feedingAlertsShortcutTitle': 'Avviso alimentazione',
+    'scheduledFeedingReminderBody':
+        'È il momento del promemoria per la poppata. Tocca per registrare.',
+    'scheduledDiaperReminderTitle': 'Cambio pannolino',
+    'scheduledDiaperReminderBody':
+        'È passato il tempo suggerito dall’ultimo cambio. Tocca per registrare.',
     'whatHappenedNow': 'Cosa è successo ora?',
     'momNote': 'Nota della mamma',
     'saveRecord': 'Salva',
     'reportsTitle': 'Report',
     'reportsSubtitle': 'Un riepilogo per la mamma e il pediatra.',
+    'reportsHubAnchorLabel': 'Riferimento',
+    'reportsHubPickDayTooltip': 'Scegli il giorno di riferimento per i report',
+    'reportsHubSectionTitle': 'Report disponibili',
+    'reportStubComingSoon':
+        'Questo report si aggiornerà automaticamente con i dati dell’app per il periodo selezionato.',
+    'reportListDaily': 'Report giornaliero',
+    'reportListDailySub': 'Riepilogo e dettagli del giorno selezionato',
+    'reportListWeekly': 'Report settimanale',
+    'reportListWeeklySub':
+        'Riepilogo e dettagli della settimana del giorno selezionato',
+    'reportListMonthly': 'Report mensile',
+    'reportListMonthlySub': 'Aggregati mensili del mese del giorno selezionato',
+    'reportListSleepAdv': 'Report avanzato del sonno',
+    'reportListSleepAdvSub': 'Pattern e metriche del sonno',
+    'reportListDevelopment': 'Report di sviluppo',
+    'reportListDevelopmentSub': 'Traguardi e salti di sviluppo',
+    'plusBrandTitle': 'FaceBaby Premium',
+    'plusSheetHero':
+        'Un unico gesto per sempre: PDF eleganti, libro dei ricordi, più foto in bacheca, backup nel cloud e strumenti che rendono più leggera la giornata della mamma.',
+    'plusSheetPriceLabel': 'Pagamento unico',
+    'plusSheetBullets':
+        '• Report in PDF (sonno, routine, crescita)\n• Libro dei ricordi in PDF\n• Esporta badge (PNG / PDF)\n• Backup cloud tra telefoni\n• Più ricordi e foto\n• Insight intelligenti nei report\n• Report per il pediatra\n• Statistiche avanzate\n• Temi premium del libro',
+    'plusCtaSubscribe': 'Sblocca per sempre',
+    'plusCtaRestore': 'Ripristina acquisti',
+    'plusCtaLater': 'Non ora',
+    'plusSheetFootnote':
+        'Acquisto unico elaborato da Google Play o App Store. Dalle impostazioni dell’account puoi ripristinarlo su un altro telefono.',
+    'plusWelcomeSnack':
+        'Grazie per aver scelto FaceBaby Premium — i ricordi del bimbo sono ancora più al sicuro.',
+    'plusPurchaseUnavailableSnack':
+        'Impossibile avviare l’acquisto. Controlla il prodotto nello store o riprova più tardi.',
+    'plusPurchaseSkuNotFoundSnack':
+        'Google Play non ha restituito il prodotto "{id}". Nel Play Console crea un prodotto in-app gestito attivo con questo ID esatto, oppure usa --dart-define=FACEBABY_PREMIUM_SKU=… nella build.',
+    'plusPurchaseBillingLaunchFailedSnack':
+        'Impossibile aprire il pagamento su Google Play. Installa l’app dal test interno/chiuso o dallo store, usa un account tester e riprova.',
+    'plusPaywallSkuMissingHint':
+        'Prezzo dello store ancora non disponibile per "{id}". Controlla che il prodotto sia attivo nel Play Console o attendi la sincronizzazione.',
+    'plusRestoreOkSnack': 'Acquisti ripristinati correttamente.',
+    'plusRestoreEmptySnack':
+        'Non abbiamo trovato un acquisto precedente su questo account.',
+    'plusSnackLockedFeature': 'Incluso in FaceBaby Premium.',
+    'plusMemoryLimitSnack':
+        'Nel piano gratuito puoi salvare fino a {max} momenti con foto o testo. Premium apre spazio per molti più ricordi.',
+    'plusReportsLockedHint': 'Report FaceBaby Premium',
+    'plusExportLockedHint': 'Esportazione FaceBaby Premium',
+    'plusLifetimePaymentBadge': 'Pagamento unico',
+    'plusNoMonthlyBadge': 'Nessun abbonamento mensile',
+    'plusPremiumActiveTitle': 'Grazie per Premium',
+    'plusPremiumActiveBody':
+        'Hai tutte le funzioni premium attive per sempre su questo dispositivo. Puoi ripristinare gli acquisti su un altro telefono quando serve.',
+    'plusPurchaseErrorSnack':
+        'Qualcosa è andato storto. Riprova o usa Ripristina acquisti.',
+    'plusDoneClose': 'Chiudi',
+    'settingsPlusCardTitle': 'FaceBaby Premium',
+    'settingsPlusCardBodyFree':
+        'PDF, libro dei ricordi, più foto, backup cloud, report per il pediatra e statistiche avanzate — con un unico pagamento.',
+    'settingsPlusCardBodyActive':
+        'FaceBaby Premium è attivo — grazie per sostenere il progetto.',
+    'settingsPlusUpgradeCta': 'Sblocca Premium',
+    'settingsPlusManageCta': 'Vedi Premium',
+    'plusMemoryCounterFree': '{n} di {max} momenti nel piano gratuito',
     'growth': 'Crescita',
     'pediatricReport': 'Report pediatrico',
     'pediatricReportDesc':
@@ -5606,8 +8476,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'symptomReportReflux': 'Reflusso',
     'symptomReportOther': 'Altro',
     'symptomReportOtherHint': 'Breve descrizione',
-    'symptomReportValidationNeedOne': 'Seleziona almeno un sintomo o compila un campo.',
-    'symptomReportValidationFeverTemp': 'Inserisci la temperatura se segni la febbre.',
+    'symptomReportValidationNeedOne':
+        'Seleziona almeno un sintomo o compila un campo.',
+    'symptomReportValidationFeverTemp':
+        'Inserisci la temperatura se segni la febbre.',
     'symptomReportDeleteTitle': 'Eliminare la voce?',
     'symptomReportDeleteBody': 'Questa azione non può essere annullata.',
     'reportPediatricScreenTitle': 'Report pediatrico',
@@ -5635,12 +8507,14 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricAvgFeeds': 'Pasti/alimentazioni al giorno (media)',
     'reportPediatricAvgSleep': 'Sonno al giorno (media)',
     'reportPediatricAvgDiapers': 'Cambi pannolino al giorno (media)',
-    'reportPediatricFeverEpisodes': 'Episodi di febbre (registrazione strutturata)',
+    'reportPediatricFeverEpisodes':
+        'Episodi di febbre (registrazione strutturata)',
     'reportPediatricFeverNote': 'Nota',
     'reportPediatricFeverFootnote':
         'Conteggio dalle registrazioni strutturate in Salute › Segnala sintomo (con temperatura se indicata).',
     'reportPediatricVaccines': 'Vaccini nel periodo',
-    'reportPediatricMedications': 'Farmaci (registrazioni e parole chiave nelle note)',
+    'reportPediatricMedications':
+        'Farmaci (registrazioni e parole chiave nelle note)',
     'reportPediatricSleepAvgDaily': 'Sonno medio giornaliero',
     'reportPediatricSleepAwakenings': 'Risvegli notturni (media)',
     'reportPediatricSleepPattern': 'Andamento generale del sonno',
@@ -5664,7 +8538,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricNo': 'No',
     'reportPediatricNa': '—',
     'reportPediatricJournalNote': 'Diari del giorno',
-    'reportPediatricJournalNoteHint': 'Rilevamento parole chiave nel testo libero.',
+    'reportPediatricJournalNoteHint':
+        'Rilevamento parole chiave nel testo libero.',
     'reportPediatricObsHint':
         'Note per la visita: sintomi, farmaci, cambiamenti di comportamento…',
     'reportPediatricBtnShare': 'Condividi',
@@ -5680,21 +8555,544 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricPdfFooter':
         'Generato in FaceBaby. Contenuto limitato ai dati su questo dispositivo (anche offline).',
     'reportPediatricFeverDisclaimerShort': '0',
+    'reportPediatricSymptomFromJournal': 'citato nel diario (senza orario)',
     'reportPediatricSymptomCrying': 'Pianto senza causa (registrazioni)',
     'reportPediatricSymptomPain': 'Dolore (registrazioni)',
     'reportPediatricStructuredSymptoms': 'Registrazioni sintomi (data e ora)',
-    'reportPediatricStructuredSymptomsEmpty': 'Nessuna registrazione strutturata in questo periodo.',
+    'reportPediatricStructuredSymptomsEmpty':
+        'Nessuna registrazione strutturata in questo periodo.',
+    'reportDevScreenTitle': 'Sviluppo',
+    'reportDevSubtitle': 'Traguardi delicati da seguire al ritmo del bimbo.',
+    'reportDevScoreTitle': 'Punteggio di sviluppo',
+    'reportDevScoreStatusOnTrack': 'Nel range previsto',
+    'reportDevScoreStatusWatch': 'Spazio per far sbocciare nuove abilità',
+    'reportDevScoreStatusEarly': 'Cresce al suo dolce ritmo',
+    'reportDevSectionMotor': 'Sviluppo motorio',
+    'reportDevSectionCognitive': 'Sviluppo cognitivo',
+    'reportDevSectionSocial': 'Sociale ed emotivo',
+    'reportDevAchieved': 'In linea',
+    'reportDevGrowing': 'In sviluppo',
+    'reportDevInsightTitle': 'Insight delicato',
+    'reportDevSeeAllMarcos': 'Vedi tutti i traguardi',
+    'reportDevFootnote':
+        'I traguardi sono guide generali; ogni bimbo è diverso. In caso di dubbi, chiedi al pediatra.',
+    'reportDevNeedBirth':
+        'Aggiungi la data di nascita del bimbo per vedere questo report.',
+    'devReport_motor_head': 'Tiene su la testa',
+    'devReport_motor_roll': 'Si gira (es. da pancia in giù a schiena)',
+    'devReport_motor_sit': 'Sta seduto (con o senza supporto)',
+    'devReport_motor_crawl': 'Gattona o si muove su mani e ginocchia',
+    'devReport_motor_walk': 'Fa passi / cammina con supporto',
+    'devReport_cog_faces': 'Riconosce volti familiari',
+    'devReport_cog_sounds': 'Risponde a suoni e voci',
+    'devReport_cog_track': 'Segue oggetti con gli occhi',
+    'devReport_cog_babble': 'Lallazione o vocalizzi',
+    'devReport_cog_visual': 'Mantiene il contatto visivo nel gioco',
+    'devReport_soc_smile': 'Sorriso sociale',
+    'devReport_soc_emotion_resp': 'Risposte emotive ai caregiver',
+    'devReport_soc_family': 'Interazione con la famiglia vicina',
+    'devReport_soc_emotion_react': 'Reazioni emotive alle situazioni',
+    'devReportInsightNewborn':
+        'Nei primi giorni, legame e sicurezza contano più di tutto — ogni piccolo segnale è importante.',
+    'devReportInsightOnTrack':
+        'Ciò che vediamo qui rientra nei pattern comuni per bimbi di questa età.',
+    'devReportInsightVariety':
+        'È normale che le abilità arrivino un po’ prima o un po’ dopo.',
+    'devReportInsightPatience':
+        'Alcuni traguardi stanno ancora maturando — tummy time, voce e gioco dolce aiutano.',
+    'devReportInsightBalanced':
+        'Celebra le piccole conquiste; calore e routine delicate sono stimoli potenti.',
     'generatePdf': 'Genera PDF',
     'reportMonthlyMilestonesTitle': 'Traguardi del mese',
-    'reportMonthlyMilestonesEmpty': 'Nessun vaccino, visita o ricordo con badge questo mese.',
+    'reportMonthlyMilestonesEmpty':
+        'Nessun vaccino, visita o ricordo con badge questo mese.',
     'reportMonthlyMilestoneConsultationDefault': 'Visita',
+    'memoriesProgressSaved': '{filled} di {total} momenti salvati',
+    'memoriesCheerEmpty': 'Tocca un badge con + per aggiungere foto e storie.',
+    'memoriesAlbumPromoTitle': 'Il tuo libro dei ricordi completo',
+    'memoriesAlbumPromoSubtitle':
+        'Scarica un PDF elegante con copertina FaceBaby, cornice decorativa e tutti i badge compilati — perfetto da conservare o condividere.',
+    'memoriesAlbumDownloadCta': 'Scarica album PDF',
+    'memoriesAlbumGenerating': 'Creazione dell’album…',
+    'memoriesAlbumNeedFilled':
+        'Compila almeno un momento nell’album per generare il PDF.',
+    'memoriesAlbumError': 'Impossibile generare il PDF.',
+    'memoriesAlbumPdfReadyTitle': 'Album PDF pronto',
+    'memoriesAlbumShareAction': 'Condividi…',
+    'memoriesAlbumSaveAction': 'Salva / scarica',
+    'memoriesAlbumSavedSnack': 'PDF salvato sul dispositivo.',
+    'memoriesAlbumSaveFailedSnack': 'Impossibile salvare il PDF.',
+    'memoriesAlbumCoverMain': 'Libro dei ricordi',
+    'memoriesAlbumCoverTagline': 'Momenti speciali con {name}',
+    'memoriesAlbumFooter': 'Creato con FaceBaby',
+    'memoryBadgeMonthOne': '1 mese',
+    'memoryBadgeMonthsMany': '{n} mesi',
+    'memoryBadgeYearOne': '1 anno',
+    'memoryBadgeYearsMany': '{n} anni',
+    'memoryBadgeMonthUnitSingular': 'mese',
+    'memoryBadgeMonthUnitPlural': 'mesi',
+    'badge_arrived_home': 'Finalmente a casa',
+    'badge_first_smile': 'Primo sorriso',
+    'badge_first_feeding': 'Prima poppata',
+    'badge_sleeping': 'Dormendo',
+    'badge_bath_time': 'Ora del bagnetto',
+    'badge_going_out': 'Prima passeggiata',
+    'badge_first_laugh': 'Prima risata',
+    'badge_found_hands': 'Ha scoperto le manine',
+    'badge_lifted_head': 'Ha sollevato la testa',
+    'badge_at_park': 'Al parco',
+    'badge_first_hug': 'Primo abbraccio',
+    'badge_first_foods': 'Primi alimenti',
+    'badge_first_bath': 'Primo bagnetto',
+    'badge_crib_sleep': 'Primo sonnellino nella culla',
+    'badge_first_diaper_change': 'Primo cambio pannolino',
+    'badge_first_burp': 'Primo ruttino',
+    'badge_first_mom_cuddle': 'Prime coccole con mamma',
+    'badge_first_dad_cuddle': 'Prime coccole con papà',
+    'badge_first_pediatrician': 'Prima visita pediatrica',
+    'badge_first_vaccine': 'Primo vaccino',
+    'badge_first_car_ride': 'Primo viaggio in auto',
+    'badge_first_stroller_ride': 'Prima uscita in passeggino',
+    'badge_favorite_toy': 'Gioco preferito',
+    'badge_first_night_home': 'Prima notte a casa',
+    'badge_first_giggle': 'Prima risatina',
+    'badge_sun_bath': 'Primo bagnetto di sole',
+    'badge_first_christmas': 'Primo Natale',
+    'badge_first_new_year': 'Primo Capodanno',
+    'badge_first_mothers_day': 'Prima Festa della mamma',
+    'badge_first_fathers_day': 'Prima Festa del papà',
+    'badge_first_tooth': 'Primo dentino',
+    'badge_first_puree': 'Prima pappa',
+    'badge_sat_alone': 'Seduto da solo',
+    'badge_crawled': 'Ha gattonato',
+    'badge_stood_up': 'Si è alzato in piedi',
+    'badge_first_steps': 'Primi passi',
+    'badge_first_word': 'Prima parola',
+    'badge_favorite_song': 'Canzone preferita',
+    'badge_first_trip': 'Primo viaggio',
+    'badge_family_birthday': 'Primo compleanno in famiglia',
+    'badge_first_beach': 'Prima giornata al mare',
+    'badge_first_pool': 'Prima piscina',
+    'badge_first_haircut': 'Primo taglio di capelli',
+    'badge_first_shoes': 'Prime scarpine',
+    'badge_special_outfit': 'Look speciale',
+    'badge_first_friend': 'Primo amichetto',
+    'badge_first_party': 'Prima festa',
+    'badge_first_cartoon': 'Primo cartone animato',
+    'badge_first_book': 'Primo libro',
+    'badge_special_free': 'Momento speciale',
+    'homeBannerChipVaccine': 'Vaccino oggi',
+    'homeMotivationBanner':
+        'Stai facendo un ottimo lavoro! Piccoli registri, grandi ricordi.',
+    'homeMotivationBannerOpenMemories': 'Apri il libro dei ricordi',
+    'healthHubTitle': 'Salute',
+    'healthHubIntro': 'Vaccini, visite e cure del bimbo in un unico posto.',
+    'healthHubSection': 'Accesso rapido',
+    'healthHubVaccines': 'Libretto vaccinale',
+    'healthHubVaccinesSub': 'Registra e controlla i vaccini del bimbo',
+    'vaccDueConfirmCheckbox':
+        'Confermo che questa dose è già stata somministrata.',
+    'vaccDueSavedOk': 'Vaccino registrato come somministrato.',
+    'vaccDuePickTitle': 'Vaccini previsti per oggi',
+    'homeSummaryHealthStripTitle': 'Vaccini e visite in questo giorno',
+    'homeSummaryHealthStripEmpty':
+        'Nessun vaccino o visita registrati per questo giorno.',
+    'weeklyPhotoPublicExplainer':
+        'Quando lo rendi pubblico, questo ricordo potrà partecipare alla Foto della settimana ed essere visto da altre mamme in FaceBaby.',
+    'weeklyPhotoPublicOff': 'Privato',
+    'weeklyPhotoPublicOn': 'Pubblico',
+    'weeklyPhotoPublicNeedPhoto':
+        'Aggiungi una foto per rendere pubblico questo ricordo.',
+    'weeklyPhotoConfirmTitle': 'Rendere pubblico questo ricordo?',
+    'weeklyPhotoConfirmBody':
+        'Questa foto potrà essere scelta come Foto della settimana e mostrata ad altre mamme nell’app. Puoi rimuovere questa opzione quando vuoi.',
+    'weeklyPhotoConfirmCancel': 'Annulla',
+    'weeklyPhotoConfirmOk': 'Rendi pubblica',
+    'weeklyPhotoParticipatingBadge': 'Partecipa alla Foto della settimana',
+    'weeklyPhotoWinnerBadge':
+        'Questo ricordo è stato scelto come Foto della settimana 💜',
+    'weeklyPhotoShowBabyFirstName':
+        'Mostra il nome del bimbo nella bacheca pubblica',
+    'weeklyPhotoDisclaimerFooter':
+        'Partecipano solo le foto segnate come pubbliche. Puoi rimuovere questa opzione in qualsiasi momento.',
+    'weeklyPhotoSectionTitleMale': 'Principe della settimana',
+    'weeklyPhotoSectionTitleFemale': 'Principessa della settimana',
+    'weeklyPhotoHomeHeroMale': 'PRINCIPE DELLA SETTIMANA',
+    'weeklyPhotoHomeHeroFemale': 'PRINCIPESSA DELLA SETTIMANA',
+    'weeklyPhotoSectionSubtitle':
+        'Un ricordo speciale condiviso da una mamma FaceBaby.',
+    'weeklyPhotoViewMemory': 'Vedi ricordo',
+    'weeklyPhotoBabyFallback': 'Un bimbo FaceBaby',
+    'weeklyPhotoDisclaimerShort':
+        'Partecipano solo le foto segnate come pubbliche. Puoi rimuovere questa opzione in qualsiasi momento.',
+    'weeklyPhotoPublicDetailAppBar': 'Ricordo della settimana',
+    'weeklyPhotoWinnerCongratsTitle': 'Congratulazioni, Mamma!',
+    'weeklyPhotoWinnerCongratsBody':
+        'La foto della tua Principessa è stata scelta per questa settimana! Festeggiamola tutti insieme.\n\nLa famiglia FaceBaby ti ringrazia per aver condiviso questo bellissimo momento con noi! 💜',
+    'weeklyPhotoWinnerCongratsBodyMale':
+        'La foto del tuo Principe è stata scelta per questa settimana! Festeggiamolo tutti insieme.\n\nLa famiglia FaceBaby ti ringrazia per aver condiviso questo bellissimo momento con noi! 💜',
+    'weeklyPhotoWinnerCongratsBodyFemale':
+        'La foto della tua Principessa è stata scelta per questa settimana! Festeggiamola tutti insieme.\n\nLa famiglia FaceBaby ti ringrazia per aver condiviso questo bellissimo momento con noi! 💜',
+    'weeklyPhotoWinnerCongratsOk': 'Conferma',
+    'commonCouldNotSave': 'Impossibile salvare.',
+    'commonSaving': 'Salvataggio…',
+    'commonSave': 'Salva',
+    'commonSelect': 'Seleziona',
+    'commonBack': 'Indietro',
+    'commonAdvance': 'Avanti',
+    'commonClose': 'Chiudi',
+    'commonName': 'Nome',
+    'commonPhone': 'Telefono',
+    'openingGallery': 'Apertura galleria…',
+    'memoriesPhotoError': 'Impossibile selezionare la foto.',
+    'memoriesTodayTitle': 'Ricordi di oggi',
+    'memoriesTodayAsk': 'Hai già aggiunto la foto di oggi?',
+    'memoriesNotYet': 'Non ancora',
+    'memoriesAddPhotoDialog': 'Aggiungi foto',
+    'memoriesAlreadyPostedToday': 'Hai già aggiunto la foto di oggi.',
+    'memoriesWallEmpty':
+        'La tua bacheca è ancora vuota. Aggiungi la prima foto del giorno!',
+    'memoriesHighlights': 'In evidenza',
+    'memoriesWallSection': 'Bacheca',
+    'memoryTellMomentTitle': 'Racconta questo momento',
+    'memoryTellMomentHint':
+        'Com’è stato? Condividi i dettagli che vuoi conservare…',
+    'memoryBabyInfoOptionalTitle': 'Info bimbo (opzionale)',
+    'memoryBabyMoodLabel': 'Umore/stato',
+    'memoryBabyMoodHint': 'Es.: Felice',
+    'memoryMomentInfoTitle': 'Informazioni sul momento',
+    'memoryStatAgeLabel': 'Età',
+    'memoryStatWeightLabel': 'Peso',
+    'memoryStatHeightLabel': 'Altezza',
+    'memoryStatMoodLabel': 'Com’era',
+    'memoryMotherNotesLabel': 'Note della mamma',
+    'memoryTipForYouTitle': 'Un consiglio per te',
+    'memoryShareButton': 'Condividi',
+    'memoryFavoriteButton': 'Preferito',
+    'memoryFavoritedButton': 'Nei preferiti',
+    'memoryEditTitle': 'Modifica ricordo',
+    'memoryNewTitle': 'Nuovo ricordo',
+    'memoryMomNotesFieldLabel': 'Osservazioni della mamma',
+    'memorySaveChanges': 'Salva modifiche',
+    'memorySaveNew': 'Salva ricordo',
+    'memoryNoDescription': 'Ancora nessuna descrizione per questo momento.',
+    'memoryPhotoAddTitle': 'Aggiungi una foto',
+    'memoryPhotoEditTitle': 'Cambia la foto',
+    'memoryTapToPickPhoto': 'Tocca',
+    'memoryAgeHintExample': 'Es.: 10 giorni',
+    'memoryWeightHintExample': 'Es.: 3,28',
+    'memoryHeightHintExample': 'Es.: 49',
+    'memorySaveNeedPhotoOrText':
+        'Aggiungi una foto o scrivi una descrizione per salvare.',
+    'memorySaveFail': 'Impossibile salvare:',
+    'memoryShareWebOnlyMobile':
+        'La condivisione di immagine o PDF è disponibile nell’app installata (Android/iOS).',
+    'memoryShareSheetJpegTitle': 'Immagine (JPG)',
+    'memoryShareSheetJpegSubtitle':
+        'Scegli WhatsApp, email, Bluetooth… dal foglio di sistema',
+    'memoryShareSheetPdfTitle': 'PDF (una pagina)',
+    'memoryShareSheetPdfSubtitle': 'Comodo per email o archivio',
+    'memorySharePlatformUnavailable': 'Non disponibile su questa piattaforma.',
+    'memoryShareError': 'Impossibile condividere: {error}',
+    'memoryFooterBranding': 'FaceBaby • Libro dei ricordi',
+    'memoryTipFirstSmile':
+        'Il sorriso è uno dei primi modi per creare legame. Continua a parlargli e sorridergli!',
+    'memoryTipFirstLaugh':
+        'La risata rafforza il legame. Ripeti i giochi che fanno ridere il bimbo.',
+    'memoryTipFirstFeeding':
+        'I primi giorni di allattamento sono un adattamento. Se hai dubbi, chiedi supporto al pediatra o a una consulente.',
+    'memoryTipFirstSteps':
+        'Ogni bimbo ha il suo ritmo. Offri uno spazio sicuro e incoraggia senza pressione.',
+    'memoryTipDefault':
+        'Momenti così restano per sempre nella memoria della famiglia. Continua a registrare ciò che conta.',
+    'memoryAgeOneDay': '1 giorno',
+    'memoryAgeManyDays': '{n} giorni',
     'memoriesTitle': 'Libro dei ricordi',
     'memoriesSubtitle': 'Momenti importanti da conservare.',
     'addMemory': 'Aggiungi ricordo',
     'settingsTitle': 'Altro',
+    'dailyJournalTitle': 'Riepilogo giornaliero',
+    'dailyJournalPickDay': 'Scegli giorno',
+    'dailyJournalOnDate': 'Riepilogo del {d}',
+    'dailyJournalHint': 'Scrivi qui il riepilogo della giornata…',
+    'dailyJournalSave': 'Salva riepilogo',
+    'dailyJournalSaving': 'Salvataggio riepilogo…',
+    'dailyJournalSaved': 'Riepilogo salvato.',
+    'dailyJournalNoBaby':
+        'Crea/seleziona un bimbo per usare il riepilogo giornaliero.',
     'registerMotherBaby': 'Registrazione (mamma e bimbo)',
     'vaccinesCard': 'Vaccini (libretto)',
     'language': 'Lingua',
+    'unitsTitle': 'Unità di misura',
+    'unitsIntro':
+        'Scegli come visualizzare le misure. Partiamo da un valore automatico in base alla regione del dispositivo.',
+    'unitsLengthTitle': 'Unità di lunghezza',
+    'unitsLengthSubtitle': 'Altezza, circonferenza e misure in generale.',
+    'unitsWeightTitle': 'Unità di peso',
+    'unitsWeightSubtitle': 'Peso del bimbo e registrazioni correlate.',
+    'unitsLiquidTitle': 'Unità per liquidi',
+    'unitsLiquidSubtitle': 'Volume (es.: biberon e altri).',
+    'unitsTempTitle': 'Unità di temperatura',
+    'unitsTempSubtitle': 'Temperatura corporea e ambiente.',
+    'unitsOptCm': 'cm',
+    'unitsOptInch': 'in',
+    'unitsOptKg': 'kg',
+    'unitsOptLb': 'lb',
+    'unitsOptSt': 'st',
+    'unitsOptMl': 'ml',
+    'unitsOptUkFloz': 'uk fl oz',
+    'unitsOptUsFloz': 'us fl oz',
+    'unitsOptC': '°C',
+    'unitsOptF': '°F',
+    'authLoginTitle': 'Accedi',
+    'authWelcome': 'Benvenuta',
+    'authEmailLabel': 'Email',
+    'authPasswordLabel': 'Password',
+    'authForgotPassword': 'Password dimenticata',
+    'authSignIn': 'Accedi',
+    'authSigningIn': 'Accesso...',
+    'authSignInGoogle': 'Accedi con Google',
+    'authSignInApple': 'Accedi con Apple',
+    'authSignInEmail': 'Accedi con email',
+    'authAppleSignInPlaceholder':
+        'L’accesso con Apple sarà configurato più avanti.',
+    'authCreateAccount': 'Crea account',
+    'authForgotDialogTitle': 'Password dimenticata',
+    'authForgotDialogBody':
+        'Ti invieremo via email un link per reimpostare la password.',
+    'authForgotSend': 'Invia',
+    'authResetEmailSentSnackbar': 'Email inviata. Controlla la posta.',
+    'authRegisterAppBarTitle': 'Crea account',
+    'authRegisterTitle': 'Registrati',
+    'authRegisterNameLabel': 'Nome (come vuoi essere chiamata)',
+    'authRegisterPasswordLabel': 'Password',
+    'authRegisterSubmit': 'Crea account',
+    'authRegisterCreating': 'Creazione...',
+    'authValEmailRequired': 'Inserisci la tua email',
+    'authValEmailInvalid': 'Email non valida',
+    'authValPasswordRequired': 'Inserisci la password',
+    'authValPasswordMin6': 'Almeno 6 caratteri',
+    'authValNameRequired': 'Inserisci il tuo nome',
+    'authValNameShort': 'Nome troppo corto',
+    'authErrWeakPassword': 'Password debole. Usa almeno 6 caratteri.',
+    'authErrInvalidEmail': 'Email non valida.',
+    'authErrUserDisabled': 'Questo account è stato disattivato.',
+    'authErrUserNotFound': 'Nessun account trovato per questa email.',
+    'authErrWrongPassword': 'Password errata.',
+    'authErrEmailInUse': 'Esiste già un account con questa email.',
+    'authErrInvalidCredential': 'Credenziali non valide. Riprova.',
+    'authErrCredentialsGeneric': 'Impossibile accedere. Riprova.',
+    'authErrGoogleConfigAndroid':
+        'Accesso Google non riuscito per configurazione dell’app (errore 10).\n\n'
+            '1) Firebase: impostazioni progetto → app Android → aggiungi SHA-1 del debug keystore.\n'
+            '2) Nella cartella android esegui: gradlew signingReport e copia lo SHA-1 "debug".\n'
+            '3) Authentication → abilita provider Google.\n'
+            '4) Scarica di nuovo google-services.json in android/app/.',
+    'authErrLoginCancelled': 'Accesso annullato.',
+    'authErrAppleFailed':
+        'Impossibile accedere con Apple. Riprova o usa un altro metodo.',
+    'authErrAppleUnavailable':
+        'Accedi con Apple è disponibile solo su iPhone o iPad.',
+    'authErrUnexpected': 'Qualcosa è andato storto.',
+    'onbSelectDate': 'Seleziona data',
+    'onbBabyFallback': 'bebè',
+    'onbMomFallback': 'mamma',
+    'onbDadFallback': 'papà',
+    'onbWelcomeTitle': 'Accompagnando e monitorando',
+    'onbWelcomeSubtitle': 'lo sviluppo con Amore.',
+    'onbFeatureSleep': 'Sonno',
+    'onbFeatureFeeding': 'Alimentazione',
+    'onbFeatureGrowth': 'Crescita',
+    'onbFeatureMemories': 'Ricordi',
+    'onbFeatureAlerts': 'Avvisi',
+    'onbFeatureLove': 'Tanto Amore',
+    'onbCreateBabyProfile': 'Crea profilo del bebè',
+    'onbExistingAccountLogin': 'Ho già un account / Accedi',
+    'onbContinue': 'Continua',
+    'onbPrepareFaceBaby': 'Prepara FaceBaby',
+    'onbPreparingTitle': 'Stiamo preparando FaceBaby per te...',
+    'onbPreparingSubtitle':
+        'Personalizziamo avvisi, ricordi e routine del bebè.',
+    'onbAuthTitle': 'Il profilo di base è pronto',
+    'onbAuthSubtitle':
+        'Ora crea il tuo account per salvare tutto in sicurezza e sincronizzare dopo.',
+    'onbSignInGoogle': 'Accedi con Google',
+    'onbSignInApple': 'Accedi con Apple',
+    'onbContinueEmail': 'Continua con email',
+    'onbAlreadyHaveAccount': 'Ho già un account',
+    'onbWait': 'Attendi...',
+    'onbDoneTitle': 'Fatto! Il profilo del bebè è stato creato.',
+    'onbStartTracking': 'Inizia a seguire',
+    'onbCouldNotPrepare':
+        'Non è stato possibile preparare il profilo ora. Riprova.',
+    'onbBabyNameTitle': 'Come si chiama il bebè?',
+    'onbBabyNameSubtitle': 'Rendiamo FaceBaby più vicino alla tua famiglia.',
+    'onbBabyNameHint': 'Nome del bebè',
+    'onbBabyBirthTitle': 'Qual è la data di nascita?',
+    'onbBabyBirthSubtitle':
+        'Usiamo l’età per personalizzare sonno, routine e crescita.',
+    'onbBabyWeightTitle': 'Qual è il peso del bebè?',
+    'onbBabyWeightSubtitle':
+        'Trascina il righello per scegliere. Puoi alternare tra Kg e Lb.',
+    'onbBabyHeightTitle': 'Qual è l’altezza del bebè?',
+    'onbBabyHeightSubtitle':
+        'Usa il righello per indicare la misura approssimativa nell’unità che preferisci.',
+    'onbMotherNameTitle': 'Come si chiama la mamma?',
+    'onbMotherNameSubtitle': 'Useremo il suo nome nelle prossime domande.',
+    'onbMotherNameHint': 'Nome della mamma',
+    'onbMotherBirthTitle': 'Qual è la data di nascita della mamma?',
+    'onbMotherBirthSubtitle': 'Dopo chiederemo la sua altezza.',
+    'onbMotherHeightTitle': 'Qual è l’altezza di {name}?',
+    'onbMotherHeightSubtitle':
+        'Questa informazione aiuta nei report di crescita.',
+    'onbRegisterFatherTitle': 'Vuoi registrare anche il papà?',
+    'onbRegisterFatherSubtitle':
+        'Se vuoi, FaceBaby personalizza anche i dati del papà.',
+    'onbFatherNameTitle': 'Come si chiama il papà?',
+    'onbFatherNameSubtitle': 'Così anche il suo righello sarà personalizzato.',
+    'onbFatherNameHint': 'Nome del papà',
+    'onbFatherBirthTitle': 'Qual è la data di nascita del papà?',
+    'onbFatherBirthSubtitle': 'Dopo chiederemo la sua altezza.',
+    'onbFatherHeightTitle': 'Qual è l’altezza di {name}?',
+    'onbFatherHeightSubtitle':
+        'Può essere approssimativa, potrai modificarla dopo.',
+    'onbBabySexTitle': 'Qual è il sesso del bebè?',
+    'onbSexGirl': 'Bambina',
+    'onbSexBoy': 'Bambino',
+    'onbSexUnknown': 'Preferisco non dirlo',
+    'onbFirstBabyTitle': 'È il tuo primo bebè?',
+    'onbYes': 'Sì',
+    'onbNo': 'No',
+    'onbConcernTitle': 'Qual è la tua preoccupazione principale ora?',
+    'onbConcernSubtitle': 'Puoi sceglierne più di una.',
+    'onbConcernSleep': 'Sonno del bebè',
+    'onbConcernFeeding': 'Allattamento/alimentazione',
+    'onbConcernGrowth': 'Peso e crescita',
+    'onbConcernRoutine': 'Routine quotidiana',
+    'onbConcernMemories': 'Ricordi e foto',
+    'onbConcernDevelopment': 'Sviluppo',
+    'onbGoalsTitle': 'Quali sono i tuoi obiettivi?',
+    'onbGoalsSubtitle': 'Lo useremo per personalizzare la tua esperienza.',
+    'onbGoalRoutine': 'Seguire meglio la routine',
+    'onbGoalSleepAlerts': 'Ricevere avvisi sul sonno',
+    'onbGoalMoments': 'Registrare momenti speciali',
+    'onbGoalReports': 'Generare report',
+    'onbGoalMemoryBook': 'Creare libro dei ricordi',
+    'onbDragToAdjust': 'Trascina per regolare',
+    'onbEmailSheetTitle': 'Crea account con email',
+    'onbYourNameHint': 'Il tuo nome',
+    'onbEmailHint': 'Email',
+    'onbPasswordHint': 'Password',
+    'onbCreateAccount': 'Crea account',
+    'onbValYourName': 'Inserisci il tuo nome.',
+    'onbValEmailRequired': 'Inserisci la tua email.',
+    'onbValEmailInvalid': 'Email non valida.',
+    'onbValPasswordMin': 'Usa almeno 6 caratteri.',
+    'regAppBarTitle': 'Registrazione',
+    'regLetsStart': 'Iniziamo',
+    'regSubtitleMandatory': 'Dati principali per personalizzare FaceBaby.',
+    'regSubtitleOptional': 'Questi dati aiutano nei report e nelle stime.',
+    'regStepMother': 'Mamma',
+    'regStepBaby': 'Bimbo',
+    'regMotherSection': 'Dati della mamma',
+    'regBabySection': 'Dati del bimbo',
+    'regBirthLabel': 'Data di nascita',
+    'regMotherHeight': 'Altezza della mamma',
+    'regFatherHeight': 'Altezza del papà',
+    'fatherPhotoTitle': 'Foto del papà',
+    'regFatherPhotoAdd': 'Aggiungi foto del papà',
+    'regFatherPhotoChange': 'Cambia foto del papà',
+    'regMotherPhotoAdd': 'Aggiungi foto della mamma',
+    'regMotherPhotoChange': 'Cambia foto della mamma',
+    'regBabyPhotoAdd': 'Aggiungi foto del bimbo',
+    'regBabyPhotoChange': 'Cambia foto del bimbo',
+    'regSaveMotherAdvance': 'Salva e continua',
+    'regSaveBaby': 'Salva bimbo',
+    'regSelectMotherPrompt': 'Seleziona la mamma',
+    'regMotherLabel': 'Mamma',
+    'regBabyGirl': 'Bimba',
+    'regBabyBoy': 'Bimbo',
+    'regZodiacLine': 'Segno: {sign}',
+    'regBabyWeight': 'Peso del bimbo',
+    'regRegisteredList': 'Registrati',
+    'regNoneYet': 'Ancora nessun registro.',
+    'regBabyPrompt': 'Dati del bimbo',
+    'regPromptBabyName': 'Nome del bimbo di {mom}',
+    'regMomGeneric': 'Mamma',
+    'regMomWithName': 'Mamma {name}',
+    'regListBaby': 'Bimbo: {name}',
+    'regListBirth': 'Nascita: {date}',
+    'regListSign': 'Segno: {sign}',
+    'regListPhone': 'Telefono: {phone}',
+    'regSavingMother': 'Salvataggio mamma…',
+    'regSavingBaby': 'Salvataggio bimbo…',
+    'regSnackMotherBirth': 'Inserisci la data di nascita della mamma.',
+    'regSnackMotherOk': 'Dati della mamma salvati.',
+    'regSnackSelectMother': 'Seleziona una mamma per continuare.',
+    'regSnackBabyBirth': 'Inserisci la data di nascita del bimbo.',
+    'regSnackPickMother': 'Scegli prima la mamma.',
+    'regSnackBabyOk': 'Dati del bimbo salvati.',
+    'valNameEmpty': 'Inserisci il nome.',
+    'valNameShort': 'Nome troppo corto.',
+    'valPhoneEmpty': 'Inserisci il telefono.',
+    'valPhoneInvalid': 'Telefono non valido.',
+    'valHeightEmpty': 'Inserisci l’altezza.',
+    'valHeightInvalid': 'Altezza non valida.',
+    'valHeightMotherRange': 'Controlla l’altezza della mamma.',
+    'valFatherHeightEmpty': 'Inserisci l’altezza del papà.',
+    'valWeightEmpty': 'Inserisci il peso.',
+    'valWeightInvalid': 'Peso non valido.',
+    'valWeightRange': 'Controlla il peso inserito.',
+    'valBabyHeightRange': 'Controlla l’altezza del bimbo.',
+    'placeholderBabyName': 'Nome del bimbo',
+    'termsLoadError': 'Impossibile caricare i termini.',
+    'settingsInviteShareText':
+        'Prova FaceBaby — routine e ricordi del bimbo in un unico posto.\nhttps://play.google.com/store/apps/details?id=com.facebaby.app',
+    'settingsPremiumBenefitsTitle': 'Vantaggi FaceBaby Premium',
+    'settingsPremiumBannerHint':
+        'Tocca per vedere cosa è incluso nel tuo piano.',
+    'settingsRateCouldNotOpen':
+        'Impossibile aprire lo store. Riprova più tardi.',
+    'settingsMotherProfile': 'Il mio profilo',
+    'profileEditMother': 'Modifica dati della mamma',
+    'profileEditFather': 'Modifica dati del papà',
+    'profileEditBaby': 'Modifica dati del bimbo',
+    'profileDataSaved': 'Salvato.',
+    'profileEditData': 'Modifica dati',
+    'settingsBabyData': 'Dati del bimbo',
+    'settingsAlerts': 'Avvisi',
+    'settingsPrivacy': 'Privacy',
+    'settingsSaaS': 'Piano SaaS futuro',
+    'contactTitle': 'Contatto',
+    'contactIntro':
+        'Invia un messaggio via email. Apriremo la tua app email con i campi già compilati.',
+    'contactFieldName': 'Nome',
+    'contactFieldEmail': 'Email',
+    'contactFieldAge': 'Età',
+    'contactFieldMessage': 'Messaggio',
+    'contactSend': 'Invia',
+    'contactEmailSubject': 'Contatto app',
+    'contactBodyName': 'Nome:',
+    'contactBodyEmail': 'Email:',
+    'contactBodyAge': 'Età:',
+    'contactBodyMessage': 'Messaggio:',
+    'contactCouldNotOpenEmail': 'Impossibile aprire l’app email.',
+    'contactValidationRequired': 'Campo obbligatorio.',
+    'contactValidationEmail': 'Inserisci un’email valida.',
+    'contactValidationAge': 'Inserisci un’età valida.',
+    'motherProfileTabMother': 'Mamma',
+    'motherProfileTabFather': 'Papà',
+    'motherProfileTabBabies': 'Bimbi',
+    'motherProfileFieldFatherName': 'Nome',
+    'motherProfileNoData': 'Nessun profilo trovato. Riprova tra poco.',
+    'motherProfileSectionInfo': 'Info',
+    'motherProfileFieldPhone': 'Telefono',
+    'motherProfileFieldBirth': 'Data di nascita',
+    'motherProfileFieldHeight': 'Altezza',
+    'motherProfileFieldFatherHeight': 'Altezza del papà',
+    'motherProfileAddBaby': 'Aggiungi un altro bimbo',
+    'motherProfileNoBabies': 'Nessun bimbo trovato per questo profilo.',
+    'motherProfileBabyBornAt': 'Nato il: {date}',
     'settingsSoonTitle': 'In arrivo',
     'settingsSoonBadge': 'Presto',
     'settingsRateUs': 'Valutaci',
@@ -5714,6 +9112,54 @@ const Map<AppLang, Map<String, String>> _strings = {
     'motherPhotoTitle': 'Foto della mamma',
     'babyPhotoTitle': 'Foto del bimbo',
     'changeBabyTooltip': 'Cambia bimbo',
+    'notificationsInboxTitle': 'Notifiche',
+    'notificationsInboxSubtitle':
+        'Ultimi 3 giorni (inviate e programmate, registrate nell’app)',
+    'notificationsEmpty': 'Nessuna notifica registrata in questo periodo.',
+    'notificationsKindShown': 'Inviata',
+    'notificationsKindScheduled': 'Programmata',
+    'notificationsOpenTarget': 'Tocca per aprire',
+    'notificationsSelectAll': 'Seleziona tutto',
+    'deleteAccountTitle': 'Elimina account',
+    'deleteAccountBody':
+        'Questo eliminerà il tuo account e TUTTI i dati (mamma, bimbo e registri) dal cloud.\n\nQuesta azione non può essere annullata.',
+    'deleteAccountConfirm': 'Elimina tutto',
+    'deleteAccountDeleting': 'Eliminazione account...',
+    'deleteAccountSuccess': 'Account eliminato correttamente.',
+    'deleteAccountReauthTitle': 'Conferma identità',
+    'deleteAccountReauthBody':
+        'Per sicurezza serve un’ulteriore verifica. Usa lo stesso metodo di accesso che usi di solito — poi completeremo l’eliminazione.',
+    'deleteAccountReauthPasswordHint': 'Password attuale',
+    'deleteAccountReauthGoogle': 'Conferma con Google',
+    'deleteAccountReauthContinue': 'Conferma password',
+    'deleteAccountReauthCantPassword':
+        'Usa il pulsante del provider con cui hai creato l’account (es. Google).',
+    'deleteAccountTypeWordTitle': 'Conferma finale',
+    'deleteAccountTypeWordInstruction':
+        'Per eliminare definitivamente l’account, digita la parola elimina esattamente come mostrato nel campo sotto.',
+    'deleteAccountTypeWordFieldLabel': 'elimina',
+    'homeBabyBannerForecastSleep': 'Previsione sonno',
+    'homeBabyBannerForecastWake': 'Previsione risveglio',
+    'homeBabyBannerForecastSubtitleSleep':
+        'Segnali di sonno rilevati\nin base all’ora attuale',
+    'homeBabyBannerForecastSubtitleWake':
+        'In base all’ora attuale e al modello per età',
+    'homeBabyBannerEtaIn': 'tra {d}',
+    'homeBabyBannerLastDiaper': 'Ultimo pannolino',
+    'homeBabyBannerNoRecordsYet': 'Nessun registro',
+    'homeBabyBannerNextBetween': 'Prossimo tra {range}',
+    'homeBabyBannerDiaperRecommendedUntil': 'Cambio consigliato entro {d}',
+    'homeBabyBannerIdealWindow': 'Finestra ideale: {range}',
+    'homeConsultationScheduled': 'Visita programmata',
+    'homeBannerChipConsultation': 'Visita',
+    'homeBannerChipDiaper': 'Pannolino',
+    'homeBannerChipFeed': 'Poppata',
+    'homeBannerChipSleep': 'Sonno',
+    'homeBannerOverdueSleep': 'È passata l’ora di dormire',
+    'homeBannerOverdueWake': 'È passata l’ora di svegliarsi',
+    'homeBannerHungry': 'Potrebbe avere fame',
+    'homeBannerDiaperDirty': 'Potrebbe essere sporco',
+    'homeBannerExhausted': 'STANCO',
     'helloMomNamed': 'Ciao, Mamma {name}!',
     'registerVerb': 'Registra',
     'viewCalendar': 'Vedi calendario',
@@ -5728,12 +9174,629 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeStatusOk': 'Tutto ok',
     'homeStatusWarn': 'Attenzione',
     'homeStatusHungry': 'Potrebbe avere fame',
+    'homeTimeToFeed': 'È ora della poppata!',
+    'homeStatusDetailFed': 'Poppata recente',
+    'homeStatusDetailNear': 'Vicino all’ora della poppata',
+    'homeStatusDetailLate': 'È passato un po’ di tempo',
+    'homePickDayLabel': 'Giorno del riepilogo',
+    'homeTodayLabel': 'Oggi',
+    'homeYesterdayLabel': 'Ieri',
+    'homeSummaryOnDate': 'Riepilogo — {date}',
+    'homeSummaryPickDayTooltip': 'Scegli il giorno del riepilogo',
+    'homeFedAt': 'Poppata alle {time}',
+    'homePeeAt': 'Pipì alle {time}',
+    'homePooAt': 'Pupù alle {time}',
+    'homeDiaperChangeAgo': 'Cambio pannolino {when} fa',
+    'homeDiaperChangeAt': 'Cambio pannolino alle {time}',
+    'homeSleepEndedAgo': 'Ultimo sonno {when} fa',
+    'homeSleepEndedAt': 'Ultimo sonno alle {time}',
+    'homeSleepInProgress': 'Dorme · {elapsed}',
+    'homeSleepPausedBanner': 'Sonno in pausa · {elapsed}',
+    'sleepBannerEmpty': 'Nessun registro di sonno ancora.',
+    'homePastDayBadge': 'Giorno passato',
+    'homePastDayDetail': 'Orari registrati in questo giorno',
+    'homeBannerAlertCheckDiaper': 'Controlla pannolino',
+    'homeBannerAlertTimeToSleep': 'È ora di dormire',
+    'homeBannerAlertSleepingLong': 'Sta dormendo da molto',
+    'homeCriticalCareTitle': 'Cure che richiedono attenzione',
+    'homeCriticalCareCount': '{n} attenzioni richiedono controllo',
+    'homeCriticalFeedingTitle': 'Potrebbe essere ora di mangiare',
+    'homeCriticalSleepTitle': 'Potrebbe essere ora di dormire',
+    'homeCriticalDiaperTitle': 'Potrebbe essere ora di cambiare il pannolino',
+    'homeCriticalFeedingSubtitle':
+        'Potrebbe essere passato il tempo previsto dall’ultima poppata.',
+    'homeCriticalSleepSubtitle':
+        'La finestra di veglia potrebbe essere stata superata.',
+    'homeCriticalDiaperSubtitle':
+        'Potrebbe essere passato un po’ dall’ultimo cambio.',
+    'homeSleepBarAwakeTitle': 'Sveglio · finestra fino al sonno',
+    'homeSleepBarSleepTitle': 'Dorme · durata sessione',
+    'homeFeedingCounterTitle': 'Poppata · tempo al prossimo intervallo',
+    'homeFeedingCounterHint':
+        'Conto alla rovescia (intervallo nei registri rapidi)',
+    'homeSleepBarAwakeHintEarly': '≈ {m} min fino alla finestra ideale',
+    'homeSleepBarAwakeHintIdeal': '≈ {m} min fino alla fine della finestra',
+    'homeSleepBarAwakeHintOverdue': 'Finestra superata · valuta il sonno',
+    'homeSleepBarSleepHint':
+        '{remaining} restanti · limite sessione ~{cap} min',
+    'homeSleepBarNeedLastSleep': 'Registra l’ultimo sonno per vedere la barra',
     'homeTipTitle': 'Suggerimento di oggi',
     'homeTipBody': 'Routine leggere aiutano {name} a dormire meglio la notte.',
+    'homeGreetingSubtitle': 'Che bello vederti qui oggi!',
+    'summaryWeightNotYet': 'Non ancora registrato',
+    'summarySleepNotYet': 'Nessun sonno registrato oggi',
+    'shortcutMilkHomeSub': 'Registra una poppata',
+    'shortcutGrowthHomeSub': 'Registra peso e altezza',
+    'shortcutSleepHomeSub': 'Registra sonno',
+    'homeTileDiapers': 'Cambi pannolino',
+    'homeOneDayOld': '1 giorno',
+    'homeDaysOld': '{d} giorni',
+    'babyAgeOneWeek': '1 settimana',
+    'babyAgeWeeks': '{n} settimane',
+    'babyAgeOneMonth': '1 mese',
+    'babyAgeMonths': '{n} mesi',
+    'babyAgeOneYear': '1 anno',
+    'babyAgeYears': '{n} anni',
     'summaryFeedings': 'POPPIATE',
     'summarySleep': 'SONNO TOTALE',
     'summaryLastFeed': 'Ultima alle {time}',
     'summaryLastSleep': 'Ultimo alle {time}',
+    'summaryDiapers': 'PANNOLINI',
+    'summaryFeedingsValue': '{n} · {m} min',
+    'summaryFeedingsCountOne': '1 poppata',
+    'summaryFeedingsCountMany': '{n} poppate',
+    'summaryFeedingsMinutes': '{m} min',
+    'summaryDiapersValue': 'Totale {total} · Pipì {pee} · Pupù {poo}',
+    'summaryDiapersTotal': 'Totale {total} cambi',
+    'summaryDiapersChangesOne': '1 cambio',
+    'summaryDiapersChangesMany': '{n} cambi',
+    'summaryDiapersPeePoo': '{pee} - Pipì    {poo} - Pupù',
+    'summarySleepValue': '{s} · {t}',
+    'summarySleepSessionsOne': '1 pisolino',
+    'summarySleepSessionsMany': '{s} pisolini',
+    'summaryWeight': 'PESO',
+    'homeSummaryExtraHint': 'Totali del giorno selezionato',
+    'add': 'Aggiungi',
+    'labelWeight': 'Peso',
+    'labelHeight': 'Altezza',
+    'labelHead': 'Circonferenza testa',
+    'growthTabWeight': 'Peso',
+    'growthTabHeight': 'Altezza',
+    'growthTabHead': 'Testa',
+    'growthTabSummary': 'Riepilogo',
+    'growthAtBirth': 'Alla nascita',
+    'growthCardCurrent': 'Attuale',
+    'growthCardChange': 'Variazione',
+    'growthAddWeight': 'Aggiungi peso',
+    'growthAddHeight': 'Aggiungi altezza',
+    'growthAddHead': 'Aggiungi testa',
+    'growthSummaryIntro': 'Panoramica di peso e altezza.',
+    'growthChartCaption': '{name} — {metric}',
+    'growthChartDeltaHint':
+        'Asse verticale: variazione rispetto al valore alla nascita (0 = nascita).',
+    'growthHistoryTitle': '{label} (storico)',
+    'invalidGrowthValue': 'Inserisci un valore valido per {label}.',
+    'growthSaved': '{label} salvato correttamente.',
+    'growthEmpty': 'Nessun registro di {label} ancora.',
+    'notifyGrowthWeightDownTitle': 'Peso più basso del precedente',
+    'notifyGrowthWeightDownBody':
+        'L’ultimo peso registrato è inferiore al precedente. In caso di dubbio, contatta il pediatra.',
+    'notifyGrowthStaleTitle': 'Nessuna misura di crescita da un po’',
+    'notifyGrowthStaleBody':
+        'Sono passati più di 30 giorni dall’ultima misurazione di crescita (peso, altezza o testa). Sono passati {days} giorni — aggiungi una nuova registrazione.',
+    'momNoteHint': 'Es.: ha dormito meglio dopo il bagnetto...',
+    'shortcutDiaper': 'Pannolino',
+    'diaperPagePlaceholder':
+        'Presto potrai registrare i cambi pannolino. Questa sezione è in arrivo.',
+    'shortcutHealth': 'Salute',
+    'shortcutHealthSubtitle': 'Vaccini e visite',
+    'shortcutFeedingSession': 'Alimentazione',
+    'shortcutFeedingSessionSub': 'Poppate e pasti',
+    'vaccineReminderNotifTitle': 'Vaccino',
+    'vaccineReminderNotifBody': 'Vaccino previsto oggi: {name}.',
+    'healthHubConsultations': 'Visite',
+    'healthHubConsultationsSub': 'Pediatra e controlli',
+    'consultationsTitle': 'Visite',
+    'consultationsIntro':
+        'Registra visite con data e ora; appariranno nel riepilogo del giorno in Home.',
+    'consultationsSoonTitle': 'In arrivo',
+    'consultationsComingBody':
+        'Presto potrai registrare visite, allegare note e promemoria di ritorno.',
+    'consultationTitleLabel': 'Motivo o specialità',
+    'consultationNotesHint': 'Note (opzionale)',
+    'consultationWhenLabel': 'Data e ora',
+    'consultationTitleEmpty':
+        'Inserisci il motivo o la specialità della visita.',
+    'consultationPhoneLabel': 'Telefono della clinica',
+    'consultationAddressLabel': 'Indirizzo',
+    'consultationDetailWhen': 'Quando',
+    'consultationDetailPhone': 'Telefono',
+    'consultationDetailAddress': 'Indirizzo',
+    'consultationDetailNotes': 'Note',
+    'consultationReminderNotifTitle': 'Visita in arrivo',
+    'consultationReminderNotifBody': 'Domani · {title} · {when}',
+    'consultationTodayReminderNotifBody': 'Oggi · {title} · {when}',
+    'homeConsultationBannerChip': 'Visita · {title} · {t}',
+    'consultationsEmpty': 'Nessuna visita registrata.',
+    'consultationsDayEmpty': 'Nessuna visita in questo giorno.',
+    'feedingSessionTitle': 'Sessione di alimentazione',
+    'feedingSessionIntro':
+        'La scorciatoia in Home appare dai 7 mesi o se la attivi in Altro.',
+    'feedingSessionSoonTitle': 'Prossimi passi',
+    'feedingSessionSoonBody':
+        'Idee per pasti, foto e riepiloghi giornalieri saranno qui. Per ora usa Registri e il piano del pediatra.',
+    'settingsFeedingEarlyTitle': 'Scorciatoia solidi prima dei 7 mesi',
+    'settingsFeedingEarlySub':
+        'Mostra la scorciatoia “Solidi” in Home anche se il bimbo ha meno di 7 mesi.',
+    'settingsAiMicTitle': 'Assistente vocale (microfono)',
+    'settingsAiMicSub':
+        'Mostra il pulsante del microfono in Home (in lavorazione).',
+    'reportNoWeight': 'Ancora nessun dato di peso.',
+    'reportNoHeight': 'Ancora nessun dato di altezza.',
+    'reportDailyScreenTitle': 'Report giornaliero',
+    'reportDayDetailsTitle': 'Dettagli del giorno',
+    'reportDailyPickDayTooltip': 'Scegli giorno',
+    'reportDailySubtitleSleepQuality': 'Qualità del sonno',
+    'reportDailySubtitleTotalSleep': 'Sonno totale',
+    'reportDailySubtitleLongestStretch': 'Periodo continuo più lungo',
+    'reportDailySubtitleFeedTotal': 'Totale poppate',
+    'reportDailySubtitleFeedAvg': 'Durata media',
+    'reportDailySubtitleFeedLast': 'Ultima poppata',
+    'reportDailySubtitleDiaperTotal': 'Totale cambi',
+    'reportDailySubtitleDiaperWet': 'Pannolini bagnati',
+    'reportDailySubtitleDiaperDirty': 'Pannolini sporchi',
+    'reportDailySubtitleMoodMajority': 'La maggior parte del giorno',
+    'reportDailySubtitleMoodIrrit': 'Irritabilità',
+    'reportDailySubtitleWeightLast': 'Ultima misurazione',
+    'reportSleepQualityGood': 'Buona',
+    'reportSleepQualityOk': 'Ok',
+    'reportSleepQualityBad': 'Fragile',
+    'reportSleepQualityMixed': 'Variabile',
+    'reportVsYesterdayShort': 'vs ieri',
+    'reportVsYesterdayNA': '—',
+    'reportVsYesterdayPct': '{pct}%',
+    'reportLongestStretchHint': '{start} – {end}',
+    'reportNapsLabel': 'Pisolini',
+    'reportTotalSmallLabel': 'Totale',
+    'reportComparedAgeLabel': 'Confrontato con la media per età',
+    'reportBenchmarkAbove': 'Sopra la media',
+    'reportBenchmarkNear': 'Vicino alla media',
+    'reportBenchmarkBelow': 'Sotto la media',
+    'reportIrritLow': 'Bassa',
+    'reportIrritMedium': 'Moderata',
+    'reportIrritHigh': 'Alta',
+    'reportIrritUnknown': 'Nessun dato',
+    'reportTabSleep': 'Sonno',
+    'reportTabFeedings': 'Poppate',
+    'reportTabDiapers': 'Pannolini',
+    'reportTabMood': 'Umore',
+    'reportAiInsightsTitle': 'Insight',
+    'reportTimelineTitle': 'Timeline del giorno',
+    'reportShareSoon': 'Condividi (presto)',
+    'reportFeedingChartCaption': 'Poppate per ora',
+    'reportSleepChartCaption': 'Sonno per ora',
+    'reportNoDataHint': 'Dati insufficienti per questa metrica.',
+    'reportInsightSleepAgeGood':
+        'Il sonno totale è vicino a quanto tipico per l’età — buon segno di riposo.',
+    'reportInsightSleepAgeLow':
+        'Il sonno è sotto il range abituale per questa età; osserva segnali di stanchezza e routine serale.',
+    'reportInsightFeedsOften':
+        'Molte poppate durante il giorno — comune nelle fasi di crescita; registrare la durata aiuta a vedere le medie.',
+    'reportInsightDiapersFrequent':
+        'Cambi pannolino frequenti — idratazione probabilmente buona o pelle da controllare.',
+    'reportInsightMoodLine': 'Umore predominante nei ricordi: {mood}.',
+    'reportWeeklyScreenTitle': 'Report settimanale',
+    'reportWeekDetailsTitle': 'Dettagli della settimana',
+    'reportWeeklyPickWeekTooltip': 'Scegli settimana (qualsiasi giorno)',
+    'reportWeeklySummaryTitle': 'Riepilogo della settimana',
+    'reportWeeklyTrendsTitle': 'Tendenze',
+    'reportWeeklySeeFullDetails': 'Vedi report completo',
+    'reportWeeklyPartialWeekHint':
+        'Medie e tendenze: da lunedì a {weekday} (settimana in corso).',
+    'reportWeeklyFutureWeekHint':
+        'Questa settimana non è ancora iniziata nel calendario — scegli un’altra settimana.',
+    'reportWeeklyLoadErrorPrefix': 'Impossibile caricare il report:',
+    'reportWeeklyToneCalm': 'tranquilla',
+    'reportWeeklyToneActive': 'movimentata',
+    'reportWeeklySleepUnknown':
+        'Dati di sonno insufficienti per confrontare le settimane.',
+    'reportWeeklyFirstWeekSleepLine':
+        'Questa è la prima settimana con registrazioni: continua ad annotare per vedere le tendenze.',
+    'reportWeeklySleepStableShort':
+        'Il sonno è rimasto stabile rispetto alla settimana precedente.',
+    'reportWeeklySleepUp':
+        'Il sonno è migliorato di circa {pct}% rispetto alla settimana precedente.',
+    'reportWeeklySleepDown':
+        'Il sonno è calato di circa {pct}% rispetto alla settimana precedente.',
+    'reportWeeklyFeedStableLine': 'Le poppate sono rimaste regolari.',
+    'reportWeeklyFeedUp':
+        'Le poppate giornaliere sono aumentate di circa {pct}% in media.',
+    'reportWeeklyFeedDown':
+        'Le poppate giornaliere sono diminuite di circa {pct}% in media.',
+    'reportWeeklyHeroTemplate':
+        '{name} ha avuto una settimana {tone}! {sleep} {feed}',
+    'reportWeeklyTrendLabelImproved': 'Migliorato',
+    'reportWeeklyTrendLabelWorse': 'Peggiorato',
+    'reportWeeklyTrendLabelStable': 'Stabile',
+    'reportWeeklyTrendLabelUnknown': '—',
+    'reportWeeklyTrendLabelEvolving': 'In evoluzione',
+    'reportWeeklyTrendLabelIncreased': 'Aumentato',
+    'reportWeeklyTrendNA': '—',
+    'reportWeeklyHighlightSleep':
+        'Aspetto positivo: sonno più riposante questa settimana.',
+    'reportWeeklyHighlightFeedingStable':
+        'Aspetto positivo: ritmo di alimentazione stabile.',
+    'reportWeeklyHighlightDiaperUp':
+        'Nota: più cambi — idratazione o digestione più attiva.',
+    'reportWeeklyHighlightWeight': 'Aspetto positivo: aumento di peso sano.',
+    'reportWeeklyHighlightGeneric':
+        'Continua a registrare per tendenze più chiare.',
+    'reportWeeklyAvgFeedsDay': 'Media giornaliera: {avg} poppate.',
+    'reportWeeklyAvgDiapersDay': 'Media giornaliera: {avg} cambi.',
+    'reportWeeklySleepHoursChartTitle': 'Ore di sonno al giorno',
+    'reportWeeklyAvgWeekLabel': 'Media settimanale',
+    'reportWeeklyVsPrevWeekShort': 'vs settimana precedente',
+    'reportWeeklyInsightsCardTitle': 'Insight IA',
+    'reportWeeklyPatternsTitle': 'Pattern rilevati',
+    'reportWeeklySeeAllAnalyses': 'Vedi tutte le analisi',
+    'reportWeeklyHeatmapSoon': 'Mappa oraria disponibile presto.',
+    'reportWeeklyFeedChartCaption': 'Poppate al giorno',
+    'reportWeeklyDiaperChartCaption': 'Cambi al giorno',
+    'reportWeeklyPatternWeekend':
+        'Nel weekend il sonno tende ad allungarsi un po’.',
+    'reportWeeklyPatternFeedingDown':
+        'Meno poppate in media — comune quando gli intervalli si allungano.',
+    'reportWeeklyPatternDefault':
+        'Il pattern settimanale sembra stabile — adatta la routine al ritmo del bimbo.',
+    'reportWeeklyInsightSleepNeutral':
+        'Il sonno è stato simile alla settimana precedente.',
+    'reportWeeklyInsightSleepBetter':
+        'Più sonno rispetto alla settimana scorsa — buon segno.',
+    'reportWeeklyInsightSleepLess':
+        'Il sonno totale è calato rispetto alla settimana precedente — da osservare.',
+    'reportWeeklyInsightTemplate': '{name}: {sleep}',
+    'reportMonthlyScreenTitle': 'Report mensile',
+    'reportMonthlyAvgWeight': 'Peso medio',
+    'reportMonthlyAvgHeight': 'Altezza media',
+    'reportMonthlyGrowthChartEmpty':
+        'Aggiungi almeno due registrazioni di peso questo mese per vedere il grafico.',
+    'reportMonthlySleepSection': 'Sonno',
+    'reportMonthlySleepAvg': 'Media mensile (al giorno)',
+    'reportMonthlyVsPrevMonth': 'vs mese precedente',
+    'reportMonthlyBestWeeks': 'Settimane con più sonno',
+    'reportMonthlySleepTrendUp':
+        'Tendenza generale: sonno più riposante questo mese.',
+    'reportMonthlySleepTrendDown':
+        'Tendenza generale: meno sonno totale rispetto al mese precedente.',
+    'reportMonthlySleepTrendStable':
+        'Tendenza generale: sonno stabile durante il mese.',
+    'reportMonthlySleepTrendUnknown':
+        'Dati insufficienti per confrontare con il mese precedente.',
+    'reportMonthlySleepExplain':
+        'La media del sonno per giorno somma le sessioni registrate nel mese e divide per i giorni del calendario.',
+    'reportMonthlyFeedingSection': 'Alimentazione',
+    'reportMonthlyFeedFreq': 'Frequenza media (poppate/giorno)',
+    'reportMonthlyFeedingExplain':
+        'La frequenza media è il totale delle poppate o biberon del mese diviso per i giorni del calendario.',
+    'reportMonthlyPredominantHours': 'Orari più comuni (fine poppata)',
+    'reportMonthlyMemoriesTitle': 'Ricordi del mese',
+    'reportMonthlySeeAllMemories': 'Vedi tutto',
+    'reportMonthlyMemoriesEmpty': 'Nessuna foto nei ricordi di questo mese.',
+    'reportMonthlyVideosHint':
+        'I video appariranno quando saranno salvati nei momenti.',
+    'reportSleepAdvScreenTitle': 'Report del sonno',
+    'reportSleepAdvScoreTitle': 'Punteggio sonno',
+    'reportSleepAdvMetricsTitle': 'Metriche della settimana',
+    'reportSleepAdvEfficiency': 'Efficienza del sonno',
+    'reportSleepAdvVsPrevPct':
+        'Variazione efficienza: {pct}% (vs settimana precedente)',
+    'reportSleepAdvOnset': 'Tempo fino al primo sonno notturno',
+    'reportSleepAdvAwakenings': 'Risvegli per notte (media)',
+    'reportSleepAdvAwakeningsTotal': 'Risvegli questa settimana: {n}',
+    'reportSleepAdvLongest': 'Periodo continuo più lungo',
+    'reportSleepAdvAvgDailySleep': 'Sonno medio al giorno',
+    'reportSleepAdvIdealTitle': 'Orario migliore per addormentarsi',
+    'reportSleepAdvIdealFooter':
+        'Finestra stimata dai tuoi dati (non è un consiglio medico).',
+    'reportSleepAdvSeeFullAnalysis': 'Vedi analisi completa',
+    'reportSleepAdvChartsSection': 'Sessione di sonno',
+    'reportSleepAdvChartsSleepTrend': 'Ritmo del sonno (questa settimana)',
+    'reportSleepAdvChartsCompare': 'Confronto con la settimana precedente',
+    'reportSleepAdvChartsDistribution': 'Giorno e notte (totale settimana)',
+    'reportSleepAdvChartsBars':
+        'Volume di sonno: questa settimana vs precedente',
+    'reportSleepAdvDayPhase': 'Sonno diurno (6–18)',
+    'reportSleepAdvNightPhase': 'Sonno notturno (18–6)',
+    'reportSleepAdvDistributionEmpty': 'Nessun dato da distribuire.',
+    'reportSleepAdvLegendThisWeek': 'Questa settimana',
+    'reportSleepAdvLegendPrevWeek': 'Settimana precedente',
+    'reportSleepAdvScoreBreakdown': 'Cosa riflette il punteggio',
+    'reportSleepAdvBreakdownLine':
+        'Efficienza: {e} pt • Tratti lunghi: {s} pt • Risvegli: {a} pt • Regolarità: {c} pt.',
+    'reportSleepAdvNotEnoughData':
+        'Ancora pochi dati questa settimana — valori indicativi.',
+    'reportSleepAdvStatusExcellent': 'Eccellente',
+    'reportSleepAdvStatusGood': 'Buono',
+    'reportSleepAdvStatusRegular': 'Regolare',
+    'reportSleepAdvStatusPoor': 'Fragile',
+    'reportSleepAdvBadgeVeryGood': 'Molto buono',
+    'reportSleepAdvBadgeGood': 'Buono',
+    'reportSleepAdvBadgeOk': 'Moderato',
+    'reportSleepAdvBadgeAttention': 'Da seguire',
+    'reportSleepAdvBadgeIdeal': 'Ideale',
+    'reportSleepAdvBadgeUnknown': 'Nessun dato',
+    'reportSleepAdvBadgeLow': 'Basso',
+    'reportSleepAdvBadgeModerate': 'Moderato',
+    'reportSleepAdvBadgeHigh': 'Alto',
+    'alertsSectionFeeding': 'Alimentazione',
+    'alertsRuleFeeding':
+        'Quando attivo, l’app programma una notifica dopo l’intervallo scelto dall’ultima poppata o biberon.',
+    'alertsSectionDiaper': 'Pannolino',
+    'alertsRuleDiaper':
+        'L’app suggerisce un promemoria circa 3 ore e 30 minuti dopo l’ultimo cambio registrato. Un nuovo cambio lo riprogramma.',
+    'alertsSectionSleep': 'Sonno',
+    'alertsRuleSleep':
+        'Usando la fine dell’ultimo sonno registrato e l’età del bimbo, l’app può programmare avvisi attorno alla finestra di veglia.',
+    'alertsSectionGrowth': 'Crescita e misurazioni',
+    'alertsRuleGrowth':
+        'Avvisa se il peso più recente è sotto il precedente o se passano più di 30 giorni senza misurazioni.',
+    'alertsScreenIntro':
+        'Come funziona ogni promemoria. Puoi cambiare questi interruttori qui o nelle schermate alimentazione, pannolino, sonno e crescita/salute.',
+    'alertsExactAlarmAndroidTitle': 'Avvisi puntuali (Android)',
+    'alertsExactAlarmAndroidBody':
+        'Per ricevere i promemoria all’orario previsto, consenti a FaceBaby di usare sveglie/allarmi esatti nelle impostazioni di sistema. Senza questo permesso Android può ritardare o saltare la notifica.',
+    'alertsExactAlarmAndroidOpenSettings': 'Apri impostazioni',
+    'alertsTestTitle': 'Test notifiche',
+    'alertsTestBody':
+        'Invia una notifica ora e ne programma un’altra tra 30 secondi. Utile per confermare che il sistema sta consegnando le notifiche dell’app.',
+    'alertsTestRun': 'Esegui test',
+    'alertsTestResync': 'Forza riprogrammazione (promemoria reali)',
+    'alertsTestImmediateTitle': 'FaceBaby — test immediato',
+    'alertsTestImmediateBody':
+        'Se vedi questo messaggio, il canale immediato funziona.',
+    'alertsTestScheduledTitle': 'FaceBaby — test programmato',
+    'alertsTestScheduledBody':
+        'Questo è stato programmato con AlarmManager (~30s).',
+    'alertsTestAllScheduleModesFailed':
+        'AlarmManager ha rifiutato tutte le modalità',
+    'alertsTestSentOk':
+        'Inviato. Dovresti riceverne una ora e un’altra tra ~30s.',
+    'alertsTestFailed': 'Errore: {errors}',
+    'sleepToggleAlertsSubtitle':
+        'Promemoria basati sull’ultimo sonno concluso e sull’età del bimbo.',
+    'sleepAlertsWakeWindowRulerValueAuto':
+        'Valore effettivo su questa scala: {m} min (automatico per età).',
+    'sleepAlertsWakeWindowRulerValueCustom':
+        'Valore su questa scala: {m} min (personalizzato).',
+    'sleepAlertsWakeWindowSliderLabelAuto': '{m} min · auto',
+    'sleepAlertsWakeWindowSliderLabelCustom': '{m} min',
+    'sleepAlertsApproachRulerValueDefault':
+        'Anticipo su questa scala: {m} min (predefinito).',
+    'sleepAlertsApproachRulerValueCustom': 'Anticipo su questa scala: {m} min.',
+    'sleepAlertsApproachSliderLabelDefault': '{m} min · predefinito',
+    'sleepAlertsApproachSliderLabelCustom': '{m} min',
+    'sleepAlertsWakeWindowAutomatic':
+        'Limite finestra di veglia per l’avviso: {m} min (automatico per età).',
+    'sleepAlertsWakeWindowAutomaticNoBirth':
+        'Aggiungi la data di nascita del bimbo nel profilo per tempi più accurati; per ora usiamo {m} min.',
+    'sleepAlertsMonthsApprox': 'Fascia tabella età: ~{n} mesi',
+    'sleepAlertsWakeWindowCustom':
+        'Limite finestra di veglia personalizzato: {m} min.',
+    'sleepAlertsApproachAuto':
+        'Promemoria prima del limite: anticipo predefinito di {m} min.',
+    'sleepAlertsApproachCustom':
+        'Promemoria prima del limite: anticipo personalizzato di {m} min.',
+    'loadingMotherPhoto': 'Aggiornamento foto della mamma…',
+    'loadingBabyPhoto': 'Aggiornamento foto del bimbo…',
+    'loadingBabies': 'Caricamento bimbi…',
+    'gateLoadProfilesError':
+        'Impossibile leggere i dati salvati. Potrebbero essere ancora su questo dispositivo — riprova prima di registrarti di nuovo.',
+    'gateRetry': 'Riprova',
+    'pickBabyTitle': 'Seleziona bimbo',
+    'switchingBaby': 'Cambio bimbo…',
+    'sleepAppBar': 'Sonno',
+    'sleepTitle': 'Sonno',
+    'sleepIntro': 'Registra e segui pisolini e sonno notturno.',
+    'sleepComingTitle': 'In arrivo',
+    'sleepComingBody':
+        'Questa schermata è pronta per registrare il sonno.\nPoi collegheremo il database e mostreremo ultimo sonno, totale giornaliero e storico.',
+    'sleepSessionTitle': 'Sonno in corso',
+    'sleepSessionStartedAt': 'Iniziato alle {time}',
+    'sleepStatusSleeping': 'Dorme',
+    'sleepStatusPaused': 'In pausa',
+    'sleepWakeButton': 'SI È SVEGLIATO?',
+    'sleepThisCardTitle': 'Questo sonno',
+    'sleepLabelStart': 'Inizio',
+    'sleepLabelEnd': 'Fine',
+    'sleepLabelDuration': 'Durata',
+    'sleepLabelQuality': 'Qualità',
+    'sleepObservationsTitle': 'Note',
+    'sleepObservationHint': 'Aggiungi una nota…',
+    'sleepPause': 'Pausa',
+    'sleepResume': 'Riprendi',
+    'sleepCancelSession': 'Annulla sonno',
+    'sleepStartButton': 'INIZIA SONNO',
+    'sleepSavedOk': 'Sonno salvato.',
+    'sleepConfirmBackTitle': 'Uscire dal monitoraggio sonno?',
+    'sleepConfirmBackBody':
+        'Questa sessione non è ancora salvata. Vuoi scartarla?',
+    'sleepConfirmCancelSessionTitle': 'Annullare sonno?',
+    'sleepConfirmCancelSessionBody':
+        'Il tempo registrato in questa sessione andrà perso.',
+    'sleepDiscard': 'Scarta',
+    'sleepHistoryTitle': 'Storico sonno',
+    'sleepHistoryEmpty': 'Nessuna sessione di sonno ancora.',
+    'sleepUpdatedOk': 'Sonno aggiornato.',
+    'sleepBannerNextNap': 'Prossimo pisolino tra ~{min} min',
+    'sleepWindowTitle': 'Finestra di sonno attuale',
+    'sleepWindowEarly': 'Prima della finestra ideale',
+    'sleepWindowIdeal': 'Ideale',
+    'sleepWindowLate': 'In ritardo',
+    'sleepRoutineLastLabel': 'Ultimo sonno: {ago}',
+    'sleepRoutineLastNever': 'Ultimo sonno: nessun registro',
+    'sleepRoutineNextPrefix': 'Prossimo pisolino:',
+    'sleepNextApproxMin': 'tra ~{min} min',
+    'sleepRoutineNextNow': 'ora — buon momento per provare',
+    'sleepStatusEarly': '🟡 Prima della finestra ideale',
+    'sleepStatusIdeal': '🟢 Finestra ideale',
+    'sleepStatusOverdue': '🔴 Probabilmente molto stanco',
+    'sleepHeroAwakeBadge': 'Sveglio',
+    'sleepHeroAwakeCaption':
+        'La barra verde → gialla → rossa mostra da quanto tempo è sveglio e quando di solito arriva il prossimo pisolino. Quando lo metti a dormire, tocca INIZIA SONNO.',
+    'sleepHeroSleepingBadge': 'Dorme',
+    'sleepHeroSleepingCaption':
+        'Quando si sveglia, tocca Fine sonno per salvare questa sessione.',
+    'sleepRoutineCardTitle': 'Prossimo sonno',
+    'sleepRoutineVigilHighlight':
+        'Finestra di veglia dell’app: {min}–{max} min tra i sonni (fissa per età in mesi — non configurabile).',
+    'sleepRoutineStatusLine': 'Stato: {status}',
+    'sleepIdealForAge': 'Stessa tabella (per età)',
+    'sleepAgeMonthsLabel': '{n} mesi',
+    'sleepWindowMinMax': '{min}–{max} min',
+    'sleepLegendG': '🟢 finestra ideale',
+    'sleepLegendY': '🟡 prima della finestra ideale',
+    'sleepLegendR': '🔴 oltre il limite',
+    'sleepWakeWindowExplainer':
+        'Mostra da quanto tempo il bimbo è sveglio dalla fine dell’ultimo sonno. Giallo: non è ancora nella finestra tipica del prossimo pisolino.',
+    'sleepFinalizeButton': 'FINE',
+    'sleepSleepingFor': 'Dorme da {when}',
+    'sleepInsightTitle': 'Riepilogo di oggi',
+    'sleepInsightNaps': 'Oggi: {n} pisolini',
+    'sleepInsightAvg': 'Media: {min} min',
+    'sleepInsightTrendDown': '💡 Meno sonno del solito oggi',
+    'sleepInsightTrendOk': '💡 Pattern di sonno stabile oggi',
+    'sleepHistoryToday': 'Oggi',
+    'sleepToggleAlerts': 'Attiva promemoria sonno',
+    'feedingScreenAlertsHint': 'Per cambiare i tempi, apri Altro › Avvisi.',
+    'sleepNotifTitle': 'Sonno',
+    'sleepNotifBeforeBody':
+        'Potrebbe essere un buon momento per aiutare il bimbo ad addormentarsi.',
+    'sleepNotifOverdueBody':
+        'Il bimbo potrebbe essere stanco — prova ad avviare il sonno con calma.',
+    'sleepNotifWakeOverdueBodyMale':
+        'È da più di {hours} h che dorme, guardalo, mamma.',
+    'sleepNotifWakeOverdueBodyFemale':
+        'È da più di {hours} h che dorme, guardala, mamma.',
+    'notifChannelRemindersName': 'Promemoria',
+    'notifChannelRemindersDesc':
+        'Avvisi per alimentazione, pannolini, sonno, visite e vaccini.',
+    'notifChannelGrowthName': 'Crescita',
+    'notifChannelGrowthDesc':
+        'Avvisi sul peso e su lunghi intervalli tra misurazioni.',
+    'diaperIntro':
+        'Registra un cambio per mantenere attivi i promemoria. Nella lista puoi modificare o eliminare ogni voce.',
+    'diaperSavedOk': 'Cambio salvato.',
+    'diaperUpdatedOk': 'Cambio aggiornato.',
+    'diaperHistoryTitle': 'Storico',
+    'diaperHistoryEmpty': 'Nessun cambio pannolino ancora.',
+    'diaperKindPee': 'Pipì',
+    'diaperKindPoo': 'Pupù',
+    'diaperKindBoth': 'Pipì e pupù',
+    'diaperKindLabel': 'Tipo',
+    'diaperDashTitle': 'Ultimi registri',
+    'diaperDashLastPee': 'Ultima pipì',
+    'diaperDashLastPoo': 'Ultima pupù',
+    'diaperDashNoRecordYet': 'Ancora nulla',
+    'diaperDashJustNow': 'Adesso',
+    'diaperDashAgoLine': '{ago}\u00A0fa',
+    'diaperChangedAtLabel': 'Data e ora',
+    'diaperNoteOptional': 'Nota (opzionale)',
+    'diaperToggleAlerts': 'Promemoria pannolino',
+    'diaperToggleAlertsSubtitle': 'Avviso vicino al prossimo cambio suggerito.',
+    'healthGrowthToggleAlerts': 'Avvisi crescita',
+    'healthGrowthToggleAlertsSubtitle':
+        'Avvisi su peso e assenza prolungata di misurazioni.',
+    'feedingTitle': 'Alimentazione',
+    'feedingSelectBabyFirst': 'Seleziona un bimbo prima di iniziare.',
+    'feedingNoRunning': 'Impossibile terminare: nessuna poppata in corso.',
+    'feedingSavedOk': 'Poppata salvata.',
+    'feedingSaveFail': 'Impossibile salvare:',
+    'feedingSaving': 'Salvataggio poppata…',
+    'feedingQuickSummary': 'Riepilogo rapido',
+    'feedingNoBabyHint':
+        'Registra prima un bimbo in "Altro > Registrazione (mamma e bimbi)".',
+    'feedingPickBabyLabel': 'Seleziona bimbo',
+    'feedingEmptyDataHint':
+        'Ancora nessun dato. Usa "Inizia poppata" per registrare con un tocco.',
+    'feedingLast': 'Ultima poppata',
+    'feedingNextEst': 'Prossima stima',
+    'feedingNextIn': 'tra ~{n} min',
+    'feedingStatusOk': 'OK',
+    'feedingStatusLate': 'In ritardo',
+    'feedingStatusWarn': 'Attenzione',
+    'feedingFinish': 'Termina poppata',
+    'feedingStart': 'Inizia poppata',
+    'feedingAfterFinish': 'Registra (dopo aver finito)',
+    'feedingTypeBreast': 'Seno',
+    'feedingTypeBottle': 'Biberon',
+    'feedingTypeSolid': 'Solidi',
+    'feedingTypeLabel': 'Tipo',
+    'feedingTabBreastfeeding': 'Allattamento',
+    'feedingTabBottle': 'Biberon',
+    'feedingTabSolids': 'Solidi',
+    'feedingHubTapSidesHint':
+        'Tocca S o D per avviare il timer. Tocca di nuovo lo stesso lato per salvare.',
+    'feedingHubLetterLeft': 'S',
+    'feedingHubLetterRight': 'D',
+    'feedingHubAddManualEntry': 'Aggiungi voce manuale',
+    'feedingHubOverviewTitle': 'Panoramica registri',
+    'feedingHubManualTitle': 'Voce manuale (seno)',
+    'feedingHubManualMinutes': 'Durata (minuti)',
+    'feedingHubManualInvalid': 'Inserisci una durata maggiore di zero.',
+    'feedingHubSaveBottle': 'Registra biberon',
+    'feedingHubSaveSolid': 'Registra pasto',
+    'feedingHubSolidDescribe': 'Cosa è stato offerto? (opzionale)',
+    'feedingHubOverviewEmpty': 'Ancora nessuna voce in questa lista.',
+    'feedingHubMlRequired': 'Inserisci la quantità in ml.',
+    'feedingHubTimerTooShort':
+        'Lascia il timer attivo qualche secondo prima di salvare questa poppata.',
+    'feedingHubBreastPieTitle': 'Quale lato viene usato di più?',
+    'feedingHubBreastPieEmpty':
+        'Registra alcune poppate (S/D) per vedere il grafico.',
+    'feedingHubFeedingUpdatedOk': 'Voce aggiornata.',
+    'feedingSideLeft': 'Sinistro',
+    'feedingSideRight': 'Destro',
+    'feedingSideBoth': 'Entrambi',
+    'feedingSideLabel': 'Lato',
+    'feedingQty': 'Quantità',
+    'feedingQtyMl': 'Quantità (ml) (opzionale)',
+    'feedingNote': 'Nota (opzionale)',
+    'feedingHintRunning': 'Termina per salvare.',
+    'feedingHintIdle':
+        'Pronta per registrare la prossima poppata con un tocco.',
+    'feedingHistory': 'Storico',
+    'feedingNoRecords': 'Nessun registro ancora.',
+    'feedingHistoryLine': '{time} min • {side}',
+    'feedingInsights': 'Insight',
+    'feedingInsightsNeed': 'Registra almeno 2 poppate per vedere i pattern.',
+    'feedingAvgDurFmt': 'Durata media: {m} min',
+    'feedingAvgIntervalFmt': 'Intervallo medio: {h}h{m}',
+    'feedingAlertSection': 'Avviso (opzionale)',
+    'feedingAlertTitle': 'Attiva avviso prossima poppata',
+    'feedingModeAvg': 'Media automatica',
+    'feedingModeManual': 'Intervallo manuale',
+    'feedingNotifyNote':
+        'Nota: per ora è solo visivo. Le notifiche arriveranno più avanti.',
+    'feedingAgoMinutes': '{m} min fa',
+    'feedingAgoHours': '{h}h{m} fa',
+    'feedingDurationShort': '{m}m {s}s',
+    'feedingDurationSeconds': '{s}s',
+    'vaccAddTitle': 'Aggiungi vaccino',
+    'vaccNameField': 'Nome del vaccino',
+    'vaccDoseOpt': 'Dose (opzionale)',
+    'vaccDoseHint': 'Es.: 1ª dose, richiamo',
+    'vaccApplied': 'Data di applicazione',
+    'vaccNext': 'Prossima dose',
+    'vaccNotesOpt': 'Note (opzionale)',
+    'vaccNameEmpty': 'Inserisci il nome del vaccino.',
+    'vaccSaving': 'Salvataggio vaccino…',
+    'vaccUpdatedOk': 'Vaccino aggiornato.',
+    'vaccNoBabies': 'Registra prima un bimbo.',
+    'vaccTableVac': 'Vaccino',
+    'vaccTableDose': 'Dose',
+    'vaccTableDate': 'Data',
+    'vaccTableNext': 'Prossima',
+    'vaccTableNotes': 'Note',
     'exampleCard': 'Esempio libretto:',
   },
   AppLang.hi: {
@@ -5783,8 +9846,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'symptomReportReflux': 'रिफ्लक्स',
     'symptomReportOther': 'अन्य',
     'symptomReportOtherHint': 'संक्षिप्त विवरण',
-    'symptomReportValidationNeedOne': 'कम से कम एक लक्षण चुनें या कोई फ़ील्ड भरें।',
-    'symptomReportValidationFeverTemp': 'बुखार चिह्नित होने पर तापमान दर्ज करें।',
+    'symptomReportValidationNeedOne':
+        'कम से कम एक लक्षण चुनें या कोई फ़ील्ड भरें।',
+    'symptomReportValidationFeverTemp':
+        'बुखार चिह्नित होने पर तापमान दर्ज करें।',
     'symptomReportDeleteTitle': 'प्रविष्टि हटाएँ?',
     'symptomReportDeleteBody': 'इसे पूर्ववत नहीं किया जा सकता।',
     'reportPediatricScreenTitle': 'बाल रोग रिपोर्ट',
@@ -5817,7 +9882,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricFeverFootnote':
         'गिनती स्वास्थ्य › लक्षण दर्ज करें से संरचित प्रविष्टियों से (तापमान यदि दिया गया हो)।',
     'reportPediatricVaccines': 'अवधि में लगे टीके',
-    'reportPediatricMedications': 'दवाइयाँ (संरचित प्रविष्टियाँ और नोट्स में कीवर्ड)',
+    'reportPediatricMedications':
+        'दवाइयाँ (संरचित प्रविष्टियाँ और नोट्स में कीवर्ड)',
     'reportPediatricSleepAvgDaily': 'औसत दैनिक नींद',
     'reportPediatricSleepAwakenings': 'रात में जागना (औसत)',
     'reportPediatricSleepPattern': 'नींद का समग्र पैटर्न',
@@ -5859,11 +9925,14 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricFeverDisclaimerShort': '0',
     'reportPediatricSymptomCrying': 'कारण के बिना रोना (संरचित)',
     'reportPediatricSymptomPain': 'दर्द (संरचित)',
-    'reportPediatricStructuredSymptoms': 'संरचित लक्षण प्रविष्टियाँ (दिनांक और समय)',
-    'reportPediatricStructuredSymptomsEmpty': 'इस अवधि में कोई संरचित प्रविष्टि नहीं।',
+    'reportPediatricStructuredSymptoms':
+        'संरचित लक्षण प्रविष्टियाँ (दिनांक और समय)',
+    'reportPediatricStructuredSymptomsEmpty':
+        'इस अवधि में कोई संरचित प्रविष्टि नहीं।',
     'generatePdf': 'PDF बनाएं',
     'reportMonthlyMilestonesTitle': 'महीने की उपलब्धियाँ',
-    'reportMonthlyMilestonesEmpty': 'इस महीने कोई टीकाकरण, परामर्श या बैज वाली यादें नहीं।',
+    'reportMonthlyMilestonesEmpty':
+        'इस महीने कोई टीकाकरण, परामर्श या बैज वाली यादें नहीं।',
     'reportMonthlyMilestoneConsultationDefault': 'परामर्श',
     'memoriesTitle': 'यादों की किताब',
     'memoriesSubtitle': 'महत्वपूर्ण पलों को संजोएं।',
@@ -5906,7 +9975,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeStatusWarn': 'हल्का ध्यान',
     'homeStatusHungry': 'भूख लग सकती है',
     'homeTipTitle': 'आज की सलाह',
-    'homeTipBody': 'हल्की दिनचर्या {name} को रात में बेहतर सोने में मदद करती है।',
+    'homeTipBody':
+        'हल्की दिनचर्या {name} को रात में बेहतर सोने में मदद करती है।',
     'summaryFeedings': 'फीडिंग',
     'summarySleep': 'कुल नींद',
     'summaryLastFeed': 'आखिरी {time}',
@@ -5914,7 +9984,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'cancel': 'रद्द करें',
     'delete': 'हटाएँ',
     'notificationsInboxTitle': 'सूचनाएँ',
-    'notificationsInboxSubtitle': 'पिछले 3 दिन (ऐप में दर्ज भेजी गई व निर्धारित)',
+    'notificationsInboxSubtitle':
+        'पिछले 3 दिन (ऐप में दर्ज भेजी गई व निर्धारित)',
     'notificationsEmpty': 'इस अवधि में अभी कोई सूचना दर्ज नहीं।',
     'notificationsKindShown': 'वितरित',
     'notificationsKindScheduled': 'निर्धारित',
@@ -5924,8 +9995,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeYesterdayLabel': 'कल',
     'homeBabyBannerForecastSleep': 'सोने का अनुमान',
     'homeBabyBannerForecastWake': 'जागने का अनुमान',
-    'homeBabyBannerForecastSubtitleSleep': 'वर्तमान समय के आधार पर\nनींद के संकेत',
-    'homeBabyBannerForecastSubtitleWake': 'वर्तमान समय और उम्र के पैटर्न के अनुसार',
+    'homeBabyBannerForecastSubtitleSleep':
+        'वर्तमान समय के आधार पर\nनींद के संकेत',
+    'homeBabyBannerForecastSubtitleWake':
+        'वर्तमान समय और उम्र के पैटर्न के अनुसार',
     'homeBabyBannerEtaIn': '{d} में',
     'homeBabyBannerLastDiaper': 'अंतिम डायपर',
     'homeBabyBannerNoRecordsYet': 'अभी कोई रिकॉर्ड नहीं',
@@ -5953,7 +10026,8 @@ const Map<AppLang, Map<String, String>> _strings = {
         'FaceBaby कवर, सजावटी फ़्रेम और भरे हुए सभी बैज के साथ एक सुंदर PDF डाउनलोड करें।',
     'memoriesAlbumDownloadCta': 'एल्बम PDF डाउनलोड करें',
     'memoriesAlbumGenerating': 'आपका एल्बम बन रहा है…',
-    'memoriesAlbumNeedFilled': 'PDF बनाने के लिए एल्बम में कम से कम एक क्षण भरें।',
+    'memoriesAlbumNeedFilled':
+        'PDF बनाने के लिए एल्बम में कम से कम एक क्षण भरें।',
     'memoriesAlbumError': 'PDF नहीं बनाया जा सका।',
     'memoriesAlbumPdfReadyTitle': 'एल्बम PDF तैयार',
     'memoriesAlbumShareAction': 'शेयर करें…',
@@ -5963,7 +10037,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoriesAlbumCoverMain': 'यादों की किताब',
     'memoriesAlbumCoverTagline': '{name} के साथ खास पल',
     'memoriesAlbumFooter': 'FaceBaby से बनाया गया',
-    'vaccNoBabies': 'अभी कोई बच्चा पंजीकृत नहीं। अधिक > पंजीकरण (माँ और बच्चा) में जाएँ।',
+    'vaccNoBabies':
+        'अभी कोई बच्चा पंजीकृत नहीं। अधिक > पंजीकरण (माँ और बच्चा) में जाएँ।',
     'exampleCard': 'उदाहरण कार्ड:',
   },
   AppLang.id: {
@@ -6013,7 +10088,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'symptomReportReflux': 'Refluks',
     'symptomReportOther': 'Lainnya',
     'symptomReportOtherHint': 'Deskripsi singkat',
-    'symptomReportValidationNeedOne': 'Pilih setidaknya satu gejala atau isi sebuah kolom.',
+    'symptomReportValidationNeedOne':
+        'Pilih setidaknya satu gejala atau isi sebuah kolom.',
     'symptomReportValidationFeverTemp': 'Masukkan suhu jika demam dicentang.',
     'symptomReportDeleteTitle': 'Hapus entri?',
     'symptomReportDeleteBody': 'Tindakan ini tidak dapat dibatalkan.',
@@ -6047,7 +10123,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricFeverFootnote':
         'Dihitung dari catatan terstruktur di Kesehatan › Catat gejala (dengan suhu jika ada).',
     'reportPediatricVaccines': 'Vaksin dalam periode',
-    'reportPediatricMedications': 'Obat (catatan terstruktur & kata kunci di catatan)',
+    'reportPediatricMedications':
+        'Obat (catatan terstruktur & kata kunci di catatan)',
     'reportPediatricSleepAvgDaily': 'Rata-rata tidur harian',
     'reportPediatricSleepAwakenings': 'Bangun malam (rata-rata)',
     'reportPediatricSleepPattern': 'Pola tidur secara keseluruhan',
@@ -6089,11 +10166,14 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricFeverDisclaimerShort': '0',
     'reportPediatricSymptomCrying': 'Menangis tanpa penyebab (terstruktur)',
     'reportPediatricSymptomPain': 'Nyeri (terstruktur)',
-    'reportPediatricStructuredSymptoms': 'Catatan gejala terstruktur (tanggal & waktu)',
-    'reportPediatricStructuredSymptomsEmpty': 'Tidak ada catatan terstruktur dalam periode ini.',
+    'reportPediatricStructuredSymptoms':
+        'Catatan gejala terstruktur (tanggal & waktu)',
+    'reportPediatricStructuredSymptomsEmpty':
+        'Tidak ada catatan terstruktur dalam periode ini.',
     'generatePdf': 'Buat PDF',
     'reportMonthlyMilestonesTitle': 'Pencapaian bulan ini',
-    'reportMonthlyMilestonesEmpty': 'Tidak ada vaksin, kunjungan dokter, atau kenangan dengan lencana bulan ini.',
+    'reportMonthlyMilestonesEmpty':
+        'Tidak ada vaksin, kunjungan dokter, atau kenangan dengan lencana bulan ini.',
     'reportMonthlyMilestoneConsultationDefault': 'Kunjungan',
     'memoriesTitle': 'Buku kenangan',
     'memoriesSubtitle': 'Momen penting untuk disimpan.',
@@ -6136,7 +10216,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeStatusWarn': 'Perhatian ringan',
     'homeStatusHungry': 'Mungkin lapar',
     'homeTipTitle': 'Tips hari ini',
-    'homeTipBody': 'Rutinitas ringan membantu {name} tidur lebih nyenyak di malam hari.',
+    'homeTipBody':
+        'Rutinitas ringan membantu {name} tidur lebih nyenyak di malam hari.',
     'summaryFeedings': 'MENYUSUI',
     'summarySleep': 'TIDUR TOTAL',
     'summaryLastFeed': 'Terakhir jam {time}',
@@ -6166,13 +10247,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportsSubtitle': 'ママと小児科医のための要約。',
     'growth': '成長',
     'pediatricReport': '小児科レポート',
-    'pediatricReportDesc':
-        '体重、睡眠、授乳/食事、おむつ、ワクチン、ヘルスで記録した症状、受診、メモを含むPDFを生成します。',
+    'pediatricReportDesc': '体重、睡眠、授乳/食事、おむつ、ワクチン、ヘルスで記録した症状、受診、メモを含むPDFを生成します。',
     'reportListPediatric': '小児科医向けレポート',
     'reportListPediatricSub': '診察用のPDFとデータ',
     'healthHubSymptomReports': '症状を記録',
-    'healthHubSymptomReportsSub':
-        '発熱、疝痛、服薬など — 小児科レポートに反映',
+    'healthHubSymptomReportsSub': '発熱、疝痛、服薬など — 小児科レポートに反映',
     'symptomReportTitle': '症状を記録',
     'symptomReportEmpty': '記録はまだありません。「+」で追加してください。',
     'symptomReportNew': '新しい記録',
@@ -6200,8 +10279,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricDateFrom': '開始',
     'reportPediatricDateTo': '終了',
     'reportPediatricPickRange': '日付を選ぶ',
-    'reportPediatricFilterMaxDaysHint':
-        'タップして変更。長すぎる期間は366日までに制限されます。',
+    'reportPediatricFilterMaxDaysHint': 'タップして変更。長すぎる期間は366日までに制限されます。',
     'reportPediatricSectionGeneral': '基本情報',
     'reportPediatricSectionSummary': '期間の概要',
     'reportPediatricSectionSleep': '睡眠',
@@ -6221,8 +10299,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricAvgDiapers': '1日あたりのおむつ交換（平均）',
     'reportPediatricFeverEpisodes': '発熱の記録（構造化）',
     'reportPediatricFeverNote': '注記',
-    'reportPediatricFeverFootnote':
-        'ヘルス › 症状を記録 の構造化データから集計（体温がある場合は含む）。',
+    'reportPediatricFeverFootnote': 'ヘルス › 症状を記録 の構造化データから集計（体温がある場合は含む）。',
     'reportPediatricVaccines': '期内のワクチン接種',
     'reportPediatricMedications': '薬（構造化記録とメモのキーワード）',
     'reportPediatricSleepAvgDaily': '1日平均の睡眠',
@@ -6249,20 +10326,17 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricNa': '—',
     'reportPediatricJournalNote': 'その日の日記',
     'reportPediatricJournalNoteHint': '自由記述からキーワード検出。',
-    'reportPediatricObsHint':
-        '受診用メモ：症状、薬、行動の変化など…',
+    'reportPediatricObsHint': '受診用メモ：症状、薬、行動の変化など…',
     'reportPediatricBtnShare': '共有',
     'reportPediatricBtnExportPdf': 'PDFを書き出す',
     'reportPediatricBtnPrint': '印刷',
     'reportPediatricBtnEmail': 'メール',
     'reportPediatricBtnWhatsApp': 'WhatsApp',
-    'reportPediatricScreenFootnote':
-        '端末の記録に基づく情報です。診断の代替にはなりません。',
+    'reportPediatricScreenFootnote': '端末の記録に基づく情報です。診断の代替にはなりません。',
     'reportPediatricNone': 'なし',
     'reportPediatricPdfTitle': '小児科臨床レポート — FaceBaby',
     'reportPediatricPdfPeriod': '期間:',
-    'reportPediatricPdfFooter':
-        'FaceBabyで作成。この端末に保存されたデータのみ（オフライン可）。',
+    'reportPediatricPdfFooter': 'FaceBabyで作成。この端末に保存されたデータのみ（オフライン可）。',
     'reportPediatricFeverDisclaimerShort': '0',
     'reportPediatricSymptomCrying': '原因のわからない泣き（構造化記録）',
     'reportPediatricSymptomPain': '痛み（構造化記録）',
@@ -6356,8 +10430,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoriesCheerEmpty': '＋のついたバッジをタップして写真やエピソードを追加しましょう。',
     'feedingNoBabyHint': '先に赤ちゃんを登録してください。「その他 > 登録（ママと赤ちゃん）」。',
     'memoriesAlbumPromoTitle': '思い出アルバム一式',
-    'memoriesAlbumPromoSubtitle':
-        'FaceBaby表紙・装飾フレーム・埋めたバッジすべて入りのPDFをダウンロード。',
+    'memoriesAlbumPromoSubtitle': 'FaceBaby表紙・装飾フレーム・埋めたバッジすべて入りのPDFをダウンロード。',
     'memoriesAlbumDownloadCta': 'アルバムPDFをダウンロード',
     'memoriesAlbumGenerating': 'アルバムを作成中…',
     'memoriesAlbumNeedFilled': 'PDFを作るにはアルバムを1つ以上埋めてください。',
@@ -6372,8 +10445,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoriesAlbumFooter': 'FaceBabyで作成',
     'memoriesAlbumBackCoverBody':
         'FaceBaby は、何気ない瞬間を一生の思い出に変えるために生まれました。赤ちゃんの笑顔、発見、ハグ、そして成長のひとつひとつを、大切に残していきます。\n\nこの本は、かけがえのない成長の時間を記録し、いつまでも振り返ることのできる宝物となるよう作られています。\n\n写真やメモだけではなく、このページには時間が経っても消えることのない想いと物語が詰まっています。\n\nFaceBaby がご家族の物語の一部になれることを心より嬉しく思います。 💛',
-    'memoriesAlbumBackCoverFinale':
-        '子どもの成長はあっという間ですが…\n思い出は永遠に残ります。',
+    'memoriesAlbumBackCoverFinale': '子どもの成長はあっという間ですが…\n思い出は永遠に残ります。',
     'vaccNoBabies': 'まだ赤ちゃんが登録されていません。「その他 > 登録（ママと赤ちゃん）」へ。',
     'exampleCard': 'カード例：',
   },
@@ -6405,8 +10477,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportListPediatric': '소아과 진료용 리포트',
     'reportListPediatricSub': '진료를 위한 PDF와 데이터',
     'healthHubSymptomReports': '증상 기록',
-    'healthHubSymptomReportsSub':
-        '열, 배앓이, 약물 등 — 소아과 리포트에 포함',
+    'healthHubSymptomReportsSub': '열, 배앓이, 약물 등 — 소아과 리포트에 포함',
     'symptomReportTitle': '증상 기록',
     'symptomReportEmpty': '아직 기록이 없습니다. +를 눌러 추가하세요.',
     'symptomReportNew': '새 기록',
@@ -6434,8 +10505,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricDateFrom': '시작',
     'reportPediatricDateTo': '종료',
     'reportPediatricPickRange': '날짜 선택',
-    'reportPediatricFilterMaxDaysHint':
-        '탭하여 변경. 너무 긴 기간은 최대 366일로 제한됩니다.',
+    'reportPediatricFilterMaxDaysHint': '탭하여 변경. 너무 긴 기간은 최대 366일로 제한됩니다.',
     'reportPediatricSectionGeneral': '일반 정보',
     'reportPediatricSectionSummary': '기간 요약',
     'reportPediatricSectionSleep': '수면',
@@ -6455,8 +10525,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricAvgDiapers': '하루 기저귀 교체(평균)',
     'reportPediatricFeverEpisodes': '발열 기록(구조화)',
     'reportPediatricFeverNote': '참고',
-    'reportPediatricFeverFootnote':
-        '건강 › 증상 기록의 구조화된 항목으로 집계(체온이 있으면 포함).',
+    'reportPediatricFeverFootnote': '건강 › 증상 기록의 구조화된 항목으로 집계(체온이 있으면 포함).',
     'reportPediatricVaccines': '기간 내 예방접종',
     'reportPediatricMedications': '약물(구조화 기록 및 메모 키워드)',
     'reportPediatricSleepAvgDaily': '하루 평균 수면',
@@ -6483,20 +10552,17 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricNa': '—',
     'reportPediatricJournalNote': '하루 일지',
     'reportPediatricJournalNoteHint': '자유 텍스트 키워드 감지.',
-    'reportPediatricObsHint':
-        '진료 메모: 증상, 약물, 행동 변화 등…',
+    'reportPediatricObsHint': '진료 메모: 증상, 약물, 행동 변화 등…',
     'reportPediatricBtnShare': '공유',
     'reportPediatricBtnExportPdf': 'PDF 내보내기',
     'reportPediatricBtnPrint': '인쇄',
     'reportPediatricBtnEmail': '이메일',
     'reportPediatricBtnWhatsApp': 'WhatsApp',
-    'reportPediatricScreenFootnote':
-        '기기에 저장된 기록을 바탕으로 한 정보입니다. 진료를 대체하지 않습니다.',
+    'reportPediatricScreenFootnote': '기기에 저장된 기록을 바탕으로 한 정보입니다. 진료를 대체하지 않습니다.',
     'reportPediatricNone': '없음',
     'reportPediatricPdfTitle': '소아과 임상 리포트 — FaceBaby',
     'reportPediatricPdfPeriod': '기간:',
-    'reportPediatricPdfFooter':
-        'FaceBaby에서 생성. 이 기기에 저장된 데이터만 포함(오프라인 가능).',
+    'reportPediatricPdfFooter': 'FaceBaby에서 생성. 이 기기에 저장된 데이터만 포함(오프라인 가능).',
     'reportPediatricFeverDisclaimerShort': '0',
     'reportPediatricSymptomCrying': '원인 없는 울음(구조화 기록)',
     'reportPediatricSymptomPain': '통증(구조화 기록)',
@@ -6606,8 +10672,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoriesAlbumFooter': 'FaceBaby로 제작',
     'memoriesAlbumBackCoverBody':
         'FaceBaby는 소중한 순간들을 영원한 추억으로 남기기 위해 만들어졌습니다. 아기의 모든 미소, 발견, 포옹, 그리고 특별한 순간들은 사랑과 의미로 간직될 가치가 있습니다.\n\n이 책은 아름다운 성장의 첫걸음을 함께하며, 평생 간직할 수 있는 소중한 기억들을 담기 위해 제작되었습니다.\n\n사진과 메모 그 이상의 의미를 담아, 이 페이지들은 시간이 지나도 사라지지 않을 감정과 이야기를 간직합니다.\n\nFaceBaby가 가족의 이야기에 함께할 수 있도록 해주셔서 감사합니다. 💛',
-    'memoriesAlbumBackCoverFinale':
-        '아이들은 너무 빨리 자라지만…\n추억은 영원히 남을 수 있습니다.',
+    'memoriesAlbumBackCoverFinale': '아이들은 너무 빨리 자라지만…\n추억은 영원히 남을 수 있습니다.',
     'vaccNoBabies': '등록된 아기가 없습니다. «더보기 > 등록(엄마와 아기)»으로 이동하세요.',
     'exampleCard': '카드 예시:',
   },
@@ -6658,8 +10723,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'symptomReportReflux': 'Рефлюкс',
     'symptomReportOther': 'Другое',
     'symptomReportOtherHint': 'Краткое описание',
-    'symptomReportValidationNeedOne': 'Выберите хотя бы один симптом или заполните поле.',
-    'symptomReportValidationFeverTemp': 'Укажите температуру, если отмечена лихорадка.',
+    'symptomReportValidationNeedOne':
+        'Выберите хотя бы один симптом или заполните поле.',
+    'symptomReportValidationFeverTemp':
+        'Укажите температуру, если отмечена лихорадка.',
     'symptomReportDeleteTitle': 'Удалить запись?',
     'symptomReportDeleteBody': 'Это действие нельзя отменить.',
     'reportPediatricScreenTitle': 'Педиатрический клинический отчёт',
@@ -6692,7 +10759,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricFeverFootnote':
         'Подсчёт из структурированных записей: Здоровье › Записать симптом (с температурой, если указана).',
     'reportPediatricVaccines': 'Прививки за период',
-    'reportPediatricMedications': 'Лекарства (структурированные записи и ключевые слова в заметках)',
+    'reportPediatricMedications':
+        'Лекарства (структурированные записи и ключевые слова в заметках)',
     'reportPediatricSleepAvgDaily': 'Средний дневной сон',
     'reportPediatricSleepAwakenings': 'Ночные пробуждения (сред.)',
     'reportPediatricSleepPattern': 'Общий паттерн сна',
@@ -6705,8 +10773,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricFeedingSolid': 'Прикорм',
     'reportPediatricFeedingSessions': 'сеансов',
     'reportPediatricFeedingAvgDur': 'средняя длительность',
-    'reportPediatricSymptomReflux': 'Рефлюкс (дневник или структурированные записи)',
-    'reportPediatricSymptomColic': 'Колики (дневник или структурированные записи)',
+    'reportPediatricSymptomReflux':
+        'Рефлюкс (дневник или структурированные записи)',
+    'reportPediatricSymptomColic':
+        'Колики (дневник или структурированные записи)',
     'reportPediatricSymptomIrrit': 'Раздражительность (настроение)',
     'reportPediatricIrritHigh': 'Заметнее',
     'reportPediatricIrritMedium': 'Умеренная',
@@ -6732,13 +10802,17 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricPdfFooter':
         'Создано в FaceBaby. Только данные на этом устройстве (можно офлайн).',
     'reportPediatricFeverDisclaimerShort': '0',
-    'reportPediatricSymptomCrying': 'Плач без причины (структурированные записи)',
+    'reportPediatricSymptomCrying':
+        'Плач без причины (структурированные записи)',
     'reportPediatricSymptomPain': 'Боль (структурированные записи)',
-    'reportPediatricStructuredSymptoms': 'Структурированные записи симптомов (дата и время)',
-    'reportPediatricStructuredSymptomsEmpty': 'За этот период нет структурированных записей.',
+    'reportPediatricStructuredSymptoms':
+        'Структурированные записи симптомов (дата и время)',
+    'reportPediatricStructuredSymptomsEmpty':
+        'За этот период нет структурированных записей.',
     'generatePdf': 'Сгенерировать PDF',
     'reportMonthlyMilestonesTitle': 'Вехи месяца',
-    'reportMonthlyMilestonesEmpty': 'Нет прививок, визитов к врачу или воспоминаний со значком за этот месяц.',
+    'reportMonthlyMilestonesEmpty':
+        'Нет прививок, визитов к врачу или воспоминаний со значком за этот месяц.',
     'reportMonthlyMilestoneConsultationDefault': 'Приём',
     'memoriesTitle': 'Книга воспоминаний',
     'memoriesSubtitle': 'Важные моменты, чтобы сохранить их.',
@@ -6835,7 +10909,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'symptomReportReflux': 'Reflü',
     'symptomReportOther': 'Diğer',
     'symptomReportOtherHint': 'Kısa açıklama',
-    'symptomReportValidationNeedOne': 'En az bir semptom seçin veya bir alan doldurun.',
+    'symptomReportValidationNeedOne':
+        'En az bir semptom seçin veya bir alan doldurun.',
     'symptomReportValidationFeverTemp': 'Ateş işaretliyken sıcaklığı girin.',
     'symptomReportDeleteTitle': 'Kayıt silinsin mi?',
     'symptomReportDeleteBody': 'Bu işlem geri alınamaz.',
@@ -6869,7 +10944,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricFeverFootnote':
         'Sağlık › Semptom kaydet altındaki yapılandırılmış kayıtlardan sayım (sıcaklık varsa).',
     'reportPediatricVaccines': 'Dönemdeki aşılar',
-    'reportPediatricMedications': 'İlaçlar (yapılandırılmış kayıt ve notlarda anahtar kelimeler)',
+    'reportPediatricMedications':
+        'İlaçlar (yapılandırılmış kayıt ve notlarda anahtar kelimeler)',
     'reportPediatricSleepAvgDaily': 'Günlük ortalama uyku',
     'reportPediatricSleepAwakenings': 'Gece uyanmaları (ortalama)',
     'reportPediatricSleepPattern': 'Genel uyku düzeni',
@@ -6893,7 +10969,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricNo': 'Hayır',
     'reportPediatricNa': '—',
     'reportPediatricJournalNote': 'Günlük notlar',
-    'reportPediatricJournalNoteHint': 'Serbest metinde anahtar kelime algılama.',
+    'reportPediatricJournalNoteHint':
+        'Serbest metinde anahtar kelime algılama.',
     'reportPediatricObsHint':
         'Muayene için notlar: semptomlar, ilaçlar, davranış değişiklikleri…',
     'reportPediatricBtnShare': 'Paylaş',
@@ -6911,8 +10988,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricFeverDisclaimerShort': '0',
     'reportPediatricSymptomCrying': 'Belirsiz ağlama (yapılandırılmış)',
     'reportPediatricSymptomPain': 'Ağrı (yapılandırılmış)',
-    'reportPediatricStructuredSymptoms': 'Yapılandırılmış semptom kayıtları (tarih ve saat)',
-    'reportPediatricStructuredSymptomsEmpty': 'Bu dönemde yapılandırılmış kayıt yok.',
+    'reportPediatricStructuredSymptoms':
+        'Yapılandırılmış semptom kayıtları (tarih ve saat)',
+    'reportPediatricStructuredSymptomsEmpty':
+        'Bu dönemde yapılandırılmış kayıt yok.',
     'generatePdf': 'PDF oluştur',
     'reportMonthlyMilestonesTitle': 'Ayın kilometre taşları',
     'reportMonthlyMilestonesEmpty': 'Bu ay aşı, muayene veya rozetli anı yok.',
@@ -6958,7 +11037,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeStatusWarn': 'Hafif uyarı',
     'homeStatusHungry': 'Aç olabilir',
     'homeTipTitle': 'Bugünün ipucu',
-    'homeTipBody': 'Hafif rutinler {name}’ın geceleri daha iyi uyumasını sağlar.',
+    'homeTipBody':
+        'Hafif rutinler {name}’ın geceleri daha iyi uyumasını sağlar.',
     'summaryFeedings': 'EMZİRME',
     'summarySleep': 'TOPLAM UYKU',
     'summaryLastFeed': 'Son {time}',
@@ -6988,13 +11068,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportsSubtitle': '给妈妈和儿科医生的总结。',
     'growth': '成长',
     'pediatricReport': '儿科报告',
-    'pediatricReportDesc':
-        '生成包含体重、睡眠、喂养、尿布、疫苗、在「健康」中记录的症状、就诊与备注的PDF。',
+    'pediatricReportDesc': '生成包含体重、睡眠、喂养、尿布、疫苗、在「健康」中记录的症状、就诊与备注的PDF。',
     'reportListPediatric': '儿科门诊报告',
     'reportListPediatricSub': '就诊用的PDF与数据',
     'healthHubSymptomReports': '记录症状',
-    'healthHubSymptomReportsSub':
-        '发热、肠绞痛、用药等 — 纳入儿科报告',
+    'healthHubSymptomReportsSub': '发热、肠绞痛、用药等 — 纳入儿科报告',
     'symptomReportTitle': '记录症状',
     'symptomReportEmpty': '暂无记录。点按 + 添加。',
     'symptomReportNew': '新建记录',
@@ -7022,8 +11100,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricDateFrom': '从',
     'reportPediatricDateTo': '至',
     'reportPediatricPickRange': '选择日期',
-    'reportPediatricFilterMaxDaysHint':
-        '点按更改。过长区间上限为366天。',
+    'reportPediatricFilterMaxDaysHint': '点按更改。过长区间上限为366天。',
     'reportPediatricSectionGeneral': '基本信息',
     'reportPediatricSectionSummary': '时间段摘要',
     'reportPediatricSectionSleep': '睡眠',
@@ -7043,8 +11120,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricAvgDiapers': '每日换尿布（平均）',
     'reportPediatricFeverEpisodes': '发热次数（结构化记录）',
     'reportPediatricFeverNote': '说明',
-    'reportPediatricFeverFootnote':
-        '统计自「健康 › 记录症状」的结构化条目（含体温时）。',
+    'reportPediatricFeverFootnote': '统计自「健康 › 记录症状」的结构化条目（含体温时）。',
     'reportPediatricVaccines': '期内接种疫苗',
     'reportPediatricMedications': '药物（结构化记录与备注关键词）',
     'reportPediatricSleepAvgDaily': '日均睡眠',
@@ -7071,20 +11147,17 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricNa': '—',
     'reportPediatricJournalNote': '当日日记',
     'reportPediatricJournalNoteHint': '自由文本关键词检测。',
-    'reportPediatricObsHint':
-        '就诊备注：症状、用药、行为变化等…',
+    'reportPediatricObsHint': '就诊备注：症状、用药、行为变化等…',
     'reportPediatricBtnShare': '分享',
     'reportPediatricBtnExportPdf': '导出PDF',
     'reportPediatricBtnPrint': '打印',
     'reportPediatricBtnEmail': '电子邮件',
     'reportPediatricBtnWhatsApp': 'WhatsApp',
-    'reportPediatricScreenFootnote':
-        '基于本机记录的信息摘要，不能替代临床评估。',
+    'reportPediatricScreenFootnote': '基于本机记录的信息摘要，不能替代临床评估。',
     'reportPediatricNone': '无',
     'reportPediatricPdfTitle': '儿科临床报告 — FaceBaby',
     'reportPediatricPdfPeriod': '时间段：',
-    'reportPediatricPdfFooter':
-        '由 FaceBaby 生成，仅限本机存储的数据（可离线）。',
+    'reportPediatricPdfFooter': '由 FaceBaby 生成，仅限本机存储的数据（可离线）。',
     'reportPediatricFeverDisclaimerShort': '0',
     'reportPediatricSymptomCrying': '无故哭闹（结构化）',
     'reportPediatricSymptomPain': '疼痛（结构化）',
@@ -7143,4 +11216,3 @@ const Map<AppLang, Map<String, String>> _strings = {
     'exampleCard': '卡片示例：',
   },
 };
-

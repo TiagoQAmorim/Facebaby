@@ -282,28 +282,30 @@ class LocalNotificationsService {
     }
 
     if (defaultTargetPlatform == TargetPlatform.android) {
-      try {
-        await scheduleWithMode(AndroidScheduleMode.exactAllowWhileIdle);
-        logScheduled();
-        debugPrint('LocalNotificationsService.scheduleZoned($id): scheduled exactAllowWhileIdle for $tzWhen');
-        return true;
-      } on PlatformException catch (e) {
-        debugPrint('LocalNotificationsService.scheduleZoned($id): exactAllowWhileIdle PlatformException: $e — tentando alarmClock');
-      } catch (e, st) {
-        debugPrint('LocalNotificationsService.scheduleZoned($id): exactAllowWhileIdle failed: $e\n$st — tentando alarmClock');
-      }
-
-      // `setAlarmClock`: costuma funcionar sem “Alarmas e lembretes” / alarmas exactos nalguns OEMs,
-      // e o SO trata com maior prioridade que `inexact*` (que pode adiar com app fechada).
+      // Mais fiável para lembretes com o app fechado: `setAlarmClock` é tratado pelo
+      // Android como alarme real e costuma sobreviver melhor a Doze/OEMs agressivos.
+      // O caminho exactAllowWhileIdle continua como fallback para aparelhos onde
+      // alarmClock não esteja disponível/aceito.
       try {
         await scheduleWithMode(AndroidScheduleMode.alarmClock);
         logScheduled();
         debugPrint('LocalNotificationsService.scheduleZoned($id): scheduled alarmClock for $tzWhen');
         return true;
       } on PlatformException catch (e) {
-        debugPrint('LocalNotificationsService.scheduleZoned($id): alarmClock PlatformException: $e — tentando inexactAllowWhileIdle');
+        debugPrint('LocalNotificationsService.scheduleZoned($id): alarmClock PlatformException: $e — tentando exactAllowWhileIdle');
       } catch (e, st) {
-        debugPrint('LocalNotificationsService.scheduleZoned($id): alarmClock failed: $e\n$st — tentando inexactAllowWhileIdle');
+        debugPrint('LocalNotificationsService.scheduleZoned($id): alarmClock failed: $e\n$st — tentando exactAllowWhileIdle');
+      }
+
+      try {
+        await scheduleWithMode(AndroidScheduleMode.exactAllowWhileIdle);
+        logScheduled();
+        debugPrint('LocalNotificationsService.scheduleZoned($id): scheduled exactAllowWhileIdle for $tzWhen');
+        return true;
+      } on PlatformException catch (e) {
+        debugPrint('LocalNotificationsService.scheduleZoned($id): exactAllowWhileIdle PlatformException: $e — tentando inexactAllowWhileIdle');
+      } catch (e, st) {
+        debugPrint('LocalNotificationsService.scheduleZoned($id): exactAllowWhileIdle failed: $e\n$st — tentando inexactAllowWhileIdle');
       }
 
       try {
@@ -374,7 +376,14 @@ class LocalNotificationsService {
     if (kIsWeb) return;
     await ensureCoreInitialized();
     for (final id in ids) {
-      await _plugin.cancel(id);
+      try {
+        await _plugin.cancel(id);
+      } catch (e, st) {
+        // Cancelar notificação é operação auxiliar. Em builds ofuscados alguns
+        // Android/R8 podem falhar ao ler o cache do plugin; isto nunca deve
+        // impedir o cadastro que acabou de ser salvo.
+        debugPrint('LocalNotificationsService.cancelNotificationIds($id) failed: $e\n$st');
+      }
     }
   }
 

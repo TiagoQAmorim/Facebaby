@@ -9,6 +9,7 @@
  */
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onRequest } = require('firebase-functions/v2/https');
+const { onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const { DateTime } = require('luxon');
@@ -85,6 +86,100 @@ function memoryPhotoUrl(row) {
 function rowUserId(row) {
   if (!row) return '';
   return `${row.userId || row.owner_uid || row.user_id || ''}`.trim();
+}
+
+/** Campos do vencedor para `spotlight_current` e histórico `weekly_photo_contests/{weekKey}`. */
+function winnerSnapshotFromPick(pick) {
+  return {
+    winner_public_memory_id: pick.id,
+    winner_memory_id: pick.memoryId || pick.id,
+    winner_user_id: rowUserId(pick) || null,
+    winner_badge_id: pick.badgeId || pick.badge_id || null,
+    winner_photo_url: memoryPhotoUrl(pick),
+    winner_badge_title: `${pick.badgeTitle || pick.badge_title || ''}`.trim() || '',
+    winner_baby_display_name: pick.babyDisplayName || null,
+    winner_baby_sex: pick.babySex === 'M' || pick.babySex === 'F' ? pick.babySex : null,
+    winner_baby_age_label: pick.babyAgeLabel || null,
+    winner_public_description: pick.publicDescription || null,
+    winner_memory_date: pick.createdAt || null,
+  };
+}
+
+/**
+ * Histórico semanal em `weekly_photo_contests/{YYYY-MM-DD}` (segunda do pool).
+ * Inclui snapshot da foto vencedora e contagem de curtidas (`like_count`).
+ */
+async function writeWeeklyPhotoWeekHistory(
+  weekKey,
+  { status, pick, displayStartLuxon, displayUntilLuxon, drawInstant, likeCount = 0 },
+) {
+  const payload = {
+    id: weekKey,
+    weekId: weekKey,
+    week_id: weekKey,
+    status,
+    like_count: likeCount,
+    winner_like_count: likeCount,
+    updated_at: admin.firestore.FieldValue.serverTimestamp(),
+    created_at: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  if (displayStartLuxon) {
+    const ts = admin.firestore.Timestamp.fromDate(displayStartLuxon.toJSDate());
+    payload.startsAt = ts;
+    payload.draw_at = ts;
+    payload.drawAt = ts;
+  }
+  if (displayUntilLuxon) {
+    const ts = admin.firestore.Timestamp.fromDate(displayUntilLuxon.toJSDate());
+    payload.endsAt = ts;
+    payload.display_until = ts;
+    payload.displayUntil = ts;
+  }
+  if (drawInstant) {
+    payload.drawAt = admin.firestore.Timestamp.fromDate(drawInstant);
+  }
+  if (pick) {
+    Object.assign(payload, winnerSnapshotFromPick(pick));
+  }
+  await db.collection('weekly_photo_contests').doc(weekKey).set(payload, { merge: true });
+}
+
+/** Propaga contagem de curtidas para `public_memories` e documentos de concurso relacionados. */
+async function propagatePublicMemoryLikeCount(memoryId, delta) {
+  const id = `${memoryId || ''}`.trim();
+  if (!id || delta === 0) return;
+
+  const memRef = db.collection('public_memories').doc(id);
+  let count = 0;
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(memRef);
+    const current = Math.max(0, Number(snap.data()?.likeCount ?? snap.data()?.like_count ?? 0));
+    count = Math.max(0, current + delta);
+    tx.set(
+      memRef,
+      {
+        likeCount: count,
+        like_count: count,
+        updated_at: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  });
+
+  const batch = db.batch();
+  const contests = await db
+    .collection('weekly_photo_contests')
+    .where('winner_public_memory_id', '==', id)
+    .get();
+  for (const doc of contests.docs) {
+    batch.set(doc.ref, { like_count: count, winner_like_count: count }, { merge: true });
+  }
+  const spotRef = db.collection('weekly_photo_contests').doc('spotlight_current');
+  const spot = await spotRef.get();
+  if (`${spot.data()?.winner_public_memory_id || ''}`.trim() === id) {
+    batch.set(spotRef, { winner_like_count: count }, { merge: true });
+  }
+  await batch.commit();
 }
 
 /**
@@ -232,11 +327,20 @@ async function runWeeklyPhotoDrawFromPoolMonday(poolMondayLuxon, drawInstant) {
         winner_baby_age_label: null,
         winner_public_description: null,
         winner_memory_date: null,
+        winner_like_count: 0,
         draw_at: null,
         display_until: null,
       },
       { merge: true },
     );
+    await writeWeeklyPhotoWeekHistory(weekKey, {
+      status: 'inactive',
+      pick: null,
+      displayStartLuxon: displayStart,
+      displayUntilLuxon: displayUntil,
+      drawInstant,
+      likeCount: 0,
+    });
     return {
       weekKey,
       candidateCount: 0,
@@ -259,16 +363,8 @@ async function runWeeklyPhotoDrawFromPoolMonday(poolMondayLuxon, drawInstant) {
     bypass_display_window: bypassDisplayWindow,
     draw_at: admin.firestore.Timestamp.fromDate(displayStart.toJSDate()),
     display_until: admin.firestore.Timestamp.fromDate(displayUntil.toJSDate()),
-    winner_public_memory_id: pick.id,
-    winner_user_id: rowUserId(pick) || null,
-    winner_badge_id: pick.badgeId || pick.badge_id || null,
-    winner_photo_url: memoryPhotoUrl(pick),
-    winner_badge_title: `${pick.badgeTitle || pick.badge_title || ''}`.trim() || '',
-    winner_baby_display_name: pick.babyDisplayName || null,
-    winner_baby_sex: pick.babySex === 'M' || pick.babySex === 'F' ? pick.babySex : null,
-    winner_baby_age_label: pick.babyAgeLabel || null,
-    winner_public_description: pick.publicDescription || null,
-    winner_memory_date: pick.createdAt || null,
+    ...winnerSnapshotFromPick(pick),
+    winner_like_count: 0,
     updated_at: admin.firestore.FieldValue.serverTimestamp(),
   });
 
@@ -283,24 +379,14 @@ async function runWeeklyPhotoDrawFromPoolMonday(poolMondayLuxon, drawInstant) {
     );
   }
 
-  await db.collection('weekly_photo_contests').doc(weekKey).set(
-    {
-      id: weekKey,
-      weekId: weekKey,
-      startsAt: admin.firestore.Timestamp.fromDate(subLuxon.startOf('day').toJSDate()),
-      endsAt: admin.firestore.Timestamp.fromDate(displayUntil.toJSDate()),
-      drawAt: admin.firestore.Timestamp.fromDate(drawInstant),
-      displayUntil: admin.firestore.Timestamp.fromDate(displayUntil.toJSDate()),
-      winnerMemoryId: pick.memoryId || pick.id,
-      winnerUserId: rowUserId(pick) || null,
-      winnerBabyId: pick.babyId || null,
-      winnerBabySex: pick.babySex === 'M' || pick.babySex === 'F' ? pick.babySex : null,
-      status: 'active',
-      updated_at: admin.firestore.FieldValue.serverTimestamp(),
-      created_at: admin.firestore.FieldValue.serverTimestamp(),
-    },
-    { merge: true },
-  );
+  await writeWeeklyPhotoWeekHistory(weekKey, {
+    status: 'active',
+    pick,
+    displayStartLuxon: displayStart,
+    displayUntilLuxon: displayUntil,
+    drawInstant,
+    likeCount: 0,
+  });
 
   return {
     weekKey,
@@ -521,10 +607,27 @@ exports.seedSpotlightWinner = onRequest(
         winner_baby_age_label: babyAgeLabelOverride || (pick && pick.babyAgeLabel) || null,
         winner_public_description: publicDescOverride || (pick && pick.publicDescription) || null,
         winner_memory_date: (pick && pick.createdAt) || now.toISOString(),
+        winner_like_count: 0,
         updated_at: admin.firestore.FieldValue.serverTimestamp(),
       };
 
       await spotlightRef.set(data, { merge: true });
+
+      if (pick) {
+        await writeWeeklyPhotoWeekHistory(weekKey, {
+          status: 'active',
+          pick: {
+            ...pick,
+            babyDisplayName: data.winner_baby_display_name,
+            babySex: sex,
+            babyAgeLabel: data.winner_baby_age_label,
+          },
+          displayStartLuxon,
+          displayUntilLuxon,
+          drawInstant: now,
+          likeCount: 0,
+        });
+      }
 
       await db.collection('weekly_photo_contests').doc('_meta').set(
         {
@@ -737,12 +840,28 @@ exports.pickRandomSpotlightFromPublicMemories = onRequest(
         winner_baby_age_label: babyAgeLabel,
         winner_public_description: pick.publicDescription || null,
         winner_memory_date: pick.createdAt || now.toISOString(),
+        winner_like_count: 0,
         cleared_at: null,
         cleared_via: null,
         updated_at: admin.firestore.FieldValue.serverTimestamp(),
       };
 
       await db.collection('weekly_photo_contests').doc('spotlight_current').set(data, { merge: true });
+
+      const pickForHistory = {
+        ...pick,
+        babyDisplayName,
+        babySex,
+        babyAgeLabel,
+      };
+      await writeWeeklyPhotoWeekHistory(weekKey, {
+        status: 'active',
+        pick: pickForHistory,
+        displayStartLuxon,
+        displayUntilLuxon,
+        drawInstant: now,
+        likeCount: 0,
+      });
 
       await db.collection('weekly_photo_contests').doc('_meta').set(
         {
@@ -820,6 +939,30 @@ exports.clearSpotlight = onRequest(
     } catch (e) {
       console.error('clearSpotlight', e);
       res.status(500).json({ error: `${e.message || e}` });
+    }
+  },
+);
+
+/**
+ * Mantém `likeCount` em `public_memories` e `like_count` / `winner_like_count` no histórico
+ * semanal e em `spotlight_current` quando a memória vencedora recebe ou perde curtidas.
+ */
+exports.onPublicMemoryLikeWritten = onDocumentWritten(
+  {
+    document: 'public_memories/{memoryId}/likes/{likeUid}',
+    region: 'southamerica-east1',
+  },
+  async (event) => {
+    const before = event.data.before.exists;
+    const after = event.data.after.exists;
+    if (before === after) return;
+    const delta = !before && after ? 1 : before && !after ? -1 : 0;
+    if (delta === 0) return;
+    try {
+      await propagatePublicMemoryLikeCount(event.params.memoryId, delta);
+    } catch (e) {
+      console.error('onPublicMemoryLikeWritten', e);
+      throw e;
     }
   },
 );

@@ -24,6 +24,26 @@ class _WeeklyPhotoWinnerCongratsHostState extends State<WeeklyPhotoWinnerCongrat
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _sub;
   bool _dialogOpen = false;
 
+  String? _normalisedSpotlightBabySex(Map<String, dynamic> data) {
+    for (final value in [
+      data['winner_baby_sex'],
+      data['winnerBabySex'],
+      data['babySex'],
+      data['baby_sex'],
+      data['sex'],
+      data['gender'],
+    ]) {
+      final sx = value == null ? '' : '$value'.trim().toUpperCase();
+      if (sx == 'M' || sx == 'MALE' || sx == 'BOY' || sx == 'MASCULINO' || sx == 'MENINO') {
+        return 'M';
+      }
+      if (sx == 'F' || sx == 'FEMALE' || sx == 'GIRL' || sx == 'FEMININO' || sx == 'MENINA') {
+        return 'F';
+      }
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -59,6 +79,7 @@ class _WeeklyPhotoWinnerCongratsHostState extends State<WeeklyPhotoWinnerCongrat
 
     if (!mounted) return;
     _dialogOpen = true;
+    final spotlightSex = _normalisedSpotlightBabySex(d);
 
     await showDialog<void>(
       context: context,
@@ -80,7 +101,7 @@ class _WeeklyPhotoWinnerCongratsHostState extends State<WeeklyPhotoWinnerCongrat
             ],
           ),
           content: SingleChildScrollView(
-            child: Text(s.weeklyPhotoWinnerCongratsBody, style: const TextStyle(height: 1.4)),
+            child: Text(s.weeklyPhotoWinnerCongratsBodyForBabySex(spotlightSex), style: const TextStyle(height: 1.4)),
           ),
           actions: [
             FilledButton(
