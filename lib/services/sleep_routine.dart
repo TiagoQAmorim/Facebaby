@@ -22,13 +22,41 @@ class SleepWindowRow {
 /// Meses completos (`monthsOld`): **0–3** → 45–90 | **4–6** → 90–150 | **7–9** → 120–180 |
 /// **10–12** → 150–210 | **13–18** → 180–240 | **19–24** → 240–360 | **25–36** → 300–420.
 const List<SleepWindowRow> kSleepWindowsByAge = [
-  SleepWindowRow(ageMinMonthsExclusive: -1, ageMaxMonthsInclusive: 3, minAwakeMin: 45, maxAwakeMin: 90),
-  SleepWindowRow(ageMinMonthsExclusive: 3, ageMaxMonthsInclusive: 6, minAwakeMin: 90, maxAwakeMin: 150),
-  SleepWindowRow(ageMinMonthsExclusive: 6, ageMaxMonthsInclusive: 9, minAwakeMin: 120, maxAwakeMin: 180),
-  SleepWindowRow(ageMinMonthsExclusive: 9, ageMaxMonthsInclusive: 12, minAwakeMin: 150, maxAwakeMin: 210),
-  SleepWindowRow(ageMinMonthsExclusive: 12, ageMaxMonthsInclusive: 18, minAwakeMin: 180, maxAwakeMin: 240),
-  SleepWindowRow(ageMinMonthsExclusive: 18, ageMaxMonthsInclusive: 24, minAwakeMin: 240, maxAwakeMin: 360),
-  SleepWindowRow(ageMinMonthsExclusive: 24, ageMaxMonthsInclusive: 36, minAwakeMin: 300, maxAwakeMin: 420),
+  SleepWindowRow(
+      ageMinMonthsExclusive: -1,
+      ageMaxMonthsInclusive: 3,
+      minAwakeMin: 45,
+      maxAwakeMin: 90),
+  SleepWindowRow(
+      ageMinMonthsExclusive: 3,
+      ageMaxMonthsInclusive: 6,
+      minAwakeMin: 90,
+      maxAwakeMin: 150),
+  SleepWindowRow(
+      ageMinMonthsExclusive: 6,
+      ageMaxMonthsInclusive: 9,
+      minAwakeMin: 120,
+      maxAwakeMin: 180),
+  SleepWindowRow(
+      ageMinMonthsExclusive: 9,
+      ageMaxMonthsInclusive: 12,
+      minAwakeMin: 150,
+      maxAwakeMin: 210),
+  SleepWindowRow(
+      ageMinMonthsExclusive: 12,
+      ageMaxMonthsInclusive: 18,
+      minAwakeMin: 180,
+      maxAwakeMin: 240),
+  SleepWindowRow(
+      ageMinMonthsExclusive: 18,
+      ageMaxMonthsInclusive: 24,
+      minAwakeMin: 240,
+      maxAwakeMin: 360),
+  SleepWindowRow(
+      ageMinMonthsExclusive: 24,
+      ageMaxMonthsInclusive: 36,
+      minAwakeMin: 300,
+      maxAwakeMin: 420),
 ];
 
 enum SleepRoutinePhase {
@@ -56,14 +84,25 @@ abstract final class SleepRoutine {
 
   static SleepWindowRow windowForMonths(int months) {
     for (final row in kSleepWindowsByAge) {
-      if (months > row.ageMinMonthsExclusive && months <= row.ageMaxMonthsInclusive) {
+      if (months > row.ageMinMonthsExclusive &&
+          months <= row.ageMaxMonthsInclusive) {
         return row;
       }
     }
     return kSleepWindowsByAge.last;
   }
 
-  static SleepRoutinePhase phaseFor({required int awakeMinutes, required SleepWindowRow w}) {
+  /// Limite usado enquanto o bebê está dormindo para sugerir uma conferida.
+  ///
+  /// Mantém a mesma regra exibida na Home: pelo menos 3h, ou 2x o limite
+  /// máximo da janela acordado para a idade.
+  static int sessionCapMinutesForWindow(SleepWindowRow w) {
+    final byAge = w.maxAwakeMin * 2;
+    return byAge < 180 ? 180 : byAge;
+  }
+
+  static SleepRoutinePhase phaseFor(
+      {required int awakeMinutes, required SleepWindowRow w}) {
     final minW = w.minAwakeMin;
     final maxW = w.maxAwakeMin;
     if (awakeMinutes < minW) return SleepRoutinePhase.early;

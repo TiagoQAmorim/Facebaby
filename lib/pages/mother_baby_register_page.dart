@@ -13,13 +13,16 @@ import '../services/measurement_units_prefs.dart';
 import '../theme/app_theme.dart';
 import '../utils/input_formatters.dart';
 import '../utils/pick_image_b64.dart';
-import '../utils/measurement_format.dart';
 import '../utils/zodiac.dart';
 import '../widgets/card_box.dart';
 import '../widgets/loading_scope.dart';
 import '../widgets/face_baby_loading.dart';
+import '../widgets/growth_ruler_picker.dart';
 import '../widgets/photo_avatar.dart';
 import '../widgets/section_title.dart';
+
+/// Qual metade do formulário exibir ao editar a mãe a partir de «Meu perfil».
+enum MotherProfileMotherFormSection { mother, father }
 
 ThemeData _motherBabyFormTheme(BuildContext context) {
   final base = Theme.of(context);
@@ -61,6 +64,8 @@ class MotherBabyRegisterPage extends StatefulWidget {
   final int? presetMotherId;
   /// Editar dados da mãe existentes (Meu Perfil).
   final int? editMotherId;
+  /// Com [editMotherId]: só campos da mãe ou só do pai (o restante preserva-se na BD).
+  final MotherProfileMotherFormSection? profileMotherSection;
   /// Editar dados do bebê existente (Meu Perfil).
   final int? editBabyId;
 
@@ -71,6 +76,7 @@ class MotherBabyRegisterPage extends StatefulWidget {
     this.babyOnly = false,
     this.presetMotherId,
     this.editMotherId,
+    this.profileMotherSection,
     this.editBabyId,
   });
 
@@ -84,20 +90,27 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
 
   final _motherNameCtrl = TextEditingController();
   final _motherPhoneCtrl = TextEditingController();
-  final _motherHeightCtrl = TextEditingController();
-  final _fatherHeightCtrl = TextEditingController();
+  final _fatherNameCtrl = TextEditingController();
   final _babyNameCtrl = TextEditingController();
-  final _babyWeightCtrl = TextEditingController();
-  final _babyHeightCtrl = TextEditingController();
+
+  /// Valores em cm / kg (réguas).
+  double _motherHeightCmRuler = 165;
+  double _fatherHeightCmRuler = 175;
+  double _babyWeightKgRuler = 3.5;
+  double _babyHeightCmRuler = 50;
 
   DateTime? _motherBirthDate;
+  DateTime? _fatherBirthDate;
   DateTime? _babyBirthDate;
   String _babySex = 'F';
   String? _motherPhotoB64;
+  String? _fatherPhotoB64;
   String? _babyPhotoB64;
   String? _motherPhotoUrl;
+  String? _fatherPhotoUrl;
   String? _babyPhotoUrl;
   bool _motherPhotoDirty = false;
+  bool _fatherPhotoDirty = false;
   bool _babyPhotoDirty = false;
   bool _saving = false;
   int _step = 0; // 0 = mãe, 1 = bebê
@@ -110,6 +123,14 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
   bool get _profileEditMother => widget.editMotherId != null;
   bool get _profileEditBaby => widget.editBabyId != null;
   bool get _profileEditMode => _profileEditMother || _profileEditBaby;
+
+  bool get _motherFormSectionVisible =>
+      widget.profileMotherSection == null ||
+      widget.profileMotherSection == MotherProfileMotherFormSection.mother;
+
+  bool get _fatherFormSectionVisible =>
+      widget.profileMotherSection == null ||
+      widget.profileMotherSection == MotherProfileMotherFormSection.father;
 
   @override
   void initState() {
@@ -139,27 +160,23 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
     setState(() {
       _motherNameCtrl.text = (row['name'] as String?) ?? '';
       _motherPhoneCtrl.text = (row['phone'] as String?) ?? '';
-      _motherHeightCtrl.text = h != null
-          ? (switch (MeasurementUnitsPrefs.length.value) {
-              LengthUnit.cm => h.toDouble(),
-              LengthUnit.inch => h.toDouble() / 2.54,
-            })
-              .toStringAsFixed(MeasurementUnitsPrefs.length.value == LengthUnit.cm ? 0 : 1)
-              .replaceAll('.', ',')
-          : '';
-      _fatherHeightCtrl.text = fh != null
-          ? (switch (MeasurementUnitsPrefs.length.value) {
-              LengthUnit.cm => fh.toDouble(),
-              LengthUnit.inch => fh.toDouble() / 2.54,
-            })
-              .toStringAsFixed(MeasurementUnitsPrefs.length.value == LengthUnit.cm ? 0 : 1)
-              .replaceAll('.', ',')
-          : '';
+      _motherHeightCmRuler =
+          (h != null && h.toDouble() > 0) ? h.toDouble() : 165.0;
+      _fatherNameCtrl.text = (row['father_name'] as String?)?.trim() ?? '';
+      _fatherHeightCmRuler =
+          (fh != null && fh.toDouble() > 0) ? fh.toDouble() : 175.0;
+      final fbRaw = (row['father_birth_date'] as String?)?.trim();
+      final fb = fbRaw == null || fbRaw.isEmpty ? null : DateTime.tryParse(fbRaw);
+      _fatherBirthDate = fb == null ? null : DateTime(fb.year, fb.month, fb.day);
       _motherBirthDate = birth == null ? null : DateTime(birth.year, birth.month, birth.day);
       _motherPhotoB64 = (row['photo_b64'] as String?)?.trim();
+      _fatherPhotoB64 = (row['father_photo_b64'] as String?)?.trim();
       final mu = (row['photo_url'] as String?)?.trim();
       _motherPhotoUrl = (mu == null || mu.isEmpty) ? null : mu;
+      final fu = (row['father_photo_url'] as String?)?.trim();
+      _fatherPhotoUrl = (fu == null || fu.isEmpty) ? null : fu;
       _motherPhotoDirty = false;
+      _fatherPhotoDirty = false;
       _selectedMotherId = id;
     });
   }
@@ -179,23 +196,8 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
       _babyNameCtrl.text = (row['name'] as String?) ?? '';
       _babySex = ((row['sex'] as String?)?.trim().toUpperCase() == 'M') ? 'M' : 'F';
       _babyBirthDate = birth == null ? null : DateTime(birth.year, birth.month, birth.day);
-      if (w != null) {
-        _babyWeightCtrl.text = switch (MeasurementUnitsPrefs.weight.value) {
-          WeightUnit.kg => (w.toDouble()).toStringAsFixed(2),
-          WeightUnit.lb => (w.toDouble() * 2.2046226218).toStringAsFixed(1),
-          WeightUnit.st => ((w.toDouble() * 2.2046226218) / 14.0).toStringAsFixed(1),
-        }.replaceAll('.', ',');
-      } else {
-        _babyWeightCtrl.clear();
-      }
-      _babyHeightCtrl.text = h != null
-          ? (switch (MeasurementUnitsPrefs.length.value) {
-              LengthUnit.cm => h.toDouble(),
-              LengthUnit.inch => h.toDouble() / 2.54,
-            })
-              .toStringAsFixed(MeasurementUnitsPrefs.length.value == LengthUnit.cm ? 0 : 1)
-              .replaceAll('.', ',')
-          : '';
+      _babyWeightKgRuler = (w != null && w.toDouble() > 0) ? w.toDouble() : 3.5;
+      _babyHeightCmRuler = (h != null && h.toDouble() > 0) ? h.toDouble() : 50.0;
       _babyPhotoB64 = (row['photo_b64'] as String?)?.trim();
       final bu = (row['photo_url'] as String?)?.trim();
       _babyPhotoUrl = (bu == null || bu.isEmpty) ? null : bu;
@@ -209,11 +211,8 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
   void dispose() {
     _motherNameCtrl.dispose();
     _motherPhoneCtrl.dispose();
-    _motherHeightCtrl.dispose();
-    _fatherHeightCtrl.dispose();
+    _fatherNameCtrl.dispose();
     _babyNameCtrl.dispose();
-    _babyWeightCtrl.dispose();
-    _babyHeightCtrl.dispose();
     super.dispose();
   }
 
@@ -231,17 +230,162 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
     return await loading.run(action, label: label);
   }
 
-  double? _parseHeightToCm(String raw) => MeasurementFormat.parseLengthToCm(raw);
-  double? _parseWeightToKg(String raw) => MeasurementFormat.parseWeightToKg(raw);
+  double _lengthDisplayFromCm(double cm) =>
+      MeasurementUnitsPrefs.length.value == LengthUnit.inch ? cm / 2.54 : cm;
 
-  String _lenUnitLabel(S s) =>
-      MeasurementUnitsPrefs.length.value == LengthUnit.cm ? s.unitsOptCm : s.unitsOptInch;
+  double _lengthCmFromDisplay(double v) =>
+      MeasurementUnitsPrefs.length.value == LengthUnit.inch ? v * 2.54 : v;
 
-  String _weightUnitLabel(S s) => switch (MeasurementUnitsPrefs.weight.value) {
-        WeightUnit.kg => s.unitsOptKg,
-        WeightUnit.lb => s.unitsOptLb,
-        WeightUnit.st => s.unitsOptSt,
+  double _babyWeightDisplayFromKg(double kg) {
+    switch (MeasurementUnitsPrefs.weight.value) {
+      case WeightUnit.kg:
+        return kg;
+      case WeightUnit.lb:
+        return kg * 2.2046226218;
+      case WeightUnit.st:
+        return (kg * 2.2046226218) / 14.0;
+    }
+  }
+
+  double _babyWeightKgFromDisplay(double v) {
+    switch (MeasurementUnitsPrefs.weight.value) {
+      case WeightUnit.kg:
+        return v;
+      case WeightUnit.lb:
+        return v / 2.2046226218;
+      case WeightUnit.st:
+        return (v * 14.0) / 2.2046226218;
+    }
+  }
+
+  String _growthWeightChipLabel() => switch (MeasurementUnitsPrefs.weight.value) {
+        WeightUnit.kg => 'Kg',
+        WeightUnit.lb => 'Lb',
+        WeightUnit.st => 'St',
       };
+
+  DateTime? _rowDateOnly(Map<String, Object?> row, String key) {
+    final raw = (row[key] as String?)?.trim();
+    if (raw == null || raw.isEmpty) return null;
+    final d = DateTime.tryParse(raw);
+    return d == null ? null : DateTime(d.year, d.month, d.day);
+  }
+
+  Widget _motherHeightRuler(S s) {
+    final inch = MeasurementUnitsPrefs.length.value == LengthUnit.inch;
+    return GrowthRulerPicker(
+      value: _lengthDisplayFromCm(_motherHeightCmRuler),
+      min: 0,
+      max: inch ? 210 / 2.54 : 210,
+      divisions: inch ? 166 : 210,
+      unit: inch ? 'pol' : 'cm',
+      decimalDigits: 1,
+      icon: Icons.accessibility_new_rounded,
+      subjectLabel: _motherNameCtrl.text.trim().isEmpty ? null : _motherNameCtrl.text.trim(),
+      dragHint: s.onb('DragToAdjust'),
+      unitOptions: const ['cm', 'pol'],
+      selectedUnit: inch ? 'pol' : 'cm',
+      snapStartToZeroWhenAtMax: false,
+      onUnitSelected: (u) async {
+        await MeasurementUnitsPrefs.setLength(
+            u == 'pol' ? LengthUnit.inch : LengthUnit.cm);
+        if (mounted) setState(() {});
+      },
+      onChanged: (v) => setState(() {
+        _motherHeightCmRuler = _lengthCmFromDisplay(v);
+      }),
+    );
+  }
+
+  Widget _fatherHeightRuler(S s) {
+    final inch = MeasurementUnitsPrefs.length.value == LengthUnit.inch;
+    return GrowthRulerPicker(
+      value: _lengthDisplayFromCm(_fatherHeightCmRuler),
+      min: 0,
+      max: inch ? 220 / 2.54 : 220,
+      divisions: inch ? 174 : 220,
+      unit: inch ? 'pol' : 'cm',
+      decimalDigits: 1,
+      icon: Icons.straighten_rounded,
+      subjectLabel: _fatherNameCtrl.text.trim().isEmpty ? null : _fatherNameCtrl.text.trim(),
+      dragHint: s.onb('DragToAdjust'),
+      unitOptions: const ['cm', 'pol'],
+      selectedUnit: inch ? 'pol' : 'cm',
+      snapStartToZeroWhenAtMax: false,
+      onUnitSelected: (u) async {
+        await MeasurementUnitsPrefs.setLength(
+            u == 'pol' ? LengthUnit.inch : LengthUnit.cm);
+        if (mounted) setState(() {});
+      },
+      onChanged: (v) => setState(() {
+        _fatherHeightCmRuler = _lengthCmFromDisplay(v);
+      }),
+    );
+  }
+
+  Widget _babyWeightRuler(S s) {
+    final wu = MeasurementUnitsPrefs.weight.value;
+    final (double max, int divisions, int dec, String unitStr) = switch (wu) {
+      WeightUnit.kg => (40.0, 200, 2, 'Kg'),
+      WeightUnit.lb => (88.0, 176, 1, 'Lb'),
+      WeightUnit.st => (6.3, 126, 2, 'St'),
+    };
+    return GrowthRulerPicker(
+      value: _babyWeightDisplayFromKg(_babyWeightKgRuler),
+      min: 0,
+      max: max,
+      divisions: divisions,
+      unit: unitStr,
+      decimalDigits: dec,
+      icon: Icons.monitor_weight_outlined,
+      subjectLabel:
+          _babyNameCtrl.text.trim().isEmpty ? null : _babyNameCtrl.text.trim(),
+      dragHint: s.onb('DragToAdjust'),
+      unitOptions: const ['Kg', 'Lb', 'St'],
+      selectedUnit: _growthWeightChipLabel(),
+      snapStartToZeroWhenAtMax: false,
+      onUnitSelected: (u) async {
+        await MeasurementUnitsPrefs.setWeight(
+          u == 'Lb'
+              ? WeightUnit.lb
+              : u == 'St'
+                  ? WeightUnit.st
+                  : WeightUnit.kg,
+        );
+        if (mounted) setState(() {});
+      },
+      onChanged: (v) => setState(() {
+        _babyWeightKgRuler = _babyWeightKgFromDisplay(v);
+      }),
+    );
+  }
+
+  Widget _babyHeightRuler(S s) {
+    final inch = MeasurementUnitsPrefs.length.value == LengthUnit.inch;
+    return GrowthRulerPicker(
+      value: _lengthDisplayFromCm(_babyHeightCmRuler),
+      min: 0,
+      max: inch ? 120 / 2.54 : 120,
+      divisions: inch ? 236 : 240,
+      unit: inch ? 'pol' : 'cm',
+      decimalDigits: 1,
+      icon: Icons.straighten_rounded,
+      subjectLabel:
+          _babyNameCtrl.text.trim().isEmpty ? null : _babyNameCtrl.text.trim(),
+      dragHint: s.onb('DragToAdjust'),
+      unitOptions: const ['cm', 'pol'],
+      selectedUnit: inch ? 'pol' : 'cm',
+      snapStartToZeroWhenAtMax: false,
+      onUnitSelected: (u) async {
+        await MeasurementUnitsPrefs.setLength(
+            u == 'pol' ? LengthUnit.inch : LengthUnit.cm);
+        if (mounted) setState(() {});
+      },
+      onChanged: (v) => setState(() {
+        _babyHeightCmRuler = _lengthCmFromDisplay(v);
+      }),
+    );
+  }
 
   Future<void> _pickBirthDate() async {
     final now = DateTime.now();
@@ -269,38 +413,83 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
     setState(() => _motherBirthDate = picked);
   }
 
+  Future<void> _pickFatherBirthDate() async {
+    final now = DateTime.now();
+    final initial = _fatherBirthDate ?? DateTime(now.year - 30, now.month, now.day);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(now.year - 80),
+      lastDate: now,
+    );
+    if (picked == null) return;
+    setState(() => _fatherBirthDate = picked);
+  }
+
+  String? get _trimFatherName {
+    final t = _fatherNameCtrl.text.trim();
+    return t.isEmpty ? null : t;
+  }
+
+  bool? get _registerFatherFlag {
+    final hasName = (_trimFatherName?.length ?? 0) >= 2;
+    final hasBirth = _fatherBirthDate != null;
+    final hasHeight = _fatherHeightCmRuler >= 120 && _fatherHeightCmRuler <= 220;
+    final hasPhoto = (_fatherPhotoB64?.isNotEmpty == true) ||
+        (_fatherPhotoUrl?.isNotEmpty == true);
+    if (!hasName && !hasBirth && !hasHeight && !hasPhoto) return false;
+    return true;
+  }
+
   Future<void> _saveMother() async {
     if (_saving) return;
-    final valid = _motherFormKey.currentState?.validate() ?? false;
-    if (!valid) return;
-    if (_motherBirthDate == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(S.of(context).regSnackMotherBirth)),
-        );
-      }
-      return;
-    }
+    final s = S.of(context);
+    final editMid = widget.editMotherId;
+    final section = widget.profileMotherSection;
 
-    setState(() => _saving = true);
-    try {
-      final editMid = widget.editMotherId;
-      if (editMid != null) {
+    if (editMid != null && section == MotherProfileMotherFormSection.mother) {
+      if (!(_motherFormKey.currentState?.validate() ?? false)) return;
+      if (_motherBirthDate == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(s.regSnackMotherBirth)),
+          );
+        }
+        return;
+      }
+      if (_motherHeightCmRuler < 120 || _motherHeightCmRuler > 220) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(s.valHeightMotherRange)),
+          );
+        }
+        return;
+      }
+      final row = await AppDatabase.instance.getMotherById(editMid);
+      if (!mounted || row == null) return;
+      setState(() => _saving = true);
+      try {
+        final fName = (row['father_name'] as String?)?.trim();
+        final fH = (row['father_height_cm'] as num?)?.toDouble();
+        final keepReg = (row['register_father'] as num?)?.toInt() == 1;
         await _runLoading(() async {
           await AppDatabase.instance.updateMother(
             motherId: editMid,
             name: _motherNameCtrl.text,
             phone: _motherPhoneCtrl.text,
             birthDate: _motherBirthDate,
-            heightCm: _parseHeightToCm(_motherHeightCtrl.text),
-            fatherHeightCm: _parseHeightToCm(_fatherHeightCtrl.text),
+            heightCm: _motherHeightCmRuler,
+            fatherName: fName == null || fName.isEmpty ? null : fName,
+            fatherHeightCm: fH,
+            fatherBirthDate: _rowDateOnly(row, 'father_birth_date'),
+            registerFather: keepReg,
             photoB64: _motherPhotoB64,
+            fatherPhotoB64: (row['father_photo_b64'] as String?)?.trim(),
             resetProfilePhotoUrl: _motherPhotoDirty,
+            resetFatherPhotoUrl: false,
           );
-        }, label: S.of(context).commonSaving);
-        // Login obrigatório: só conclui após persistir na nuvem (users/{uid} + Storage se houver foto).
+        }, label: s.commonSaving);
         await ProfileCloudSync.pushMother(editMid);
-        // Novo schema: salva também em users/{uid} (merge) para o gate.
         final uid = AuthService.instance.currentUser?.uid;
         if (uid != null) {
           unawaited(
@@ -309,8 +498,11 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
               'email': AuthService.instance.currentUser?.email,
               'phone': _motherPhoneCtrl.text.trim().isEmpty ? null : _motherPhoneCtrl.text.trim(),
               'birth_date': _motherBirthDate?.toIso8601String(),
-              'height_cm': _parseHeightToCm(_motherHeightCtrl.text),
-              'father_height_cm': _parseHeightToCm(_fatherHeightCtrl.text),
+              'height_cm': _motherHeightCmRuler,
+              'father_name': fName,
+              'father_height_cm': fH,
+              'father_birth_date': (row['father_birth_date'] as String?)?.trim(),
+              'register_father': keepReg,
             }),
           );
         }
@@ -318,7 +510,168 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
         await CurrentBabyController.instance.refresh();
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(S.of(context).profileDataSaved)),
+          SnackBar(content: Text(s.profileDataSaved)),
+        );
+        Navigator.of(context).pop();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${s.commonCouldNotSave} $e')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _saving = false);
+      }
+      return;
+    }
+
+    if (editMid != null && section == MotherProfileMotherFormSection.father) {
+      if (!(_motherFormKey.currentState?.validate() ?? false)) return;
+      final fname = _fatherNameCtrl.text.trim();
+      if (fname.length < 2) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(s.valNameShort)),
+          );
+        }
+        return;
+      }
+      if (_fatherHeightCmRuler < 120 || _fatherHeightCmRuler > 220) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(s.valHeightMotherRange)),
+          );
+        }
+        return;
+      }
+      final row = await AppDatabase.instance.getMotherById(editMid);
+      if (!mounted || row == null) return;
+      setState(() => _saving = true);
+      try {
+        await _runLoading(() async {
+          await AppDatabase.instance.updateMother(
+            motherId: editMid,
+            name: (row['name'] as String?) ?? '',
+            phone: (row['phone'] as String?)?.trim(),
+            birthDate: _rowDateOnly(row, 'birth_date'),
+            heightCm: (row['height_cm'] as num?)?.toDouble(),
+            fatherName: _trimFatherName,
+            fatherHeightCm: _fatherHeightCmRuler,
+            fatherBirthDate: _fatherBirthDate,
+            registerFather: true,
+            photoB64: (row['photo_b64'] as String?)?.trim(),
+            fatherPhotoB64: _fatherPhotoB64,
+            resetProfilePhotoUrl: false,
+            resetFatherPhotoUrl: _fatherPhotoDirty,
+          );
+        }, label: s.commonSaving);
+        await ProfileCloudSync.pushMother(editMid);
+        final uid = AuthService.instance.currentUser?.uid;
+        if (uid != null) {
+          unawaited(
+            FirestoreUserRepository.instance.saveUserProfile(uid, {
+              'name': (row['name'] as String?)?.trim(),
+              'email': AuthService.instance.currentUser?.email,
+              'phone': (row['phone'] as String?)?.trim(),
+              'birth_date': (row['birth_date'] as String?)?.trim(),
+              'height_cm': (row['height_cm'] as num?)?.toDouble(),
+              'father_name': _trimFatherName,
+              'father_height_cm': _fatherHeightCmRuler,
+              'father_birth_date': _fatherBirthDate?.toIso8601String(),
+              'register_father': true,
+            }),
+          );
+        }
+        _fatherPhotoDirty = false;
+        await CurrentBabyController.instance.refresh();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.profileDataSaved)),
+        );
+        Navigator.of(context).pop();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${s.commonCouldNotSave} $e')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _saving = false);
+      }
+      return;
+    }
+
+    if (!(_motherFormKey.currentState?.validate() ?? false)) return;
+    if (_motherFormSectionVisible && _motherBirthDate == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.regSnackMotherBirth)),
+        );
+      }
+      return;
+    }
+    if (_motherFormSectionVisible &&
+        (_motherHeightCmRuler < 120 || _motherHeightCmRuler > 220)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.valHeightMotherRange)),
+        );
+      }
+      return;
+    }
+    if (_fatherFormSectionVisible &&
+        (_fatherHeightCmRuler < 120 || _fatherHeightCmRuler > 220)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.valFatherHeightEmpty)),
+        );
+      }
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      if (editMid != null) {
+        await _runLoading(() async {
+          await AppDatabase.instance.updateMother(
+            motherId: editMid,
+            name: _motherNameCtrl.text,
+            phone: _motherPhoneCtrl.text,
+            birthDate: _motherBirthDate,
+            heightCm: _motherHeightCmRuler,
+            fatherName: _trimFatherName,
+            fatherHeightCm: _fatherHeightCmRuler,
+            fatherBirthDate: _fatherBirthDate,
+            registerFather: _registerFatherFlag,
+            photoB64: _motherPhotoB64,
+            fatherPhotoB64: _fatherPhotoB64,
+            resetProfilePhotoUrl: _motherPhotoDirty,
+            resetFatherPhotoUrl: _fatherPhotoDirty,
+          );
+        }, label: s.commonSaving);
+        await ProfileCloudSync.pushMother(editMid);
+        final uidFull = AuthService.instance.currentUser?.uid;
+        if (uidFull != null) {
+          unawaited(
+            FirestoreUserRepository.instance.saveUserProfile(uidFull, {
+              'name': _motherNameCtrl.text.trim(),
+              'email': AuthService.instance.currentUser?.email,
+              'phone': _motherPhoneCtrl.text.trim().isEmpty ? null : _motherPhoneCtrl.text.trim(),
+              'birth_date': _motherBirthDate?.toIso8601String(),
+              'height_cm': _motherHeightCmRuler,
+              'father_name': _trimFatherName,
+              'father_height_cm': _fatherHeightCmRuler,
+              'father_birth_date': _fatherBirthDate?.toIso8601String(),
+              'register_father': _registerFatherFlag,
+            }),
+          );
+        }
+        _motherPhotoDirty = false;
+        _fatherPhotoDirty = false;
+        await CurrentBabyController.instance.refresh();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.profileDataSaved)),
         );
         Navigator.of(context).pop();
         return;
@@ -329,15 +682,16 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
           name: _motherNameCtrl.text,
           phone: _motherPhoneCtrl.text,
           birthDate: _motherBirthDate,
-          heightCm: _parseHeightToCm(_motherHeightCtrl.text),
-          fatherHeightCm: _parseHeightToCm(_fatherHeightCtrl.text),
+          heightCm: _motherHeightCmRuler,
+          fatherName: _trimFatherName,
+          fatherHeightCm: _fatherHeightCmRuler,
+          fatherBirthDate: _fatherBirthDate,
+          registerFather: _registerFatherFlag,
           photoB64: _motherPhotoB64,
+          fatherPhotoB64: _fatherPhotoB64,
         );
-      }, label: S.of(context).regSavingMother);
-      // Login obrigatório: só conclui após persistir na nuvem.
+      }, label: s.regSavingMother);
       await ProfileCloudSync.pushMother(motherId);
-      // Garante persistência de campos básicos do perfil no schema users/{uid}
-      // (evita perder telefone/alturas ao reinstalar, mesmo que o push demore).
       final uid = AuthService.instance.currentUser?.uid;
       if (uid != null) {
         unawaited(
@@ -346,18 +700,25 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
             'email': AuthService.instance.currentUser?.email,
             'phone': _motherPhoneCtrl.text.trim().isEmpty ? null : _motherPhoneCtrl.text.trim(),
             'birth_date': _motherBirthDate?.toIso8601String(),
-            'height_cm': _parseHeightToCm(_motherHeightCtrl.text),
-            'father_height_cm': _parseHeightToCm(_fatherHeightCtrl.text),
+            'height_cm': _motherHeightCmRuler,
+            'father_name': _trimFatherName,
+            'father_height_cm': _fatherHeightCmRuler,
+            'father_birth_date': _fatherBirthDate?.toIso8601String(),
+            'register_father': _registerFatherFlag,
           }),
         );
       }
       _motherFormKey.currentState?.reset();
       _motherNameCtrl.clear();
       _motherPhoneCtrl.clear();
-      _motherHeightCtrl.clear();
-      _fatherHeightCtrl.clear();
+      _fatherNameCtrl.clear();
+      _fatherPhotoB64 = null;
+      _fatherPhotoUrl = null;
       _motherBirthDate = null;
+      _fatherBirthDate = null;
       setState(() {
+        _motherHeightCmRuler = 165;
+        _fatherHeightCmRuler = 175;
         _selectedMotherId = motherId;
         _reload();
         _step = 1;
@@ -365,13 +726,13 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(S.of(context).regSnackMotherOk)),
+          SnackBar(content: Text(s.regSnackMotherOk)),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${S.of(context).commonCouldNotSave} $e')),
+          SnackBar(content: Text('${s.commonCouldNotSave} $e')),
         );
       }
     } finally {
@@ -406,6 +767,22 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
       }
       return;
     }
+    if (_babyWeightKgRuler <= 0 || _babyWeightKgRuler > 40) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(S.of(context).valWeightRange)),
+        );
+      }
+      return;
+    }
+    if (_babyHeightCmRuler <= 20 || _babyHeightCmRuler > 120) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(S.of(context).valBabyHeightRange)),
+        );
+      }
+      return;
+    }
     final motherId = _selectedMotherId;
     if (motherId == null) {
       if (mounted) {
@@ -428,8 +805,8 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
             sex: _babySex,
             birthDate: _babyBirthDate,
             zodiacSign: _babyZodiacSign,
-            weightKg: _parseWeightToKg(_babyWeightCtrl.text),
-            heightCm: _parseHeightToCm(_babyHeightCtrl.text),
+            weightKg: _babyWeightKgRuler,
+            heightCm: _babyHeightCmRuler,
             photoB64: _babyPhotoB64,
             resetProfilePhotoUrl: _babyPhotoDirty,
           );
@@ -448,8 +825,8 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                 'name': _babyNameCtrl.text.trim(),
                 'sex': _babySex,
                 'birthDate': _babyBirthDate?.toIso8601String(),
-                'weightKg': _parseWeightToKg(_babyWeightCtrl.text),
-                'heightCm': _parseHeightToCm(_babyHeightCtrl.text),
+                'weightKg': _babyWeightKgRuler,
+                'heightCm': _babyHeightCmRuler,
               });
               await FirestoreUserRepository.instance.setSelectedBabyId(uid, cloudId);
             }
@@ -472,8 +849,8 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
           sex: _babySex,
           birthDate: _babyBirthDate,
           zodiacSign: _babyZodiacSign,
-          weightKg: _parseWeightToKg(_babyWeightCtrl.text),
-          heightCm: _parseHeightToCm(_babyHeightCtrl.text),
+          weightKg: _babyWeightKgRuler,
+          heightCm: _babyHeightCmRuler,
           photoB64: _babyPhotoB64,
         );
         await CurrentBabyController.instance.setCurrentBabyId(id);
@@ -497,8 +874,8 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                   'name': _babyNameCtrl.text.trim(),
                   'sex': _babySex,
                   'birthDate': _babyBirthDate?.toIso8601String(),
-                  'weightKg': _parseWeightToKg(_babyWeightCtrl.text),
-                  'heightCm': _parseHeightToCm(_babyHeightCtrl.text),
+                  'weightKg': _babyWeightKgRuler,
+                  'heightCm': _babyHeightCmRuler,
                 });
                 await FirestoreUserRepository.instance.setSelectedBabyId(uid, cloudId);
                 break;
@@ -520,13 +897,15 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
 
       _babyFormKey.currentState?.reset();
       _babyNameCtrl.clear();
-      _babyWeightCtrl.clear();
-      _babyHeightCtrl.clear();
       _babyBirthDate = null;
       _babySex = 'F';
       _babyPhotoB64 = null;
 
-      setState(() => _reload());
+      setState(() {
+        _babyWeightKgRuler = 3.5;
+        _babyHeightCmRuler = 50;
+        _reload();
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(S.of(context).regSnackBabyOk)),
@@ -552,6 +931,9 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
     final motherBirthLabel = _motherBirthDate == null
         ? s.commonSelect
         : '${_motherBirthDate!.day.toString().padLeft(2, '0')}/${_motherBirthDate!.month.toString().padLeft(2, '0')}/${_motherBirthDate!.year}';
+    final fatherBirthLabel = _fatherBirthDate == null
+        ? s.commonSelect
+        : '${_fatherBirthDate!.day.toString().padLeft(2, '0')}/${_fatherBirthDate!.month.toString().padLeft(2, '0')}/${_fatherBirthDate!.year}';
     final birthLabel = _babyBirthDate == null
         ? s.commonSelect
         : '${_babyBirthDate!.day.toString().padLeft(2, '0')}/${_babyBirthDate!.month.toString().padLeft(2, '0')}/${_babyBirthDate!.year}';
@@ -569,10 +951,15 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
       child: Scaffold(
         backgroundColor: AppTheme.background,
         appBar: AppBar(
-          title: widget.editMotherId != null
-              ? Text(s.profileEditMother, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17))
-              : widget.editBabyId != null
-                  ? Text(s.profileEditBaby, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17))
+          title: widget.editBabyId != null
+              ? Text(s.profileEditBaby, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17))
+              : widget.editMotherId != null
+                  ? Text(
+                      widget.profileMotherSection == MotherProfileMotherFormSection.father
+                          ? s.profileEditFather
+                          : s.profileEditMother,
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17),
+                    )
                   : const SizedBox.shrink(),
           automaticallyImplyLeading: !widget.mandatory,
           toolbarHeight: 44,
@@ -590,11 +977,17 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
           ),
         ),
         body: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 620),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  10,
+                  20,
+                  18 + MediaQuery.viewInsetsOf(context).bottom,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -644,13 +1037,14 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                         if (_step == 0) ...[
-                          SectionTitle(title: s.regMotherSection),
-                          const SizedBox(height: 8),
                           Form(
                             key: _motherFormKey,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                if (_motherFormSectionVisible) ...[
+                                  SectionTitle(title: s.regMotherSection),
+                                  const SizedBox(height: 8),
                                 TextFormField(
                                   controller: _motherNameCtrl,
                                   textInputAction: TextInputAction.next,
@@ -694,59 +1088,72 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                                   onTap: _pickMotherBirthDate,
                                 ),
                                 const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: TextFormField(
-                                        controller: _motherHeightCtrl,
-                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                        textInputAction: TextInputAction.next,
-                                        inputFormatters: [
-                                          MeasurementUnitsPrefs.length.value == LengthUnit.cm
-                                              ? const IntOnlyFormatter()
-                                              : const DecimalPtBrFormatter(decimalRange: 1),
-                                        ],
-                                        decoration: InputDecoration(
-                                          labelText: '${s.regMotherHeight} (${_lenUnitLabel(s)})',
-                                          prefixIcon: const Icon(Icons.height),
-                                        ),
-                                        validator: (v) {
-                                          final t = (v ?? '').trim();
-                                          if (t.isEmpty) return s.valHeightEmpty;
-                                          final cm = _parseHeightToCm(t);
-                                          if (cm == null) return s.valHeightInvalid;
-                                          if (cm < 120 || cm > 220) return s.valHeightMotherRange;
-                                          return null;
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: TextFormField(
-                                        controller: _fatherHeightCtrl,
-                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                        textInputAction: TextInputAction.done,
-                                        inputFormatters: [
-                                          MeasurementUnitsPrefs.length.value == LengthUnit.cm
-                                              ? const IntOnlyFormatter()
-                                              : const DecimalPtBrFormatter(decimalRange: 1),
-                                        ],
-                                        decoration: InputDecoration(
-                                          labelText: '${s.regFatherHeight} (${_lenUnitLabel(s)})',
-                                          prefixIcon: const Icon(Icons.height_outlined),
-                                        ),
-                                        validator: (v) {
-                                          final t = (v ?? '').trim();
-                                          if (t.isEmpty) return s.valFatherHeightEmpty;
-                                          final cm = _parseHeightToCm(t);
-                                          if (cm == null) return s.valHeightInvalid;
-                                          if (cm < 120 || cm > 220) return s.valHeightMotherRange;
-                                          return null;
-                                        },
-                                      ),
-                                    ),
-                                  ],
+                                CardBox(
+                                  padding: EdgeInsets.zero,
+                                  child: _motherHeightRuler(s),
                                 ),
+                                const SizedBox(height: 16),
+                                ],
+                                if (_fatherFormSectionVisible) ...[
+                                SectionTitle(title: s.regFatherSection),
+                                const SizedBox(height: 8),
+                                TextFormField(
+                                  controller: _fatherNameCtrl,
+                                  textInputAction: TextInputAction.next,
+                                  textCapitalization: TextCapitalization.words,
+                                  decoration: InputDecoration(
+                                    labelText: s.regFatherName,
+                                    prefixIcon: const Icon(Icons.man_outlined),
+                                  ),
+                                  validator: (v) {
+                                    final t = (v ?? '').trim();
+                                    if (t.isEmpty) return null;
+                                    if (t.length < 2) return s.valNameShort;
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                _RegTapField(
+                                  label: s.regFatherBirthLabel,
+                                  value: fatherBirthLabel,
+                                  icon: Icons.cake_outlined,
+                                  dimValue: fatherBirthLabel == s.commonSelect,
+                                  onTap: _pickFatherBirthDate,
+                                ),
+                                const SizedBox(height: 12),
+                                CardBox(
+                                  padding: EdgeInsets.zero,
+                                  child: _fatherHeightRuler(s),
+                                ),
+                                const SizedBox(height: 12),
+                                _RegPhotoTapField(
+                                  label: s.fatherPhotoTitle,
+                                  caption: ((_fatherPhotoB64 == null) &&
+                                          (_fatherPhotoUrl == null ||
+                                              _fatherPhotoUrl!.isEmpty))
+                                      ? s.regFatherPhotoAdd
+                                      : s.regFatherPhotoChange,
+                                  photoB64: _fatherPhotoB64,
+                                  photoUrl: _fatherPhotoUrl,
+                                  avatarBg: const Color(0xFFD6EBFF),
+                                  fallback: const Icon(Icons.man_outlined,
+                                      color: AppTheme.secondary),
+                                  onTap: () async {
+                                    // Não usar [_runLoading]: mantém overlay global durante câmara/recorte e bloqueia a UI.
+                                    final b64 = await pickImageAsB64(
+                                      context: context,
+                                      maxBytes: 2 * 1024 * 1024,
+                                    );
+                                    if (b64 == null) return;
+                                    setState(() {
+                                      _fatherPhotoB64 = b64;
+                                      _fatherPhotoUrl = null;
+                                      _fatherPhotoDirty = true;
+                                    });
+                                  },
+                                ),
+                                ],
+                                if (_motherFormSectionVisible) ...[
                                 const SizedBox(height: 12),
                                 _RegPhotoTapField(
                                   label: s.motherPhotoTitle,
@@ -759,9 +1166,9 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                                   avatarBg: const Color(0xFFFFDCE8),
                                   fallback: const Icon(Icons.person, color: AppTheme.secondary),
                                   onTap: () async {
-                                    final b64 = await _runLoading(
-                                      () => pickImageAsB64(context: context, maxBytes: 2 * 1024 * 1024),
-                                      label: s.openingGallery,
+                                    final b64 = await pickImageAsB64(
+                                      context: context,
+                                      maxBytes: 2 * 1024 * 1024,
                                     );
                                     if (b64 == null) return;
                                     setState(() {
@@ -771,6 +1178,7 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                                     });
                                   },
                                 ),
+                                ],
                                 const SizedBox(height: 12),
                                 SizedBox(
                                   width: double.infinity,
@@ -947,9 +1355,9 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                                   avatarBg: _babySex == 'M' ? const Color(0xFFD6EBFF) : const Color(0xFFFFDCE8),
                                   fallback: const Icon(Icons.child_care, color: AppTheme.secondary),
                                   onTap: () async {
-                                    final b64 = await _runLoading(
-                                      () => pickImageAsB64(context: context, maxBytes: 2 * 1024 * 1024),
-                                      label: s.openingGallery,
+                                    final b64 = await pickImageAsB64(
+                                      context: context,
+                                      maxBytes: 2 * 1024 * 1024,
                                     );
                                     if (b64 == null) return;
                                     setState(() {
@@ -978,54 +1386,14 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                                   ),
                                 ],
                                 const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: TextFormField(
-                                        controller: _babyWeightCtrl,
-                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                        textInputAction: TextInputAction.next,
-                                        inputFormatters: const [DecimalPtBrFormatter(decimalRange: 2)],
-                                        decoration: InputDecoration(
-                                          labelText: '${s.regBabyWeight} (${_weightUnitLabel(s)})',
-                                          prefixIcon: const Icon(Icons.monitor_weight_outlined),
-                                        ),
-                                        validator: (v) {
-                                          final t = (v ?? '').trim();
-                                          if (t.isEmpty) return s.valWeightEmpty;
-                                          final kg = _parseWeightToKg(t);
-                                          if (kg == null) return s.valWeightInvalid;
-                                          if (kg <= 0 || kg > 40) return s.valWeightRange;
-                                          return null;
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: TextFormField(
-                                        controller: _babyHeightCtrl,
-                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                        textInputAction: TextInputAction.done,
-                                        inputFormatters: [
-                                          MeasurementUnitsPrefs.length.value == LengthUnit.cm
-                                              ? const IntOnlyFormatter()
-                                              : const DecimalPtBrFormatter(decimalRange: 1),
-                                        ],
-                                        decoration: InputDecoration(
-                                          labelText: '${s.labelHeight} (${_lenUnitLabel(s)})',
-                                          prefixIcon: const Icon(Icons.height),
-                                        ),
-                                        validator: (v) {
-                                          final t = (v ?? '').trim();
-                                          if (t.isEmpty) return s.valHeightEmpty;
-                                          final cm = _parseHeightToCm(t);
-                                          if (cm == null) return s.valHeightInvalid;
-                                          if (cm <= 20 || cm > 120) return s.valBabyHeightRange;
-                                          return null;
-                                        },
-                                      ),
-                                    ),
-                                  ],
+                                CardBox(
+                                  padding: EdgeInsets.zero,
+                                  child: _babyWeightRuler(s),
+                                ),
+                                const SizedBox(height: 12),
+                                CardBox(
+                                  padding: EdgeInsets.zero,
+                                  child: _babyHeightRuler(s),
                                 ),
                                 const SizedBox(height: 12),
                                 SizedBox(

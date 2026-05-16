@@ -51,20 +51,35 @@ class CloudBootstrapSync {
     }
   }
 
+  static Map<String, Object?> _motherDataFromProfile(Map<String, dynamic>? profile) {
+    final motherName =
+        ((profile?['name'] ?? profile?['displayName'] ?? '').toString()).trim();
+    return {
+      'name': motherName.isEmpty ? 'Mãe' : motherName,
+      'phone': profile?['phone'],
+      'birth_date': profile?['birth_date'] ?? profile?['birthDate'],
+      'height_cm': profile?['height_cm'] ?? profile?['heightCm'],
+      'father_height_cm': profile?['father_height_cm'] ?? profile?['fatherHeightCm'],
+      'father_name': profile?['father_name'] ?? profile?['fatherName'],
+      'father_birth_date':
+          profile?['father_birth_date'] ?? profile?['fatherBirthDate'],
+      'register_father': profile?['register_father'] ?? profile?['registerFather'],
+      'show_family_christian':
+          profile?['show_family_christian'] ?? profile?['showFamilyChristian'],
+      'show_family_horoscope':
+          profile?['show_family_horoscope'] ?? profile?['showFamilyHoroscope'],
+      'photo_url': profile?['photo_url'] ?? profile?['photoUrl'],
+      'father_photo_url':
+          profile?['father_photo_url'] ?? profile?['fatherPhotoUrl'],
+    };
+  }
+
   static Future<int> _ensureMotherFromProfileFirestore() async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     final profile = await FirestoreService.instance.getProfile();
-    final motherName = ((profile?['name'] ?? profile?['displayName'] ?? '').toString()).trim();
     return AppDatabase.instance.upsertMotherFromCloud(
       cloudId: uid,
-      data: {
-        'name': motherName.isEmpty ? 'Mãe' : motherName,
-        'phone': profile?['phone'],
-        'birth_date': profile?['birth_date'] ?? profile?['birthDate'],
-        'height_cm': profile?['height_cm'] ?? profile?['heightCm'],
-        'father_height_cm': profile?['father_height_cm'] ?? profile?['fatherHeightCm'],
-        'photo_url': profile?['photo_url'] ?? profile?['photoUrl'],
-      },
+      data: _motherDataFromProfile(profile),
     );
   }
 
@@ -87,18 +102,9 @@ class CloudBootstrapSync {
       final babies = await FirestoreService.instance.listBabies();
 
       // Local DB still needs a mother row for FK, but cloud profile is users/{uid}.
-      final motherName = ((profile?['name'] ?? profile?['displayName'] ?? '').toString()).trim();
       final localMotherId = await AppDatabase.instance.upsertMotherFromCloud(
         cloudId: uid,
-        data: {
-          // IMPORTANT: local SQLite schema requires a mother row; don't abort hydration if profile is incomplete.
-          'name': motherName.isEmpty ? 'Mãe' : motherName,
-          'phone': profile?['phone'],
-          'birth_date': profile?['birth_date'] ?? profile?['birthDate'],
-          'height_cm': profile?['height_cm'] ?? profile?['heightCm'],
-          'father_height_cm': profile?['father_height_cm'] ?? profile?['fatherHeightCm'],
-          'photo_url': profile?['photo_url'] ?? profile?['photoUrl'],
-        },
+        data: _motherDataFromProfile(profile),
       );
       if (localMotherId == 0) return;
 
@@ -138,17 +144,9 @@ class CloudBootstrapSync {
 
     // 2) Garante mãe local (FK) a partir do perfil.
     final profile = await FirestoreService.instance.getProfile();
-    final motherName = ((profile?['name'] ?? profile?['displayName'] ?? '').toString()).trim();
     final localMotherId = await AppDatabase.instance.upsertMotherFromCloud(
       cloudId: uid,
-      data: {
-        'name': motherName.isEmpty ? 'Mãe' : motherName,
-        'phone': profile?['phone'],
-        'birth_date': profile?['birth_date'] ?? profile?['birthDate'],
-        'height_cm': profile?['height_cm'] ?? profile?['heightCm'],
-        'father_height_cm': profile?['father_height_cm'] ?? profile?['fatherHeightCm'],
-        'photo_url': profile?['photo_url'] ?? profile?['photoUrl'],
-      },
+      data: _motherDataFromProfile(profile),
     );
     if (localMotherId == 0) return null;
 

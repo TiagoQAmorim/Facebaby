@@ -27,6 +27,17 @@ service cloud.firestore {
           resource.data.owner_uid == request.auth.uid
           || resource.data.userId == request.auth.uid
         );
+
+      // Curtidas na Foto da Semana — leitura pública; cada utilizador gere só o seu like.
+      // `set()` num documento já existente conta como *update* — create e update com a mesma condição.
+      match /likes/{likeUid} {
+        allow read: if true;
+        allow create, update: if request.auth != null
+          && request.auth.uid == likeUid
+          && request.resource.data.keys().hasOnly(['createdAt']);
+        allow delete: if request.auth != null
+          && request.auth.uid == likeUid;
+      }
     }
 
     // Sorteio / destaque — escrita só Admin SDK / Cloud Functions.

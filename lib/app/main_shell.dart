@@ -1,4 +1,4 @@
-import 'dart:async' show unawaited;
+import 'dart:async' show Timer, unawaited;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -15,6 +15,7 @@ import '../pages/settings_page.dart';
 import '../pages/memories/memories_page.dart' as new_memories;
 import '../services/mock_baby_service.dart';
 import '../utils/pick_image_b64.dart';
+import '../utils/portal_time_of_day.dart';
 import '../services/app_database.dart';
 import '../services/home_prefs.dart';
 import '../services/local_notifications_service.dart';
@@ -45,14 +46,33 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   final CurrentBabyController currentBaby = CurrentBabyController.instance;
   int selectedIndex = 0;
   late final VoidCallback _aiMicListener;
+  late final VoidCallback _onBabyChangedPopNavigators;
+
+  /// Ao mudar de bebé, repõe cada separador à raiz para não ficar um ecrã “do outro” filho aberto.
+  int? _lastBabyIdForNavCleanup;
 
   /// Usado para ignorar um “back” fantasma logo após voltar da galeria / file picker (Android).
   DateTime? _lastShellResumeAt;
+  Timer? _portalBgTimer;
+  bool _didPrecachePortalBackgrounds = false;
+
+  void _schedulePortalBackgroundRefresh() {
+    _portalBgTimer?.cancel();
+    _portalBgTimer = Timer(
+      PortalTimeOfDay.delayUntilNextTransition(DateTime.now()),
+      () {
+        if (!mounted) return;
+        setState(() {});
+        _schedulePortalBackgroundRefresh();
+      },
+    );
+  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _schedulePortalBackgroundRefresh();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       LocalNotificationsService.instance.requestPermissionOnceOnFirstLaunch();
     });
@@ -64,8 +84,33 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     };
     HomePrefs.aiMicEnabled.addListener(_aiMicListener);
     ShellNestedNav.selectTab = _goToTab;
+
+    _lastBabyIdForNavCleanup = currentBaby.currentBabyId;
+    _onBabyChangedPopNavigators = _popAllTabsToRootOnBabySwitch;
+    currentBaby.addListener(_onBabyChangedPopNavigators);
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didPrecachePortalBackgrounds) return;
+    _didPrecachePortalBackgrounds = true;
+    unawaited(PortalTimeOfDay.precacheBackgrounds(context));
+  }
+
+  void _popAllTabsToRootOnBabySwitch() {
+    final id = currentBaby.currentBabyId;
+    if (id != null &&
+        _lastBabyIdForNavCleanup != null &&
+        id != _lastBabyIdForNavCleanup) {
+      for (var i = 0; i < 4; i++) {
+        _popTabToRoot(i);
+      }
+    }
+    if (id != null) {
+      _lastBabyIdForNavCleanup = id;
+    }
+  }
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
@@ -76,6 +121,10 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     }
     if (state == AppLifecycleState.resumed) {
       _lastShellResumeAt = DateTime.now();
+      if (mounted) {
+        setState(() {});
+        _schedulePortalBackgroundRefresh();
+      }
       // Após segundo plano: re-sincroniza bebê/mãe na BD (evita UI “sem cadastro” por estado stale).
       unawaited(currentBaby.refresh());
       // Reagenda lembretes locais (não depender só da Home puxada para refresh).
@@ -114,9 +163,11 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _portalBgTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     ShellNestedNav.selectTab = null;
     HomePrefs.aiMicEnabled.removeListener(_aiMicListener);
+    currentBaby.removeListener(_onBabyChangedPopNavigators);
     aiController.dispose();
     ReminderMonitor.instance.stop();
     super.dispose();
@@ -289,14 +340,35 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
               if (didPop) return;
               _handleSystemBack();
             },
-            child: Stack(
+            child: Builder(
+            builder: (context) {
+              final atNight = PortalTimeOfDay.isNight(DateTime.now());
+              final nightTextColor =
+                  atNight ? PortalTimeOfDay.nightTextColor : null;
+              final bgAsset = PortalTimeOfDay.backgroundAsset(DateTime.now());
+              final fallback = atNight
+                  ? const Color(0xFF152238)
+                  : const Color(0xFFFFFBF7);
+              final veil = atNight
+                  ? Colors.white.withAlpha(55)
+                  : Colors.white.withAlpha(105);
+              return Stack(
             fit: StackFit.expand,
             children: [
               Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Color.lerp(const Color(0xFFFAFBFE), bg, 0.08)!,
-                  ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ColoredBox(color: fallback),
+                    Image.asset(
+                      bgAsset,
+                      fit: BoxFit.cover,
+                      alignment: Alignment.topCenter,
+                      gaplessPlayback: true,
+                      errorBuilder: (_, __, ___) => ColoredBox(color: fallback),
+                    ),
+                    ColoredBox(color: veil),
+                  ],
                 ),
               ),
               Positioned.fill(
@@ -325,6 +397,17 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                       data: Theme.of(context).copyWith(
                         navigationBarTheme: Theme.of(context).navigationBarTheme.copyWith(
                           backgroundColor: AppTheme.navigationBarSurfaceForTint(bg),
+                          labelTextStyle: WidgetStatePropertyAll(
+                            TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: nightTextColor,
+                            ),
+                          ),
+                          iconTheme: nightTextColor == null
+                              ? null
+                              : WidgetStatePropertyAll(
+                                  IconThemeData(color: nightTextColor),
+                                ),
                         ),
                       ),
                       child: NavigationBar(
@@ -364,6 +447,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                 ),
               const WeeklyPhotoWinnerCongratsHost(),
             ],
+              );
+            },
           ),
         );
       },

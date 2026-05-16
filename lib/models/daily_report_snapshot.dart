@@ -83,3 +83,16 @@ class DailyTimelineEntry {
     this.detail,
   });
 }
+
+/// Último horário (`HH:mm`) de um tipo no dia, ou null.
+String? dailySnapshotLastTimeForKind(
+  DailyReportSnapshot? snap,
+  DailyTimelineKind kind,
+) {
+  if (snap == null) return null;
+  final list = snap.timeline.where((e) => e.kind == kind).toList();
+  if (list.isEmpty) return null;
+  list.sort((a, b) => a.at.compareTo(b.at));
+  final d = list.last.at;
+  return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+}

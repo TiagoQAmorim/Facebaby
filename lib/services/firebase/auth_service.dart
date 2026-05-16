@@ -10,6 +10,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../utils/login_platform.dart';
+import '../premium/premium_service.dart';
+import 'auth_registration_exception.dart';
 import 'google_sign_in_helpers.dart';
 
 String _sha256Hex(String input) {
@@ -71,17 +73,68 @@ class AuthService {
 
   User? get currentUser => _auth.currentUser;
 
+  static String normalizeEmail(String email) => email.trim().toLowerCase();
+
+  /// Garante que o e-mail ainda não tem conta Firebase (e-mail/senha ou outro provedor).
+  ///
+  /// Lança [EmailAlreadyRegisteredException] se o e-mail já tiver registo, ou
+  /// [FirebaseAuthException] com `invalid-email`.
+  Future<void> ensureEmailAvailableForRegistration(String email) async {
+    final normalized = normalizeEmail(email);
+    if (normalized.isEmpty || !normalized.contains('@')) {
+      throw FirebaseAuthException(
+        code: 'invalid-email',
+        message: 'Invalid email',
+      );
+    }
+
+    try {
+      final methods = await _auth.fetchSignInMethodsForEmail(normalized);
+      if (methods.isNotEmpty) {
+        throw EmailAlreadyRegisteredException(methods);
+      }
+    } on EmailAlreadyRegisteredException {
+      rethrow;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'invalid-email') {
+        rethrow;
+      }
+      // Com proteção contra enumeração, o fetch pode falhar; o createUser valida depois.
+    }
+  }
+
   Future<UserCredential> registerWithEmail({
     required String email,
     required String password,
     String? displayName,
   }) async {
-    final cred = await _auth.createUserWithEmailAndPassword(email: email, password: password);
+    final normalized = normalizeEmail(email);
+    await ensureEmailAvailableForRegistration(normalized);
+
+    UserCredential cred;
+    try {
+      cred = await _auth.createUserWithEmailAndPassword(
+        email: normalized,
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use' ||
+          e.code == 'credential-already-in-use' ||
+          e.code == 'account-exists-with-different-credential') {
+        throw FirebaseAuthException(
+          code: 'email-already-in-use',
+          message: e.message,
+        );
+      }
+      rethrow;
+    }
+
     final name = displayName?.trim();
     if (name != null && name.isNotEmpty) {
       await cred.user?.updateDisplayName(name);
       await cred.user?.reload();
     }
+    await PremiumService.instance.markNewAccountFreeInCloud();
     return cred;
   }
 
@@ -181,10 +234,23 @@ class AuthService {
     await _auth.signOut();
   }
 
+  /// Página de redefinição com logo (Firebase Hosting). Deploy: `firebase deploy --only hosting`
+  static const passwordResetActionUrl =
+      'https://facebaby-afc41.web.app/auth/reset.html';
+
   Future<void> sendPasswordResetEmail(String email) async {
-    final e = email.trim();
+    final e = normalizeEmail(email);
     if (e.isEmpty) throw StateError('Email inválido');
-    await _auth.sendPasswordResetEmail(email: e);
+    await _auth.sendPasswordResetEmail(
+      email: e,
+      actionCodeSettings: ActionCodeSettings(
+        url: passwordResetActionUrl,
+        handleCodeInApp: false,
+        androidPackageName: 'com.facebaby.app',
+        androidInstallApp: true,
+        iOSBundleId: 'com.example.facebabyFlutter',
+      ),
+    );
   }
 
   /// Re-login recente antes de operações sensíveis (ex.: apagar conta).

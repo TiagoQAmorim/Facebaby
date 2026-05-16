@@ -1,6 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'breastfeeding_timer_controller.dart';
+import 'sleep_timer_controller.dart';
 import '../services/app_database.dart';
 import '../services/firebase/cloud_bootstrap_sync.dart';
 import '../services/firebase/firestore_user_repository.dart';
@@ -54,6 +57,24 @@ class CurrentBabyController extends ChangeNotifier {
     debugPrint('CurrentBaby.set current_baby_id=$id');
     await _prefs!.setInt(_prefsKey, id);
     await refresh();
+    SleepTimerController.instance.discardIfBabyMismatch(id);
+    BreastfeedingTimerController.instance.discardIfBabyMismatch(id);
+    await _mirrorSelectedBabyToCloud(id);
+  }
+
+  /// Mantém `users/{uid}.selectedBabyId` alinhado ao bebé activo (outros ecrãs / dispositivos).
+  Future<void> _mirrorSelectedBabyToCloud(int localBabyId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      final row = await AppDatabase.instance.getBabyById(localBabyId);
+      final cloudId = (row?['cloud_id'] as String?)?.trim();
+      if (cloudId == null || cloudId.isEmpty) return;
+      await FirestoreUserRepository.instance
+          .setSelectedBabyId(user.uid, cloudId);
+    } catch (e, st) {
+      debugPrint('CurrentBaby._mirrorSelectedBabyToCloud: $e\n$st');
+    }
   }
 
   Future<List<Map<String, Object?>>> listBabies() async {

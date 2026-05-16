@@ -9,6 +9,7 @@ import '../services/app_database.dart';
 import '../services/firebase/sleep_cloud_sync.dart';
 import '../services/firebase/firestore_service.dart';
 import '../services/home_prefs.dart';
+import '../services/scheduled_local_reminders.dart';
 import '../services/sleep_routine.dart';
 
 /// Tela de sono: modo idle com “Iniciar sono”; modo ativo com cronómetro, ilustração e gravar ao acordar.
@@ -34,11 +35,16 @@ class _SleepPageState extends State<SleepPage> {
   /// dependem da hora actual — atualizamos a cada poucos segundos em modo idle.
   Timer? _idleWakeRoutineTicker;
 
-  ({double markerT, SleepRoutinePhase phase, int nextEstimateMin}) _wakeRoutineDerivedNow(_RoutineVm vm) {
+  ({double markerT, SleepRoutinePhase phase, int nextEstimateMin})
+      _wakeRoutineDerivedNow(_RoutineVm vm) {
     final last = vm.lastSleepEnd;
     final w = vm.window;
     if (last == null) {
-      return (markerT: 0.08, phase: SleepRoutinePhase.early, nextEstimateMin: w.minAwakeMin);
+      return (
+        markerT: 0.08,
+        phase: SleepRoutinePhase.early,
+        nextEstimateMin: w.minAwakeMin
+      );
     }
     final now = DateTime.now();
     final awakeMinutes = now.difference(last).inMilliseconds / 60000.0;
@@ -46,7 +52,8 @@ class _SleepPageState extends State<SleepPage> {
     return (
       markerT: SleepRoutine.markerThreeZones(awakeMinutes: awakeMinutes, w: w),
       phase: SleepRoutine.phaseFor(awakeMinutes: awakeFloor, w: w),
-      nextEstimateMin: SleepRoutine.estimateNextNapMinutes(awakeMinutes: awakeFloor, w: w),
+      nextEstimateMin:
+          SleepRoutine.estimateNextNapMinutes(awakeMinutes: awakeFloor, w: w),
     );
   }
 
@@ -85,9 +92,19 @@ class _SleepPageState extends State<SleepPage> {
   void _reloadHistory() {
     final bid = _currentBaby.currentBabyId;
     setState(() {
-      _sleepHistoryFuture = bid == null ? null : AppDatabase.instance.listSleepRecords(babyId: bid, limit: 40);
+      _sleepHistoryFuture = bid == null
+          ? null
+          : AppDatabase.instance.listSleepRecords(babyId: bid, limit: 40);
       _routineFuture = bid == null ? null : _loadRoutineVm();
     });
+  }
+
+  Future<void> _syncLocalReminders(int babyId) async {
+    try {
+      await ScheduledLocalReminders.sync(babyId: babyId);
+    } catch (e, st) {
+      debugPrint('SleepPage._syncLocalReminders: $e\n$st');
+    }
   }
 
   Future<_RoutineVm> _loadRoutineVm() async {
@@ -97,7 +114,8 @@ class _SleepPageState extends State<SleepPage> {
     final months = SleepRoutine.monthsOld(birth);
     final window = SleepRoutine.windowForMonths(months);
 
-    final rows = await AppDatabase.instance.listSleepRecords(babyId: bid, limit: 40);
+    final rows =
+        await AppDatabase.instance.listSleepRecords(babyId: bid, limit: 40);
     DateTime? lastEnd;
     if (rows.isNotEmpty) {
       // `listSleepRecords` vem por `ended_at DESC` — a régua de vigília segue sempre o **último**
@@ -110,8 +128,9 @@ class _SleepPageState extends State<SleepPage> {
 
     final now = DateTime.now();
     final last = lastEnd;
-    final awakeMinutes =
-        last == null ? 0.0 : (now.difference(last).inMilliseconds / 60000.0).clamp(0.0, 99999.0);
+    final awakeMinutes = last == null
+        ? 0.0
+        : (now.difference(last).inMilliseconds / 60000.0).clamp(0.0, 99999.0);
 
     final phase = lastEnd == null
         ? SleepRoutinePhase.early
@@ -123,7 +142,8 @@ class _SleepPageState extends State<SleepPage> {
 
     final nextEst = lastEnd == null
         ? window.minAwakeMin
-        : SleepRoutine.estimateNextNapMinutes(awakeMinutes: awakeMinutes.floor(), w: window);
+        : SleepRoutine.estimateNextNapMinutes(
+            awakeMinutes: awakeMinutes.floor(), w: window);
 
     final todayStart = DateTime(now.year, now.month, now.day);
     final todayRows = rows.where((r) {
@@ -139,7 +159,8 @@ class _SleepPageState extends State<SleepPage> {
     final todayNaps = todayRows.length;
     final todayAvgMin = todayNaps == 0 ? 0.0 : sumSec / todayNaps / 60.0;
 
-    final trendLess = todayNaps > 0 && todayAvgMin > 0 && todayAvgMin < 38 && todayNaps < 4;
+    final trendLess =
+        todayNaps > 0 && todayAvgMin > 0 && todayAvgMin < 38 && todayNaps < 4;
 
     return _RoutineVm(
       lastSleepEnd: lastEnd,
@@ -219,11 +240,13 @@ class _SleepPageState extends State<SleepPage> {
     final bid = _currentBaby.currentBabyId;
     if (bid == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.feedingSelectBabyFirst)));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(strings.feedingSelectBabyFirst)));
       return;
     }
     _noteCtrl.clear();
     _sleepTimer.begin(babyId: bid);
+    await _syncLocalReminders(bid);
   }
 
   Future<void> _wake(S strings) async {
@@ -235,7 +258,8 @@ class _SleepPageState extends State<SleepPage> {
     final sec = elapsed.inSeconds;
     if (sec < 1) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.feedingHubTimerTooShort)));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(strings.feedingHubTimerTooShort)));
       return;
     }
 
@@ -255,12 +279,15 @@ class _SleepPageState extends State<SleepPage> {
       SleepCloudSync.pushLocalSoon(localBabyId: bid, localSleepId: newId);
       _sleepTimer.clearSession();
       _noteCtrl.clear();
+      await _syncLocalReminders(bid);
       _reloadHistory();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.sleepSavedOk)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(strings.sleepSavedOk)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${strings.feedingSaveFail} $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${strings.feedingSaveFail} $e')));
     }
   }
 
@@ -271,39 +298,26 @@ class _SleepPageState extends State<SleepPage> {
         title: Text(strings.sleepConfirmCancelSessionTitle),
         content: Text(strings.sleepConfirmCancelSessionBody),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(strings.cancel)),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(strings.sleepCancelSession)),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(strings.cancel)),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(strings.sleepCancelSession)),
         ],
       ),
     );
     if (ok == true && mounted) {
+      final bid = _currentBaby.currentBabyId;
       _sleepTimer.clearSession();
       _noteCtrl.clear();
+      if (bid != null) await _syncLocalReminders(bid);
       setState(() {});
     }
   }
 
-  Future<void> _handleBack(S strings) async {
-    if (!_sleepTimer.isTracking) {
-      if (mounted) Navigator.of(context).pop();
-      return;
-    }
-    final discard = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(strings.sleepConfirmBackTitle),
-        content: Text(strings.sleepConfirmBackBody),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(strings.cancel)),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(strings.sleepDiscard)),
-        ],
-      ),
-    );
-    if (discard == true && mounted) {
-      _sleepTimer.clearSession();
-      _noteCtrl.clear();
-      Navigator.of(context).pop();
-    }
+  void _handleBack() {
+    if (mounted) Navigator.of(context).pop();
   }
 
   Future<void> _showEditSleep(S strings, Map<String, Object?> row) async {
@@ -311,9 +325,12 @@ class _SleepPageState extends State<SleepPage> {
     final id = (row['id'] as num?)?.toInt();
     if (bid == null || id == null) return;
 
-    var started = DateTime.tryParse(row['started_at'] as String? ?? '') ?? DateTime.now();
-    var ended = DateTime.tryParse(row['ended_at'] as String? ?? '') ?? DateTime.now();
-    final noteCtrl = TextEditingController(text: (row['note'] as String?) ?? '');
+    var started =
+        DateTime.tryParse(row['started_at'] as String? ?? '') ?? DateTime.now();
+    var ended =
+        DateTime.tryParse(row['ended_at'] as String? ?? '') ?? DateTime.now();
+    final noteCtrl =
+        TextEditingController(text: (row['note'] as String?) ?? '');
 
     await showModalBottomSheet<void>(
       context: context,
@@ -332,7 +349,11 @@ class _SleepPageState extends State<SleepPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(strings.edit, style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+                  Text(strings.edit,
+                      style: Theme.of(ctx)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w900)),
                   const SizedBox(height: 14),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -351,10 +372,13 @@ class _SleepPageState extends State<SleepPage> {
                       );
                       if (d == null) return;
                       if (!ctx.mounted) return;
-                      final t = await showTimePicker(context: ctx, initialTime: TimeOfDay.fromDateTime(started));
+                      final t = await showTimePicker(
+                          context: ctx,
+                          initialTime: TimeOfDay.fromDateTime(started));
                       if (t == null) return;
                       setSheet(() {
-                        started = DateTime(d.year, d.month, d.day, t.hour, t.minute);
+                        started =
+                            DateTime(d.year, d.month, d.day, t.hour, t.minute);
                         if (!ended.isAfter(started)) {
                           ended = started.add(const Duration(minutes: 1));
                         }
@@ -373,15 +397,19 @@ class _SleepPageState extends State<SleepPage> {
                       final d = await showDatePicker(
                         context: ctx,
                         initialDate: ended,
-                        firstDate: DateTime(started.year, started.month, started.day),
+                        firstDate:
+                            DateTime(started.year, started.month, started.day),
                         lastDate: DateTime.now().add(const Duration(days: 1)),
                       );
                       if (d == null) return;
                       if (!ctx.mounted) return;
-                      final t = await showTimePicker(context: ctx, initialTime: TimeOfDay.fromDateTime(ended));
+                      final t = await showTimePicker(
+                          context: ctx,
+                          initialTime: TimeOfDay.fromDateTime(ended));
                       if (t == null) return;
                       setSheet(() {
-                        ended = DateTime(d.year, d.month, d.day, t.hour, t.minute);
+                        ended =
+                            DateTime(d.year, d.month, d.day, t.hour, t.minute);
                         if (!ended.isAfter(started)) {
                           ended = started.add(const Duration(minutes: 1));
                         }
@@ -394,20 +422,24 @@ class _SleepPageState extends State<SleepPage> {
                     maxLines: 3,
                     decoration: InputDecoration(
                       labelText: strings.sleepObservationsTitle,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14)),
                     ),
                   ),
                   const SizedBox(height: 18),
                   FilledButton(
-                    style: FilledButton.styleFrom(backgroundColor: _pink, foregroundColor: Colors.white),
+                    style: FilledButton.styleFrom(
+                        backgroundColor: _pink, foregroundColor: Colors.white),
                     onPressed: () async {
                       final sec = ended.difference(started).inSeconds;
                       if (sec < 1) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(strings.feedingHubTimerTooShort)));
+                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                            content: Text(strings.feedingHubTimerTooShort)));
                         return;
                       }
                       try {
-                        final quality = _qualityForDuration(Duration(seconds: sec));
+                        final quality =
+                            _qualityForDuration(Duration(seconds: sec));
                         await AppDatabase.instance.updateSleepRecord(
                           id: id,
                           babyId: bid,
@@ -415,15 +447,22 @@ class _SleepPageState extends State<SleepPage> {
                           endedAt: ended,
                           durationSec: sec,
                           quality: quality.key,
-                          note: noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim(),
+                          note: noteCtrl.text.trim().isEmpty
+                              ? null
+                              : noteCtrl.text.trim(),
                         );
-                        SleepCloudSync.pushLocalSoon(localBabyId: bid, localSleepId: id);
+                        SleepCloudSync.pushLocalSoon(
+                            localBabyId: bid, localSleepId: id);
+                        await _syncLocalReminders(bid);
                         if (ctx.mounted) Navigator.pop(ctx);
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.sleepUpdatedOk)));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(strings.sleepUpdatedOk)));
                         _reloadHistory();
                       } catch (e) {
-                        if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('$e')));
+                        if (ctx.mounted)
+                          ScaffoldMessenger.of(ctx)
+                              .showSnackBar(SnackBar(content: Text('$e')));
                       }
                     },
                     child: Text(strings.saveRecord),
@@ -449,7 +488,9 @@ class _SleepPageState extends State<SleepPage> {
         title: Text(strings.delete),
         content: Text(strings.confirmDelete),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(strings.cancel)),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(strings.cancel)),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
@@ -461,7 +502,9 @@ class _SleepPageState extends State<SleepPage> {
     if (ok != true || !mounted) return;
     try {
       final cloudId = (row['cloud_id'] as String?)?.trim();
-      final n = await AppDatabase.instance.deleteSleepRecord(id: id, babyId: bid);
+      final n =
+          await AppDatabase.instance.deleteSleepRecord(id: id, babyId: bid);
+      await _syncLocalReminders(bid);
       if (!mounted) return;
       if (n > 0) {
         if (cloudId != null && cloudId.isNotEmpty) {
@@ -469,32 +512,44 @@ class _SleepPageState extends State<SleepPage> {
             await FirestoreService.instance.deleteEvent(cloudId);
           } catch (_) {}
         }
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.deletedOk)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(strings.deletedOk)));
         _reloadHistory();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
     }
   }
 
   Widget _sleepHistorySection(S strings) {
-    final todayStart = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final todayStart =
+        DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 8),
-        Text(strings.sleepHistoryTitle, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Colors.black.withAlpha(200))),
+        Text(strings.sleepHistoryTitle,
+            style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 17,
+                color: Colors.black.withAlpha(200))),
         const SizedBox(height: 12),
         FutureBuilder<List<Map<String, Object?>>>(
           future: _sleepHistoryFuture,
           builder: (context, snap) {
             if (snap.connectionState == ConnectionState.waiting) {
-              return const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+              return const Padding(
+                  padding: EdgeInsets.all(16),
+                  child:
+                      Center(child: CircularProgressIndicator(strokeWidth: 2)));
             }
             final rows = snap.data ?? const [];
             if (rows.isEmpty) {
-              return Text(strings.sleepHistoryEmpty, style: TextStyle(color: Colors.black.withAlpha(130)));
+              return Text(strings.sleepHistoryEmpty,
+                  style: TextStyle(color: Colors.black.withAlpha(130)));
             }
 
             final todayRows = rows.where((row) {
@@ -509,7 +564,8 @@ class _SleepPageState extends State<SleepPage> {
 
             Widget rowTile(Map<String, Object?> row) {
               final id = (row['id'] as num?)?.toInt();
-              final started = DateTime.tryParse(row['started_at'] as String? ?? '');
+              final started =
+                  DateTime.tryParse(row['started_at'] as String? ?? '');
               final ended = DateTime.tryParse(row['ended_at'] as String? ?? '');
               final sec = (row['duration_sec'] as num?)?.toInt() ?? 0;
               final dur = Duration(seconds: sec < 0 ? 0 : sec);
@@ -521,9 +577,13 @@ class _SleepPageState extends State<SleepPage> {
                 child: Material(
                   color: Colors.white,
                   elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: Colors.black.withAlpha(14))),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      side: BorderSide(color: Colors.black.withAlpha(14))),
                   child: ListTile(
-                    title: Text(line, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                    title: Text(line,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 14)),
                     trailing: id == null
                         ? null
                         : Row(
@@ -532,12 +592,15 @@ class _SleepPageState extends State<SleepPage> {
                               IconButton(
                                 tooltip: strings.edit,
                                 onPressed: () => _showEditSleep(strings, row),
-                                icon: Icon(Icons.edit_outlined, color: _purple.withAlpha(230)),
+                                icon: Icon(Icons.edit_outlined,
+                                    color: _purple.withAlpha(230)),
                               ),
                               IconButton(
                                 tooltip: strings.delete,
-                                onPressed: () => _confirmDeleteSleep(strings, row),
-                                icon: Icon(Icons.delete_outline, color: Colors.red.withAlpha(200)),
+                                onPressed: () =>
+                                    _confirmDeleteSleep(strings, row),
+                                icon: Icon(Icons.delete_outline,
+                                    color: Colors.red.withAlpha(200)),
                               ),
                             ],
                           ),
@@ -550,13 +613,21 @@ class _SleepPageState extends State<SleepPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (todayRows.isNotEmpty) ...[
-                  Text(strings.sleepHistoryToday, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: _purple.withAlpha(220))),
+                  Text(strings.sleepHistoryToday,
+                      style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                          color: _purple.withAlpha(220))),
                   const SizedBox(height: 8),
                   ...todayRows.map(rowTile),
                   if (older.isNotEmpty) const SizedBox(height: 14),
                 ],
                 if (older.isNotEmpty) ...[
-                  Text(strings.recordsTitle, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Colors.black.withAlpha(140))),
+                  Text(strings.recordsTitle,
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                          color: Colors.black.withAlpha(140))),
                   const SizedBox(height: 8),
                   ...older.take(12).map(rowTile),
                 ],
@@ -580,7 +651,10 @@ class _SleepPageState extends State<SleepPage> {
         appBar: AppBar(title: Text(strings.sleepAppBar)),
         body: SafeArea(
           child: Center(
-            child: Padding(padding: const EdgeInsets.all(24), child: Text(strings.feedingNoBabyHint, textAlign: TextAlign.center)),
+            child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(strings.feedingNoBabyHint,
+                    textAlign: TextAlign.center)),
           ),
         ),
       );
@@ -598,27 +672,35 @@ class _SleepPageState extends State<SleepPage> {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.black.withAlpha(200)),
-          onPressed: () => _handleBack(strings),
+          onPressed: _handleBack,
         ),
         title: tracking && started != null
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(strings.sleepSessionTitle, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+                  Text(strings.sleepSessionTitle,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w900, fontSize: 17)),
                   const SizedBox(height: 2),
                   Text(
                     strings.sleepSessionStartedAt(_fmtClock(started)),
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black.withAlpha(140)),
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black.withAlpha(140)),
                   ),
                 ],
               )
-            : Text(strings.sleepAppBar, style: const TextStyle(fontWeight: FontWeight.w900)),
+            : Text(strings.sleepAppBar,
+                style: const TextStyle(fontWeight: FontWeight.w900)),
         centerTitle: true,
         scrolledUnderElevation: 0,
       ),
       body: SafeArea(
-        child: tracking ? _buildActive(context, strings, started!) : _buildIdle(context, strings),
+        child: tracking
+            ? _buildActive(context, strings, started!)
+            : _buildIdle(context, strings),
       ),
     );
   }
@@ -632,10 +714,12 @@ class _SleepPageState extends State<SleepPage> {
           FutureBuilder<_RoutineVm>(
             future: _routineFuture,
             builder: (context, snap) {
-              if (snap.connectionState == ConnectionState.waiting && snap.data == null) {
+              if (snap.connectionState == ConnectionState.waiting &&
+                  snap.data == null) {
                 return const Padding(
                   padding: EdgeInsets.symmetric(vertical: 32),
-                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  child:
+                      Center(child: CircularProgressIndicator(strokeWidth: 2)),
                 );
               }
               final vm = snap.data;
@@ -646,13 +730,19 @@ class _SleepPageState extends State<SleepPage> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _SleepIdleHero(strings: strings),
+                  _SleepIdleHero(
+                      strings: strings,
+                      vm: vm,
+                      markerT: live.markerT,
+                      purple: _purple),
                   const SizedBox(height: 16),
                   _SleepRoutineHeaderCard(
                     strings: strings,
                     vm: vm,
                     wakePhase: live.phase,
-                    nextTail: _nextCochiloTail(strings, vm, wakePhase: live.phase, nextEstimateMin: live.nextEstimateMin),
+                    nextTail: _nextCochiloTail(strings, vm,
+                        wakePhase: live.phase,
+                        nextEstimateMin: live.nextEstimateMin),
                     fmtAgo: _fmtAgoShort,
                     statusLine: _statusForPhase,
                   ),
@@ -662,54 +752,15 @@ class _SleepPageState extends State<SleepPage> {
                       backgroundColor: _pink,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                     ),
                     onPressed: () => _startSleep(strings),
-                    child: Text(strings.sleepStartButton, style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+                    child: Text(strings.sleepStartButton,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w900, letterSpacing: 1)),
                   ),
                   const SizedBox(height: 22),
-                  Text(
-                    strings.sleepIdealForAge,
-                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: _purple.withAlpha(235)),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Text('👶 ', style: TextStyle(fontSize: 14, color: Colors.black.withAlpha(180))),
-                      Expanded(
-                        child: Text(
-                          strings.sleepAgeMonthsLabel(vm.ageMonths),
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Colors.black.withAlpha(200)),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text('⏱️ ', style: TextStyle(fontSize: 14, color: Colors.black.withAlpha(180))),
-                      Text(
-                        strings.sleepWindowMinMax(vm.window.minAwakeMin, vm.window.maxAwakeMin),
-                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Colors.black.withAlpha(210)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  _SleepWindowBar(strings: strings, markerT: live.markerT, purple: _purple),
-                  const SizedBox(height: 8),
-                  Text(
-                    strings.sleepWakeWindowExplainer,
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black.withAlpha(135)),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(child: Text(strings.sleepLegendG, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.black.withAlpha(150)))),
-                      Expanded(child: Text(strings.sleepLegendY, textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.black.withAlpha(150)))),
-                      Expanded(child: Text(strings.sleepLegendR, textAlign: TextAlign.right, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.black.withAlpha(150)))),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
                   _sleepHistorySection(strings),
                   const SizedBox(height: 18),
                   _SleepInsightsCard(strings: strings, vm: vm),
@@ -719,11 +770,18 @@ class _SleepPageState extends State<SleepPage> {
                     builder: (context, enabled, _) {
                       return SwitchListTile.adaptive(
                         contentPadding: EdgeInsets.zero,
-                        secondary: Icon(Icons.notifications_active_outlined, color: _purple.withAlpha(220)),
-                        title: Text(strings.sleepToggleAlerts, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                        secondary: Icon(Icons.notifications_active_outlined,
+                            color: _purple.withAlpha(220)),
+                        title: Text(strings.sleepToggleAlerts,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 15)),
                         value: enabled,
                         activeThumbColor: _purple,
-                        onChanged: (v) => HomePrefs.setSleepAlertsEnabled(v),
+                        onChanged: (v) async {
+                          await HomePrefs.setSleepAlertsEnabled(v);
+                          final bid = _currentBaby.currentBabyId;
+                          if (bid != null) await _syncLocalReminders(bid);
+                        },
                       );
                     },
                   ),
@@ -739,10 +797,12 @@ class _SleepPageState extends State<SleepPage> {
 
   String _nextCochiloTail(S strings, _RoutineVm vm,
       {SleepRoutinePhase? wakePhase, int? nextEstimateMin}) {
-    if (vm.lastSleepEnd == null) return strings.sleepNextApproxMin(vm.window.minAwakeMin);
+    if (vm.lastSleepEnd == null)
+      return strings.sleepNextApproxMin(vm.window.minAwakeMin);
     final phase = wakePhase ?? vm.phase;
     final next = nextEstimateMin ?? vm.nextEstimateMin;
-    if (phase == SleepRoutinePhase.overdue || next <= 0) return strings.sleepRoutineNextNow;
+    if (phase == SleepRoutinePhase.overdue || next <= 0)
+      return strings.sleepRoutineNextNow;
     return strings.sleepNextApproxMin(next);
   }
 
@@ -752,156 +812,216 @@ class _SleepPageState extends State<SleepPage> {
     final quality = _qualityForDuration(elapsed);
 
     return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _SleepActiveContextBanner(strings: strings, purple: _purple),
-                    const SizedBox(height: 16),
-                    Text(
-                      strings.sleepSleepingFor(_sleepingMinLabel(elapsed)),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.3),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _fmtHms(elapsed),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, letterSpacing: 1.2, color: Colors.black.withAlpha(210)),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      paused ? strings.sleepStatusPaused : strings.sleepStatusSleeping,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black.withAlpha(130)),
-                    ),
-                    const SizedBox(height: 16),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(28),
-                      child: Image.asset(
-                        'assets/sleep/baby_sleep.png',
-                        height: 200,
-                        fit: BoxFit.contain,
-                        filterQuality: FilterQuality.high,
-                        errorBuilder: (_, __, ___) => Icon(Icons.nightlight_round, size: 100, color: _purple.withAlpha(160)),
-                      ),
-                    ),
-                    const SizedBox(height: 22),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _pink,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                      onPressed: paused ? null : () => _wake(strings),
-                      child: Text(strings.sleepFinalizeButton, style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-                    ),
-                    const SizedBox(height: 22),
-                    _whiteCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(strings.sleepThisCardTitle, style: const TextStyle(fontWeight: FontWeight.w900, color: _purple, fontSize: 13)),
-                          const SizedBox(height: 14),
-                          Row(
-                            children: [
-                              Expanded(child: _metricCol(strings.sleepLabelStart, _fmtClock(started))),
-                              Container(width: 1, height: 46, color: Colors.black.withAlpha(22)),
-                              Expanded(child: _metricCol(strings.sleepLabelDuration, _fmtDurShort(elapsed))),
-                              Container(width: 1, height: 46, color: Colors.black.withAlpha(22)),
-                              Expanded(child: _metricCol(strings.sleepLabelQuality, quality.emoji, large: true)),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _whiteCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(strings.sleepObservationsTitle, style: const TextStyle(fontWeight: FontWeight.w900, color: _purple, fontSize: 13)),
-                          const SizedBox(height: 12),
-                          TextField(
-                            controller: _noteCtrl,
-                            maxLines: 3,
-                            decoration: InputDecoration(
-                              hintText: strings.sleepObservationHint,
-                              filled: true,
-                              fillColor: const Color(0xFFF9FAFB),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.black.withAlpha(26))),
-                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.black.withAlpha(26))),
-                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: _purple, width: 1.4)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    ValueListenableBuilder<bool>(
-                      valueListenable: HomePrefs.sleepAlertsEnabled,
-                      builder: (context, enabled, _) {
-                        return SwitchListTile.adaptive(
-                          contentPadding: EdgeInsets.zero,
-                          secondary: Icon(Icons.notifications_active_outlined, color: _purple.withAlpha(220)),
-                          title: Text(strings.sleepToggleAlerts, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                          value: enabled,
-                          activeThumbColor: _purple,
-                          onChanged: (v) => HomePrefs.setSleepAlertsEnabled(v),
-                        );
-                      },
-                    ),
-                    _sleepHistorySection(strings),
-                  ],
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SleepActiveContextBanner(strings: strings, purple: _purple),
+                const SizedBox(height: 16),
+                Text(
+                  strings.sleepSleepingFor(_sleepingMinLabel(elapsed)),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.3),
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(28, 0, 28, 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _roundBarAction(
-                    label: paused ? strings.sleepResume : strings.sleepPause,
-                    icon: paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-                    iconColor: _purple,
-                    borderColor: Colors.black.withAlpha(35),
-                    onTap: () {
-                      if (paused) {
-                        _sleepTimer.resume();
-                      } else {
-                        _sleepTimer.pause();
-                      }
-                    },
+                const SizedBox(height: 6),
+                Text(
+                  _fmtHms(elapsed),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.2,
+                      color: Colors.black.withAlpha(210)),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  paused
+                      ? strings.sleepStatusPaused
+                      : strings.sleepStatusSleeping,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black.withAlpha(130)),
+                ),
+                const SizedBox(height: 16),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: Image.asset(
+                    'assets/sleep/baby_sleep.png',
+                    height: 200,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
+                    errorBuilder: (_, __, ___) => Icon(Icons.nightlight_round,
+                        size: 100, color: _purple.withAlpha(160)),
                   ),
-                  _roundBarAction(
-                    label: strings.sleepCancelSession,
-                    icon: Icons.stop_rounded,
-                    iconColor: Colors.red.shade400,
-                    borderColor: Colors.red.withAlpha(160),
-                    onTap: () => _confirmCancelSession(strings),
+                ),
+                const SizedBox(height: 22),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _pink,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                   ),
-                ],
-              ),
+                  onPressed: paused ? null : () => _wake(strings),
+                  child: Text(strings.sleepFinalizeButton,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+                ),
+                const SizedBox(height: 22),
+                _whiteCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(strings.sleepThisCardTitle,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: _purple,
+                              fontSize: 13)),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                              child: _metricCol(
+                                  strings.sleepLabelStart, _fmtClock(started))),
+                          Container(
+                              width: 1,
+                              height: 46,
+                              color: Colors.black.withAlpha(22)),
+                          Expanded(
+                              child: _metricCol(strings.sleepLabelDuration,
+                                  _fmtDurShort(elapsed))),
+                          Container(
+                              width: 1,
+                              height: 46,
+                              color: Colors.black.withAlpha(22)),
+                          Expanded(
+                              child: _metricCol(
+                                  strings.sleepLabelQuality, quality.emoji,
+                                  large: true)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _whiteCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(strings.sleepObservationsTitle,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: _purple,
+                              fontSize: 13)),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _noteCtrl,
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          hintText: strings.sleepObservationHint,
+                          filled: true,
+                          fillColor: const Color(0xFFF9FAFB),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(
+                                  color: Colors.black.withAlpha(26))),
+                          enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(
+                                  color: Colors.black.withAlpha(26))),
+                          focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide:
+                                  const BorderSide(color: _purple, width: 1.4)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                ValueListenableBuilder<bool>(
+                  valueListenable: HomePrefs.sleepAlertsEnabled,
+                  builder: (context, enabled, _) {
+                    return SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: Icon(Icons.notifications_active_outlined,
+                          color: _purple.withAlpha(220)),
+                      title: Text(strings.sleepToggleAlerts,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 15)),
+                      value: enabled,
+                      activeThumbColor: _purple,
+                      onChanged: (v) async {
+                        await HomePrefs.setSleepAlertsEnabled(v);
+                        final bid = _currentBaby.currentBabyId;
+                        if (bid != null) await _syncLocalReminders(bid);
+                      },
+                    );
+                  },
+                ),
+                _sleepHistorySection(strings),
+              ],
             ),
-          ],
-        );
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(28, 0, 28, 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _roundBarAction(
+                label: paused ? strings.sleepResume : strings.sleepPause,
+                icon: paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                iconColor: _purple,
+                borderColor: Colors.black.withAlpha(35),
+                onTap: () {
+                  final bid = _currentBaby.currentBabyId;
+                  if (paused) {
+                    _sleepTimer.resume();
+                  } else {
+                    _sleepTimer.pause();
+                  }
+                  if (bid != null) unawaited(_syncLocalReminders(bid));
+                },
+              ),
+              _roundBarAction(
+                label: strings.sleepCancelSession,
+                icon: Icons.stop_rounded,
+                iconColor: Colors.red.shade400,
+                borderColor: Colors.red.withAlpha(160),
+                onTap: () => _confirmCancelSession(strings),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _metricCol(String label, String value, {bool large = false}) {
     return Column(
       children: [
-        Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black.withAlpha(120))),
+        Text(label,
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: Colors.black.withAlpha(120))),
         const SizedBox(height: 6),
         Text(
           value,
           textAlign: TextAlign.center,
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: large ? 26 : 15),
+          style:
+              TextStyle(fontWeight: FontWeight.w900, fontSize: large ? 26 : 15),
         ),
       ],
     );
@@ -914,7 +1034,12 @@ class _SleepPageState extends State<SleepPage> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.black.withAlpha(14)),
-        boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 16, offset: const Offset(0, 6))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withAlpha(10),
+              blurRadius: 16,
+              offset: const Offset(0, 6))
+        ],
       ),
       child: child,
     );
@@ -940,7 +1065,9 @@ class _SleepPageState extends State<SleepPage> {
             child: Container(
               width: 58,
               height: 58,
-              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: borderColor, width: 2)),
+              decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: borderColor, width: 2)),
               alignment: Alignment.center,
               child: Icon(icon, color: iconColor, size: 28),
             ),
@@ -952,7 +1079,10 @@ class _SleepPageState extends State<SleepPage> {
           child: Text(
             label,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black.withAlpha(160)),
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Colors.black.withAlpha(160)),
             maxLines: 2,
           ),
         ),
@@ -990,20 +1120,31 @@ class _RoutineVm {
 /// Ilustração e texto quando o bebê está acordado (antes de iniciar o registo de sono).
 class _SleepIdleHero extends StatelessWidget {
   final S strings;
+  final _RoutineVm vm;
+  final double markerT;
+  final Color purple;
 
-  const _SleepIdleHero({required this.strings});
+  const _SleepIdleHero({
+    required this.strings,
+    required this.vm,
+    required this.markerT,
+    required this.purple,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
       decoration: BoxDecoration(
         // Sem "fundo preto": deixa a ilustração respirar como um card normal.
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withAlpha(45), blurRadius: 22, offset: const Offset(0, 10)),
+          BoxShadow(
+              color: Colors.black.withAlpha(45),
+              blurRadius: 22,
+              offset: const Offset(0, 10)),
         ],
       ),
       child: Column(
@@ -1012,33 +1153,121 @@ class _SleepIdleHero extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             child: Image.asset(
               'assets/sleep/baby_awake.png',
-              height: 152,
+              height: 118,
               fit: BoxFit.contain,
               filterQuality: FilterQuality.high,
-              errorBuilder: (_, __, ___) => Icon(Icons.wb_sunny_rounded, size: 80, color: Colors.amber.withAlpha(200)),
+              errorBuilder: (_, __, ___) => Icon(Icons.wb_sunny_rounded,
+                  size: 80, color: Colors.amber.withAlpha(200)),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
             decoration: BoxDecoration(
               color: const Color(0xFFFF5C8D).withAlpha(230),
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
               strings.sleepHeroAwakeBadge,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.4),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 12,
+                  letterSpacing: 0.4),
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            strings.sleepHeroAwakeCaption,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.black.withAlpha(170),
-              height: 1.45,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7F5FF),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: purple.withAlpha(34)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            strings.sleepIdealForAge,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 11,
+                              color: purple.withAlpha(235),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            strings.sleepAgeMonthsLabel(vm.ageMonths),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 11,
+                              color: Colors.black.withAlpha(180),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      strings.sleepWindowMinMax(
+                          vm.window.minAwakeMin, vm.window.maxAwakeMin),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 13,
+                        color: Colors.black.withAlpha(205),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                _SleepWindowBar(
+                    strings: strings,
+                    markerT: markerT,
+                    purple: purple,
+                    compact: true),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        strings.sleepLegendY.replaceFirst('🟡 ', ''),
+                        style: TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black.withAlpha(135)),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        strings.sleepLegendG.replaceFirst('🟢 ', ''),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black.withAlpha(135)),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        strings.sleepLegendR.replaceFirst('🔴 ', ''),
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black.withAlpha(135)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -1052,7 +1281,8 @@ class _SleepActiveContextBanner extends StatelessWidget {
   final S strings;
   final Color purple;
 
-  const _SleepActiveContextBanner({required this.strings, required this.purple});
+  const _SleepActiveContextBanner(
+      {required this.strings, required this.purple});
 
   @override
   Widget build(BuildContext context) {
@@ -1075,12 +1305,19 @@ class _SleepActiveContextBanner extends StatelessWidget {
               children: [
                 Text(
                   strings.sleepHeroSleepingBadge,
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.black.withAlpha(220)),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                      color: Colors.black.withAlpha(220)),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   strings.sleepHeroSleepingCaption,
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, height: 1.35, color: Colors.black.withAlpha(150)),
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      height: 1.35,
+                      color: Colors.black.withAlpha(150)),
                 ),
               ],
             ),
@@ -1117,16 +1354,24 @@ class _SleepRoutineHeaderCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: Colors.black.withAlpha(18)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withAlpha(12), blurRadius: 22, offset: const Offset(0, 8)),
+          BoxShadow(
+              color: Colors.black.withAlpha(12),
+              blurRadius: 22,
+              offset: const Offset(0, 8)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(strings.sleepRoutineCardTitle, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+          Text(strings.sleepRoutineCardTitle,
+              style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5)),
           const SizedBox(height: 10),
           Text(
-            strings.sleepRoutineVigilHighlight(vm.window.minAwakeMin, vm.window.maxAwakeMin),
+            strings.sleepRoutineVigilHighlight(
+                vm.window.minAwakeMin, vm.window.maxAwakeMin),
             style: TextStyle(
               fontSize: 14.5,
               fontWeight: FontWeight.w800,
@@ -1137,23 +1382,38 @@ class _SleepRoutineHeaderCard extends StatelessWidget {
           const SizedBox(height: 14),
           if (vm.lastSleepEnd != null)
             Text(
-              strings.sleepRoutineLastLabel(fmtAgo(DateTime.now().difference(vm.lastSleepEnd!))),
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, height: 1.35, color: Colors.black.withAlpha(215)),
+              strings.sleepRoutineLastLabel(
+                  fmtAgo(DateTime.now().difference(vm.lastSleepEnd!))),
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  height: 1.35,
+                  color: Colors.black.withAlpha(215)),
             )
           else
-            Text(strings.sleepRoutineLastNever, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black.withAlpha(160))),
+            Text(strings.sleepRoutineLastNever,
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black.withAlpha(160))),
           const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 '${strings.sleepRoutineNextPrefix} ',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.black.withAlpha(220)),
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black.withAlpha(220)),
               ),
               Expanded(
                 child: Text(
                   nextTail,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF5B6B8C)),
+                  style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF5B6B8C)),
                 ),
               ),
             ],
@@ -1161,7 +1421,8 @@ class _SleepRoutineHeaderCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             strings.sleepRoutineStatusLine(statusLine(strings, wakePhase)),
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, height: 1.35),
+            style: const TextStyle(
+                fontSize: 14, fontWeight: FontWeight.w700, height: 1.35),
           ),
         ],
       ),
@@ -1188,17 +1449,33 @@ class _SleepInsightsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(strings.sleepInsightTitle, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Colors.black.withAlpha(150))),
+          Text(strings.sleepInsightTitle,
+              style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 13,
+                  color: Colors.black.withAlpha(150))),
           const SizedBox(height: 10),
-          Text(strings.sleepInsightNaps(vm.todayNaps), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+          Text(strings.sleepInsightNaps(vm.todayNaps),
+              style:
+                  const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
           if (vm.todayNaps > 0) ...[
             const SizedBox(height: 6),
-            Text(strings.sleepInsightAvg(vm.todayAvgMin), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.black.withAlpha(190))),
+            Text(strings.sleepInsightAvg(vm.todayAvgMin),
+                style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: Colors.black.withAlpha(190))),
           ],
           const SizedBox(height: 10),
           Text(
-            vm.trendLessThanUsual ? strings.sleepInsightTrendDown : strings.sleepInsightTrendOk,
-            style: TextStyle(height: 1.4, fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black.withAlpha(175)),
+            vm.trendLessThanUsual
+                ? strings.sleepInsightTrendDown
+                : strings.sleepInsightTrendOk,
+            style: TextStyle(
+                height: 1.4,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: Colors.black.withAlpha(175)),
           ),
         ],
       ),
@@ -1210,11 +1487,13 @@ class _SleepWindowBar extends StatelessWidget {
   final S strings;
   final double markerT;
   final Color purple;
+  final bool compact;
 
   const _SleepWindowBar({
     required this.strings,
     required this.markerT,
     required this.purple,
+    this.compact = false,
   });
 
   static const double _barHeight = 46;
@@ -1222,17 +1501,24 @@ class _SleepWindowBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final barHeight = compact ? 18.0 : _barHeight;
+    final knobSize = compact ? 18.0 : _knobSize;
+    final markerTop = compact ? 0.0 : 0.0;
+    final barTop = compact ? 20.0 : 34.0;
+    final totalHeight = compact ? 40.0 : 88.0;
+    final borderRadius = barHeight / 2;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         LayoutBuilder(
           builder: (context, c) {
             final w = c.maxWidth;
-            final cx = (w * markerT).clamp(_knobSize / 2, w - _knobSize / 2);
-            final knobLeft = cx - _knobSize / 2;
+            final cx = (w * markerT).clamp(knobSize / 2, w - knobSize / 2);
+            final knobLeft = cx - knobSize / 2;
 
             return SizedBox(
-              height: 88,
+              height: totalHeight,
               width: w,
               child: Stack(
                 clipBehavior: Clip.none,
@@ -1241,50 +1527,69 @@ class _SleepWindowBar extends StatelessWidget {
                   // Marcador (nuvem / “agora”) — acima da barra
                   Positioned(
                     left: knobLeft,
-                    top: 0,
-                    width: _knobSize,
+                    top: markerTop,
+                    width: knobSize,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: _knobSize,
-                          height: _knobSize,
+                          width: knobSize,
+                          height: knobSize,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: Colors.white,
-                            border: Border.all(color: purple, width: 2.5),
+                            border: Border.all(
+                                color: purple, width: compact ? 2 : 2.5),
                             boxShadow: [
-                              BoxShadow(color: purple.withAlpha(55), blurRadius: 12, offset: const Offset(0, 4)),
-                              BoxShadow(color: Colors.black.withAlpha(18), blurRadius: 8, offset: const Offset(0, 2)),
+                              BoxShadow(
+                                color: purple.withAlpha(compact ? 36 : 55),
+                                blurRadius: compact ? 8 : 12,
+                                offset: Offset(0, compact ? 2 : 4),
+                              ),
+                              BoxShadow(
+                                  color: Colors.black.withAlpha(18),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2)),
                             ],
                           ),
                           alignment: Alignment.center,
-                          child: Icon(Icons.bedtime_rounded, size: 15, color: purple.withAlpha(240)),
+                          child: Icon(Icons.bedtime_rounded,
+                              size: compact ? 10 : 15,
+                              color: purple.withAlpha(240)),
                         ),
                         CustomPaint(
-                          size: const Size(14, 8),
-                          painter: _SleepMarkerDartPainter(color: purple.withAlpha(200)),
+                          size: Size(compact ? 8 : 14, compact ? 5 : 8),
+                          painter: _SleepMarkerDartPainter(
+                              color: purple.withAlpha(200)),
                         ),
                       ],
                     ),
                   ),
-                  // Três zonas: verde | amarelo | vermelho
+                  // Três zonas: amarelo | verde | vermelho.
                   Positioned(
                     left: 0,
                     right: 0,
-                    top: 34,
-                    height: _barHeight,
+                    top: barTop,
+                    height: barHeight,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(23),
-                        border: Border.all(color: Colors.white, width: 2),
+                        borderRadius: BorderRadius.circular(borderRadius),
+                        border: Border.all(
+                            color: Colors.white, width: compact ? 1.5 : 2),
                         boxShadow: [
-                          BoxShadow(color: purple.withAlpha(40), blurRadius: 20, offset: const Offset(0, 8)),
-                          BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 12, offset: const Offset(0, 4)),
+                          BoxShadow(
+                            color: purple.withAlpha(compact ? 24 : 40),
+                            blurRadius: compact ? 10 : 20,
+                            offset: Offset(0, compact ? 4 : 8),
+                          ),
+                          BoxShadow(
+                              color: Colors.black.withAlpha(10),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4)),
                         ],
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(21),
+                        borderRadius: BorderRadius.circular(borderRadius - 2),
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
@@ -1301,7 +1606,10 @@ class _SleepWindowBar extends StatelessWidget {
                                       gradient: LinearGradient(
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
-                                        colors: [Color(0xFF9FD9B5), Color(0xFFC8EED4)],
+                                        colors: [
+                                          Color(0xFF9FD9B5),
+                                          Color(0xFFC8EED4)
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -1312,7 +1620,10 @@ class _SleepWindowBar extends StatelessWidget {
                                       gradient: LinearGradient(
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
-                                        colors: [Color(0xFFFF9A8E), Color(0xFFFFC6C0)],
+                                        colors: [
+                                          Color(0xFFFF9A8E),
+                                          Color(0xFFFFC6C0)
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -1321,12 +1632,18 @@ class _SleepWindowBar extends StatelessWidget {
                             ),
                             CustomPaint(painter: _SleepBarGroovePainter()),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: compact ? 3 : 4,
+                                  vertical: compact ? 1 : 2),
                               child: Row(
                                 children: [
-                                  Expanded(child: _zoneLabel('🟡', TextAlign.left)),
-                                  Expanded(child: _zoneLabel('🟢', TextAlign.center)),
-                                  Expanded(child: _zoneLabel('🔴', TextAlign.right)),
+                                  Expanded(
+                                      child: _zoneLabel('🟡', TextAlign.left)),
+                                  Expanded(
+                                      child:
+                                          _zoneLabel('🟢', TextAlign.center)),
+                                  Expanded(
+                                      child: _zoneLabel('🔴', TextAlign.right)),
                                 ],
                               ),
                             ),
@@ -1352,13 +1669,16 @@ class _SleepWindowBar extends StatelessWidget {
         textAlign: align,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          fontSize: 10.5,
+        style: TextStyle(
+          fontSize: compact ? 7.5 : 10.5,
           height: 1.15,
           fontWeight: FontWeight.w900,
           letterSpacing: -0.15,
-          color: Color(0xDD3A3548),
-          shadows: [Shadow(color: Color(0x66FFFFFF), blurRadius: 0, offset: Offset(0, 0.5))],
+          color: const Color(0xDD3A3548),
+          shadows: const [
+            Shadow(
+                color: Color(0x66FFFFFF), blurRadius: 0, offset: Offset(0, 0.5))
+          ],
         ),
       ),
     );
@@ -1381,7 +1701,8 @@ class _SleepBarGroovePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     for (final x in [x1, x2]) {
-      canvas.drawLine(Offset(x + 0.5, 10), Offset(x + 0.5, size.height - 10), shadow);
+      canvas.drawLine(
+          Offset(x + 0.5, 10), Offset(x + 0.5, size.height - 10), shadow);
       canvas.drawLine(Offset(x, 10), Offset(x, size.height - 10), highlight);
     }
   }
@@ -1410,7 +1731,8 @@ class _SleepMarkerDartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _SleepMarkerDartPainter oldDelegate) => oldDelegate.color != color;
+  bool shouldRepaint(covariant _SleepMarkerDartPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 enum _SleepQuality {

@@ -16,11 +16,14 @@ class FirestoreService {
     return uid;
   }
 
-  DocumentReference<Map<String, dynamic>> userDoc() => _db.collection('users').doc(_uid);
+  DocumentReference<Map<String, dynamic>> userDoc() =>
+      _db.collection('users').doc(_uid);
 
   // ---------------- New schema ----------------
-  CollectionReference<Map<String, dynamic>> babiesCol() => userDoc().collection('babies');
-  CollectionReference<Map<String, dynamic>> eventsCol() => userDoc().collection('events');
+  CollectionReference<Map<String, dynamic>> babiesCol() =>
+      userDoc().collection('babies');
+  CollectionReference<Map<String, dynamic>> eventsCol() =>
+      userDoc().collection('events');
 
   void _log(String op, String path, [Object? extra]) {
     final msg = 'Firestore op=$op uid=$_uid path=$path';
@@ -29,7 +32,8 @@ class FirestoreService {
   }
 
   // Profile helpers (users/{uid})
-  Future<Map<String, dynamic>?> getProfile() => FirestoreUserRepository.instance.getUserProfile(_uid);
+  Future<Map<String, dynamic>?> getProfile() =>
+      FirestoreUserRepository.instance.getUserProfile(_uid);
 
   Future<void> upsertProfile(Map<String, dynamic> patch) =>
       FirestoreUserRepository.instance.saveUserProfile(_uid, patch);
@@ -42,6 +46,9 @@ class FirestoreService {
     String? zodiacSign,
     double? weightKg,
     double? heightCm,
+    bool? firstBaby,
+    List<String>? onboardingConcerns,
+    List<String>? onboardingGoals,
     String? photoUrl,
   }) async {
     // Keep snake_case keys to match existing local hydration helpers.
@@ -52,6 +59,9 @@ class FirestoreService {
       'zodiac_sign': zodiacSign,
       'weight_kg': weightKg,
       'height_cm': heightCm,
+      'first_baby': firstBaby,
+      'onboarding_concerns': onboardingConcerns,
+      'onboarding_goals': onboardingGoals,
       'photo_url': photoUrl,
     });
   }
@@ -59,18 +69,23 @@ class FirestoreService {
   Stream<List<Map<String, dynamic>>> watchBabies({String? motherId}) {
     Query<Map<String, dynamic>> q = babiesCol();
     return q.orderBy('createdAt', descending: true).snapshots().map((snap) {
-      return snap.docs.map((d) => {'id': d.id, ...d.data()}).toList(growable: false);
+      return snap.docs
+          .map((d) => {'id': d.id, ...d.data()})
+          .toList(growable: false);
     });
   }
 
   Future<List<Map<String, dynamic>>> listBabies({String? motherId}) async {
     Query<Map<String, dynamic>> q = babiesCol();
     final snap = await q.orderBy('createdAt', descending: true).get();
-    return snap.docs.map((d) => {'id': d.id, ...d.data()}).toList(growable: false);
+    return snap.docs
+        .map((d) => {'id': d.id, ...d.data()})
+        .toList(growable: false);
   }
 
   Future<void> updateBaby(String babyId, Map<String, dynamic> patch) async {
-    await FirestoreUserRepository.instance.saveBaby(_uid, {'id': babyId, ...patch});
+    await FirestoreUserRepository.instance
+        .saveBaby(_uid, {'id': babyId, ...patch});
   }
 
   Future<void> deleteBaby(String babyId) async {
@@ -84,8 +99,10 @@ class FirestoreService {
     return eventsCol().where('baby_id', isEqualTo: babyId);
   }
 
-  Future<List<Map<String, dynamic>>> _listEventsForBaby(String babyId, String type) async {
-    _log('query', 'users/$_uid/events', {'baby_id': babyId, 'type': type, 'indexed': false});
+  Future<List<Map<String, dynamic>>> _listEventsForBaby(
+      String babyId, String type) async {
+    _log('query', 'users/$_uid/events',
+        {'baby_id': babyId, 'type': type, 'indexed': false});
     final snap = await _eventsForBabyBase(babyId).get();
     final rows = snap.docs
         .where((d) => (d.data()['type'] ?? '').toString() == type)
@@ -99,8 +116,16 @@ class FirestoreService {
         return null;
       }
 
-      final ad = dt(a['event_time']) ?? dt(a['occurred_at']) ?? dt(a['changed_at']) ?? dt(a['ended_at']) ?? dt(a['measured_at']);
-      final bd = dt(b['event_time']) ?? dt(b['occurred_at']) ?? dt(b['changed_at']) ?? dt(b['ended_at']) ?? dt(b['measured_at']);
+      final ad = dt(a['event_time']) ??
+          dt(a['occurred_at']) ??
+          dt(a['changed_at']) ??
+          dt(a['ended_at']) ??
+          dt(a['measured_at']);
+      final bd = dt(b['event_time']) ??
+          dt(b['occurred_at']) ??
+          dt(b['changed_at']) ??
+          dt(b['ended_at']) ??
+          dt(b['measured_at']);
       if (ad == null && bd == null) return 0;
       if (ad == null) return 1;
       if (bd == null) return -1;
@@ -120,6 +145,7 @@ class FirestoreService {
     _log('delete', path);
     await eventsCol().doc(id).delete();
   }
+
   Future<String> createConsultation({
     required String babyId,
     required String title,
@@ -498,7 +524,8 @@ class FirestoreService {
       'baby_id': babyId,
       'day_key': dayKey,
       'text': text,
-      'event_time': Timestamp.fromDate(DateTime.tryParse('${dayKey}T00:00:00') ?? DateTime.now()),
+      'event_time': Timestamp.fromDate(
+          DateTime.tryParse('${dayKey}T00:00:00') ?? DateTime.now()),
       'updated_at': FieldValue.serverTimestamp(),
       'created_at': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
@@ -521,21 +548,36 @@ class FirestoreService {
       'type': 'daily_summary_snapshot',
       'baby_id': babyId,
       'day_key': dayKey,
-      'event_time': Timestamp.fromDate(DateTime.tryParse('${dayKey}T00:00:00') ?? DateTime.now()),
+      'event_time': Timestamp.fromDate(
+          DateTime.tryParse('${dayKey}T00:00:00') ?? DateTime.now()),
       'updated_at': FieldValue.serverTimestamp(),
       'created_at': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
 
-  Future<List<Map<String, dynamic>>> listDailySummarySnapshots(String babyId) async {
+  Future<List<Map<String, dynamic>>> listDailySummarySnapshots(
+      String babyId) async {
     return _listEventsForBaby(babyId, 'daily_summary_snapshot');
   }
 
   // ---------------- Weekly Photo / public memories (root collections) ----------------
 
-  CollectionReference<Map<String, dynamic>> _publicMemoriesCol() => _db.collection('public_memories');
+  CollectionReference<Map<String, dynamic>> _publicMemoriesCol() =>
+      _db.collection('public_memories');
 
-  CollectionReference<Map<String, dynamic>> _weeklyPhotoContestsCol() => _db.collection('weekly_photo_contests');
+  /// Curtidas na Foto da Semana — documento por UID autenticado.
+  CollectionReference<Map<String, dynamic>> publicMemoryLikesCol(
+      String publicMemoryId) {
+    return _publicMemoriesCol().doc(publicMemoryId.trim()).collection('likes');
+  }
+
+  Stream<DocumentSnapshot<Map<String, dynamic>>> publicMemorySnapshots(
+      String publicMemoryId) {
+    return _publicMemoriesCol().doc(publicMemoryId.trim()).snapshots();
+  }
+
+  CollectionReference<Map<String, dynamic>> _weeklyPhotoContestsCol() =>
+      _db.collection('weekly_photo_contests');
 
   /// Documento sanitizado para mural / sorteio (sem dados médicos).
   Future<void> upsertPublicMemoryDoc({
@@ -558,18 +600,19 @@ class FirestoreService {
   }
 
   /// Snapshot do destaque atual na Home (`spotlight_current`), preenchido pelas Cloud Functions.
-  Stream<DocumentSnapshot<Map<String, dynamic>>> weeklyPhotoSpotlightSnapshots() {
+  Stream<DocumentSnapshot<Map<String, dynamic>>>
+      weeklyPhotoSpotlightSnapshots() {
     return _weeklyPhotoContestsCol().doc('spotlight_current').snapshots();
   }
 
   /// Fallback público para a Home: lista as últimas memórias públicas (ordenadas por
   /// `publicEnabledAt` desc) — usado quando `spotlight_current` está em falta/inativo.
   /// O cliente filtra por `photoUrl != null/vazio` no chamador.
-  Stream<QuerySnapshot<Map<String, dynamic>>> publicMemoriesLatestSnapshots({int limit = 20}) {
+  Stream<QuerySnapshot<Map<String, dynamic>>> publicMemoriesLatestSnapshots(
+      {int limit = 20}) {
     return _publicMemoriesCol()
         .orderBy('publicEnabledAt', descending: true)
         .limit(limit)
         .snapshots();
   }
 }
-

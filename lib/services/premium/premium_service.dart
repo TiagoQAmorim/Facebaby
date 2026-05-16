@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -47,11 +49,17 @@ class PremiumService extends ChangeNotifier {
   bool _storeAvailable = false;
   ProductDetails? _lifetimeProduct;
   bool _entitlement = false;
+  String? _entitlementUid;
 
   /// QA (debug): `SharedPreferences` `facebaby_plus_debug_force` = true força Premium.
   bool _debugPremium = false;
 
-  bool _restoreRequested = false;
+  String _entitlementPrefKey(String uid) => '${_prefEntitlement}_$uid';
+
+  bool _restoreUiPending = false;
+
+  /// Só true quando o utilizador toca em «Restaurar compras» (não no restore silencioso ao abrir).
+  bool _userInitiatedRestore = false;
 
   /// Última resposta a [queryProductDetails]: IDs pedidos que a loja não devolveu (SKU inexistente ou inactivo).
   List<String> _lastNotFoundIds = const [];
@@ -114,27 +122,61 @@ class PremiumService extends ChangeNotifier {
   /// Compatível com código legado “Plus”.
   bool get isPlus => isPremium;
 
+  /// Remove cache global legado (partilhado entre contas no mesmo telemóvel).
+  Future<void> _purgeLegacyGlobalEntitlementPref() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_prefEntitlement);
+  }
+
+  static bool _firestoreSaysPremium(Map<String, dynamic>? data) {
+    if (data == null) return false;
+    final v = data['premiumLifetime'];
+    return v == true;
+  }
+
+  Future<void> _loadEntitlementForUser(String? uid) async {
+    final prefs = await SharedPreferences.getInstance();
+    await _purgeLegacyGlobalEntitlementPref();
+    if (uid == null || uid.isEmpty) {
+      _entitlementUid = null;
+      _entitlement = false;
+      return;
+    }
+    _entitlementUid = uid;
+    _entitlement = prefs.getBool(_entitlementPrefKey(uid)) ?? false;
+  }
+
+  Future<void> _onAuthUserChanged(User? user) async {
+    await _loadEntitlementForUser(user?.uid);
+    if (user != null) {
+      await syncPremiumFromFirestore();
+    }
+    notifyListeners();
+  }
+
   Future<void> initialize() async {
     if (_ready) return;
 
     final prefs = await SharedPreferences.getInstance();
-    _entitlement = prefs.getBool(_prefEntitlement) ?? false;
+    await _loadEntitlementForUser(FirebaseAuth.instance.currentUser?.uid);
     assert(() {
       _debugPremium = prefs.getBool(_prefDebugPremium) ?? false;
       return true;
     }());
 
     _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
-      if (user != null) {
-        unawaited(syncPremiumFromFirestore());
-      }
+      unawaited(_onAuthUserChanged(user));
     });
     debugPrint('PremiumService: auth listener ${_authSub != null}');
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      await syncPremiumFromFirestore();
+    }
 
     if (!premiumStoreSupported()) {
       _ready = true;
       notifyListeners();
-      unawaited(syncPremiumFromFirestore());
       return;
     }
 
@@ -143,7 +185,6 @@ class PremiumService extends ChangeNotifier {
       if (!_storeAvailable) {
         _ready = true;
         notifyListeners();
-        unawaited(syncPremiumFromFirestore());
         return;
       }
 
@@ -154,17 +195,14 @@ class PremiumService extends ChangeNotifier {
       debugPrint('PremiumService: IAP listener ${_purchaseSub != null ? "on" : "off"}');
 
       await _queryProducts();
-
-      /// Reconcilia com a conta da loja ao abrir (reinstalação / outro dispositivo).
-      _restoreRequested = true;
-      await _iap.restorePurchases();
+      // Sem restore automático: compra Play é do dispositivo/conta Google, não do uid Firebase.
+      // Estado vem do Firestore; «Restaurar compras» liga a compra ao utilizador actual.
     } catch (e, st) {
       debugPrint('PremiumService.initialize: $e\n$st');
     }
 
     _ready = true;
     notifyListeners();
-    unawaited(syncPremiumFromFirestore());
   }
 
   Future<void> _queryProducts() async {
@@ -198,28 +236,101 @@ class PremiumService extends ChangeNotifier {
   }
 
   void _onPurchaseUpdates(List<PurchaseDetails> purchases) {
+    unawaited(_processPurchaseUpdates(purchases));
+  }
+
+  static bool _indicatesItemAlreadyOwned(IAPError err) {
+    final blob = '${err.code} ${err.message} ${err.details ?? ''}'.toLowerCase();
+    return blob.contains('itemalreadyowned') ||
+        blob.contains('item_already_owned') ||
+        blob.contains('billingresponse.itemalreadyowned') ||
+        blob.contains('item_owned') ||
+        blob.contains('já é seu') ||
+        blob.contains('ja e seu') ||
+        blob.contains('already yours') ||
+        blob.contains('already owned');
+  }
+
+  /// True se a Play Billing reporta compra activa do SKU vitalício (sem gravar estado).
+  Future<bool> _storeBillingShowsLifetimeSku() async {
+    if (!premiumStoreSupported() || !_storeAvailable) return false;
+    try {
+      final addition = InAppPurchase.instance
+          .getPlatformAddition<InAppPurchaseAndroidPlatformAddition>();
+      final q = await addition.queryPastPurchases();
+      if (q.error != null) {
+        debugPrint('queryPastPurchases error: ${q.error}');
+        return false;
+      }
+      final sku = PremiumConstants.productIdLifetime;
+      for (final d in q.pastPurchases) {
+        if (d.productID == sku) return true;
+      }
+    } catch (e) {
+      debugPrint('_storeBillingShowsLifetimeSku: $e');
+    }
+    return false;
+  }
+
+  /// Devolve true se a Play já tem compra activa deste SKU (Android).
+  Future<bool> _tryGrantFromAndroidPastPurchases() async {
+    final owned = await _storeBillingShowsLifetimeSku();
+    if (!owned) return false;
+    await _persistEntitlement(true, pushRemote: true);
+    return true;
+  }
+
+  /// A compra vitalícia fica na **conta Google da Play**, não no uid Firebase.
+  /// Se a Play recusa o fluxo («já é seu»), recuperamos o recibo e ligamo-lo ao utilizador actual.
+  Future<void> _tryLinkPlayPurchaseToCurrentUser() async {
+    if (!premiumStoreSupported() || !_storeAvailable) return;
+    if (await _tryGrantFromAndroidPastPurchases()) {
+      await syncPremiumFromFirestore();
+      return;
+    }
+    _userInitiatedRestore = true;
+    try {
+      await _iap.restorePurchases();
+      await Future<void>.delayed(const Duration(milliseconds: 2400));
+    } catch (e, st) {
+      debugPrint('PremiumService _tryLinkPlayPurchaseToCurrentUser: $e\n$st');
+    }
+    await syncPremiumFromFirestore();
+    _userInitiatedRestore = false;
+  }
+
+  Future<void> _processPurchaseUpdates(List<PurchaseDetails> purchases) async {
     for (final p in purchases) {
       switch (p.status) {
         case PurchaseStatus.pending:
           break;
         case PurchaseStatus.error:
           debugPrint('Purchase error: ${p.error}');
+          if (p.error != null && _indicatesItemAlreadyOwned(p.error!)) {
+            await _tryLinkPlayPurchaseToCurrentUser();
+          }
           break;
         case PurchaseStatus.purchased:
-        case PurchaseStatus.restored:
           if (p.productID == PremiumConstants.productIdLifetime) {
-            unawaited(_persistEntitlement(true));
+            await _persistEntitlement(true, pushRemote: true);
+          }
+          break;
+        case PurchaseStatus.restored:
+          if (p.productID == PremiumConstants.productIdLifetime &&
+              _userInitiatedRestore) {
+            await _persistEntitlement(true, pushRemote: true);
           }
           break;
         case PurchaseStatus.canceled:
           break;
       }
       if (p.pendingCompletePurchase) {
-        unawaited(_completeSafe(p));
+        await _completeSafe(p);
       }
     }
-    if (_restoreRequested) {
-      _restoreRequested = false;
+    if (_restoreUiPending) {
+      _restoreUiPending = false;
+      _userInitiatedRestore = false;
       notifyListeners();
     }
   }
@@ -233,12 +344,19 @@ class PremiumService extends ChangeNotifier {
   }
 
   Future<void> _persistEntitlement(bool value, {bool pushRemote = true}) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     _entitlement = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_prefEntitlement, value);
+    if (uid != null && uid.isNotEmpty) {
+      _entitlementUid = uid;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_entitlementPrefKey(uid), value);
+      await prefs.remove(_prefEntitlement);
+    }
     notifyListeners();
     if (value && pushRemote) {
       await _pushPremiumToFirestore(true);
+    } else if (!value && pushRemote) {
+      await _pushPremiumToFirestore(false);
     }
   }
 
@@ -248,26 +366,52 @@ class PremiumService extends ChangeNotifier {
     try {
       await FirestoreUserRepository.instance.saveUserProfile(uid, {
         'premiumLifetime': premium,
-        'premiumProductId': PremiumConstants.productIdLifetime,
+        if (premium)
+          'premiumProductId': PremiumConstants.productIdLifetime
+        else
+          'premiumProductId': FieldValue.delete(),
       });
     } catch (e, st) {
       debugPrint('Premium Firestore push failed: $e\n$st');
     }
   }
 
-  /// Lê `users/{uid}.premiumLifetime` e activa cache local (fallback quando a loja demora).
+  /// Garante perfil gratuito na nuvem (conta nova). Chamar só após registo.
+  Future<void> markNewAccountFreeInCloud() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    await _persistEntitlement(false, pushRemote: true);
+  }
+
+  /// Lê `users/{uid}.premiumLifetime` — a nuvem manda no estado (não o cache local antigo).
   Future<void> syncPremiumFromFirestore() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
+    if (_entitlementUid != uid) {
+      await _loadEntitlementForUser(uid);
+    }
     try {
       final data = await FirestoreUserRepository.instance.getUserProfile(uid);
-      final remote = data?['premiumLifetime'] == true;
-      if (remote && !_entitlement) {
-        await _persistEntitlement(true, pushRemote: false);
+      final remote = _firestoreSaysPremium(data);
+      if (remote) {
+        if (!_entitlement) {
+          await _persistEntitlement(true, pushRemote: false);
+        }
+        return;
       }
-      if (!remote && _entitlement) {
-        /// Este dispositivo diz Premium mas a nuvem não — re-envia (ex.: compra offline).
-        await _pushPremiumToFirestore(true);
+
+      // Sem Premium na nuvem: alinhar com a Play antes de retirar o acesso local.
+      final playOwnsLifetime = await _storeBillingShowsLifetimeSku();
+      if (playOwnsLifetime) {
+        await _persistEntitlement(true, pushRemote: true);
+        return;
+      }
+      if (_entitlement) {
+        await _persistEntitlement(false, pushRemote: false);
+      }
+      final orphanSku = data?['premiumProductId'];
+      if (orphanSku != null && orphanSku.toString().trim().isNotEmpty) {
+        await _pushPremiumToFirestore(false);
       }
     } catch (e, st) {
       debugPrint('syncPremiumFromFirestore: $e\n$st');
@@ -296,9 +440,20 @@ class PremiumService extends ChangeNotifier {
     final ok = await _iap.buyNonConsumable(purchaseParam: param);
     if (!ok) {
       debugPrint(
-        'PremiumService purchaseLifetime: buyNonConsumable=false. '
-        'Causas frequentes: APK não instalado pela Play (teste interno/fechado), '
-        'conta de teste não licenciada, ou Billing temporariamente indisponível.',
+        'PremiumService purchaseLifetime: buyNonConsumable=false '
+        '(pode ser ITEM_ALREADY_OWNED na Play — a tentar recuperar compra).',
+      );
+      await _tryLinkPlayPurchaseToCurrentUser();
+      if (_entitlement) {
+        return PurchaseLifetimeResult.billingFlowLaunched;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+      if (await _tryGrantFromAndroidPastPurchases()) {
+        return PurchaseLifetimeResult.billingFlowLaunched;
+      }
+      debugPrint(
+        'PremiumService purchaseLifetime: após fallback restore ainda sem entitlement. '
+        'Verifique APK pela Play, conta de teste ou Billing.',
       );
       return PurchaseLifetimeResult.billingLaunchFailed;
     }
@@ -307,16 +462,29 @@ class PremiumService extends ChangeNotifier {
 
   Future<void> restorePurchases() async {
     if (!premiumStoreSupported() || !_storeAvailable) return;
-    _restoreRequested = true;
+    _userInitiatedRestore = true;
+    _restoreUiPending = true;
+    notifyListeners();
     await _iap.restorePurchases();
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+    await syncPremiumFromFirestore();
+    if (_restoreUiPending) {
+      _restoreUiPending = false;
+      _userInitiatedRestore = false;
+      notifyListeners();
+    }
   }
 
   /// Testes: revoga entitlement local (não remove compra na loja).
   Future<void> debugClearEntitlement() async {
     assert(kDebugMode);
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     _entitlement = false;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_prefEntitlement, false);
+    if (uid != null) {
+      await prefs.setBool(_entitlementPrefKey(uid), false);
+    }
     notifyListeners();
   }
 

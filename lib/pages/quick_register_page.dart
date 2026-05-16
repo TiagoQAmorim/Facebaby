@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../controllers/current_baby_controller.dart';
 import '../i18n/app_i18n.dart';
 import '../theme/app_theme.dart';
+import '../utils/portal_time_of_day.dart';
 import 'diaper_page.dart';
 import 'feeding_hub_page.dart';
 import 'growth_register_page.dart';
@@ -44,15 +45,28 @@ class _QuickRegisterPageState extends State<QuickRegisterPage> with AutomaticKee
     super.build(context);
     final s = S.of(context);
     final babyId = _currentBaby.currentBabyId;
+    final nightTitleColor = PortalTimeOfDay.isNight(DateTime.now())
+        ? PortalTimeOfDay.nightTextColor
+        : null;
 
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(AppTheme.pageHPadding, 24, AppTheme.pageHPadding, 110),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(s.quickRecordsTitle, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
+          Text(
+            s.quickRecordsTitle,
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: nightTitleColor,
+            ),
+          ),
           const SizedBox(height: 8),
-          Text(s.quickRecordsSubtitle),
+          Text(
+            s.quickRecordsSubtitle,
+            style: TextStyle(color: nightTitleColor),
+          ),
           const SizedBox(height: 22),
           if (babyId == null)
             Text(
@@ -96,7 +110,10 @@ class _QuickRegisterPageState extends State<QuickRegisterPage> with AutomaticKee
               color: AppTheme.primary,
               onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SleepPage())),
             ),
-            const SizedBox(height: 10),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 14),
+              child: Divider(height: 1, thickness: 1),
+            ),
             _RegisterRow(
               icon: Icons.insert_chart_outlined,
               title: s.reportsTitle,
@@ -133,30 +150,29 @@ class _RegisterRow extends StatelessWidget {
         child: Ink(
           decoration: BoxDecoration(
             color: AppTheme.card,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color.withAlpha(50)),
+            borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
                 color: AppTheme.ctaPrimary.withAlpha(16),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
               ),
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             child: Row(
               children: [
                 CircleAvatar(
-                  radius: 26,
+                  radius: 23,
                   backgroundColor: color.withAlpha(36),
-                  child: Icon(icon, color: color, size: 28),
+                  child: Icon(icon, color: color, size: 25),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, height: 1.15),
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, height: 1.15),
                   ),
                 ),
                 Icon(Icons.chevron_right_rounded, color: Colors.black.withAlpha(90)),

@@ -47,11 +47,11 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
         rowsRaw = await AppDatabase.instance
             .listNotificationLogSince(uid: uid, since: since)
             .timeout(
-              const Duration(seconds: 12),
-              onTimeout: () {
-                throw TimeoutException('notification_log query');
-              },
-            );
+          const Duration(seconds: 12),
+          onTimeout: () {
+            throw TimeoutException('notification_log query');
+          },
+        );
       } on TimeoutException {
         rowsRaw = const [];
       }
@@ -183,6 +183,107 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
     }
   }
 
+  MapEntry<String, String> _localizedNotificationText(
+      S s, Map<String, Object?> row) {
+    final rawTitle = ((row['title'] as String?) ?? '').trim();
+    final rawBody = ((row['body'] as String?) ?? '').trim();
+    final payload = (row['payload'] as String?)?.trim();
+    final titleLower = rawTitle.toLowerCase();
+    final bodyLower = rawBody.toLowerCase();
+
+    bool hasAny(String haystack, List<String> needles) {
+      return needles.any((needle) => haystack.contains(needle));
+    }
+
+    String detailFromColon() {
+      final match = RegExp(r':\s*(.+?)\.?$').firstMatch(rawBody);
+      return match?.group(1)?.trim() ?? rawTitle;
+    }
+
+    if (payload?.startsWith(NotificationNav.payloadSleepWakeOverduePrefix) ??
+        false) {
+      final parts = payload!.split(':');
+      final sex = parts.length > 1 ? parts[1] : null;
+      final hours = parts.length > 2 ? int.tryParse(parts[2]) ?? 3 : 3;
+      return MapEntry(
+        s.sleepNotifTitle,
+        s.sleepNotifWakeOverdueBodyForBabySex(sex: sex, hours: hours),
+      );
+    }
+
+    switch (payload) {
+      case NotificationNav.payloadFeeding:
+        final critical = hasAny(titleLower,
+                ['pode ser hora de mamar', 'it may be time to feed']) ||
+            hasAny(bodyLower, [
+              'passou do horário esperado',
+              'may have passed the expected time'
+            ]);
+        return MapEntry(
+          critical ? s.homeCriticalFeedingTitle : s.homeTimeToFeed,
+          critical
+              ? s.homeCriticalFeedingSubtitle
+              : s.scheduledFeedingReminderBody,
+        );
+      case NotificationNav.payloadDiaper:
+        final critical = hasAny(titleLower,
+                ['pode ser hora de trocar', 'it may be time to change']) ||
+            hasAny(bodyLower, ['já faz um tempo', 'may have been a while']);
+        return MapEntry(
+          critical ? s.homeCriticalDiaperTitle : s.scheduledDiaperReminderTitle,
+          critical
+              ? s.homeCriticalDiaperSubtitle
+              : s.scheduledDiaperReminderBody,
+        );
+      case NotificationNav.payloadSleep:
+        final critical = hasAny(titleLower,
+                ['pode ser hora de dormir', 'it may be time to sleep']) ||
+            hasAny(bodyLower, ['janela de sono', 'awake window']);
+        if (critical)
+          return MapEntry(
+              s.homeCriticalSleepTitle, s.homeCriticalSleepSubtitle);
+        final before = hasAny(bodyLower, ['bom momento', 'good time']);
+        return MapEntry(s.sleepNotifTitle,
+            before ? s.sleepNotifBeforeBody : s.sleepNotifOverdueBody);
+      case NotificationNav.payloadGrowth:
+        final stale = hasAny(titleLower, ['tempo sem', 'no growth log']) ||
+            hasAny(bodyLower, ['30 dias', '30 days', 'over 30']);
+        return MapEntry(
+          stale ? s.notifyGrowthStaleTitle : s.notifyGrowthWeightDownTitle,
+          stale ? s.notifyGrowthStaleBody(31) : s.notifyGrowthWeightDownBody,
+        );
+      default:
+        if (payload != null && payload.startsWith('nav_vaccine:')) {
+          return MapEntry(s.vaccineReminderNotifTitle,
+              s.vaccineReminderNotifBody(detailFromColon()));
+        }
+        if (payload != null && payload.startsWith('nav_consultation:')) {
+          final parts = rawBody
+              .split('·')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList(growable: false);
+          final title = parts.length >= 2 ? parts[1] : rawTitle;
+          final when = parts.length >= 3 ? parts.last : '';
+          final today = parts.isNotEmpty &&
+              hasAny(parts.first.toLowerCase(), ['hoje', 'today']);
+          final body = today
+              ? s.consultationTodayReminderNotifBody(title, when)
+              : s.consultationReminderNotifBody(title, when);
+          return MapEntry(s.consultationReminderNotifTitle, body);
+        }
+        if (hasAny(titleLower, ['teste imediato', 'immediate test'])) {
+          return MapEntry(
+              s.alertsTestImmediateTitle, s.alertsTestImmediateBody);
+        }
+        if (hasAny(titleLower, ['teste agendado', 'scheduled test'])) {
+          return MapEntry(
+              s.alertsTestScheduledTitle, s.alertsTestScheduledBody);
+        }
+        return MapEntry(rawTitle, rawBody);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
@@ -199,7 +300,8 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
       for (final day in sortedDays) {
         listChildren.add(
           Padding(
-            padding: EdgeInsets.only(bottom: 8, top: day == sortedDays.first ? 0 : 18),
+            padding: EdgeInsets.only(
+                bottom: 8, top: day == sortedDays.first ? 0 : 18),
             child: Text(
               _sectionLabel(s, day),
               style: TextStyle(
@@ -211,6 +313,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
           ),
         );
         for (final row in groups[day]!) {
+          final localized = _localizedNotificationText(s, row);
           listChildren.add(
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
@@ -221,8 +324,8 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
                 onSelectionChanged: () => setState(() {}),
                 onBeginSelectionRow: _beginSelectionWith,
                 occurredAt: _displayInstant(row),
-                title: (row['title'] as String?) ?? '',
-                body: (row['body'] as String?) ?? '',
+                title: localized.key,
+                body: localized.value,
                 payload: row['payload'] as String?,
                 kindLabel: _kindLabel(s, row['kind'] as String?),
                 timeHm: _timeHm,
@@ -236,7 +339,8 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
 
     final checkboxTheme = CheckboxThemeData(
       fillColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) return AppTheme.primaryPurple;
+        if (states.contains(WidgetState.selected))
+          return AppTheme.primaryPurple;
         return null;
       }),
     );
@@ -250,7 +354,9 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
             IconButton(
               tooltip: _selectionMode ? s.cancel : s.edit,
               onPressed: _toggleSelectionMode,
-              icon: Icon(_selectionMode ? Icons.close_rounded : Icons.checklist_rounded),
+              icon: Icon(_selectionMode
+                  ? Icons.close_rounded
+                  : Icons.checklist_rounded),
             ),
           if (_selectionMode)
             IconButton(
@@ -289,20 +395,24 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(color: AppTheme.textMuted.withAlpha(36)),
+                            side: BorderSide(
+                                color: AppTheme.textMuted.withAlpha(36)),
                           ),
                           clipBehavior: Clip.antiAlias,
                           child: InkWell(
                             onTap: _toggleSelectAll,
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 2),
                               child: Row(
                                 children: [
                                   Theme(
-                                    data: Theme.of(context).copyWith(checkboxTheme: checkboxTheme),
+                                    data: Theme.of(context)
+                                        .copyWith(checkboxTheme: checkboxTheme),
                                     child: Checkbox.adaptive(
                                       visualDensity: VisualDensity.compact,
-                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      materialTapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
                                       value: _selectAllCheckboxValue(),
                                       tristate: true,
                                       onChanged: (_) => _toggleSelectAll(),
@@ -333,7 +443,8 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
                 const SliverFillRemaining(
                   hasScrollBody: false,
                   child: Center(
-                    child: CircularProgressIndicator(color: AppTheme.primaryPurple),
+                    child: CircularProgressIndicator(
+                        color: AppTheme.primaryPurple),
                   ),
                 )
               else if (_rows.isEmpty)
@@ -390,6 +501,7 @@ class _NotificationTile extends StatelessWidget {
   final bool selectionMode;
   final Set<int> selectedIds;
   final VoidCallback onSelectionChanged;
+
   /// Ativa modo seleção e inclui esta linha (uso: toque prolongado quando ainda não em modo edição).
   final void Function(int rowId) onBeginSelectionRow;
   final DateTime occurredAt;
@@ -454,7 +566,8 @@ class _NotificationTile extends StatelessWidget {
                       data: Theme.of(context).copyWith(
                         checkboxTheme: CheckboxThemeData(
                           fillColor: WidgetStateProperty.resolveWith((states) {
-                            if (states.contains(WidgetState.selected)) return AppTheme.primaryPurple;
+                            if (states.contains(WidgetState.selected))
+                              return AppTheme.primaryPurple;
                             return null;
                           }),
                         ),
@@ -508,7 +621,8 @@ class _NotificationTile extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppTheme.softMint,
                       borderRadius: BorderRadius.circular(8),

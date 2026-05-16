@@ -17,7 +17,7 @@ class VaccineReminderScheduler {
 
   static const int _notificationIdBase = 700000;
   static const String _prefsAllIdsKeyPrefix = 'vacc_remind_all_ids_v1_b';
-  static const String _prefsSchedSigKeyPrefix = 'vacc_remind_sig_v1_b';
+  static const String _prefsSchedSigKeyPrefix = 'vacc_remind_sig_v2_alarm_clock_b';
 
   static int notificationId(int vaccineId) => _notificationIdBase + vaccineId;
 

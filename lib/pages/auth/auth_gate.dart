@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../widgets/face_baby_loading.dart';
 import '../../widgets/loading_scope.dart';
-import 'login_page.dart';
+import 'onboarding_page.dart';
 
 /// Mantém a sessão após fechar o app (persistência nativa do Firebase Auth).
 ///
@@ -43,7 +43,9 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
     _nullVerifyInFlight = true;
     try {
       for (var k = 0; k < 35; k++) {
-        if (k > 0) await Future<void>.delayed(const Duration(milliseconds: 100));
+        if (k > 0) {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        }
         if (!mounted) return;
         final cu = FirebaseAuth.instance.currentUser;
         if (cu != null) {
@@ -123,7 +125,7 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
       );
     }
     if (_user == null) {
-      return const LoadingScope(child: LoginPage());
+      return const LoadingScope(child: OnboardingPage());
     }
     return widget.child;
   }

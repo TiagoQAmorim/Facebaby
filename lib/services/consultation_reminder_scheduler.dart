@@ -16,7 +16,7 @@ class ConsultationReminderScheduler {
   static const int _notificationIdBase = 600000;
 
   static const String _prefsAllIdsKeyPrefix = 'consult_remind_all_ids_v2_b';
-  static const String _prefsSchedSigKeyPrefix = 'consult_remind_sig_v2_b';
+  static const String _prefsSchedSigKeyPrefix = 'consult_remind_sig_v3_alarm_clock_b';
 
   static int notificationId(int consultationId) => _notificationIdBase + consultationId;
 

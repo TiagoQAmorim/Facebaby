@@ -6,6 +6,7 @@ import '../services/app_database.dart';
 import '../services/firebase/diaper_cloud_sync.dart';
 import '../services/firebase/firestore_service.dart';
 import '../services/home_prefs.dart';
+import '../services/scheduled_local_reminders.dart';
 import '../theme/app_theme.dart';
 import '../widgets/card_box.dart';
 
@@ -51,6 +52,14 @@ class _DiaperPageState extends State<DiaperPage> {
     });
   }
 
+  Future<void> _syncLocalReminders(int babyId) async {
+    try {
+      await ScheduledLocalReminders.sync(babyId: babyId);
+    } catch (e, st) {
+      debugPrint('DiaperPage._syncLocalReminders: $e\n$st');
+    }
+  }
+
   /// Tempo compacto (igual ao padrão da Home para “há …”).
   String _compactTimeAgo(DateTime dt) {
     final d = DateTime.now().difference(dt);
@@ -75,6 +84,7 @@ class _DiaperPageState extends State<DiaperPage> {
         kind: kind,
       );
       DiaperCloudSync.pushLocalSoon(localBabyId: babyId, localDiaperId: newId);
+      await _syncLocalReminders(babyId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.diaperSavedOk)));
       _reload();
@@ -228,6 +238,7 @@ class _DiaperPageState extends State<DiaperPage> {
                           kind: kind,
                           note: noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim(),
                         );
+                        await _syncLocalReminders(bid);
                         if (ctx.mounted) Navigator.pop(ctx);
                         if (!mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.diaperUpdatedOk)));
@@ -274,6 +285,7 @@ class _DiaperPageState extends State<DiaperPage> {
     if (ok != true || !mounted) return;
     try {
       final n = await AppDatabase.instance.deleteDiaper(id: id, babyId: bid);
+      await _syncLocalReminders(bid);
       if (!mounted) return;
       if (n > 0) {
         if (cloudId != null && cloudId.isNotEmpty) {

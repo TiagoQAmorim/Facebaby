@@ -12,10 +12,12 @@ import '../services/firebase/weekly_photo_spotlight_http.dart';
 import '../theme/app_theme.dart';
 import '../utils/memory_moment_localizations.dart';
 import '../utils/portal_layout.dart';
+import '../utils/portal_time_of_day.dart';
 import '../utils/weekly_photo_spotlight_visibility.dart';
 import '../widgets/memories/cached_memory_photo.dart';
 import '../widgets/memories/memory_badge_icon.dart';
 import '../widgets/weekly_photo_crown_icon.dart';
+import '../widgets/weekly_photo_like_chip.dart';
 
 /// Secção “Foto da Semana” no final da Home (segunda a segunda; `spotlight_current` ativo no período).
 ///
@@ -89,6 +91,7 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
 
   void _openDetail(
     BuildContext context, {
+    required String publicMemoryId,
     required String photoUrl,
     required String badgeTitle,
     String? badgeId,
@@ -96,10 +99,12 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
     String? babyAge,
     String? desc,
     required DateTime memoryDate,
+    String? winnerUserId,
   }) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => PublicWeeklyMemoryDetailPage(
+          publicMemoryId: publicMemoryId,
           photoUrl: photoUrl,
           badgeTitle: badgeTitle,
           badgeId: badgeId,
@@ -107,9 +112,16 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
           babyAgeLabel: babyAge,
           publicDescription: desc,
           memoryDate: memoryDate,
+          winnerUserId: winnerUserId,
         ),
       ),
     );
+  }
+
+  String? _winnerUserId(Map<String, dynamic> data) {
+    final raw = data['winner_user_id'] ?? data['winnerUserId'];
+    final id = raw == null ? '' : '$raw'.trim();
+    return id.isEmpty ? null : id;
   }
 
   Color _heroTitleColor(String? spotlightSex) {
@@ -118,6 +130,26 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
       return const Color(0xFF2E7BD6);
     }
     return const Color(0xFFD63384);
+  }
+
+  String? _normalisedSpotlightBabySex(Map<String, dynamic> data) {
+    for (final value in [
+      data['winner_baby_sex'],
+      data['winnerBabySex'],
+      data['babySex'],
+      data['baby_sex'],
+      data['sex'],
+      data['gender'],
+    ]) {
+      final sx = value == null ? '' : '$value'.trim().toUpperCase();
+      if (sx == 'M' || sx == 'MALE' || sx == 'BOY' || sx == 'MASCULINO' || sx == 'MENINO') {
+        return 'M';
+      }
+      if (sx == 'F' || sx == 'FEMALE' || sx == 'GIRL' || sx == 'FEMININO' || sx == 'MENINA') {
+        return 'F';
+      }
+    }
+    return null;
   }
 
   @override
@@ -144,17 +176,29 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
 
     final badgeId =
         (d['winner_badge_id'] as String?)?.trim() ?? (d['winnerBadgeId'] as String?)?.trim();
+    final publicMemoryId = (d['winner_public_memory_id'] as String?)?.trim() ??
+        (d['winnerPublicMemoryId'] as String?)?.trim() ??
+        '';
+    final winnerUserId = _winnerUserId(d);
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    final isWinnerMom =
+        winnerUserId != null && currentUid != null && winnerUserId == currentUid;
 
     final babyName = (d['winner_baby_display_name'] as String?)?.trim();
-    final babyAge = (d['winner_baby_age_label'] as String?)?.trim();
+    final rawBabyAge =
+        (d['winner_baby_age_label'] as String?)?.trim() ?? (d['winnerBabyAgeLabel'] as String?)?.trim();
     final desc = (d['winner_public_description'] as String?)?.trim();
     final memoryDateIso = (d['winner_memory_date'] as String?)?.trim();
     final memoryDate = DateTime.tryParse(memoryDateIso ?? '') ?? now;
 
     final s = S.of(context);
-    final spotlightSex = (d['winner_baby_sex'] as String?)?.trim();
+    final babyAge = s.localizedAgeLabelFromStored(rawBabyAge);
+    final spotlightSex = _normalisedSpotlightBabySex(d);
     final heroTitle = s.weeklyPhotoHomeHeroTitle(spotlightSex);
-    final heroColor = _heroTitleColor(spotlightSex);
+    final nightTextColor = PortalTimeOfDay.isNight(DateTime.now())
+        ? PortalTimeOfDay.nightTextColor
+        : null;
+    final heroColor = nightTextColor ?? _heroTitleColor(spotlightSex);
 
     final catalogBadge =
         (badgeId != null && badgeId.isNotEmpty) ? MemoryBadgesCatalog.findBadgeById(badgeId) : null;
@@ -163,7 +207,7 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
 
     // Linha “bebê · idade” só com dados reais (sem placeholder “Bebê”).
     final hasName = babyName != null && babyName.isNotEmpty;
-    final hasAge = babyAge != null && babyAge.isNotEmpty;
+    final hasAge = babyAge.isNotEmpty;
     String? babyLine;
     if (hasName && hasAge) {
       babyLine = '$babyName · $babyAge';
@@ -209,6 +253,7 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
               child: InkWell(
                 onTap: () => _openDetail(
                   context,
+                  publicMemoryId: publicMemoryId,
                   photoUrl: photoUrl,
                   badgeTitle: badgeTitle,
                   badgeId: (badgeId != null && badgeId.isNotEmpty) ? badgeId : null,
@@ -216,6 +261,7 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
                   babyAge: babyAge,
                   desc: desc,
                   memoryDate: memoryDate,
+                  winnerUserId: winnerUserId,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -310,17 +356,38 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
                         ],
                       ),
                     ),
-                    if (babyLine != null || hasDesc)
+                    if (babyLine != null || hasDesc || publicMemoryId.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            if (publicMemoryId.isNotEmpty) ...[
+                              if (isWinnerMom)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Text(
+                                    s.weeklyPhotoLikesWinnerHint,
+                                    style: TextStyle(
+                                      fontSize: portalSp(context, 12.5),
+                                      fontWeight: FontWeight.w700,
+                                      color: nightTextColor ??
+                                          AppTheme.textSecondary,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ),
+                              WeeklyPhotoLikeChip(
+                                publicMemoryId: publicMemoryId,
+                                prominent: true,
+                              ),
+                              const SizedBox(height: 10),
+                            ],
                             if (babyLine != null)
                               Text(
                                 babyLine,
                                 style: TextStyle(
-                                  color: AppTheme.textPrimary,
+                                  color: nightTextColor ?? AppTheme.textPrimary,
                                   fontWeight: FontWeight.w800,
                                   fontSize: portalSp(context, 14),
                                 ),

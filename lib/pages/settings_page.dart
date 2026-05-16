@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../i18n/app_i18n.dart';
 import '../theme/app_theme.dart';
+import '../utils/portal_time_of_day.dart';
 import '../services/firebase/account_deletion_service.dart';
 import '../services/firebase/auth_service.dart';
 import '../services/premium/premium_service.dart';
@@ -15,6 +16,7 @@ import '../widgets/language_picker.dart';
 import '../widgets/loading_scope.dart';
 import 'alerts_settings_page.dart';
 import 'contact_page.dart';
+import 'family_tree_page.dart';
 import 'mother_profile_page.dart';
 import 'units_settings_page.dart';
 import 'privacy_policy_page.dart';
@@ -323,6 +325,9 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = S.of(context);
     final accent = Color.lerp(AppTheme.primaryPurple, AppTheme.primaryPink, 0.4)!;
+    final nightTitleColor = PortalTimeOfDay.isNight(DateTime.now())
+        ? PortalTimeOfDay.nightTextColor
+        : null;
 
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(AppTheme.pageHPadding, 12, AppTheme.pageHPadding, 100),
@@ -331,7 +336,12 @@ class SettingsPage extends StatelessWidget {
         children: [
           Text(
             s.settingsTitle,
-            style: TextStyle(fontSize: portalSp(context, 24), fontWeight: FontWeight.w900, height: 1.1),
+            style: TextStyle(
+              fontSize: portalSp(context, 24),
+              fontWeight: FontWeight.w900,
+              height: 1.1,
+              color: nightTitleColor,
+            ),
           ),
           const SizedBox(height: 12),
           _SettingsTile(
@@ -340,6 +350,14 @@ class SettingsPage extends StatelessWidget {
             title: s.settingsMotherProfile,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const MotherProfilePage()),
+            ),
+          ),
+          _SettingsTile(
+            compact: true,
+            icon: Icons.family_restroom_outlined,
+            title: s.settingsFamilyTree,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const FamilyTreePage()),
             ),
           ),
           _SettingsTile(
@@ -487,7 +505,7 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
-/// Divisor horizontal com traços curtos (efeito “régua”).
+/// Divisor horizontal simples entre grupos da página Mais.
 class _SettingsRulerDivider extends StatelessWidget {
   const _SettingsRulerDivider({this.widthFactor = 0.9});
 
@@ -497,46 +515,21 @@ class _SettingsRulerDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = Colors.black.withAlpha(42);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 9),
       child: Center(
         child: FractionallySizedBox(
           widthFactor: widthFactor,
-          child: SizedBox(
-            height: 12,
-            child: CustomPaint(
-              painter: _RulerTicksPainter(color: color),
+          child: Container(
+            height: 1,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(1),
             ),
           ),
         ),
       ),
     );
   }
-}
-
-class _RulerTicksPainter extends CustomPainter {
-  _RulerTicksPainter({required this.color});
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final midY = size.height / 2;
-    final line = Paint()
-      ..color = color
-      ..strokeWidth = 1;
-    canvas.drawLine(Offset(0, midY), Offset(size.width, midY), line);
-    const step = 5.5;
-    const tick = 3.0;
-    final tickPaint = Paint()
-      ..color = color
-      ..strokeWidth = 0.85;
-    for (double x = 0; x < size.width; x += step) {
-      canvas.drawLine(Offset(x, midY - tick), Offset(x, midY + tick), tickPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _RulerTicksPainter oldDelegate) => oldDelegate.color != color;
 }
 
 class _SettingsTile extends StatelessWidget {

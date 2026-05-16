@@ -1,6 +1,5 @@
 import 'dart:async' show Timer, unawaited;
 import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../controllers/current_baby_controller.dart';
@@ -21,7 +20,6 @@ import '../services/home_critical_notifications.dart';
 import '../services/home_prefs.dart';
 import '../services/sleep_events.dart';
 import '../services/sleep_routine.dart';
-import '../services/development_leaps_service.dart';
 import '../utils/measurement_format.dart';
 import '../services/measurement_units_prefs.dart';
 import '../services/mock_baby_service.dart';
@@ -33,8 +31,10 @@ import '../widgets/consultation_detail_sheet.dart';
 import '../widgets/language_picker.dart';
 import '../widgets/photo_avatar.dart';
 import '../widgets/section_title.dart';
+import '../widgets/home_recent_memories_section.dart';
 import '../widgets/weekly_photo_home_section.dart';
 import '../utils/portal_layout.dart';
+import '../utils/portal_time_of_day.dart';
 import '../app/shell_nested_nav.dart';
 import 'diaper_page.dart';
 import 'feeding_hub_page.dart';
@@ -43,10 +43,36 @@ import 'notifications_inbox_page.dart';
 import 'sleep_page.dart';
 import 'vaccines_page.dart';
 import '../widgets/vaccine_due_confirm_sheet.dart';
-import 'development_leaps_page.dart';
+import 'family_tree_page.dart';
+import 'health_hub_page.dart';
 
 /// Mesmo intervalo dos lembretes de fralda (3 h 30 min).
 const int _kHomeBannerDiaperOverdueMin = 210;
+
+/// Texto da home — cinza escuro em vez de preto sólido.
+const Color _kHomeText = AppTheme.textPrimary;
+
+Color _homeTextSoft(int alpha) => AppTheme.textSecondary.withAlpha(alpha);
+
+/// Títulos / saudação na Home: à noite (18h–6h) cinza escuro para contraste no fundo noturno.
+Color _homeNightAwareHeadingColor() =>
+    PortalTimeOfDay.isNight(DateTime.now())
+        ? PortalTimeOfDay.nightTextColor
+        : AppTheme.textSecondary;
+
+Color _homeNightAwareGreetingSubtitleColor() =>
+    PortalTimeOfDay.isNight(DateTime.now())
+        ? PortalTimeOfDay.nightTextColor
+        : AppTheme.textSecondary.withAlpha(230);
+
+/// Vacinas/consultas na faixa: quando só existe o dia civil, `applied_at` fica à meia-noite local — não mostrar «00:00».
+String _homeHealthStripTimeOrDash(DateTime at, String Function(DateTime) fmtHm) {
+  final l = at.toLocal();
+  if (l.hour == 0 && l.minute == 0 && l.second == 0) {
+    return '—';
+  }
+  return fmtHm(l);
+}
 
 class HomePage extends StatefulWidget {
   final Baby baby;
@@ -87,6 +113,7 @@ bool _sameCalendarDate(DateTime? a, DateTime? b) {
 
 class _HomePageState extends State<HomePage> {
   late DateTime _selectedDay;
+
   /// Peito ou mamadeira: horário de término mais recente (hoje).
   DateTime? _lastBreastOrBottleEndedAt;
 
@@ -149,7 +176,8 @@ class _HomePageState extends State<HomePage> {
     GrowthEvents.revision.addListener(_onHomeFeedSourcesChanged);
     HealthCalendarEvents.revision.addListener(_onHomeFeedSourcesChanged);
     HomePrefs.feedingAlertsEnabled.addListener(_onFeedingIntervalPrefsChanged);
-    HomePrefs.feedingAlertIntervalMinutes.addListener(_onFeedingIntervalPrefsChanged);
+    HomePrefs.feedingAlertIntervalMinutes
+        .addListener(_onFeedingIntervalPrefsChanged);
     HomePrefs.sleepAlertsEnabled.addListener(_onFeedingIntervalPrefsChanged);
     // Unidades: ao alterar, recarrega o resumo para recalcular labels (ex.: peso do dia).
     MeasurementUnitsPrefs.weight.addListener(_onHomeUnitsChanged);
@@ -195,11 +223,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   String? get _liveMotherPhotoUrl =>
-      (CurrentBabyController.instance.currentMotherRow?['photo_url'] as String?)?.trim();
+      (CurrentBabyController.instance.currentMotherRow?['photo_url'] as String?)
+          ?.trim();
 
   /// Nascimento na BD — necessário para dicas do JSON por idade (`baby_daily_tips_500.json`).
   DateTime? get _liveBabyBirthDate {
-    final raw = CurrentBabyController.instance.currentBabyRow?['birth_date'] as String?;
+    final raw =
+        CurrentBabyController.instance.currentBabyRow?['birth_date'] as String?;
     if (raw != null && raw.trim().isNotEmpty) {
       final d = DateTime.tryParse(raw.trim());
       if (d != null) return DateTime(d.year, d.month, d.day);
@@ -210,7 +240,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   String get _liveBabyName {
-    final n = (CurrentBabyController.instance.currentBabyRow?['name'] as String?)?.trim();
+    final n =
+        (CurrentBabyController.instance.currentBabyRow?['name'] as String?)
+            ?.trim();
     if (n != null && n.isNotEmpty) return n;
     return widget.baby.name;
   }
@@ -222,7 +254,8 @@ class _HomePageState extends State<HomePage> {
     final now = DateTime.now();
     if (!c.occurredAt.isAfter(now)) return null;
     // Only show on the consultation day, from 06:00 until the consultation time.
-    final start = DateTime(c.occurredAt.year, c.occurredAt.month, c.occurredAt.day, 6);
+    final start =
+        DateTime(c.occurredAt.year, c.occurredAt.month, c.occurredAt.day, 6);
     if (now.isBefore(start)) return null;
     if (DateTime(now.year, now.month, now.day) !=
         DateTime(c.occurredAt.year, c.occurredAt.month, c.occurredAt.day)) {
@@ -265,13 +298,20 @@ class _HomePageState extends State<HomePage> {
         AppDatabase.instance.latestBreastOrBottleFeedingEndedAt(babyId: id),
         AppDatabase.instance.latestDiaperChangedAt(babyId: id),
         AppDatabase.instance.latestCompletedSleepEnd(babyId: id),
-        AppDatabase.instance.dailySummaryForHomePicker(babyId: id, calendarDay: day),
-        AppDatabase.instance.latestBreastOrBottleFeedingEndedOnCalendarDay(babyId: id, calendarDay: day),
-        AppDatabase.instance.latestDiaperChangedAtOnCalendarDay(babyId: id, calendarDay: day),
-        AppDatabase.instance.latestCompletedSleepEndOnCalendarDay(babyId: id, calendarDay: day),
-        AppDatabase.instance.listVaccinesOnCalendarDay(babyId: id, calendarDay: day),
-        AppDatabase.instance.listVaccinesDueOnCalendarDay(babyId: id, calendarDay: day),
-        AppDatabase.instance.listConsultationsOnCalendarDay(babyId: id, calendarDay: day),
+        AppDatabase.instance
+            .dailySummaryForHomePicker(babyId: id, calendarDay: day),
+        AppDatabase.instance.latestBreastOrBottleFeedingEndedOnCalendarDay(
+            babyId: id, calendarDay: day),
+        AppDatabase.instance
+            .latestDiaperChangedAtOnCalendarDay(babyId: id, calendarDay: day),
+        AppDatabase.instance
+            .latestCompletedSleepEndOnCalendarDay(babyId: id, calendarDay: day),
+        AppDatabase.instance
+            .listVaccinesOnCalendarDay(babyId: id, calendarDay: day),
+        AppDatabase.instance
+            .listVaccinesDueOnCalendarDay(babyId: id, calendarDay: day),
+        AppDatabase.instance
+            .listConsultationsOnCalendarDay(babyId: id, calendarDay: day),
         AppDatabase.instance.nextUpcomingConsultation(babyId: id),
       ]);
       if (!mounted) return;
@@ -280,11 +320,14 @@ class _HomePageState extends State<HomePage> {
       DateTime? lastFeed = results[0] as DateTime?;
       DateTime? lastSleep = results[2] as DateTime?;
       if (lastFeed == null || lastSleep == null) {
-        final babyCloud = (CurrentBabyController.instance.currentBabyRow?['cloud_id'] as String?)?.trim();
+        final babyCloud = (CurrentBabyController
+                .instance.currentBabyRow?['cloud_id'] as String?)
+            ?.trim();
         if (babyCloud != null && babyCloud.isNotEmpty) {
           try {
             if (lastFeed == null) {
-              final rows = await FirestoreService.instance.listFeedings(babyCloud);
+              final rows =
+                  await FirestoreService.instance.listFeedings(babyCloud);
               DateTime? best;
               for (final r in rows) {
                 final iso = (r['ended_at'] as String?)?.trim();
@@ -295,7 +338,8 @@ class _HomePageState extends State<HomePage> {
               lastFeed = best?.toLocal();
             }
             if (lastSleep == null) {
-              final rows = await FirestoreService.instance.listSleepRecords(babyCloud);
+              final rows =
+                  await FirestoreService.instance.listSleepRecords(babyCloud);
               DateTime? best;
               for (final r in rows) {
                 final iso = (r['ended_at'] as String?)?.trim();
@@ -318,17 +362,22 @@ class _HomePageState extends State<HomePage> {
 
       var summary = results[3] as DailySummary;
       final hintFeedEnd = results[4] as DateTime?;
-      if (await AppDatabase.instance.feedingRowsHaveLegacyCloudSubtypeBug(babyId: id)) {
+      if (await AppDatabase.instance
+          .feedingRowsHaveLegacyCloudSubtypeBug(babyId: id)) {
         await CloudBootstrapSync.hydrateBabyContent(id, bypassThrottle: true);
         try {
-          summary = await AppDatabase.instance.dailySummaryForHomePicker(babyId: id, calendarDay: day);
+          summary = await AppDatabase.instance
+              .dailySummaryForHomePicker(babyId: id, calendarDay: day);
         } catch (_) {}
       }
       // Fallback robusto: se há "última mamada no dia" mas o resumo veio zerado,
       // re-calcula uma vez (evita 0 por corrida/lock de BD em refresh rápido).
-      if (hintFeedEnd != null && summary.feedings == 0 && summary.feedingMinutesTotal == 0) {
+      if (hintFeedEnd != null &&
+          summary.feedings == 0 &&
+          summary.feedingMinutesTotal == 0) {
         try {
-          summary = await AppDatabase.instance.dailySummaryForCalendarDay(babyId: id, calendarDay: day);
+          summary = await AppDatabase.instance
+              .dailySummaryForCalendarDay(babyId: id, calendarDay: day);
         } catch (_) {}
       }
       setState(() {
@@ -342,9 +391,12 @@ class _HomePageState extends State<HomePage> {
         _dayVaccines = vRows.map(VaccineRecord.fromRow).toList();
         _dayVaccinesDue = vDueRows.map(VaccineRecord.fromRow).toList();
         _dayConsultations = cRows.map(ConsultationRecord.fromRow).toList();
-        _bannerNextConsultation = upcomingRow == null ? null : ConsultationRecord.fromRow(upcomingRow);
+        _bannerNextConsultation = upcomingRow == null
+            ? null
+            : ConsultationRecord.fromRow(upcomingRow);
       });
-      await AppDatabase.instance.ensureYesterdayDailySummarySnapshot(babyId: id);
+      await AppDatabase.instance
+          .ensureYesterdayDailySummarySnapshot(babyId: id);
     } catch (e, st) {
       // Não "zera" o resumo por falha transitória (corridas de BD / rede / hydration).
       // Mantemos o último estado válido e só registramos para diagnóstico.
@@ -355,7 +407,8 @@ class _HomePageState extends State<HomePage> {
   Future<void> _pickSummaryDay() async {
     final now = DateTime.now();
     final today = _dateOnly(now);
-    final birth = _liveBabyBirthDate ?? today.subtract(const Duration(days: 365));
+    final birth =
+        _liveBabyBirthDate ?? today.subtract(const Duration(days: 365));
     var first = DateTime(birth.year, birth.month, birth.day);
     final oldest = today.subtract(const Duration(days: 365 * 4));
     if (first.isAfter(today)) first = oldest;
@@ -382,8 +435,10 @@ class _HomePageState extends State<HomePage> {
     SleepEvents.revision.removeListener(_onHomeFeedSourcesChanged);
     GrowthEvents.revision.removeListener(_onHomeFeedSourcesChanged);
     HealthCalendarEvents.revision.removeListener(_onHomeFeedSourcesChanged);
-    HomePrefs.feedingAlertsEnabled.removeListener(_onFeedingIntervalPrefsChanged);
-    HomePrefs.feedingAlertIntervalMinutes.removeListener(_onFeedingIntervalPrefsChanged);
+    HomePrefs.feedingAlertsEnabled
+        .removeListener(_onFeedingIntervalPrefsChanged);
+    HomePrefs.feedingAlertIntervalMinutes
+        .removeListener(_onFeedingIntervalPrefsChanged);
     HomePrefs.sleepAlertsEnabled.removeListener(_onFeedingIntervalPrefsChanged);
     MeasurementUnitsPrefs.weight.removeListener(_onHomeUnitsChanged);
     MeasurementUnitsPrefs.length.removeListener(_onHomeUnitsChanged);
@@ -397,7 +452,8 @@ class _HomePageState extends State<HomePage> {
     if (mounted) setState(() {});
   }
 
-  String _fmtHm(DateTime dt) => '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  String _fmtHm(DateTime dt) =>
+      '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 
   String _fmtCalendarDate(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
@@ -418,46 +474,12 @@ class _HomePageState extends State<HomePage> {
         sleepTotalSeconds: 0,
       );
 
-  HomeDaySnapshot get _pastSnapshot => widget.babyService.snapshotForDay(_selectedDay);
+  HomeDaySnapshot get _pastSnapshot =>
+      widget.babyService.snapshotForDay(_selectedDay);
 
-  Future<void> _openPhotoPreview({
-    required S s,
-    required String title,
-    required Widget avatar,
-    required VoidCallback? onChange,
-  }) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(AppTheme.pageHPadding, 10, AppTheme.pageHPadding, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 14),
-                Center(child: avatar),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: onChange == null
-                        ? null
-                        : () {
-                            Navigator.of(ctx).pop();
-                            onChange();
-                          },
-                    icon: const Icon(Icons.photo_camera_outlined),
-                    label: Text(s.changePhoto),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+  void _openFamilyTree() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const FamilyTreePage()),
     );
   }
 
@@ -465,7 +487,8 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final s = S.of(context);
     final motherRaw = (widget.motherName ?? '').trim();
-    final greeting = motherRaw.isEmpty ? s.helloMom : s.helloMomNamed(motherRaw);
+    final greeting =
+        motherRaw.isEmpty ? s.helloMom : s.helloMomNamed(motherRaw);
     late final DateTime? primaryLastFeedAt;
     late final DateTime? bannerLastDiaperAt;
     late final DateTime? bannerSleepEndedAtDisplay;
@@ -479,7 +502,9 @@ class _HomePageState extends State<HomePage> {
     } else {
       final snap = _pastSnapshot;
       primaryLastFeedAt = snap.lastFeedingAt;
-      bannerLastDiaperAt = snap.lastPeeAt.isAfter(snap.lastPooAt) ? snap.lastPeeAt : snap.lastPooAt;
+      bannerLastDiaperAt = snap.lastPeeAt.isAfter(snap.lastPooAt)
+          ? snap.lastPeeAt
+          : snap.lastPooAt;
       bannerSleepEndedAtDisplay = snap.lastSleepAt;
     }
     lastFeedHint = switch (_summaryHintFeedEnd) {
@@ -487,572 +512,667 @@ class _HomePageState extends State<HomePage> {
       final d => s.summaryLastFeed(_fmtHm(d)),
     };
     final summaryDiaper = _summaryHintDiaperAt;
-    lastDiaperHint = summaryDiaper == null ? s.diaperHistoryEmpty : s.summaryLastFeed(_fmtHm(summaryDiaper));
+    lastDiaperHint = summaryDiaper == null
+        ? s.diaperHistoryEmpty
+        : s.summaryLastFeed(_fmtHm(summaryDiaper));
     final summarySleep = _summaryHintSleepEnd;
-    lastSleepHint = summarySleep == null ? s.summarySleepNotYet : s.summaryLastSleep(_fmtHm(summarySleep));
+    lastSleepHint = summarySleep == null
+        ? s.summarySleepNotYet
+        : s.summaryLastSleep(_fmtHm(summarySleep));
     final weightCompact = _summary.weight.replaceAll(' ', '');
-    final weightHint =
-        weightCompact.contains('—') ? s.summaryWeightNotYet : s.homeSummaryExtraHint;
+    final weightHint = weightCompact.contains('—')
+        ? s.summaryWeightNotYet
+        : s.homeSummaryExtraHint;
 
     _syncHomeDailyTipLayoutDay();
 
-    final backdropTint = AppTheme.backdropTintForSex(widget.baby.sex);
-
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Color.lerp(AppTheme.background, backdropTint, 0.14)!,
-      ),
+      decoration: const BoxDecoration(color: Colors.transparent),
       child: RefreshIndicator(
         onRefresh: _onPullRefresh,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(AppTheme.pageHPadding, 18, AppTheme.pageHPadding, 110),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-                    decoration: BoxDecoration(
-                      color: Color.lerp(
-                        Colors.white,
-                        widget.baby.sex == 'M' ? AppTheme.babyBlue : AppTheme.primaryPurple,
-                        0.05,
-                      )!,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: (widget.baby.sex == 'M' ? AppTheme.babyBlue : AppTheme.primaryPurple).withAlpha(52),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                    AppTheme.pageHPadding, 18, AppTheme.pageHPadding, 110),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                      decoration: BoxDecoration(
+                        color: Color.lerp(
+                          Colors.white,
+                          widget.baby.sex == 'M'
+                              ? AppTheme.babyBlue
+                              : AppTheme.primaryPurple,
+                          0.05,
+                        )!,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: (widget.baby.sex == 'M'
+                                  ? AppTheme.babyBlue
+                                  : AppTheme.primaryPurple)
+                              .withAlpha(52),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryPurple.withAlpha(22),
+                            blurRadius: 22,
+                            offset: const Offset(0, 10),
+                          ),
+                          BoxShadow(
+                            color: (widget.baby.sex == 'M'
+                                    ? AppTheme.babyBlue
+                                    : AppTheme.mint)
+                                .withAlpha(18),
+                            blurRadius: 28,
+                            offset: const Offset(0, 14),
+                          ),
+                        ],
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primaryPurple.withAlpha(22),
-                          blurRadius: 22,
-                          offset: const Offset(0, 10),
-                        ),
-                        BoxShadow(
-                          color: (widget.baby.sex == 'M' ? AppTheme.babyBlue : AppTheme.mint).withAlpha(18),
-                          blurRadius: 28,
-                          offset: const Offset(0, 14),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Image.asset('assets/logo.png', height: 52, fit: BoxFit.contain),
-                              ],
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Image.asset('assets/logo.png',
+                                      height: 52, fit: BoxFit.contain),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        if (widget.onPickBaby != null)
+                          Theme(
+                            data: Theme.of(context).copyWith(
+                              iconButtonTheme: IconButtonThemeData(
+                                style: IconButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: const Size(40, 40),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                            ),
+                            child: const LanguageButton(),
+                          ),
                           IconButton(
-                            tooltip: s.changeBabyTooltip,
+                            tooltip: s.notificationsInboxTitle,
                             visualDensity: VisualDensity.compact,
                             padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                            onPressed: widget.onPickBaby,
+                            constraints: const BoxConstraints(
+                                minWidth: 40, minHeight: 40),
                             iconSize: 22,
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) =>
+                                      const NotificationsInboxPage(),
+                                ),
+                              );
+                            },
                             icon: CircleAvatar(
                               radius: 16,
-                              backgroundColor: AppTheme.babyBlue.withAlpha(44),
-                              child: const Icon(Icons.child_care_outlined, color: AppTheme.babyBlue, size: 22),
+                              backgroundColor: AppTheme.mint.withAlpha(50),
+                              child: const Icon(Icons.notifications_none,
+                                  size: 21, color: AppTheme.secondary),
                             ),
                           ),
-                        Theme(
-                          data: Theme.of(context).copyWith(
-                            iconButtonTheme: IconButtonThemeData(
-                              style: IconButton.styleFrom(
-                                visualDensity: VisualDensity.compact,
-                                padding: EdgeInsets.zero,
-                                minimumSize: const Size(40, 40),
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          const SizedBox(width: 4),
+                          Material(
+                            type: MaterialType.transparency,
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: _openFamilyTree,
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 2),
+                                child: PhotoAvatar(
+                                  photoB64: _liveMotherPhotoB64,
+                                  photoUrl: _liveMotherPhotoUrl,
+                                  radius: 28,
+                                  backgroundColor: AppTheme.softPink,
+                                  fallback: const Icon(Icons.person,
+                                      color: AppTheme.secondary, size: 28),
+                                ),
                               ),
                             ),
                           ),
-                          child: const LanguageButton(),
-                        ),
-                        IconButton(
-                          tooltip: s.notificationsInboxTitle,
-                          visualDensity: VisualDensity.compact,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                          iconSize: 22,
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const NotificationsInboxPage(),
-                              ),
-                            );
-                          },
-                          icon: CircleAvatar(
-                            radius: 16,
-                            backgroundColor: AppTheme.mint.withAlpha(50),
-                            child: const Icon(Icons.notifications_none, size: 21, color: AppTheme.secondary),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Material(
-                          type: MaterialType.transparency,
-                          child: InkWell(
-                            customBorder: const CircleBorder(),
-                            onTap: () => _openPhotoPreview(
-                              s: s,
-                              title: s.motherPhotoTitle,
-                              avatar: PhotoAvatar(
-                                photoB64: _liveMotherPhotoB64,
-                                photoUrl: _liveMotherPhotoUrl,
-                                radius: 70,
-                                backgroundColor: AppTheme.softPink,
-                                fallback: const Icon(Icons.person, color: AppTheme.secondary, size: 48),
-                              ),
-                              onChange: widget.onPickMotherPhoto,
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.only(right: 2),
-                              child: PhotoAvatar(
-                                photoB64: _liveMotherPhotoB64,
-                                photoUrl: _liveMotherPhotoUrl,
-                                radius: 18,
-                                backgroundColor: AppTheme.softPink,
-                                fallback: const Icon(Icons.person, color: AppTheme.secondary, size: 18),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  SizedBox(
-                    height: (_consultationForBanner == null && _homeDailyTipDismissedForLayout)
-                        ? 10
-                        : 16,
-                  ),
-                  LayoutBuilder(
-                    builder: (context, greetC) {
-                      final narrow = greetC.maxWidth < 360;
-                      final consult = _consultationForBanner;
-                      final tip = _HomeDailyTipLoader(
-                        birthDate: _liveBabyBirthDate,
-                        babyId: CurrentBabyController.instance.currentBabyId,
-                        title: s.homeTipTitle,
-                        fallbackBody: s.homeTipBody(_liveBabyName),
-                        lang: s.lang,
-                        onDismissedLayoutChanged: _onHomeDailyTipLayoutDismissChanged,
-                      );
-                      final consultAlert = consult == null
-                          ? null
-                          : _HomeConsultationInlineAlert(
-                              babyId: consult.babyId,
-                              consultationId: consult.id,
-                              title: consult.title,
-                              when: consult.occurredAt,
-                              onTap: () => showConsultationDetailSheet(context, consult),
-                            );
-                      final greetBlock = Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text.rich(
-                            TextSpan(
-                              style: TextStyle(
-                                fontSize: portalSp(context, 22),
-                                fontWeight: FontWeight.w900,
-                                height: 1.25,
-                                color: AppTheme.textPrimary,
-                              ),
+                    SizedBox(
+                      height: (_consultationForBanner == null &&
+                              _homeDailyTipDismissedForLayout)
+                          ? 6
+                          : 12,
+                    ),
+                    LayoutBuilder(
+                      builder: (context, greetC) {
+                        final narrow = greetC.maxWidth < 360;
+                        final consult = _consultationForBanner;
+                        final tip = _HomeDailyTipLoader(
+                          birthDate: _liveBabyBirthDate,
+                          babyId: CurrentBabyController.instance.currentBabyId,
+                          title: s.homeTipTitle,
+                          fallbackBody: s.homeTipBody(_liveBabyName),
+                          lang: s.lang,
+                          onDismissedLayoutChanged:
+                              _onHomeDailyTipLayoutDismissChanged,
+                        );
+                        final consultAlert = consult == null
+                            ? null
+                            : _HomeConsultationInlineAlert(
+                                babyId: consult.babyId,
+                                consultationId: consult.id,
+                                title: consult.title,
+                                when: consult.occurredAt,
+                                onTap: () => showConsultationDetailSheet(
+                                    context, consult),
+                              );
+                        final greetBlock = Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                TextSpan(text: greeting),
-                                TextSpan(
-                                  text: ' 💜',
-                                  style: TextStyle(
-                                    fontSize: portalSp(context, 22),
-                                    color: AppTheme.primaryPurple,
+                                Expanded(
+                                  child: Text.rich(
+                                    TextSpan(
+                                      style: TextStyle(
+                                        fontSize: portalSp(context, 22),
+                                        fontWeight: FontWeight.w900,
+                                        height: 1.02,
+                                        color: _homeNightAwareHeadingColor(),
+                                      ),
+                                      children: [
+                                        TextSpan(text: greeting),
+                                        TextSpan(
+                                          text: ' 💜',
+                                          style: TextStyle(
+                                            fontSize: portalSp(context, 22),
+                                            color: AppTheme.primaryPurple,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    maxLines: 3,
+                                    softWrap: true,
+                                  ),
+                                ),
+                                if (widget.onPickBaby != null) ...[
+                                  const SizedBox(width: 4),
+                                  IconButton(
+                                    tooltip: s.changeBabyTooltip,
+                                    visualDensity: VisualDensity.compact,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 40,
+                                      minHeight: 40,
+                                    ),
+                                    onPressed: widget.onPickBaby,
+                                    iconSize: 22,
+                                    icon: CircleAvatar(
+                                      radius: 16,
+                                      backgroundColor:
+                                          AppTheme.babyBlue.withAlpha(44),
+                                      child: const Icon(
+                                        Icons.child_care_outlined,
+                                        color: AppTheme.babyBlue,
+                                        size: 22,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            Text(
+                              s.homeGreetingSubtitle,
+                              style: TextStyle(
+                                fontSize: portalSp(context, 14),
+                                fontWeight: FontWeight.w600,
+                                height: 1.05,
+                                color: _homeNightAwareGreetingSubtitleColor(),
+                              ),
+                            ),
+                          ],
+                        );
+                        final greetTipGap = (consultAlert == null &&
+                                _homeDailyTipDismissedForLayout)
+                            ? 4.0
+                            : 8.0;
+                        final showWideRightSlot = consultAlert != null ||
+                            !_homeDailyTipDismissedForLayout;
+                        if (narrow) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              greetBlock,
+                              SizedBox(height: greetTipGap),
+                              if (consultAlert != null) ...[
+                                consultAlert,
+                                const SizedBox(height: 10),
+                              ],
+                              tip,
+                            ],
+                          );
+                        }
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: showWideRightSlot ? 58 : 1,
+                              child: greetBlock,
+                            ),
+                            if (showWideRightSlot) ...[
+                              const SizedBox(width: 10),
+                              Expanded(
+                                flex: 42,
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (consultAlert != null) ...[
+                                      consultAlert,
+                                      const SizedBox(height: 10),
+                                    ],
+                                    tip,
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        );
+                      },
+                    ),
+                    SizedBox(
+                      height: (_consultationForBanner == null &&
+                              _homeDailyTipDismissedForLayout)
+                          ? 4
+                          : 10,
+                    ),
+                    _PrimaryBabyCard(
+                      baby: widget.baby,
+                      routineBirthDate: _liveBabyBirthDate,
+                      babyId: CurrentBabyController.instance.currentBabyId,
+                      isTodayView: _isTodayView,
+                      lastFeedingAt: primaryLastFeedAt,
+                      lastDiaperChangedAt: bannerLastDiaperAt,
+                      lastSleepEndedAt: _lastSleepEndedAt,
+                      sleepBannerEndedAtDisplay: bannerSleepEndedAtDisplay,
+                      bannerDiaperAlert: _isTodayView &&
+                          _lastDiaperChangedAt != null &&
+                          DateTime.now()
+                                  .difference(_lastDiaperChangedAt!)
+                                  .inMinutes >=
+                              _kHomeBannerDiaperOverdueMin,
+                      bannerConsultation: _consultationForBanner,
+                      bannerVaccinesDueToday: _dayVaccinesDue,
+                      onBannerConsultationTap: () {
+                        final c = _consultationForBanner;
+                        if (c != null) showConsultationDetailSheet(context, c);
+                      },
+                      feedingIntervalMinutes:
+                          HomePrefs.feedingAlertIntervalMinutes.value,
+                      onTapOpenDiaperBanner: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                              builder: (_) => const DiaperPage())),
+                      onTapOpenSleepBanner: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                              builder: (_) => const SleepPage())),
+                      onTapFeedNow: () =>
+                          Navigator.of(context).push(MaterialPageRoute<void>(
+                        builder: (_) =>
+                            FeedingHubPage(appBarTitle: s.shortcutMilk),
+                      )),
+                      onOpenBabyPhoto: _openFamilyTree,
+                      onPickBabyPhoto: widget.onPickBabyPhoto,
+                      babyAvatarPhotoB64: _liveBabyPhotoB64,
+                      babyAvatarPhotoUrl: _liveBabyPhotoUrl,
+                    ),
+                    SectionTitle(
+                      title: s.shortcuts,
+                      titleColor: _homeNightAwareHeadingColor(),
+                      action: TextButton(
+                          onPressed: widget.onOpenQuickRegister,
+                          child: Text(s.seeAll)),
+                    ),
+                    const SizedBox(height: 4),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final w = constraints.maxWidth;
+                        const gap = 10.0;
+                        const cols = 3;
+                        final tileW = (w - (gap * (cols - 1))) / cols;
+                        final idealH = w < 340
+                            ? 112.0
+                            : w < 400
+                                ? 106.0
+                                : 102.0;
+                        final tileH = idealH;
+
+                        Widget shortcutTile(_ShortcutCard card) {
+                          return SizedBox(
+                            width: tileW,
+                            height: tileH,
+                            child: card,
+                          );
+                        }
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              children: [
+                                shortcutTile(
+                                  _ShortcutCard(
+                                    icon: Icons.local_drink,
+                                    title: s.shortcutMilk,
+                                    subtitle: s.shortcutMilkHomeSub,
+                                    color: AppTheme.primaryPink,
+                                    softBg: const Color(0xFFFFE8F0),
+                                    onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => FeedingHubPage(
+                                            appBarTitle: s.shortcutMilk),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: gap),
+                                shortcutTile(
+                                  _ShortcutCard(
+                                    icon: Icons.monitor_weight_outlined,
+                                    title: s.growth,
+                                    subtitle: s.shortcutGrowthHomeSub,
+                                    color: const Color(0xFF00C4CC),
+                                    softBg: const Color(0xFFE7FBFC),
+                                    onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => GrowthDashboardPage(
+                                            appBarTitle: s.growth),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: gap),
+                                shortcutTile(
+                                  _ShortcutCard(
+                                    icon: Icons.nightlight_round,
+                                    title: s.shortcutSleep,
+                                    subtitle: s.shortcutSleepHomeSub,
+                                    color: AppTheme.primary,
+                                    softBg: AppTheme.softPurple,
+                                    onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => const SleepPage(),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                            maxLines: 3,
-                            softWrap: true,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            s.homeGreetingSubtitle,
-                            style: TextStyle(
-                              fontSize: portalSp(context, 14),
-                              fontWeight: FontWeight.w600,
-                              height: 1.3,
-                              color: AppTheme.textSecondary.withAlpha(230),
+                            const SizedBox(height: gap),
+                            Row(
+                              children: [
+                                shortcutTile(
+                                  _ShortcutCard(
+                                    icon: Icons.favorite_outline,
+                                    title: s.shortcutHealth,
+                                    subtitle: s.shortcutHealthHomeSub,
+                                    color: AppTheme.green,
+                                    softBg: const Color(0xFFE8F8F0),
+                                    onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => const HealthHubPage(),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: gap),
+                                shortcutTile(
+                                  _ShortcutCard(
+                                    icon: Icons.family_restroom_outlined,
+                                    title: s.shortcutFamily,
+                                    subtitle: s.shortcutFamilyHomeSub,
+                                    color: const Color(0xFF5B6B8C),
+                                    softBg: const Color(0xFFE8ECF4),
+                                    onTap: _openFamilyTree,
+                                  ),
+                                ),
+                                SizedBox(width: tileW + gap),
+                              ],
                             ),
-                          ),
-                        ],
-                      );
-                      final greetTipGap =
-                          (consultAlert == null && _homeDailyTipDismissedForLayout) ? 6.0 : 12.0;
-                      final showWideRightSlot =
-                          consultAlert != null || !_homeDailyTipDismissedForLayout;
-                      if (narrow) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            greetBlock,
-                            SizedBox(height: greetTipGap),
-                            if (consultAlert != null) ...[
-                              consultAlert,
-                              const SizedBox(height: 10),
-                            ],
-                            tip,
                           ],
                         );
-                      }
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            flex: showWideRightSlot ? 58 : 1,
-                            child: greetBlock,
-                          ),
-                          if (showWideRightSlot) ...[
-                            const SizedBox(width: 10),
-                            Expanded(
-                              flex: 42,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  if (consultAlert != null) ...[
-                                    consultAlert,
-                                    const SizedBox(height: 10),
-                                  ],
-                                  tip,
-                                ],
-                              ),
-                            ),
-                          ],
-                        ],
-                      );
-                    },
-                  ),
-                  SizedBox(
-                    height: (_consultationForBanner == null && _homeDailyTipDismissedForLayout)
-                        ? 8
-                        : 14,
-                  ),
-                  _PrimaryBabyCard(
-                    baby: widget.baby,
-                    routineBirthDate: _liveBabyBirthDate,
-                    babyId: CurrentBabyController.instance.currentBabyId,
-                    isTodayView: _isTodayView,
-                    lastFeedingAt: primaryLastFeedAt,
-                    lastDiaperChangedAt: bannerLastDiaperAt,
-                    lastSleepEndedAt: _lastSleepEndedAt,
-                    sleepBannerEndedAtDisplay: bannerSleepEndedAtDisplay,
-                    bannerDiaperAlert: _isTodayView &&
-                        _lastDiaperChangedAt != null &&
-                        DateTime.now().difference(_lastDiaperChangedAt!).inMinutes >= _kHomeBannerDiaperOverdueMin,
-                    bannerConsultation: _consultationForBanner,
-                    bannerVaccinesDueToday: _dayVaccinesDue,
-                    onBannerConsultationTap: () {
-                      final c = _consultationForBanner;
-                      if (c != null) showConsultationDetailSheet(context, c);
-                    },
-                    feedingIntervalMinutes: HomePrefs.feedingAlertIntervalMinutes.value,
-                    onTapOpenDiaperBanner: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const DiaperPage())),
-                    onTapOpenSleepBanner: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SleepPage())),
-                    onTapFeedNow: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                          builder: (_) => FeedingHubPage(appBarTitle: s.shortcutMilk),
-                        )),
-                    onOpenBabyPhoto: widget.onPickBabyPhoto == null
-                        ? null
-                        : () => _openPhotoPreview(
-                              s: s,
-                              title: s.babyPhotoTitle,
-                              avatar: PhotoAvatar(
-                                photoB64: _liveBabyPhotoB64,
-                                photoUrl: _liveBabyPhotoUrl,
-                                radius: 76,
-                                backgroundColor: widget.baby.sex == 'M' ? const Color(0xFFD6EBFF) : const Color(0xFFFFDCE8),
-                                fallback: Text(widget.baby.avatar, style: const TextStyle(fontSize: 62)),
-                              ),
-                              onChange: widget.onPickBabyPhoto,
-                            ),
-                    onPickBabyPhoto: widget.onPickBabyPhoto,
-                    babyAvatarPhotoB64: _liveBabyPhotoB64,
-                    babyAvatarPhotoUrl: _liveBabyPhotoUrl,
-                  ),
-                  _DevelopmentLeapHomeCard(
-                    onOpen: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const DevelopmentLeapsPage()),
+                      },
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  SectionTitle(
-                    title: s.shortcuts,
-                    action: TextButton(onPressed: widget.onOpenQuickRegister, child: Text(s.seeAll)),
-                  ),
-                  const SizedBox(height: 4),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final w = constraints.maxWidth;
-                      const count = 3;
-                      const gap = 10.0;
-                      final tileW = (w - (gap * (count - 1))) / count;
-                      // Atalhos bem achatados na vertical (células mais baixas).
-                      final idealH = w < 340
-                          ? 112.0
-                          : w < 400
-                              ? 106.0
-                              : 102.0;
-                      final ratio = (tileW / idealH).clamp(0.62, 1.15);
-                      return GridView.count(
-                        crossAxisCount: count,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisSpacing: gap,
-                        mainAxisSpacing: gap,
-                        childAspectRatio: ratio,
+                    const SizedBox(height: 18),
+                    SectionTitle(
+                      title: _isTodayView
+                          ? s.todaySummary
+                          : s.homeSummaryOnDate(_fmtCalendarDate(_selectedDay)),
+                      titleColor: _homeNightAwareHeadingColor(),
+                      action: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          _ShortcutCard(
-                            icon: Icons.local_drink,
-                            title: s.shortcutMilk,
-                            subtitle: s.shortcutMilkHomeSub,
-                            color: AppTheme.primaryPink,
-                            softBg: const Color(0xFFFFE8F0),
-                            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                                  builder: (_) => FeedingHubPage(appBarTitle: s.shortcutMilk),
-                                )),
-                          ),
-                          _ShortcutCard(
-                            icon: Icons.monitor_weight_outlined,
-                            title: s.growth,
-                            subtitle: s.shortcutGrowthHomeSub,
-                            color: const Color(0xFF00C4CC),
-                            softBg: const Color(0xFFE7FBFC),
-                            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                                  builder: (_) => GrowthDashboardPage(appBarTitle: s.growth),
-                                )),
-                          ),
-                          _ShortcutCard(
-                            icon: Icons.nightlight_round,
-                            title: s.shortcutSleep,
-                            subtitle: s.shortcutSleepHomeSub,
-                            color: AppTheme.primary,
-                            softBg: AppTheme.softPurple,
-                            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SleepPage())),
+                          if (!_isTodayView)
+                            TextButton(
+                              onPressed: () async {
+                                setState(() =>
+                                    _selectedDay = _dateOnly(DateTime.now()));
+                                await _refreshRealtimeHomeMetricsFromDb();
+                              },
+                              child: Text(s.homeTodayLabel),
+                            ),
+                          IconButton(
+                            tooltip: s.homeSummaryPickDayTooltip,
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                                minWidth: 36, minHeight: 36),
+                            icon: Icon(Icons.calendar_month_rounded,
+                                size: 22,
+                                color: AppTheme.secondary.withAlpha(230)),
+                            onPressed: _pickSummaryDay,
                           ),
                         ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 18),
-                  SectionTitle(
-                    title: _isTodayView ? s.todaySummary : s.homeSummaryOnDate(_fmtCalendarDate(_selectedDay)),
-                    action: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (!_isTodayView)
-                          TextButton(
-                            onPressed: () async {
-                              setState(() => _selectedDay = _dateOnly(DateTime.now()));
-                              await _refreshRealtimeHomeMetricsFromDb();
-                            },
-                            child: Text(s.homeTodayLabel),
-                          ),
-                        IconButton(
-                          tooltip: s.homeSummaryPickDayTooltip,
-                          visualDensity: VisualDensity.compact,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                          icon: Icon(Icons.calendar_month_rounded, size: 22, color: AppTheme.secondary.withAlpha(230)),
-                          onPressed: _pickSummaryDay,
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 5),
-                  LayoutBuilder(
-                    builder: (context, gridC) {
-                      const gap = 8.0;
-                      final narrow = gridC.maxWidth < 336;
-                      Widget summaryValueTwoLines({
-                        required IconData topIcon,
-                        required String topText,
-                        required IconData bottomIcon,
-                        required String bottomText,
-                        required Color accent,
-                      }) {
-                        Widget line(IconData icon, String text, {required TextStyle style}) {
-                          return Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                icon,
-                                size: portalSp(context, 13).clamp(12.0, 14.0),
-                                color: AppTheme.textMuted.withAlpha(210),
-                              ),
-                              const SizedBox(width: 5),
-                              Flexible(
-                                child: Text(
-                                  text,
-                                  maxLines: 1,
-                                  softWrap: false,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: style,
+                    const SizedBox(height: 5),
+                    LayoutBuilder(
+                      builder: (context, gridC) {
+                        const gap = 8.0;
+                        final narrow = gridC.maxWidth < 336;
+                        Widget summaryValueTwoLines({
+                          required IconData topIcon,
+                          required String topText,
+                          required IconData bottomIcon,
+                          required String bottomText,
+                          required Color accent,
+                        }) {
+                          Widget line(IconData icon, String text,
+                              {required TextStyle style}) {
+                            return Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  icon,
+                                  size: portalSp(context, 13).clamp(12.0, 14.0),
+                                  color: AppTheme.textMuted.withAlpha(210),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 5),
+                                Flexible(
+                                  child: Text(
+                                    text,
+                                    maxLines: 1,
+                                    softWrap: false,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: style,
+                                  ),
+                                ),
+                              ],
+                            );
+                          }
+
+                          final topStyle = TextStyle(
+                            fontSize: portalSp(context, 15.5),
+                            fontWeight: FontWeight.w900,
+                            height: 1.05,
+                            letterSpacing: -0.25,
+                            color: AppTheme.textSecondary.withAlpha(240),
+                          );
+                          final bottomStyle = TextStyle(
+                            fontSize: portalSp(context, 13.5),
+                            fontWeight: FontWeight.w800,
+                            height: 1.05,
+                            letterSpacing: -0.15,
+                            color: AppTheme.textMuted.withAlpha(230),
+                          );
+
+                          return ConstrainedBox(
+                            constraints:
+                                BoxConstraints(maxWidth: gridC.maxWidth),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                line(topIcon, topText, style: topStyle),
+                                const SizedBox(height: 2),
+                                line(bottomIcon, bottomText,
+                                    style: bottomStyle),
+                              ],
+                            ),
                           );
                         }
 
-                        final topStyle = TextStyle(
-                          fontSize: portalSp(context, 15.5),
-                          fontWeight: FontWeight.w900,
-                          height: 1.05,
-                          letterSpacing: -0.25,
-                          color: AppTheme.textSecondary.withAlpha(240),
-                        );
-                        final bottomStyle = TextStyle(
-                          fontSize: portalSp(context, 13.5),
-                          fontWeight: FontWeight.w800,
-                          height: 1.05,
-                          letterSpacing: -0.15,
-                          color: AppTheme.textMuted.withAlpha(230),
-                        );
-
-                        return ConstrainedBox(
-                          constraints: BoxConstraints(maxWidth: gridC.maxWidth),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
+                        final summaryCards = <Widget>[
+                          _TodaySummaryCard(
+                            icon: Icons.local_drink,
+                            color: AppTheme.primaryPink,
+                            softBg: const Color(0xFFF4EFF2),
+                            value: summaryValueTwoLines(
+                              topIcon: Icons.format_list_numbered_rounded,
+                              topText:
+                                  s.summaryFeedingsCount(_summary.feedings),
+                              bottomIcon: Icons.schedule_rounded,
+                              bottomText: s.summaryFeedingsMinutes(
+                                  _summary.feedingMinutesTotal),
+                              accent: AppTheme.primaryPink,
+                            ),
+                            label: s.summaryFeedings,
+                            hint: lastFeedHint,
+                          ),
+                          _TodaySummaryCard(
+                            icon: Icons.baby_changing_station_rounded,
+                            color: AppTheme.mint,
+                            softBg: const Color(0xFFEEF8F6),
+                            value: summaryValueTwoLines(
+                              topIcon: Icons.layers_rounded,
+                              topText:
+                                  s.summaryDiapersChanges(_summary.diapers),
+                              bottomIcon: Icons.water_drop_rounded,
+                              bottomText: s.summaryDiapersPeePoo(
+                                  _summary.diaperPee, _summary.diaperPoo),
+                              accent: AppTheme.mint,
+                            ),
+                            label: s.summaryDiapers,
+                            hint: lastDiaperHint,
+                          ),
+                          _TodaySummaryCard(
+                            icon: Icons.nightlight_round,
+                            color: AppTheme.primary,
+                            softBg: const Color(0xFFF0F1F6),
+                            value: summaryValueTwoLines(
+                              topIcon: Icons.bedtime_rounded,
+                              topText: s
+                                  .summarySleepSessions(_summary.sleepSessions),
+                              bottomIcon: Icons.timer_outlined,
+                              bottomText: _summary.sleep.replaceAll(' ', ''),
+                              accent: AppTheme.primary,
+                            ),
+                            label: s.summarySleep,
+                            hint: lastSleepHint,
+                          ),
+                          _TodaySummaryCard(
+                            icon: Icons.monitor_weight_outlined,
+                            color: AppTheme.yellow,
+                            softBg: const Color(0xFFF7F4EE),
+                            value: Text(
+                              _summary.weight.replaceAll(' ', ''),
+                              maxLines: 1,
+                              softWrap: false,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            label: s.summaryWeight,
+                            hint: weightHint,
+                          ),
+                        ];
+                        if (narrow) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              line(topIcon, topText, style: topStyle),
-                              const SizedBox(height: 2),
-                              line(bottomIcon, bottomText, style: bottomStyle),
+                              for (var i = 0; i < summaryCards.length; i++) ...[
+                                if (i > 0) const SizedBox(height: gap),
+                                summaryCards[i],
+                              ],
                             ],
-                          ),
-                        );
-                      }
-
-                      final summaryCards = <Widget>[
-                        _TodaySummaryCard(
-                          icon: Icons.local_drink,
-                          color: AppTheme.primaryPink,
-                          softBg: const Color(0xFFF4EFF2),
-                          value: summaryValueTwoLines(
-                            topIcon: Icons.format_list_numbered_rounded,
-                            topText: s.summaryFeedingsCount(_summary.feedings),
-                            bottomIcon: Icons.schedule_rounded,
-                            bottomText: s.summaryFeedingsMinutes(_summary.feedingMinutesTotal),
-                            accent: AppTheme.primaryPink,
-                          ),
-                          label: s.summaryFeedings,
-                          hint: lastFeedHint,
-                        ),
-                        _TodaySummaryCard(
-                          icon: Icons.baby_changing_station_rounded,
-                          color: AppTheme.mint,
-                          softBg: const Color(0xFFEEF8F6),
-                          value: summaryValueTwoLines(
-                            topIcon: Icons.layers_rounded,
-                            topText: s.summaryDiapersChanges(_summary.diapers),
-                            bottomIcon: Icons.water_drop_rounded,
-                            bottomText: s.summaryDiapersPeePoo(_summary.diaperPee, _summary.diaperPoo),
-                            accent: AppTheme.mint,
-                          ),
-                          label: s.summaryDiapers,
-                          hint: lastDiaperHint,
-                        ),
-                        _TodaySummaryCard(
-                          icon: Icons.nightlight_round,
-                          color: AppTheme.primary,
-                          softBg: const Color(0xFFF0F1F6),
-                          value: summaryValueTwoLines(
-                            topIcon: Icons.bedtime_rounded,
-                            topText: s.summarySleepSessions(_summary.sleepSessions),
-                            bottomIcon: Icons.timer_outlined,
-                            bottomText: _summary.sleep.replaceAll(' ', ''),
-                            accent: AppTheme.primary,
-                          ),
-                          label: s.summarySleep,
-                          hint: lastSleepHint,
-                        ),
-                        _TodaySummaryCard(
-                          icon: Icons.monitor_weight_outlined,
-                          color: AppTheme.yellow,
-                          softBg: const Color(0xFFF7F4EE),
-                          value: Text(
-                            _summary.weight.replaceAll(' ', ''),
-                            maxLines: 1,
-                            softWrap: false,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          label: s.summaryWeight,
-                          hint: weightHint,
-                        ),
-                      ];
-                      if (narrow) {
+                          );
+                        }
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            for (var i = 0; i < summaryCards.length; i++) ...[
-                              if (i > 0) const SizedBox(height: gap),
-                              summaryCards[i],
-                            ],
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: summaryCards[0]),
+                                const SizedBox(width: gap),
+                                Expanded(child: summaryCards[1]),
+                              ],
+                            ),
+                            const SizedBox(height: gap),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: summaryCards[2]),
+                                const SizedBox(width: gap),
+                                Expanded(child: summaryCards[3]),
+                              ],
+                            ),
                           ],
                         );
-                      }
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: summaryCards[0]),
-                              const SizedBox(width: gap),
-                              Expanded(child: summaryCards[1]),
-                            ],
-                          ),
-                          const SizedBox(height: gap),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: summaryCards[2]),
-                              const SizedBox(width: gap),
-                              Expanded(child: summaryCards[3]),
-                            ],
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  _HomeDayHealthStrip(
-                    s: s,
-                    vaccines: _dayVaccines,
-                    consultations: _dayConsultations,
-                    fmtHm: _fmtHm,
-                  ),
-                  const SizedBox(height: 14),
-                  _HomeMotivationBanner(
-                    text: s.homeMotivationBanner,
-                    linkLabel: s.homeMotivationBannerOpenMemories,
-                    onOpenMemories: () {
-                      ShellNestedNav.tabNavigatorKeys[2].currentState?.popUntil((route) => route.isFirst);
-                      ShellNestedNav.selectTab?.call(2);
-                    },
-                  ),
-                  const WeeklyPhotoHomeSection(),
-                ],
+                      },
+                    ),
+                    _HomeDayHealthStrip(
+                      s: s,
+                      vaccines: _dayVaccines,
+                      consultations: _dayConsultations,
+                      fmtHm: _fmtHm,
+                    ),
+                    const SizedBox(height: 14),
+                    _HomeMotivationBanner(
+                      text: s.homeMotivationBanner,
+                      linkLabel: s.homeMotivationBannerOpenMemories,
+                      onOpenMemories: () {
+                        ShellNestedNav.tabNavigatorKeys[2].currentState
+                            ?.popUntil((route) => route.isFirst);
+                        ShellNestedNav.selectTab?.call(2);
+                      },
+                    ),
+                    const HomeRecentMemoriesSection(),
+                    const WeeklyPhotoHomeSection(),
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -1081,6 +1201,19 @@ class _HomeDayHealthStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final stripHeadingColor = _homeNightAwareHeadingColor();
+    final stripEmptyColor = PortalTimeOfDay.isNight(DateTime.now())
+        ? PortalTimeOfDay.nightTextColor
+        : _homeTextSoft(210);
+    final night = PortalTimeOfDay.isNight(DateTime.now());
+    final rowTitleColor =
+        night ? PortalTimeOfDay.nightTextColor : AppTheme.textSecondary;
+    final rowTimeColor = night
+        ? PortalTimeOfDay.nightTextColor
+        : AppTheme.secondary.withAlpha(220);
+    final rowSubColor =
+        night ? PortalTimeOfDay.nightTextColor.withAlpha(220) : _homeTextSoft(210);
+
     final entries = <_HealthSortEntry>[];
     for (final v in vaccines) {
       final at = v.appliedAt;
@@ -1100,7 +1233,8 @@ class _HomeDayHealthStrip extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.vaccines_outlined, color: AppTheme.primaryPink, size: 22),
+                  Icon(Icons.vaccines_outlined,
+                      color: AppTheme.primaryPink, size: 22),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -1108,25 +1242,31 @@ class _HomeDayHealthStrip extends StatelessWidget {
                       children: [
                         Text(
                           v.name,
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: rowTitleColor,
+                          ),
                         ),
                         if (v.dose != null && v.dose!.trim().isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
                             child: Text(
                               v.dose!,
-                              style: TextStyle(fontSize: 13, color: Colors.black.withAlpha(140)),
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  color: rowSubColor),
                             ),
                           ),
                       ],
                     ),
                   ),
                   Text(
-                    fmtHm(at),
+                    _homeHealthStripTimeOrDash(at, fmtHm),
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
-                      color: AppTheme.secondary.withAlpha(220),
+                      color: rowTimeColor,
                     ),
                   ),
                 ],
@@ -1148,7 +1288,8 @@ class _HomeDayHealthStrip extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.medical_services_outlined, color: AppTheme.primary, size: 22),
+                  Icon(Icons.medical_services_outlined,
+                      color: AppTheme.primary, size: 22),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -1156,7 +1297,11 @@ class _HomeDayHealthStrip extends StatelessWidget {
                       children: [
                         Text(
                           c.title,
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: rowTitleColor,
+                          ),
                         ),
                         if (c.notes != null && c.notes!.trim().isNotEmpty)
                           Padding(
@@ -1165,18 +1310,20 @@ class _HomeDayHealthStrip extends StatelessWidget {
                               c.notes!,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 13, color: Colors.black.withAlpha(140)),
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  color: rowSubColor),
                             ),
                           ),
                       ],
                     ),
                   ),
                   Text(
-                    fmtHm(c.occurredAt),
+                    _homeHealthStripTimeOrDash(c.occurredAt, fmtHm),
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
-                      color: AppTheme.secondary.withAlpha(220),
+                      color: rowTimeColor,
                     ),
                   ),
                 ],
@@ -1198,7 +1345,7 @@ class _HomeDayHealthStrip extends StatelessWidget {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: AppTheme.textPrimary,
+              color: stripHeadingColor,
               height: 1.2,
             ),
           ),
@@ -1209,7 +1356,7 @@ class _HomeDayHealthStrip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: Colors.black.withAlpha(140),
+                color: stripEmptyColor,
                 height: 1.35,
               ),
             )
@@ -1218,7 +1365,8 @@ class _HomeDayHealthStrip extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 for (var i = 0; i < entries.length; i++) ...[
-                  if (i > 0) Divider(height: 1, color: Colors.black.withAlpha(28)),
+                  if (i > 0)
+                    Divider(height: 1, color: Colors.black.withAlpha(28)),
                   entries[i].child,
                 ],
               ],
@@ -1231,28 +1379,37 @@ class _HomeDayHealthStrip extends StatelessWidget {
 
 class _PrimaryBabyCard extends StatefulWidget {
   final Baby baby;
+
   /// Preferir data da BD; [Baby] do shell pode ficar stale no Navigator do tab.
   final DateTime? routineBirthDate;
   final int? babyId;
   final bool isTodayView;
+
   /// Hoje: último registro ao peito ou mamadeira ou `null` se não houver. Dia passado: sempre preenchido (mock).
   final DateTime? lastFeedingAt;
+
   /// `null` no dia de hoje se ainda não houver trocas na BD (mostra texto vazio seguro).
   final DateTime? lastDiaperChangedAt;
+
   /// Fim do último sono gravado (para janela «hora de dormir»).
   final DateTime? lastSleepEndedAt;
+
   /// Referência para o azulejo de sono na faixa (hoje: igual à BD; outro dia: snapshot).
   final DateTime? sleepBannerEndedAtDisplay;
   final bool bannerDiaperAlert;
+
   /// Próxima consulta futura (resumo no banner).
   final ConsultationRecord? bannerConsultation;
   final VoidCallback? onBannerConsultationTap;
+
   /// Vacinas com próxima dose **hoje** (mostradas como chip acima do banner).
   final List<VaccineRecord> bannerVaccinesDueToday;
+
   /// Intervalo configurado em Registros rápidos (min), para cores/ETA iguais ao alerta.
   final int feedingIntervalMinutes;
   final VoidCallback? onOpenBabyPhoto;
   final VoidCallback? onPickBabyPhoto;
+
   /// Preferir valor da BD; [Baby] no widget pai pode estar stale (Navigator do tab).
   final String? babyAvatarPhotoB64;
   final String? babyAvatarPhotoUrl;
@@ -1292,7 +1449,8 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
   bool _hideVaccineBannerChip = false;
   String _vaccineDismissDayStamp = '';
 
-  DateTime? get _routineBirth => widget.routineBirthDate ?? widget.baby.birthDate;
+  DateTime? get _routineBirth =>
+      widget.routineBirthDate ?? widget.baby.birthDate;
 
   @override
   void initState() {
@@ -1307,7 +1465,8 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
   @override
   void didUpdateWidget(covariant _PrimaryBabyCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.isTodayView != widget.isTodayView || oldWidget.babyId != widget.babyId) {
+    if (oldWidget.isTodayView != widget.isTodayView ||
+        oldWidget.babyId != widget.babyId) {
       _syncBannerSleepProgressTicker();
     }
     if (oldWidget.babyId != widget.babyId) {
@@ -1315,12 +1474,14 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
       _hideVaccineBannerChip = false;
       unawaited(_loadVaccineBannerChipDismissed());
     } else if (widget.bannerVaccinesDueToday.isNotEmpty &&
-        !_sameVaccineDueListForBanner(oldWidget.bannerVaccinesDueToday, widget.bannerVaccinesDueToday)) {
+        !_sameVaccineDueListForBanner(
+            oldWidget.bannerVaccinesDueToday, widget.bannerVaccinesDueToday)) {
       unawaited(_loadVaccineBannerChipDismissed());
     }
   }
 
-  static bool _sameVaccineDueListForBanner(List<VaccineRecord> a, List<VaccineRecord> b) {
+  static bool _sameVaccineDueListForBanner(
+      List<VaccineRecord> a, List<VaccineRecord> b) {
     if (a.length != b.length) return false;
     for (var i = 0; i < a.length; i++) {
       if (a[i].id != b[i].id) return false;
@@ -1336,7 +1497,8 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
     }
     final prefs = await SharedPreferences.getInstance();
     final day = _homePrefsDayStamp(DateTime.now());
-    final hidden = prefs.getBool('facebaby_home_vacc_chip_dismiss_v1_${id}_$day') ?? false;
+    final hidden =
+        prefs.getBool('facebaby_home_vacc_chip_dismiss_v1_${id}_$day') ?? false;
     if (!mounted) return;
     setState(() => _hideVaccineBannerChip = hidden);
   }
@@ -1355,7 +1517,8 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
     final want = widget.isTodayView && widget.babyId != null;
     if (want && _bannerSleepProgressTicker == null) {
       // Atualização frequente para a barra de vigília avançar entre minutos inteiros (minutos fracionários).
-      _bannerSleepProgressTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      _bannerSleepProgressTicker =
+          Timer.periodic(const Duration(seconds: 1), (_) {
         if (mounted) setState(() {});
       });
     } else if (!want && _bannerSleepProgressTicker != null) {
@@ -1381,12 +1544,15 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
   }
 
   int _sleepSessionCapMinutes() {
-    final w = SleepRoutine.windowForMonths(SleepRoutine.monthsOld(_routineBirth));
-    return math.max(180, w.maxAwakeMin * 2);
+    final w =
+        SleepRoutine.windowForMonths(SleepRoutine.monthsOld(_routineBirth));
+    return SleepRoutine.sessionCapMinutesForWindow(w);
   }
 
   int _effectiveFeedingIntervalMinutes() {
-    return widget.feedingIntervalMinutes < 20 ? 20 : widget.feedingIntervalMinutes;
+    return widget.feedingIntervalMinutes < 20
+        ? 20
+        : widget.feedingIntervalMinutes;
   }
 
   /// Tempo até ao fim do intervalo de alimentação (negativo = atraso).
@@ -1407,14 +1573,16 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
     }
     final ended = widget.lastSleepEndedAt;
     if (ended == null) return null;
-    final w = SleepRoutine.windowForMonths(SleepRoutine.monthsOld(_routineBirth));
+    final w =
+        SleepRoutine.windowForMonths(SleepRoutine.monthsOld(_routineBirth));
     final budget = Duration(minutes: w.maxAwakeMin);
     return budget - DateTime.now().difference(ended);
   }
 
   // _bannerMidSection removido: o banner do bebê foi remodelado conforme referência.
 
-  String _fmtHm(DateTime dt) => '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  String _fmtHm(DateTime dt) =>
+      '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 
   String _fmtElapsedShort(Duration d) {
     final mins = d.inMinutes;
@@ -1507,7 +1675,7 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
 
   /// Peso, altura e idade numa linha, separados por · (mesmo estilo tipográfico).
   String _babyBannerStatsLine() {
-    final age = widget.baby.ageLabel.trim();
+    final age = S.of(context).localizedAgeLabelFromStored(widget.baby.ageLabel);
     final wStr = MeasurementFormat.weight(widget.baby.weightKg, decimalsKg: 2);
     final hStr = MeasurementFormat.length(widget.baby.heightCm, decimalsCm: 0);
     return '$wStr · $hStr · $age';
@@ -1537,14 +1705,25 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                 child: Text(
                   s.vaccDuePickTitle,
-                  style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(ctx)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ),
               for (final v in due)
                 ListTile(
-                  leading: const Icon(Icons.vaccines_outlined, color: AppTheme.primaryPink),
-                  title: Text(v.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Text('${s.vaccNext} ${_fmtVaccDay(v.nextDueAt)}'),
+                  leading: const Icon(Icons.vaccines_outlined,
+                      color: AppTheme.primaryPink),
+                  title: Text(
+                    v.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  subtitle: Text('${s.vaccNext} ${_fmtVaccDay(v.nextDueAt)}',
+                      style: TextStyle(color: _homeTextSoft(215))),
                   onTap: () => Navigator.pop(ctx, v),
                 ),
               const SizedBox(height: 8),
@@ -1560,14 +1739,19 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
-    final bg = widget.baby.sex == 'M' ? const Color(0xFFD6EBFF) : const Color(0xFFE8ECF2);
-    final interval = widget.feedingIntervalMinutes < 20 ? 20 : widget.feedingIntervalMinutes;
+    final bg = widget.baby.sex == 'M'
+        ? const Color(0xFFD6EBFF)
+        : const Color(0xFFE8ECF2);
+    final interval =
+        widget.feedingIntervalMinutes < 20 ? 20 : widget.feedingIntervalMinutes;
     final timeToFeedNow = widget.isTodayView &&
         widget.lastFeedingAt != null &&
         DateTime.now().difference(widget.lastFeedingAt!).inMinutes >= interval;
 
-    final nameColor = (widget.baby.sex == 'M') ? AppTheme.babyBlue : AppTheme.primaryPurple;
-    final accent = widget.baby.sex == 'M' ? AppTheme.babyBlue : AppTheme.ctaPrimary;
+    final nameColor =
+        (widget.baby.sex == 'M') ? AppTheme.babyBlue : AppTheme.primaryPurple;
+    final accent =
+        widget.baby.sex == 'M' ? AppTheme.babyBlue : AppTheme.ctaPrimary;
     final babyNameStyle = TextStyle(
       fontSize: portalSp(context, 22),
       fontWeight: FontWeight.w900,
@@ -1575,8 +1759,9 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
       height: 1.08,
       letterSpacing: -0.38,
     );
+
     /// Diâmetro da foto + anel (padding 2.5 px).
-    const avatarOuter = 42 * 2 + 5;
+    const avatarOuter = 54 * 2 + 5;
 
     return LayoutBuilder(
       builder: (context, cardConstraints) {
@@ -1616,7 +1801,8 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
               child: InkWell(
                 onTap: onTap,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1630,7 +1816,7 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                           style: TextStyle(
                             fontWeight: FontWeight.w900,
                             fontSize: portalSp(context, 10.5),
-                            color: AppTheme.textPrimary,
+                            color: AppTheme.textSecondary,
                             height: 1.1,
                           ),
                         ),
@@ -1657,7 +1843,8 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
               child: InkWell(
                 onTap: onTap,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1683,7 +1870,8 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
             );
           }
 
-          Future<void> openCriticalList(List<_CriticalBannerAlert> alerts) async {
+          Future<void> openCriticalList(
+              List<_CriticalBannerAlert> alerts) async {
             if (alerts.isEmpty) return;
             await showModalBottomSheet<void>(
               context: context,
@@ -1700,20 +1888,28 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                       children: [
                         Text(
                           ss.homeCriticalCareTitle,
-                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 16,
+                              color: _kHomeText),
                         ),
                         const SizedBox(height: 8),
                         for (final a in alerts)
                           ListTile(
                             contentPadding: EdgeInsets.zero,
                             leading: CircleAvatar(
-                              backgroundColor: Color.lerp(Colors.white, criticalRed, 0.10),
+                              backgroundColor:
+                                  Color.lerp(Colors.white, criticalRed, 0.10),
                               child: Icon(a.icon, color: criticalRed),
                             ),
-                            title: Text(a.title, style: const TextStyle(fontWeight: FontWeight.w900)),
+                            title: Text(a.title,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    color: _kHomeText)),
                             subtitle: Padding(
                               padding: const EdgeInsets.only(top: 3),
-                              child: Text(a.subtitle),
+                              child: Text(a.subtitle,
+                                  style: TextStyle(color: _homeTextSoft(215))),
                             ),
                             onTap: () {
                               Navigator.of(ctx).pop();
@@ -1776,9 +1972,11 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
             );
           }
 
-          if (widget.bannerConsultation != null || widget.bannerVaccinesDueToday.isNotEmpty) {
+          if (widget.bannerConsultation != null ||
+              widget.bannerVaccinesDueToday.isNotEmpty) {
             unawaited(
-              HomeCriticalNotifications.instance.kickConsultationAndVaccineFromBanner(
+              HomeCriticalNotifications.instance
+                  .kickConsultationAndVaccineFromBanner(
                 babyId: widget.babyId,
                 consultationToday: widget.bannerConsultation,
                 vaccinesDueToday: widget.bannerVaccinesDueToday,
@@ -1787,7 +1985,8 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
           }
 
           final items = <Widget>[
-            if (widget.bannerVaccinesDueToday.isNotEmpty && !_hideVaccineBannerChip)
+            if (widget.bannerVaccinesDueToday.isNotEmpty &&
+                !_hideVaccineBannerChip)
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -1798,7 +1997,8 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                     onTap: _openVaccineDueFromBanner,
                   ),
                   IconButton(
-                    tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                    tooltip:
+                        MaterialLocalizations.of(context).closeButtonTooltip,
                     onPressed: _dismissVaccineBannerChip,
                     icon: const Icon(Icons.close_rounded, size: 18),
                     visualDensity: VisualDensity.compact,
@@ -1874,11 +2074,14 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                             child: GestureDetector(
                               onTap: widget.onOpenBabyPhoto,
                               child: PhotoAvatar(
-                                photoB64: widget.babyAvatarPhotoB64 ?? widget.baby.photoB64,
-                                photoUrl: widget.babyAvatarPhotoUrl ?? widget.baby.photoUrl,
-                                radius: 42,
+                                photoB64: widget.babyAvatarPhotoB64 ??
+                                    widget.baby.photoB64,
+                                photoUrl: widget.babyAvatarPhotoUrl ??
+                                    widget.baby.photoUrl,
+                                radius: 54,
                                 backgroundColor: bg,
-                                fallback: Text(widget.baby.avatar, style: const TextStyle(fontSize: 36)),
+                                fallback: Text(widget.baby.avatar,
+                                    style: const TextStyle(fontSize: 46)),
                               ),
                             ),
                           ),
@@ -1898,7 +2101,8 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                                   ),
                                 ],
                               ),
-                              child: Icon(Icons.favorite_rounded, size: 13, color: accent),
+                              child: Icon(Icons.favorite_rounded,
+                                  size: 13, color: accent),
                             ),
                           ),
                         ],
@@ -1929,7 +2133,7 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                             style: TextStyle(
                               fontSize: portalSp(context, narrow ? 12.5 : 13),
                               fontWeight: FontWeight.w800,
-                              color: const Color(0xFF454658),
+                              color: _homeTextSoft(235),
                               height: 1.25,
                               letterSpacing: -0.12,
                             ),
@@ -1949,10 +2153,13 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                                     ),
                                     clipBehavior: Clip.antiAlias,
                                     child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 8),
                                       child: Row(
                                         children: [
-                                          Icon(Icons.check_circle_rounded, size: 18, color: g.withAlpha(235)),
+                                          Icon(Icons.check_circle_rounded,
+                                              size: 18,
+                                              color: g.withAlpha(235)),
                                           const SizedBox(width: 8),
                                           Expanded(
                                             child: Text(
@@ -1962,7 +2169,7 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                                               style: TextStyle(
                                                 fontWeight: FontWeight.w800,
                                                 fontSize: portalSp(context, 11),
-                                                color: AppTheme.textPrimary,
+                                                color: _kHomeText,
                                                 height: 1.2,
                                               ),
                                             ),
@@ -1993,36 +2200,48 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                     sleeping: SleepTimerController.instance.isTracking &&
                         SleepTimerController.instance.babyId == widget.babyId,
                     title: (SleepTimerController.instance.isTracking &&
-                            SleepTimerController.instance.babyId == widget.babyId)
+                            SleepTimerController.instance.babyId ==
+                                widget.babyId)
                         ? s.homeBabyBannerForecastWake
                         : s.homeBabyBannerForecastSleep,
                     subtitle: (SleepTimerController.instance.isTracking &&
-                            SleepTimerController.instance.babyId == widget.babyId)
+                            SleepTimerController.instance.babyId ==
+                                widget.babyId)
                         ? s.homeBabyBannerForecastSubtitleWake
                         : s.homeBabyBannerForecastSubtitleSleep,
                     etaLabel: () {
                       final t = SleepTimerController.instance;
-                      final sleeping = t.isTracking && t.babyId == widget.babyId;
+                      final sleeping =
+                          t.isTracking && t.babyId == widget.babyId;
                       if (sleeping) {
                         final rem = _sleepCountdownRemaining();
                         final startedAt = t.startedAt;
-                        if (rem != null && rem.isNegative && startedAt != null) {
+                        if (rem != null &&
+                            rem.isNegative &&
+                            startedAt != null) {
                           return s.homeBannerOverdueWake;
                         }
                         return s.homeBabyBannerEtaIn(
-                          _fmtDurLong((rem ?? Duration.zero).isNegative ? Duration.zero : (rem ?? Duration.zero)),
+                          _fmtDurLong((rem ?? Duration.zero).isNegative
+                              ? Duration.zero
+                              : (rem ?? Duration.zero)),
                         );
                       }
                       final ended = widget.lastSleepEndedAt;
                       if (ended == null) return '—';
-                      final w = SleepRoutine.windowForMonths(SleepRoutine.monthsOld(_routineBirth));
-                      final budgetTarget = ended.add(Duration(minutes: w.maxAwakeMin));
+                      final w = SleepRoutine.windowForMonths(
+                          SleepRoutine.monthsOld(_routineBirth));
+                      final budgetTarget =
+                          ended.add(Duration(minutes: w.maxAwakeMin));
                       if (DateTime.now().isAfter(budgetTarget)) {
                         return s.homeBannerOverdueSleep;
                       }
-                      final awakeMinutes = DateTime.now().difference(ended).inMinutes;
-                      final m = SleepRoutine.estimateNextNapMinutes(awakeMinutes: awakeMinutes, w: w);
-                      return s.homeBabyBannerEtaIn(_fmtDurLong(Duration(minutes: m)));
+                      final awakeMinutes =
+                          DateTime.now().difference(ended).inMinutes;
+                      final m = SleepRoutine.estimateNextNapMinutes(
+                          awakeMinutes: awakeMinutes, w: w);
+                      return s.homeBabyBannerEtaIn(
+                          _fmtDurLong(Duration(minutes: m)));
                     }(),
                     exhausted: () {
                       final rem = _sleepCountdownRemaining();
@@ -2031,38 +2250,48 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                     }(),
                     percent: () {
                       final t = SleepTimerController.instance;
-                      final sleeping = t.isTracking && t.babyId == widget.babyId;
+                      final sleeping =
+                          t.isTracking && t.babyId == widget.babyId;
                       if (sleeping) {
                         final cap = _sleepSessionCapMinutes();
                         if (cap <= 0) return 0;
-                        final p = (t.effectiveElapsed.inMinutes / cap).clamp(0.0, 1.0);
+                        final p = (t.effectiveElapsed.inMinutes / cap)
+                            .clamp(0.0, 1.0);
                         return (p * 100).round();
                       }
                       final ended = widget.lastSleepEndedAt;
                       if (ended == null) return 0;
-                      final w = SleepRoutine.windowForMonths(SleepRoutine.monthsOld(_routineBirth));
+                      final w = SleepRoutine.windowForMonths(
+                          SleepRoutine.monthsOld(_routineBirth));
                       final awake = DateTime.now().difference(ended).inMinutes;
-                      final p = ((awake.toDouble()) / w.maxAwakeMin).clamp(0.0, 1.0);
+                      final p =
+                          ((awake.toDouble()) / w.maxAwakeMin).clamp(0.0, 1.0);
                       return (p * 100).round();
                     }(),
                     progress01: () {
                       final t = SleepTimerController.instance;
-                      final sleeping = t.isTracking && t.babyId == widget.babyId;
+                      final sleeping =
+                          t.isTracking && t.babyId == widget.babyId;
                       if (sleeping) {
                         final cap = _sleepSessionCapMinutes();
                         if (cap <= 0) return 0.0;
-                        return ((t.effectiveElapsed.inMinutes.toDouble()) / cap).clamp(0.0, 1.0);
+                        return ((t.effectiveElapsed.inMinutes.toDouble()) / cap)
+                            .clamp(0.0, 1.0);
                       }
                       final ended = widget.lastSleepEndedAt;
                       if (ended == null) return 0.0;
-                      final w = SleepRoutine.windowForMonths(SleepRoutine.monthsOld(_routineBirth));
+                      final w = SleepRoutine.windowForMonths(
+                          SleepRoutine.monthsOld(_routineBirth));
                       final awake = DateTime.now().difference(ended).inMinutes;
-                      return ((awake.toDouble()) / w.maxAwakeMin).clamp(0.0, 1.0);
+                      return ((awake.toDouble()) / w.maxAwakeMin)
+                          .clamp(0.0, 1.0);
                     }(),
                     windowLabel: () {
-                      final w = SleepRoutine.windowForMonths(SleepRoutine.monthsOld(_routineBirth));
+                      final w = SleepRoutine.windowForMonths(
+                          SleepRoutine.monthsOld(_routineBirth));
                       final ended = widget.lastSleepEndedAt;
-                      if (ended == null) return s.homeBabyBannerIdealWindow('—');
+                      if (ended == null)
+                        return s.homeBabyBannerIdealWindow('—');
                       return s.homeBabyBannerIdealWindow(
                         _fmtClockRangeFrom(ended, w.minAwakeMin, w.maxAwakeMin),
                       );
@@ -2086,9 +2315,10 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                                 final ended = widget.lastFeedingAt;
                                 if (ended == null) return '—';
                                 final limit = Duration(minutes: interval);
-                                final elapsed = DateTime.now().difference(ended);
+                                final elapsed =
+                                    DateTime.now().difference(ended);
                                 if (elapsed >= limit) return s.homeBannerHungry;
-                                return 'há ${_fmtAgo(ended)}';
+                                return s.homeFedAgo(_fmtAgo(ended));
                               }(),
                               subtitle: widget.lastFeedingAt == null
                                   ? s.homeBabyBannerNoRecordsYet
@@ -2096,17 +2326,25 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                                       final minEta = math.max(0, interval - 30);
                                       final maxEta = interval;
                                       return s.homeBabyBannerNextBetween(
-                                        _fmtClockRangeFrom(widget.lastFeedingAt!, minEta, maxEta),
+                                        _fmtClockRangeFrom(
+                                            widget.lastFeedingAt!,
+                                            minEta,
+                                            maxEta),
                                       );
                                     }(),
                               progress01: () {
                                 if (widget.lastFeedingAt == null) return 0.0;
-                                final elapsed = DateTime.now().difference(widget.lastFeedingAt!).inMinutes;
+                                final elapsed = DateTime.now()
+                                    .difference(widget.lastFeedingAt!)
+                                    .inMinutes;
                                 return (elapsed / interval).clamp(0.0, 1.0);
                               }(),
                               maxLabel: '${(interval / 60).floor()}h',
                               exhausted: widget.lastFeedingAt != null &&
-                                  DateTime.now().difference(widget.lastFeedingAt!).inMinutes >= interval,
+                                  DateTime.now()
+                                          .difference(widget.lastFeedingAt!)
+                                          .inMinutes >=
+                                      interval,
                               onTap: widget.onTapFeedNow,
                               dense: isNarrow,
                             ),
@@ -2123,30 +2361,45 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                                 if (changedAt == null) return '—';
                                 const maxMin = 210;
                                 final limit = const Duration(minutes: maxMin);
-                                final elapsed = DateTime.now().difference(changedAt);
-                                if (elapsed >= limit) return s.homeBannerDiaperDirty;
-                                return 'há ${_fmtAgoNoMin(changedAt)}';
+                                final elapsed =
+                                    DateTime.now().difference(changedAt);
+                                if (elapsed >= limit)
+                                  return s.homeBannerDiaperDirty;
+                                return s.homeDiaperChangeAgo(
+                                    _fmtAgoNoMin(changedAt));
                               }(),
                               subtitle: widget.lastDiaperChangedAt == null
                                   ? s.homeBabyBannerNoRecordsYet
                                   : () {
                                       const maxMin = 210;
-                                      final elapsed = DateTime.now().difference(widget.lastDiaperChangedAt!).inMinutes;
-                                      final rem = (maxMin - elapsed).clamp(0, maxMin);
+                                      final elapsed = DateTime.now()
+                                          .difference(
+                                              widget.lastDiaperChangedAt!)
+                                          .inMinutes;
+                                      final rem =
+                                          (maxMin - elapsed).clamp(0, maxMin);
                                       // 210 min = 3h30. Mostramos o tempo restante compacto (ex.: 3h18).
-                                      return s.homeBabyBannerDiaperRecommendedUntil(
+                                      return s
+                                          .homeBabyBannerDiaperRecommendedUntil(
                                         _fmtDurCompact(Duration(minutes: rem)),
                                       );
                                     }(),
                               progress01: () {
-                                if (widget.lastDiaperChangedAt == null) return 0.0;
+                                if (widget.lastDiaperChangedAt == null)
+                                  return 0.0;
                                 const maxMin = 210;
-                                final elapsed = DateTime.now().difference(widget.lastDiaperChangedAt!).inMinutes;
+                                final elapsed = DateTime.now()
+                                    .difference(widget.lastDiaperChangedAt!)
+                                    .inMinutes;
                                 return (elapsed / maxMin).clamp(0.0, 1.0);
                               }(),
                               maxLabel: '3h30',
                               exhausted: widget.lastDiaperChangedAt != null &&
-                                  DateTime.now().difference(widget.lastDiaperChangedAt!).inMinutes >= 210,
+                                  DateTime.now()
+                                          .difference(
+                                              widget.lastDiaperChangedAt!)
+                                          .inMinutes >=
+                                      210,
                               onTap: widget.onTapOpenDiaperBanner,
                               dense: isNarrow,
                             ),
@@ -2256,16 +2509,29 @@ class _BabyBannerForecastCard extends StatelessWidget {
               value: progress01.clamp(0.0, 1.0),
               minHeight: 6,
               backgroundColor: Colors.black.withAlpha(18),
-              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryPurple.withAlpha(230)),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                  AppTheme.primaryPurple.withAlpha(230)),
             ),
           ),
           const SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('0%', style: TextStyle(fontSize: 10.5, color: Colors.black.withAlpha(125), fontWeight: FontWeight.w800)),
-              Text('50%', style: TextStyle(fontSize: 10.5, color: Colors.black.withAlpha(125), fontWeight: FontWeight.w800)),
-              Text('100%', style: TextStyle(fontSize: 10.5, color: Colors.black.withAlpha(125), fontWeight: FontWeight.w800)),
+              Text('0%',
+                  style: TextStyle(
+                      fontSize: 10.5,
+                      color: _homeTextSoft(200),
+                      fontWeight: FontWeight.w800)),
+              Text('50%',
+                  style: TextStyle(
+                      fontSize: 10.5,
+                      color: _homeTextSoft(200),
+                      fontWeight: FontWeight.w800)),
+              Text('100%',
+                  style: TextStyle(
+                      fontSize: 10.5,
+                      color: _homeTextSoft(200),
+                      fontWeight: FontWeight.w800)),
             ],
           ),
           const SizedBox(height: 4),
@@ -2273,7 +2539,10 @@ class _BabyBannerForecastCard extends StatelessWidget {
             windowLabel,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 11, color: Colors.black.withAlpha(125), fontWeight: FontWeight.w800),
+            style: TextStyle(
+                fontSize: 11,
+                color: _homeTextSoft(200),
+                fontWeight: FontWeight.w800),
           ),
         ],
       );
@@ -2316,7 +2585,8 @@ class _BabyBannerForecastCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(color: accent.withAlpha(70)),
                             ),
-                            child: Icon(icon, color: accent.withAlpha(235), size: 26),
+                            child: Icon(icon,
+                                color: accent.withAlpha(235), size: 26),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
@@ -2328,7 +2598,7 @@ class _BabyBannerForecastCard extends StatelessWidget {
                                   style: TextStyle(
                                     fontWeight: FontWeight.w900,
                                     fontSize: portalSp(context, 15),
-                                    color: AppTheme.textPrimary,
+                                    color: AppTheme.textSecondary,
                                     height: 1.15,
                                   ),
                                 ),
@@ -2349,7 +2619,7 @@ class _BabyBannerForecastCard extends StatelessWidget {
                                   style: TextStyle(
                                     fontWeight: FontWeight.w700,
                                     fontSize: portalSp(context, 12),
-                                    color: Colors.black.withAlpha(135),
+                                    color: _homeTextSoft(215),
                                     height: 1.25,
                                   ),
                                 ),
@@ -2407,11 +2677,15 @@ class _BabyBannerTimelineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pad = dense ? const EdgeInsets.fromLTRB(10, 10, 10, 10) : const EdgeInsets.fromLTRB(12, 12, 12, 12);
+    final pad = dense
+        ? const EdgeInsets.fromLTRB(10, 10, 10, 10)
+        : const EdgeInsets.fromLTRB(12, 12, 12, 12);
     return Material(
       color: softBg,
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: accent.withAlpha(28))),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: accent.withAlpha(28))),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -2442,7 +2716,7 @@ class _BabyBannerTimelineCard extends StatelessWidget {
                       style: TextStyle(
                         fontWeight: FontWeight.w900,
                         fontSize: portalSp(context, 14.5),
-                        color: AppTheme.textPrimary,
+                        color: AppTheme.textSecondary,
                         height: 1.12,
                       ),
                     ),
@@ -2452,17 +2726,28 @@ class _BabyBannerTimelineCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 value,
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: portalSp(context, 16), color: accent),
+                style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: portalSp(context, 16),
+                    color: accent),
               ),
               const SizedBox(height: 2),
               Text(
                 subtitle,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: portalSp(context, 12), color: Colors.black.withAlpha(145), height: 1.2),
+                style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: portalSp(context, 12),
+                    color: _homeTextSoft(215),
+                    height: 1.2),
               ),
               const SizedBox(height: 10),
-              _MiniTimeline(progress01: progress01, accent: accent, maxLabel: maxLabel, exhausted: exhausted),
+              _MiniTimeline(
+                  progress01: progress01,
+                  accent: accent,
+                  maxLabel: maxLabel,
+                  exhausted: exhausted),
             ],
           ),
         ),
@@ -2477,7 +2762,11 @@ class _MiniTimeline extends StatelessWidget {
   final String maxLabel;
   final bool exhausted;
 
-  const _MiniTimeline({required this.progress01, required this.accent, required this.maxLabel, this.exhausted = false});
+  const _MiniTimeline(
+      {required this.progress01,
+      required this.accent,
+      required this.maxLabel,
+      this.exhausted = false});
 
   @override
   Widget build(BuildContext context) {
@@ -2497,17 +2786,29 @@ class _MiniTimeline extends StatelessWidget {
                 final w = c.maxWidth;
                 return Stack(
                   children: [
-                    Positioned.fill(child: ColoredBox(color: Colors.black.withAlpha(10))),
-                    Positioned(left: 0, top: 0, bottom: 0, width: w * p, child: ColoredBox(color: accent.withAlpha(170))),
+                    Positioned.fill(
+                        child: ColoredBox(color: Colors.black.withAlpha(10))),
+                    Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: w * p,
+                        child: ColoredBox(color: accent.withAlpha(170))),
                     Positioned(
                       left: (w * p).clamp(0.0, w - 10),
                       top: -2,
                       child: Container(
                         width: 10,
                         height: 10,
-                        decoration: BoxDecoration(color: accent, shape: BoxShape.circle, boxShadow: [
-                          BoxShadow(color: Colors.black.withAlpha(18), blurRadius: 6, offset: const Offset(0, 2)),
-                        ]),
+                        decoration: BoxDecoration(
+                            color: accent,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                  color: Colors.black.withAlpha(18),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2)),
+                            ]),
                       ),
                     ),
                     if (exhausted)
@@ -2520,7 +2821,8 @@ class _MiniTimeline extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: Colors.black.withAlpha(55),
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white.withAlpha(220), width: 1),
+                            border: Border.all(
+                                color: Colors.white.withAlpha(220), width: 1),
                           ),
                         ),
                       ),
@@ -2535,7 +2837,11 @@ class _MiniTimeline extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             for (final l in labels)
-              Text(l, style: TextStyle(fontSize: 10.5, color: Colors.black.withAlpha(125), fontWeight: FontWeight.w800)),
+              Text(l,
+                  style: TextStyle(
+                      fontSize: 10.5,
+                      color: _homeTextSoft(200),
+                      fontWeight: FontWeight.w800)),
           ],
         ),
       ],
@@ -2568,7 +2874,8 @@ class _BabyQuickTile extends StatelessWidget {
     final titleFs = portalSp(context, narrow ? 9.5 : 10);
     final subFs = portalSp(context, narrow ? 8.5 : 9);
     final iconSz = narrow ? 17.0 : 19.0;
-    final pad = EdgeInsets.fromLTRB(narrow ? 5 : 7, narrow ? 8 : 9, narrow ? 5 : 7, narrow ? 8 : 9);
+    final pad = EdgeInsets.fromLTRB(
+        narrow ? 5 : 7, narrow ? 8 : 9, narrow ? 5 : 7, narrow ? 8 : 9);
 
     final inner = Container(
       width: double.infinity,
@@ -2577,7 +2884,10 @@ class _BabyQuickTile extends StatelessWidget {
         color: tileBackground,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
-          BoxShadow(color: Colors.black.withAlpha(6), blurRadius: 6, offset: const Offset(0, 2)),
+          BoxShadow(
+              color: Colors.black.withAlpha(6),
+              blurRadius: 6,
+              offset: const Offset(0, 2)),
         ],
       ),
       child: Row(
@@ -2598,7 +2908,7 @@ class _BabyQuickTile extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                     fontSize: titleFs,
                     height: 1.12,
-                    color: AppTheme.textPrimary,
+                    color: AppTheme.textSecondary,
                   ),
                 ),
                 SizedBox(height: narrow ? 2 : 3),
@@ -2610,7 +2920,7 @@ class _BabyQuickTile extends StatelessWidget {
                     fontSize: subFs,
                     height: 1.18,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textSecondary,
+                    color: _homeTextSoft(230),
                   ),
                 ),
               ],
@@ -2663,7 +2973,10 @@ class _ShortcutCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(26),
             color: color.withAlpha(48),
             boxShadow: [
-              BoxShadow(color: color.withAlpha(32), blurRadius: 16, offset: const Offset(0, 8)),
+              BoxShadow(
+                  color: color.withAlpha(32),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8)),
             ],
           ),
           padding: const EdgeInsets.all(1.6),
@@ -2682,7 +2995,10 @@ class _ShortcutCard extends StatelessWidget {
                       color: iconBg,
                       borderRadius: BorderRadius.circular(14),
                       boxShadow: [
-                        BoxShadow(color: color.withAlpha(35), blurRadius: 8, offset: const Offset(0, 3)),
+                        BoxShadow(
+                            color: color.withAlpha(35),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3)),
                       ],
                     ),
                     child: SizedBox(
@@ -2703,7 +3019,7 @@ class _ShortcutCard extends StatelessWidget {
                       fontSize: titleSize * 0.96,
                       height: 1.05,
                       letterSpacing: -0.2,
-                      color: Color.lerp(Colors.black87, color, 0.28),
+                      color: AppTheme.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 1),
@@ -2784,7 +3100,10 @@ class _TodaySummaryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFE4E7EF)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 10, offset: const Offset(0, 2)),
+          BoxShadow(
+              color: Colors.black.withAlpha(10),
+              blurRadius: 10,
+              offset: const Offset(0, 2)),
         ],
       ),
       child: Row(
@@ -2793,7 +3112,9 @@ class _TodaySummaryCard extends StatelessWidget {
           CircleAvatar(
             radius: iconRadius,
             backgroundColor: iconBg,
-            child: Icon(icon, color: mutedIcon, size: portalSp(context, 16).clamp(14.0, 18.0)),
+            child: Icon(icon,
+                color: mutedIcon,
+                size: portalSp(context, 16).clamp(14.0, 18.0)),
           ),
           const SizedBox(width: 6),
           Expanded(
@@ -2803,11 +3124,19 @@ class _TodaySummaryCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(label, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, style: labelStyle),
+                    Text(label,
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        style: labelStyle),
                     const SizedBox(height: 3),
                     DefaultTextStyle(style: valueStyle, child: value),
                     const SizedBox(height: 2),
-                    Text(hint, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, style: hintStyle),
+                    Text(hint,
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        style: hintStyle),
                   ],
                 );
               },
@@ -2845,7 +3174,10 @@ class _HomeDailyTipCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color(0xFFFFD88A)),
             boxShadow: [
-              BoxShadow(color: AppTheme.yellow.withAlpha(48), blurRadius: 14, offset: const Offset(0, 6)),
+              BoxShadow(
+                  color: AppTheme.yellow.withAlpha(48),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6)),
             ],
           ),
           child: Row(
@@ -2859,7 +3191,8 @@ class _HomeDailyTipCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppTheme.yellow.withAlpha(120)),
                 ),
-                child: const Icon(Icons.star_rounded, color: Color(0xFFFFB020), size: 22),
+                child: const Icon(Icons.star_rounded,
+                    color: Color(0xFFFFB020), size: 22),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -2879,7 +3212,7 @@ class _HomeDailyTipCard extends StatelessWidget {
                     Text(
                       text,
                       style: TextStyle(
-                        color: Colors.black.withAlpha(145),
+                        color: _homeTextSoft(215),
                         fontWeight: FontWeight.w600,
                         height: 1.3,
                         fontSize: portalSp(context, 11.5),
@@ -2955,10 +3288,12 @@ class _HomeConsultationInlineAlert extends StatefulWidget {
   });
 
   @override
-  State<_HomeConsultationInlineAlert> createState() => _HomeConsultationInlineAlertState();
+  State<_HomeConsultationInlineAlert> createState() =>
+      _HomeConsultationInlineAlertState();
 }
 
-class _HomeConsultationInlineAlertState extends State<_HomeConsultationInlineAlert> {
+class _HomeConsultationInlineAlertState
+    extends State<_HomeConsultationInlineAlert> {
   bool _dismissed = false;
 
   static String _prefsKey(int babyId, int consultationId) =>
@@ -2973,7 +3308,8 @@ class _HomeConsultationInlineAlertState extends State<_HomeConsultationInlineAle
   @override
   void didUpdateWidget(covariant _HomeConsultationInlineAlert oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.babyId != widget.babyId || oldWidget.consultationId != widget.consultationId) {
+    if (oldWidget.babyId != widget.babyId ||
+        oldWidget.consultationId != widget.consultationId) {
       _dismissed = false;
       unawaited(_loadDismissed());
     }
@@ -2981,7 +3317,8 @@ class _HomeConsultationInlineAlertState extends State<_HomeConsultationInlineAle
 
   Future<void> _loadDismissed() async {
     final prefs = await SharedPreferences.getInstance();
-    final hidden = prefs.getBool(_prefsKey(widget.babyId, widget.consultationId)) ?? false;
+    final hidden =
+        prefs.getBool(_prefsKey(widget.babyId, widget.consultationId)) ?? false;
     if (!mounted) return;
     setState(() => _dismissed = hidden);
   }
@@ -3065,7 +3402,8 @@ class _HomeConsultationInlineAlertState extends State<_HomeConsultationInlineAle
           IconButton(
             tooltip: closeTip,
             onPressed: _onDismiss,
-            icon: Icon(Icons.close_rounded, color: red.withAlpha(210), size: 22),
+            icon:
+                Icon(Icons.close_rounded, color: red.withAlpha(210), size: 22),
             visualDensity: VisualDensity.compact,
             style: IconButton.styleFrom(
               minimumSize: const Size(36, 36),
@@ -3105,7 +3443,8 @@ class _HomeDailyTipLoaderState extends State<_HomeDailyTipLoader> {
   String _tipPrefsDay = '';
   bool _tipDismissed = false;
 
-  static String _dismissPrefsKey(int babyId, String day) => 'facebaby_home_tip_dismiss_v1_${babyId}_$day';
+  static String _dismissPrefsKey(int babyId, String day) =>
+      'facebaby_home_tip_dismiss_v1_${babyId}_$day';
 
   void _scheduleLayoutDismissNotify() {
     final cb = widget.onDismissedLayoutChanged;
@@ -3195,7 +3534,9 @@ class _HomeDailyTipLoaderState extends State<_HomeDailyTipLoader> {
       future: _future,
       builder: (context, snap) {
         final custom = snap.hasError ? null : snap.data?.trim();
-        final text = (custom != null && custom.isNotEmpty) ? custom : widget.fallbackBody;
+        final text = (custom != null && custom.isNotEmpty)
+            ? custom
+            : widget.fallbackBody;
         return _HomeDailyTipCard(
           title: widget.title,
           text: text,
@@ -3223,7 +3564,8 @@ class _HomeMotivationBanner extends StatelessWidget {
       button: true,
       label: linkLabel,
       child: Material(
-        color: Color.lerp(const Color(0xFFF5F0FC), AppTheme.primaryPurple, 0.04)!,
+        color:
+            Color.lerp(const Color(0xFFF5F0FC), AppTheme.primaryPurple, 0.04)!,
         elevation: 3,
         shadowColor: AppTheme.primaryPurple.withAlpha(48),
         shape: RoundedRectangleBorder(
@@ -3244,7 +3586,8 @@ class _HomeMotivationBanner extends StatelessWidget {
                     color: Colors.white.withAlpha(230),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.favorite_rounded, color: AppTheme.primaryPurple, size: 24),
+                  child: const Icon(Icons.favorite_rounded,
+                      color: AppTheme.primaryPurple, size: 24),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -3270,11 +3613,14 @@ class _HomeMotivationBanner extends StatelessWidget {
                               fontSize: portalSp(context, 12),
                               color: AppTheme.primaryPurple,
                               decoration: TextDecoration.underline,
-                              decorationColor: AppTheme.primaryPurple.withAlpha(200),
+                              decorationColor:
+                                  AppTheme.primaryPurple.withAlpha(200),
                             ),
                           ),
                           const SizedBox(width: 4),
-                          Icon(Icons.arrow_forward_rounded, size: 16, color: AppTheme.primaryPurple.withAlpha(230)),
+                          Icon(Icons.arrow_forward_rounded,
+                              size: 16,
+                              color: AppTheme.primaryPurple.withAlpha(230)),
                         ],
                       ),
                     ],
@@ -3286,7 +3632,8 @@ class _HomeMotivationBanner extends StatelessWidget {
                     'assets/sleep/baby_sleep.png',
                     height: 68,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const SizedBox(width: 8, height: 68),
+                    errorBuilder: (_, __, ___) =>
+                        const SizedBox(width: 8, height: 68),
                   ),
                 ),
               ],
@@ -3294,167 +3641,6 @@ class _HomeMotivationBanner extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _DevelopmentLeapHomeCard extends StatelessWidget {
-  final VoidCallback onOpen;
-
-  const _DevelopmentLeapHomeCard({required this.onOpen});
-
-  String _babyName(S s) {
-    final n = (CurrentBabyController.instance.currentBabyRow?['name'] as String?)?.trim();
-    return (n == null || n.isEmpty) ? s.baby : n;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final s = S.of(context);
-    final name = _babyName(s);
-    final birthRaw = CurrentBabyController.instance.currentBabyRow?['birth_date'] as String?;
-    final birth = DateTime.tryParse((birthRaw ?? '').trim());
-    if (birth == null) return const SizedBox.shrink();
-
-    final leap = DevelopmentLeapsService.current(birthDate: birth);
-    if (leap == null) return const SizedBox.shrink();
-
-    final bk = leap.bannerKey;
-    final rangeLbl = s.developmentLeapBannerRange(bk);
-    final titleLbl = s.developmentLeapBannerTitle(bk);
-    final lead = s.developmentLeapBannerLead(bk).replaceAll('{baby_name}', name);
-    final emoLine = s.developmentLeapBannerEmotion(bk);
-    const pink = AppTheme.primaryPink;
-
-    return Material(
-      color: Color.lerp(Colors.white, pink, 0.06),
-      elevation: 1.5,
-      shadowColor: pink.withAlpha(30),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
-        side: BorderSide(color: pink.withAlpha(55)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpen,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _FloatingCloud(accent: pink),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            titleLbl,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: portalSp(context, 16),
-                              color: Colors.black.withAlpha(165),
-                              height: 1.2,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: pink.withAlpha(26),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            rangeLbl,
-                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: pink.withAlpha(230)),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      lead,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontWeight: FontWeight.w700, height: 1.25, color: Colors.black.withAlpha(150)),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '💜 $emoLine',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black.withAlpha(145)),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          s.devLeapsSeeDetails,
-                          style: TextStyle(fontWeight: FontWeight.w900, color: pink.withAlpha(240)),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(Icons.chevron_right_rounded, size: 18, color: pink.withAlpha(240)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FloatingCloud extends StatefulWidget {
-  final Color accent;
-
-  const _FloatingCloud({required this.accent});
-
-  @override
-  State<_FloatingCloud> createState() => _FloatingCloudState();
-}
-
-class _FloatingCloudState extends State<_FloatingCloud> with SingleTickerProviderStateMixin {
-  late final AnimationController _c =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 1900))..repeat(reverse: true);
-  late final Animation<double> _dy = Tween<double>(begin: -0.02, end: 0.02).animate(
-    CurvedAnimation(parent: _c, curve: Curves.easeInOut),
-  );
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final pink = widget.accent;
-    return AnimatedBuilder(
-      animation: _dy,
-      builder: (context, _) {
-        return Transform.translate(
-          offset: Offset(0, _dy.value * 60),
-          child: Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: pink.withAlpha(22),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: pink.withAlpha(60)),
-            ),
-            child: Icon(Icons.cloud_rounded, color: pink.withAlpha(235), size: 24),
-          ),
-        );
-      },
     );
   }
 }

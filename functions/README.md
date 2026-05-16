@@ -18,6 +18,7 @@ Campos usados pelo sorteio (ver `WeeklyPhotoPublicSync` no Flutter):
 - `submissionWeekId` — `YYYY-MM-DD` da segunda ISO da semana em que a mãe marcou a memória como pública (segunda a domingo, até 00:00 de segunda).
 - `photoUrl`, `badgeTitle`, `babyDisplayName`, `babySex` (`M` | `F`), `babyAgeLabel`, `publicDescription`, `createdAt`, `publicEnabledAt`, `userId`, `babyId`, `memoryId`.
 - `userId` — obrigatório para contar no pool (dedupe por utilizador). `publicEnabledAt` — usado para escolher qual memória representa o utilizador quando há várias na mesma semana. `babySex` — copiado para `spotlight_current.winner_baby_sex` no sorteio (título Príncipe/Princesa na Home).
+- **Curtidas:** subcoleção `public_memories/{docId}/likes/{uid}` (escrita pelo app; leitura pública). A Home mostra a contagem em tempo real via `winner_public_memory_id` em `spotlight_current`.
 
 ### `weekly_photo_contests/spotlight_current` (escrita pela função)
 
@@ -37,7 +38,7 @@ O ficheiro na raiz do repositório é `firestore.rules` (referenciado em `fireba
 
 `firebase deploy --only firestore:rules`
 
-Resumo: `public_memories` — leitura pública; create/update/delete só se `owner_uid` ou `userId` (existente / resultante) for o UID autenticado; delete usa `resource` (não `request.resource`). `weekly_photo_contests` — leitura pública, escrita negada (só backend). `users/{uid}/**` — só o próprio utilizador.
+Resumo: `public_memories` — leitura pública; create/update/delete só se `owner_uid` ou `userId` (existente / resultante) for o UID autenticado; `likes/{uid}` — leitura pública, create/delete só o próprio UID (um like por utilizador). `weekly_photo_contests` — leitura pública, escrita negada (só backend). `users/{uid}/**` — só o próprio utilizador.
 
 ## Sorteio antecipado (forçar)
 

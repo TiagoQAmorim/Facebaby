@@ -1,5 +1,5 @@
 name: facebaby_flutter
-version: 1.0.26+53
+version: 1.0.28+71
 publish_to: 'none'
 description: MVP Flutter do FaceBaby, organizado com Page Objects/Screens, widgets, models, services e controllers.
 
@@ -46,6 +46,7 @@ dependencies:
   sign_in_with_apple: ^8.0.0
   crypto: ^3.0.7
   in_app_purchase: ^3.2.3
+  in_app_purchase_android: ^0.4.0+10
 
 dev_dependencies:
   flutter_test:
@@ -67,6 +68,8 @@ flutter:
   uses-material-design: true
   assets:
     - assets/data/baby_daily_tips_500.json
+    - assets/data/family_zodiac_content.json
+    - assets/data/family_christian_content.json
     - assets/auth/login_background.png
     - assets/logo.png
     - assets/google_g_logo.png
@@ -76,6 +79,8 @@ flutter:
     - assets/memories/mural_badges_ref.png
     - assets/memories/memory_album_cover.png
     - assets/weekly_photo/crown.png
+    - assets/onboarding/
+    - assets/family/
     - assets/memories/badges/
     - assets/memories/book/
     - assets/terms/

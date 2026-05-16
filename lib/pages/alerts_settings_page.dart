@@ -175,6 +175,7 @@ class _AlertsTestCardState extends State<_AlertsTestCard> {
     });
     final svc = LocalNotificationsService.instance;
     final messenger = ScaffoldMessenger.of(context);
+    final s = S.of(context);
 
     final errors = <String>[];
     try {
@@ -186,8 +187,8 @@ class _AlertsTestCardState extends State<_AlertsTestCard> {
     try {
       await svc.show(
         id: 99001,
-        title: 'FaceBaby — teste imediato',
-        body: 'Se vê esta mensagem, o canal imediato está OK.',
+        title: s.alertsTestImmediateTitle,
+        body: s.alertsTestImmediateBody,
       );
     } catch (e) {
       errors.add('show: $e');
@@ -196,11 +197,11 @@ class _AlertsTestCardState extends State<_AlertsTestCard> {
     try {
       final scheduled = await svc.scheduleZoned(
         id: 99002,
-        title: 'FaceBaby — teste agendado',
-        body: 'Esta foi agendada via AlarmManager (~30s).',
+        title: s.alertsTestScheduledTitle,
+        body: s.alertsTestScheduledBody,
         whenLocal: DateTime.now().add(const Duration(seconds: 30)),
       );
-      if (!scheduled) errors.add('schedule: AlarmManager recusou todos os modos');
+      if (!scheduled) errors.add('schedule: ${s.alertsTestAllScheduleModesFailed}');
     } catch (e) {
       errors.add('schedule: $e');
     }
@@ -209,9 +210,7 @@ class _AlertsTestCardState extends State<_AlertsTestCard> {
     final ok = errors.isEmpty;
     setState(() {
       _busy = false;
-      _lastResult = ok
-          ? 'Enviado. Deve receber agora (imediato) e em ~30s (agendado).'
-          : 'Falhou: ${errors.join(' | ')}';
+      _lastResult = ok ? s.alertsTestSentOk : s.alertsTestFailed(errors.join(' | '));
     });
     messenger.showSnackBar(SnackBar(content: Text(_lastResult!)));
   }
@@ -253,6 +252,7 @@ class _AlertsTestCardState extends State<_AlertsTestCard> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(14),
@@ -264,20 +264,19 @@ class _AlertsTestCardState extends State<_AlertsTestCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.notifications_active_rounded, size: 20),
-              SizedBox(width: 8),
+              const Icon(Icons.notifications_active_rounded, size: 20),
+              const SizedBox(width: 8),
               Text(
-                'Testar notificações',
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
+                s.alertsTestTitle,
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
               ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
-            'Dispara um aviso imediato e agenda outro daqui a 30 segundos. '
-            'Útil para confirmar que o sistema está a entregar as notificações da app.',
+            s.alertsTestBody,
             style: TextStyle(fontSize: 12.5, height: 1.4, color: Colors.black.withAlpha(150)),
           ),
           const SizedBox(height: 12),
@@ -286,13 +285,13 @@ class _AlertsTestCardState extends State<_AlertsTestCard> {
             icon: _busy
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.bolt_rounded),
-            label: const Text('Disparar teste'),
+            label: Text(s.alertsTestRun),
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: _busy ? null : _runReminderSync,
             icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Forçar reagendamento (lembretes reais)'),
+            label: Text(s.alertsTestResync),
           ),
           if (_lastResult != null) ...[
             const SizedBox(height: 10),
