@@ -17,6 +17,9 @@ class FamilyMessagePrefs {
   static const both =
       FamilyMessagePrefs(showChristian: true, showHoroscope: true);
 
+  static const none =
+      FamilyMessagePrefs(showChristian: false, showHoroscope: false);
+
   static FamilyMessagePrefs fromMother(Map<String, Object?>? mother) {
     if (mother == null) return horoscopeOnly;
     final c = mother['show_family_christian'];
@@ -33,6 +36,7 @@ class FamilyMessagePrefs {
     return switch (choice) {
       'christian' => christianOnly,
       'both' => both,
+      'none' => none,
       _ => horoscopeOnly,
     };
   }

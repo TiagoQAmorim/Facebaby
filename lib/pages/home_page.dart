@@ -35,7 +35,6 @@ import '../widgets/home_recent_memories_section.dart';
 import '../widgets/weekly_photo_home_section.dart';
 import '../utils/portal_layout.dart';
 import '../utils/portal_time_of_day.dart';
-import '../app/shell_nested_nav.dart';
 import 'diaper_page.dart';
 import 'feeding_hub_page.dart';
 import 'growth_dashboard_page.dart';
@@ -51,27 +50,60 @@ const int _kHomeBannerDiaperOverdueMin = 210;
 
 /// Texto da home — cinza escuro em vez de preto sólido.
 const Color _kHomeText = AppTheme.textPrimary;
+const int _kHomeBannerAlpha = 142;
+const int _kHomeBannerBorderAlpha = 92;
 
 Color _homeTextSoft(int alpha) => AppTheme.textSecondary.withAlpha(alpha);
 
 /// Títulos / saudação na Home: à noite (18h–6h) cinza escuro para contraste no fundo noturno.
-Color _homeNightAwareHeadingColor() =>
+Color _homeNightAwareHeadingColor() => PortalTimeOfDay.isNight(DateTime.now())
+    ? PortalTimeOfDay.nightOutlinedTextColor
+    : AppTheme.textSecondary;
+
+List<Shadow>? _homeNightAwareTextShadows() =>
     PortalTimeOfDay.isNight(DateTime.now())
-        ? PortalTimeOfDay.nightTextColor
-        : AppTheme.textSecondary;
+        ? PortalTimeOfDay.nightTextOutlineShadows
+        : null;
 
 Color _homeNightAwareGreetingSubtitleColor() =>
     PortalTimeOfDay.isNight(DateTime.now())
-        ? PortalTimeOfDay.nightTextColor
+        ? PortalTimeOfDay.nightOutlinedTextColor
         : AppTheme.textSecondary.withAlpha(230);
 
 /// Vacinas/consultas na faixa: quando só existe o dia civil, `applied_at` fica à meia-noite local — não mostrar «00:00».
-String _homeHealthStripTimeOrDash(DateTime at, String Function(DateTime) fmtHm) {
+String _homeHealthStripTimeOrDash(
+    DateTime at, String Function(DateTime) fmtHm) {
   final l = at.toLocal();
   if (l.hour == 0 && l.minute == 0 && l.second == 0) {
     return '—';
   }
   return fmtHm(l);
+}
+
+class _NightAwareOutlinedIcon extends StatelessWidget {
+  const _NightAwareOutlinedIcon({
+    required this.icon,
+    required this.size,
+    required this.dayColor,
+  });
+
+  final IconData icon;
+  final double size;
+  final Color dayColor;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!PortalTimeOfDay.isNight(DateTime.now())) {
+      return Icon(icon, size: size, color: dayColor);
+    }
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Icon(icon, size: size + 2.5, color: const Color(0xCC273044)),
+        Icon(icon, size: size, color: PortalTimeOfDay.nightOutlinedTextColor),
+      ],
+    );
+  }
 }
 
 class HomePage extends StatefulWidget {
@@ -525,6 +557,28 @@ class _HomePageState extends State<HomePage> {
         : s.homeSummaryExtraHint;
 
     _syncHomeDailyTipLayoutDay();
+    final pickBabyButton = widget.onPickBaby == null
+        ? null
+        : IconButton(
+            tooltip: s.changeBabyTooltip,
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: 40,
+              minHeight: 40,
+            ),
+            onPressed: widget.onPickBaby,
+            iconSize: 22,
+            icon: CircleAvatar(
+              radius: 16,
+              backgroundColor: AppTheme.babyBlue.withAlpha(44),
+              child: const Icon(
+                Icons.child_care_outlined,
+                color: AppTheme.babyBlue,
+                size: 22,
+              ),
+            ),
+          );
 
     return DecoratedBox(
       decoration: const BoxDecoration(color: Colors.transparent),
@@ -625,6 +679,11 @@ class _HomePageState extends State<HomePage> {
                                   size: 21, color: AppTheme.secondary),
                             ),
                           ),
+                          if (pickBabyButton != null)
+                            Transform.translate(
+                              offset: const Offset(0, 4),
+                              child: pickBabyButton,
+                            ),
                           const SizedBox(width: 4),
                           Material(
                             type: MaterialType.transparency,
@@ -650,8 +709,8 @@ class _HomePageState extends State<HomePage> {
                     SizedBox(
                       height: (_consultationForBanner == null &&
                               _homeDailyTipDismissedForLayout)
-                          ? 6
-                          : 12,
+                          ? 10
+                          : 14,
                     ),
                     LayoutBuilder(
                       builder: (context, greetC) {
@@ -679,59 +738,30 @@ class _HomePageState extends State<HomePage> {
                         final greetBlock = Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Text.rich(
-                                    TextSpan(
-                                      style: TextStyle(
-                                        fontSize: portalSp(context, 22),
-                                        fontWeight: FontWeight.w900,
-                                        height: 1.02,
-                                        color: _homeNightAwareHeadingColor(),
-                                      ),
-                                      children: [
-                                        TextSpan(text: greeting),
-                                        TextSpan(
-                                          text: ' 💜',
-                                          style: TextStyle(
-                                            fontSize: portalSp(context, 22),
-                                            color: AppTheme.primaryPurple,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    maxLines: 3,
-                                    softWrap: true,
-                                  ),
+                            Text.rich(
+                              TextSpan(
+                                style: TextStyle(
+                                  fontSize: portalSp(context, 22),
+                                  fontWeight: FontWeight.w900,
+                                  height: 1.02,
+                                  color: _homeNightAwareHeadingColor(),
+                                  shadows: _homeNightAwareTextShadows(),
                                 ),
-                                if (widget.onPickBaby != null) ...[
-                                  const SizedBox(width: 4),
-                                  IconButton(
-                                    tooltip: s.changeBabyTooltip,
-                                    visualDensity: VisualDensity.compact,
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(
-                                      minWidth: 40,
-                                      minHeight: 40,
-                                    ),
-                                    onPressed: widget.onPickBaby,
-                                    iconSize: 22,
-                                    icon: CircleAvatar(
-                                      radius: 16,
-                                      backgroundColor:
-                                          AppTheme.babyBlue.withAlpha(44),
-                                      child: const Icon(
-                                        Icons.child_care_outlined,
-                                        color: AppTheme.babyBlue,
-                                        size: 22,
-                                      ),
+                                children: [
+                                  TextSpan(text: greeting),
+                                  TextSpan(
+                                    text: ' 💜',
+                                    style: TextStyle(
+                                      fontSize: portalSp(context, 22),
+                                      color: AppTheme.primaryPurple,
                                     ),
                                   ),
                                 ],
-                              ],
+                              ),
+                              maxLines: 3,
+                              softWrap: true,
                             ),
+                            const SizedBox(height: 4),
                             Text(
                               s.homeGreetingSubtitle,
                               style: TextStyle(
@@ -739,14 +769,15 @@ class _HomePageState extends State<HomePage> {
                                 fontWeight: FontWeight.w600,
                                 height: 1.05,
                                 color: _homeNightAwareGreetingSubtitleColor(),
+                                shadows: _homeNightAwareTextShadows(),
                               ),
                             ),
                           ],
                         );
                         final greetTipGap = (consultAlert == null &&
                                 _homeDailyTipDismissedForLayout)
-                            ? 4.0
-                            : 8.0;
+                            ? 2.0
+                            : 6.0;
                         final showWideRightSlot = consultAlert != null ||
                             !_homeDailyTipDismissedForLayout;
                         if (narrow) {
@@ -794,7 +825,7 @@ class _HomePageState extends State<HomePage> {
                     SizedBox(
                       height: (_consultationForBanner == null &&
                               _homeDailyTipDismissedForLayout)
-                          ? 4
+                          ? 6
                           : 10,
                     ),
                     _PrimaryBabyCard(
@@ -839,9 +870,20 @@ class _HomePageState extends State<HomePage> {
                     SectionTitle(
                       title: s.shortcuts,
                       titleColor: _homeNightAwareHeadingColor(),
+                      titleShadows: _homeNightAwareTextShadows(),
                       action: TextButton(
-                          onPressed: widget.onOpenQuickRegister,
-                          child: Text(s.seeAll)),
+                        onPressed: widget.onOpenQuickRegister,
+                        style: TextButton.styleFrom(
+                          foregroundColor: _homeNightAwareHeadingColor(),
+                        ),
+                        child: Text(
+                          s.seeAll,
+                          style: TextStyle(
+                            shadows: _homeNightAwareTextShadows(),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 4),
                     LayoutBuilder(
@@ -959,6 +1001,7 @@ class _HomePageState extends State<HomePage> {
                           ? s.todaySummary
                           : s.homeSummaryOnDate(_fmtCalendarDate(_selectedDay)),
                       titleColor: _homeNightAwareHeadingColor(),
+                      titleShadows: _homeNightAwareTextShadows(),
                       action: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -977,9 +1020,11 @@ class _HomePageState extends State<HomePage> {
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(
                                 minWidth: 36, minHeight: 36),
-                            icon: Icon(Icons.calendar_month_rounded,
-                                size: 22,
-                                color: AppTheme.secondary.withAlpha(230)),
+                            icon: _NightAwareOutlinedIcon(
+                              icon: Icons.calendar_month_rounded,
+                              size: 22,
+                              dayColor: AppTheme.secondary.withAlpha(230),
+                            ),
                             onPressed: _pickSummaryDay,
                           ),
                         ],
@@ -1155,16 +1200,6 @@ class _HomePageState extends State<HomePage> {
                       consultations: _dayConsultations,
                       fmtHm: _fmtHm,
                     ),
-                    const SizedBox(height: 14),
-                    _HomeMotivationBanner(
-                      text: s.homeMotivationBanner,
-                      linkLabel: s.homeMotivationBannerOpenMemories,
-                      onOpenMemories: () {
-                        ShellNestedNav.tabNavigatorKeys[2].currentState
-                            ?.popUntil((route) => route.isFirst);
-                        ShellNestedNav.selectTab?.call(2);
-                      },
-                    ),
                     const HomeRecentMemoriesSection(),
                     const WeeklyPhotoHomeSection(),
                   ],
@@ -1202,17 +1237,18 @@ class _HomeDayHealthStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stripHeadingColor = _homeNightAwareHeadingColor();
+    final nightShadows = _homeNightAwareTextShadows();
     final stripEmptyColor = PortalTimeOfDay.isNight(DateTime.now())
-        ? PortalTimeOfDay.nightTextColor
+        ? PortalTimeOfDay.nightOutlinedTextColor
         : _homeTextSoft(210);
     final night = PortalTimeOfDay.isNight(DateTime.now());
     final rowTitleColor =
-        night ? PortalTimeOfDay.nightTextColor : AppTheme.textSecondary;
+        night ? PortalTimeOfDay.nightOutlinedTextColor : AppTheme.textSecondary;
     final rowTimeColor = night
-        ? PortalTimeOfDay.nightTextColor
+        ? PortalTimeOfDay.nightOutlinedTextColor
         : AppTheme.secondary.withAlpha(220);
     final rowSubColor =
-        night ? PortalTimeOfDay.nightTextColor.withAlpha(220) : _homeTextSoft(210);
+        night ? PortalTimeOfDay.nightOutlinedTextColor : _homeTextSoft(210);
 
     final entries = <_HealthSortEntry>[];
     for (final v in vaccines) {
@@ -1243,9 +1279,10 @@ class _HomeDayHealthStrip extends StatelessWidget {
                         Text(
                           v.name,
                           style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              color: rowTitleColor,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            color: rowTitleColor,
+                            shadows: nightShadows,
                           ),
                         ),
                         if (v.dose != null && v.dose!.trim().isNotEmpty)
@@ -1255,7 +1292,8 @@ class _HomeDayHealthStrip extends StatelessWidget {
                               v.dose!,
                               style: TextStyle(
                                   fontSize: 13,
-                                  color: rowSubColor),
+                                  color: rowSubColor,
+                                  shadows: nightShadows),
                             ),
                           ),
                       ],
@@ -1267,6 +1305,7 @@ class _HomeDayHealthStrip extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
                       color: rowTimeColor,
+                      shadows: nightShadows,
                     ),
                   ),
                 ],
@@ -1298,9 +1337,10 @@ class _HomeDayHealthStrip extends StatelessWidget {
                         Text(
                           c.title,
                           style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              color: rowTitleColor,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            color: rowTitleColor,
+                            shadows: nightShadows,
                           ),
                         ),
                         if (c.notes != null && c.notes!.trim().isNotEmpty)
@@ -1312,7 +1352,8 @@ class _HomeDayHealthStrip extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                   fontSize: 13,
-                                  color: rowSubColor),
+                                  color: rowSubColor,
+                                  shadows: nightShadows),
                             ),
                           ),
                       ],
@@ -1324,6 +1365,7 @@ class _HomeDayHealthStrip extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
                       color: rowTimeColor,
+                      shadows: nightShadows,
                     ),
                   ),
                 ],
@@ -1346,6 +1388,7 @@ class _HomeDayHealthStrip extends StatelessWidget {
               fontSize: 18,
               fontWeight: FontWeight.w800,
               color: stripHeadingColor,
+              shadows: nightShadows,
               height: 1.2,
             ),
           ),
@@ -1357,6 +1400,7 @@ class _HomeDayHealthStrip extends StatelessWidget {
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: stripEmptyColor,
+                shadows: nightShadows,
                 height: 1.35,
               ),
             )
@@ -2028,9 +2072,11 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
 
         return Container(
           decoration: BoxDecoration(
-            color: AppTheme.card,
+            color: Colors.white.withAlpha(_kHomeBannerAlpha),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFFE8EAEF)),
+            border: Border.all(
+              color: Colors.white.withAlpha(_kHomeBannerBorderAlpha),
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withAlpha(10),
@@ -2552,12 +2598,14 @@ class _BabyBannerForecastCard extends StatelessWidget {
       builder: (context, c) {
         final narrow = c.maxWidth < 420;
         return Material(
-          color: Color.lerp(Colors.white, accent, 0.06),
+          color: Colors.white.withAlpha(_kHomeBannerAlpha),
           elevation: 2,
           shadowColor: accent.withAlpha(26),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
-            side: BorderSide(color: accent.withAlpha(55)),
+            side: BorderSide(
+              color: Colors.white.withAlpha(_kHomeBannerBorderAlpha),
+            ),
           ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
@@ -2681,11 +2729,12 @@ class _BabyBannerTimelineCard extends StatelessWidget {
         ? const EdgeInsets.fromLTRB(10, 10, 10, 10)
         : const EdgeInsets.fromLTRB(12, 12, 12, 12);
     return Material(
-      color: softBg,
+      color: Colors.white.withAlpha(_kHomeBannerAlpha),
       elevation: 0,
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
-          side: BorderSide(color: accent.withAlpha(28))),
+          side: BorderSide(
+              color: Colors.white.withAlpha(_kHomeBannerBorderAlpha))),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -2981,7 +3030,7 @@ class _ShortcutCard extends StatelessWidget {
           ),
           padding: const EdgeInsets.all(1.6),
           child: Material(
-            color: AppTheme.card,
+            color: Colors.white.withAlpha(_kHomeBannerAlpha),
             borderRadius: BorderRadius.circular(24.6),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
@@ -3030,7 +3079,7 @@ class _ShortcutCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     softWrap: true,
                     style: TextStyle(
-                      color: color.withAlpha(210),
+                      color: AppTheme.textSecondary,
                       fontWeight: FontWeight.w800,
                       fontSize: subSize * 0.97,
                       height: 1.1,
@@ -3065,9 +3114,7 @@ class _TodaySummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final baseTint = softBg ?? Color.lerp(AppTheme.background, color, 0.06)!;
-    // Fundo único e suave — sem gradiente diagonal (evita aspecto de “reflexo” / brilho).
-    final fill = Color.lerp(baseTint, AppTheme.card, 0.48)!;
+    final fill = Colors.white.withAlpha(_kHomeBannerAlpha);
     final mutedIcon = Color.lerp(AppTheme.textSecondary, color, 0.36)!;
     final iconBg = Color.lerp(fill, AppTheme.background, 0.55)!;
     final iconRadius = portalSp(context, 14).clamp(12.0, 16.0);
@@ -3098,7 +3145,9 @@ class _TodaySummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: fill,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE4E7EF)),
+        border: Border.all(
+          color: Colors.white.withAlpha(_kHomeBannerBorderAlpha),
+        ),
         boxShadow: [
           BoxShadow(
               color: Colors.black.withAlpha(10),
@@ -3170,9 +3219,11 @@ class _HomeDailyTipCard extends StatelessWidget {
         Container(
           padding: EdgeInsets.fromLTRB(12, 12, padR, 12),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFF4CC),
+            color: Colors.white.withAlpha(_kHomeBannerAlpha),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFFFD88A)),
+            border: Border.all(
+              color: Colors.white.withAlpha(_kHomeBannerBorderAlpha),
+            ),
             boxShadow: [
               BoxShadow(
                   color: AppTheme.yellow.withAlpha(48),
@@ -3345,12 +3396,14 @@ class _HomeConsultationInlineAlertState
     final red = Colors.red.shade700;
     final closeTip = MaterialLocalizations.of(context).closeButtonTooltip;
     return Material(
-      color: Color.lerp(Colors.white, Colors.red, 0.06),
+      color: Colors.white.withAlpha(_kHomeBannerAlpha),
       elevation: 2,
       shadowColor: Colors.red.withAlpha(35),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: Colors.red.withAlpha(55)),
+        side: BorderSide(
+          color: Colors.white.withAlpha(_kHomeBannerBorderAlpha),
+        ),
       ),
       clipBehavior: Clip.antiAlias,
       child: Row(
@@ -3543,104 +3596,6 @@ class _HomeDailyTipLoaderState extends State<_HomeDailyTipLoader> {
           onDismiss: bid == null ? null : _onDismissTip,
         );
       },
-    );
-  }
-}
-
-class _HomeMotivationBanner extends StatelessWidget {
-  final String text;
-  final String linkLabel;
-  final VoidCallback onOpenMemories;
-
-  const _HomeMotivationBanner({
-    required this.text,
-    required this.linkLabel,
-    required this.onOpenMemories,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: linkLabel,
-      child: Material(
-        color:
-            Color.lerp(const Color(0xFFF5F0FC), AppTheme.primaryPurple, 0.04)!,
-        elevation: 3,
-        shadowColor: AppTheme.primaryPurple.withAlpha(48),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(22),
-          side: BorderSide(color: AppTheme.primaryPurple.withAlpha(40)),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onOpenMemories,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(230),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.favorite_rounded,
-                      color: AppTheme.primaryPurple, size: 24),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        text,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: portalSp(context, 13),
-                          height: 1.35,
-                          color: AppTheme.primaryPurple.withAlpha(245),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Text(
-                            linkLabel,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: portalSp(context, 12),
-                              color: AppTheme.primaryPurple,
-                              decoration: TextDecoration.underline,
-                              decorationColor:
-                                  AppTheme.primaryPurple.withAlpha(200),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(Icons.arrow_forward_rounded,
-                              size: 16,
-                              color: AppTheme.primaryPurple.withAlpha(230)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(
-                    'assets/sleep/baby_sleep.png',
-                    height: 68,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) =>
-                        const SizedBox(width: 8, height: 68),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

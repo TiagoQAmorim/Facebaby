@@ -33,22 +33,37 @@ class WeeklyPhotoSpotlightVisibility {
   static bool shouldShowForBanner(Map<String, dynamic>? d, DateTime now) {
     if (d == null) return false;
     final statusRaw = d['status'];
-    final statusStr = statusRaw == null ? null : '$statusRaw'.trim().toLowerCase();
-    if (statusStr != null && statusStr.isNotEmpty && statusStr != 'active') return false;
+    final statusStr =
+        statusRaw == null ? null : '$statusRaw'.trim().toLowerCase();
+    if (statusStr != null && statusStr.isNotEmpty && statusStr != 'active') {
+      return false;
+    }
 
     if (!_hasMinimumWinnerData(d)) return false;
 
-    final bypassServer = d['bypass_display_window'] == true || d['bypassDisplayWindow'] == true;
-    if (bypassServer || WeeklyPhotoSpotlightConfig.kEmergencyBypassDisplayWindow) return true;
+    final bypassServer =
+        d['bypass_display_window'] == true || d['bypassDisplayWindow'] == true;
+    if (bypassServer ||
+        WeeklyPhotoSpotlightConfig.kEmergencyBypassDisplayWindow) {
+      return true;
+    }
 
     final drawAt = tryFirestoreInstant(d['draw_at'] ?? d['drawAt']);
     final until = tryFirestoreInstant(d['display_until'] ?? d['displayUntil']);
     if (drawAt == null || until == null) return false;
-    return WeeklyPhotoSchedule.isWithinSpotlightDisplay(
+    if (WeeklyPhotoSchedule.isWithinSpotlightDisplay(
       now: now,
       drawAt: drawAt,
       displayUntil: until,
-    );
+    )) {
+      return true;
+    }
+
+    // Defesa contra `display_until` curto/adiantado no backend: se o destaque
+    // ativo pertence à semana atual, mantém o banner até virar segunda-feira.
+    final weekStart = WeeklyPhotoSchedule.mondayOfIsoWeekContaining(drawAt);
+    final weekEnd = weekStart.add(const Duration(days: 7));
+    return !now.isBefore(weekStart) && now.isBefore(weekEnd);
   }
 
   /// Campo Firestore / JSON que pode vir como [String] ou outro tipo.
@@ -67,10 +82,12 @@ class WeeklyPhotoSpotlightVisibility {
         _nonEmptyStringField(d['winnerPhotoUrl']);
     if (photoUrl == null) return false;
     if (!photoUrl.toLowerCase().startsWith('https://')) return false;
-    final allowStockUrl = WeeklyPhotoSpotlightConfig.kAllowStockSpotlightPhotoUrls ||
-        d['allow_stock_winner_photo'] == true ||
-        d['allowStockWinnerPhoto'] == true;
-    if (!allowStockUrl && WeeklyPhotoSpotlightUrls.looksLikeDemoOrPlaceholder(photoUrl)) {
+    final allowStockUrl =
+        WeeklyPhotoSpotlightConfig.kAllowStockSpotlightPhotoUrls ||
+            d['allow_stock_winner_photo'] == true ||
+            d['allowStockWinnerPhoto'] == true;
+    if (!allowStockUrl &&
+        WeeklyPhotoSpotlightUrls.looksLikeDemoOrPlaceholder(photoUrl)) {
       return false;
     }
 

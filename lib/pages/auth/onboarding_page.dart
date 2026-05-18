@@ -65,6 +65,7 @@ class _OnboardingAssets {
 }
 
 const _onboardingDarkBlue = Color(0xFF163B68);
+
 /// Azul dos títulos da primeira página (welcome).
 const _welcomeHeadlineBlue = Color(0xFF1976D2);
 
@@ -131,7 +132,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
       };
 
   double _questionIllustrationHeight(int step) => switch (step) {
-        7 || 9 || 10 || 11 || 12 || 14 =>
+        7 ||
+        9 ||
+        10 ||
+        11 ||
+        12 ||
+        14 =>
           (MediaQuery.sizeOf(context).height * 0.24)
               .clamp(150.0, 230.0)
               .toDouble(),
@@ -501,8 +507,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
               const SizedBox(height: 20),
               _ChoiceCard(
                 selected: hasBabyPhoto,
-                title:
-                    hasBabyPhoto ? s.regBabyPhotoChange : s.regBabyPhotoAdd,
+                title: hasBabyPhoto ? s.regBabyPhotoChange : s.regBabyPhotoAdd,
                 icon: Icons.add_a_photo_outlined,
                 onTap: () async {
                   final b64 = await pickImageAsB64(
@@ -776,7 +781,14 @@ class _OnboardingPageState extends State<OnboardingPage> {
               _OptionTile(
                 label: s.onb('MessagePrefBoth'),
                 selected: _draft.familyMessageChoice == 'both',
-                onTap: () => _save(_draft.copyWith(familyMessageChoice: 'both')),
+                onTap: () =>
+                    _save(_draft.copyWith(familyMessageChoice: 'both')),
+              ),
+              _OptionTile(
+                label: s.onb('MessagePrefNone'),
+                selected: _draft.familyMessageChoice == 'none',
+                onTap: () =>
+                    _save(_draft.copyWith(familyMessageChoice: 'none')),
               ),
             ],
           ),
@@ -1049,7 +1061,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           '[Dev] Família',
                           style: TextStyle(
                             fontSize: 11,
@@ -1089,8 +1101,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
           child: Center(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final band =
-                    (constraints.maxWidth * 0.82).clamp(200.0, 296.0);
+                final band = (constraints.maxWidth * 0.82).clamp(200.0, 296.0);
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1313,8 +1324,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
         _ProgressHeader(value: 1, onBack: () => _setStep(_totalSteps - 1)),
         Expanded(
           child: SingleChildScrollView(
-            keyboardDismissBehavior:
-                ScrollViewKeyboardDismissBehavior.onDrag,
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: _OnboardingCard(
               child: Column(
@@ -1357,8 +1367,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     icon: Image.asset('assets/google_g_logo.png',
                         width: 20,
                         height: 20,
-                        errorBuilder: (_, __, ___) =>
-                            const Icon(Icons.login)),
+                        errorBuilder: (_, __, ___) => const Icon(Icons.login)),
                     label: Text(s.onb('SignInGoogle')),
                   ),
                   if (isIOSDevice) ...[
@@ -1556,7 +1565,8 @@ class _TransparentAsset extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget errorIcon(BuildContext context, Object error, StackTrace? stackTrace) =>
+    Widget errorIcon(
+            BuildContext context, Object error, StackTrace? stackTrace) =>
         Icon(
           fallbackIcon,
           size: height * 0.72,

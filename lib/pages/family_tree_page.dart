@@ -1,5 +1,4 @@
 import 'dart:async' show unawaited;
-
 import 'package:flutter/material.dart';
 
 import '../controllers/current_baby_controller.dart';
@@ -14,6 +13,7 @@ import '../services/family_zodiac_content_service.dart'
 import '../services/premium/feature_access.dart';
 import '../services/premium/premium_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/portal_time_of_day.dart';
 import '../widgets/family_tree_stage.dart';
 import 'mother_profile_page.dart';
 import 'premium/premium_paywall_screen.dart';
@@ -64,8 +64,7 @@ class _FamilyTreePageState extends State<FamilyTreePage> {
   }
 
   void _syncMessagePrefs() {
-    _messagePrefs =
-        FamilyMessagePrefs.fromMother(_current.currentMotherRow);
+    _messagePrefs = FamilyMessagePrefs.fromMother(_current.currentMotherRow);
   }
 
   void _loadZodiacContentIfPremium() {
@@ -179,7 +178,8 @@ class _FamilyTreePageState extends State<FamilyTreePage> {
             .latestDiaperChangedAtOnCalendarDay(babyId: id, calendarDay: day),
         AppDatabase.instance
             .latestCompletedSleepEndOnCalendarDay(babyId: id, calendarDay: day),
-        AppDatabase.instance.dailySummaryForHomePicker(babyId: id, calendarDay: day),
+        AppDatabase.instance
+            .dailySummaryForHomePicker(babyId: id, calendarDay: day),
       ]);
       if (!mounted) return;
       setState(() {
@@ -239,99 +239,201 @@ class _FamilyTreePageState extends State<FamilyTreePage> {
         mother != null && motherProfileFatherRegistered(mother);
     final zodiacUnlocked = FeatureAccess.canViewFamilyZodiac;
 
+    final bottomPadding = MediaQuery.of(context).padding.bottom + 140;
+    final now = DateTime.now();
+    final atNight = PortalTimeOfDay.isNight(now);
+    final fallback =
+        atNight ? const Color(0xFF152238) : const Color(0xFFFFEEF7);
+    final veil =
+        atNight ? Colors.white.withAlpha(55) : Colors.white.withAlpha(105);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF7FB),
-      appBar: AppBar(
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        foregroundColor: AppTheme.textPrimary,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => Navigator.maybePop(context),
-        ),
-        title: Text(
-          s.familyScreenTitle,
-          style: const TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 20,
+      backgroundColor: fallback,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            PortalTimeOfDay.backgroundAsset(now),
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
+            gaplessPlayback: true,
           ),
-        ),
-        actions: [
-          if (motherId != null)
-            IconButton(
-              tooltip: s.settingsTitle,
-              icon: const Icon(Icons.settings_outlined),
-              onPressed: () =>
-                  _openMyProfile(MotherProfileInitialTab.mother),
+          ColoredBox(color: veil),
+          SafeArea(
+            child: ListenableBuilder(
+              listenable: PremiumService.instance,
+              builder: (context, _) {
+                return RefreshIndicator(
+                  onRefresh: _refresh,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(20, 10, 20, bottomPadding),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _FamilyPageHeader(
+                          title: s.familyScreenTitle,
+                          settingsTooltip: s.settingsTitle,
+                          onBack: () => Navigator.maybePop(context),
+                          onSettings: motherId == null
+                              ? null
+                              : () => _openMyProfile(
+                                    MotherProfileInitialTab.mother,
+                                  ),
+                        ),
+                        const SizedBox(height: 8),
+                        if (mother == null)
+                          Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Text(
+                              s.motherProfileNoData,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          )
+                        else
+                          FamilyTreeStage(
+                            s: s,
+                            zodiacUnlocked: zodiacUnlocked,
+                            zodiacReady: _zodiacContentReady,
+                            showChristianMessages: _messagePrefs.showChristian,
+                            showHoroscopeMessages: _messagePrefs.showHoroscope,
+                            christianReady: _christianContentReady,
+                            mother: mother,
+                            babies: _babies,
+                            heightCmByBabyId: _heightByBabyId,
+                            fatherRegistered: fatherRegistered,
+                            initialTabIndex: _initialTabIndex(
+                              fatherRegistered: fatherRegistered,
+                              currentBabyId: babyId,
+                            ),
+                            verticalMemberTabs: false,
+                            onEditMother: () =>
+                                _openMyProfile(MotherProfileInitialTab.mother),
+                            onEditFather: () =>
+                                _openMyProfile(MotherProfileInitialTab.father),
+                            onEditBaby: (id) async {
+                              await _current.setCurrentBabyId(id);
+                              if (!mounted) return;
+                              await _openMyProfile(
+                                MotherProfileInitialTab.babies,
+                              );
+                            },
+                            premiumZodiacLockedMessage:
+                                s.familyPremiumZodiacLocked,
+                            premiumUnlockCta: s.familyPremiumUnlockCta,
+                            onPremiumTap: () => openPremiumPaywall(context),
+                            todaySummary: _todaySummary,
+                            summaryDay: _selectedSummaryDay,
+                            summaryDayLabel:
+                                _fmtCalendarDate(_selectedSummaryDay),
+                            isTodaySummaryDay: _isTodaySummaryDay,
+                            onPickSummaryDay: _pickSummaryDay,
+                            onTodaySummaryDay: _goToTodaySummary,
+                            lastFeedEndedAt: _lastFeedEndedAt,
+                            lastDiaperChangedAt: _lastDiaperChangedAt,
+                            lastSleepEndedAt: _lastSleepEndedAt,
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
+          ),
         ],
       ),
-      body: ListenableBuilder(
-        listenable: PremiumService.instance,
-        builder: (context, _) {
-          return RefreshIndicator(
-            onRefresh: _refresh,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-              children: [
-                if (mother == null)
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(
-                      s.motherProfileNoData,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  )
-                else
-                  FamilyTreeStage(
-                    s: s,
-                    zodiacUnlocked: zodiacUnlocked,
-                    zodiacReady: _zodiacContentReady,
-                    showChristianMessages: _messagePrefs.showChristian,
-                    showHoroscopeMessages: _messagePrefs.showHoroscope,
-                    christianReady: _christianContentReady,
-                    mother: mother,
-                    babies: _babies,
-                    heightCmByBabyId: _heightByBabyId,
-                    fatherRegistered: fatherRegistered,
-                    initialTabIndex: _initialTabIndex(
-                      fatherRegistered: fatherRegistered,
-                      currentBabyId: babyId,
-                    ),
-                    verticalMemberTabs: false,
-                    onEditMother: () =>
-                        _openMyProfile(MotherProfileInitialTab.mother),
-                    onEditFather: () =>
-                        _openMyProfile(MotherProfileInitialTab.father),
-                    onEditBaby: (id) async {
-                      await _current.setCurrentBabyId(id);
-                      if (!mounted) return;
-                      await _openMyProfile(MotherProfileInitialTab.babies);
-                    },
-                    premiumZodiacLockedMessage: s.familyPremiumZodiacLocked,
-                    premiumUnlockCta: s.familyPremiumUnlockCta,
-                    onPremiumTap: () => openPremiumPaywall(context),
-                    todaySummary: _todaySummary,
-                    summaryDay: _selectedSummaryDay,
-                    summaryDayLabel: _fmtCalendarDate(_selectedSummaryDay),
-                    isTodaySummaryDay: _isTodaySummaryDay,
-                    onPickSummaryDay: _pickSummaryDay,
-                    onTodaySummaryDay: _goToTodaySummary,
-                    lastFeedEndedAt: _lastFeedEndedAt,
-                    lastDiaperChangedAt: _lastDiaperChangedAt,
-                    lastSleepEndedAt: _lastSleepEndedAt,
-                  ),
-              ],
+    );
+  }
+}
+
+class _FamilyPageHeader extends StatelessWidget {
+  const _FamilyPageHeader({
+    required this.title,
+    required this.settingsTooltip,
+    required this.onBack,
+    this.onSettings,
+  });
+
+  final String title;
+  final String settingsTooltip;
+  final VoidCallback onBack;
+  final VoidCallback? onSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    final night = PortalTimeOfDay.isNight(DateTime.now());
+    return SizedBox(
+      height: 56,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _HeaderIconButton(
+              icon: Icons.arrow_back_ios_new_rounded,
+              onPressed: onBack,
             ),
-          );
-        },
+          ),
+          Center(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                color: night
+                    ? PortalTimeOfDay.nightOutlinedTextColor
+                    : AppTheme.textPrimary,
+                shadows: night ? PortalTimeOfDay.nightTextOutlineShadows : null,
+                height: 1.05,
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: onSettings == null
+                ? const SizedBox(width: 42, height: 42)
+                : _HeaderIconButton(
+                    icon: Icons.settings_outlined,
+                    tooltip: settingsTooltip,
+                    onPressed: onSettings!,
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeaderIconButton extends StatelessWidget {
+  const _HeaderIconButton({
+    required this.icon,
+    required this.onPressed,
+    this.tooltip,
+  });
+
+  final IconData icon;
+  final VoidCallback onPressed;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 42,
+      height: 42,
+      child: IconButton(
+        tooltip: tooltip,
+        padding: EdgeInsets.zero,
+        iconSize: 26,
+        color: AppTheme.textPrimary,
+        icon: Icon(icon),
+        onPressed: onPressed,
       ),
     );
   }

@@ -8,18 +8,19 @@ import '../utils/zodiac_element.dart';
 import '../utils/zodiac_keys.dart';
 
 const Color _kHubPink = Color(0xFFE84D7A);
-const Color _kHubPinkSoft = Color(0xFFFFE5EE);
 const Color _kHubInk = Color(0xFF2B2233);
 const Color _kHubMuted = Color(0xFF7A7080);
+const int _kFamilyBannerAlpha = 142;
+const int _kFamilyBannerBorderAlpha = 92;
 
 String familyHubFmtHm(DateTime d) {
   final l = d.toLocal();
   return '${l.hour.toString().padLeft(2, '0')}:${l.minute.toString().padLeft(2, '0')}';
 }
 
-/// Faixa Mamãe · ♥ · Bebê (grande) · ♥ · Papai.
-class FamilyHubAvatarRibbon extends StatelessWidget {
-  const FamilyHubAvatarRibbon({
+/// Seletor organico Mamae, bebe e papai.
+class FamilyRelationshipSelector extends StatelessWidget {
+  const FamilyRelationshipSelector({
     super.key,
     required this.motherLabel,
     required this.motherAvatar,
@@ -50,229 +51,180 @@ class FamilyHubAvatarRibbon extends StatelessWidget {
   final bool fatherSelected;
   final VoidCallback? onFather;
 
-  static const _heart =
-      Icon(Icons.favorite_rounded, size: 16, color: Color(0xFFFF7AA8));
-
   @override
   Widget build(BuildContext context) {
     final hasFather = fatherAvatar != null && onFather != null;
 
-    Widget personNode({
+    Widget adultNode({
       required Widget avatar,
       required String label,
       required bool selected,
       required VoidCallback onTap,
-      required bool isBaby,
     }) {
-      final baseScale = isBaby ? 0.88 : 0.54;
-      final selectedScale = isBaby ? 1.16 : 1.5;
-      return AnimatedScale(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        scale: selected ? selectedScale : 1,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(999),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Stack(
-                  clipBehavior: Clip.none,
-                  alignment: Alignment.topCenter,
-                  children: [
-                    if (isBaby)
-                      Positioned(
-                        top: -8,
-                        child: Image.asset(
-                          'assets/weekly_photo/crown.png',
-                          width: selected ? 30 : 24,
-                          height: selected ? 30 : 24,
-                          errorBuilder: (_, __, ___) => Icon(
-                            Icons.workspace_premium_rounded,
-                            size: selected ? 26 : 22,
-                            color: Colors.amber.shade600,
-                          ),
-                        ),
-                      ),
-                    Padding(
-                      padding: EdgeInsets.only(top: isBaby ? 10 : 0),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 220),
-                        padding: EdgeInsets.all(selected ? 4 : 2.5),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                          gradient: isBaby
-                              ? const LinearGradient(
-                                  colors: [
-                                    Color(0xFFFFA8CC),
-                                    Color(0xFFFF6FA8),
-                                  ],
-                                )
-                              : null,
-                          border: Border.all(
-                            color: selected ? _kHubPink : Colors.white,
-                            width: selected ? 3 : 2,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: (selected ? _kHubPink : Colors.black)
-                                  .withAlpha(selected ? 70 : 20),
-                              blurRadius: selected ? 18 : 10,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: Transform.scale(
-                          scale: baseScale,
-                          alignment: Alignment.center,
-                          child: avatar,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 84),
-                  child: Text(
-                    label.trim().isEmpty ? '—' : label.trim(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: selected ? 12 : 11,
-                      fontWeight: FontWeight.w900,
-                      color: selected ? _kHubPink : _kHubMuted,
-                      height: 1.05,
-                    ),
-                  ),
+      final outerSize = selected ? 112.0 : 86.0;
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 180),
+          opacity: selected ? 1 : 0.9,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: outerSize,
+            height: outerSize,
+            padding: EdgeInsets.all(selected ? 4 : 3),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(selected ? 252 : 235),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: selected ? _kHubPink.withAlpha(210) : Colors.white,
+                width: selected ? 3 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(selected ? 38 : 14),
+                  blurRadius: selected ? 22 : 9,
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
+            clipBehavior: Clip.antiAlias,
+            child: FittedBox(fit: BoxFit.cover, child: avatar),
           ),
         ),
       );
     }
 
-    List<Widget> nodes(double w) {
-      final left = (w * 0.06).clamp(0.0, 42.0);
-      final center = ((w - 104) / 2).clamp(74.0, w - 178);
-      final right = (w - 108 - left).clamp(center + 58, w - 92);
-      final items = <({bool selected, Widget child})>[
-        (
-          selected: motherSelected,
-          child: Positioned(
-            left: left,
-            top: 18,
-            width: 104,
-            child: personNode(
+    Widget babyNode() {
+      final outerSize = babySelected ? 132.0 : 108.0;
+      return InkWell(
+        onTap: onBaby,
+        borderRadius: BorderRadius.circular(999),
+        child: SizedBox(
+          width: 148,
+          height: 144,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.topCenter,
+            children: [
+              Positioned(
+                top: babySelected ? 0 : 10,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: outerSize,
+                  height: outerSize,
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withAlpha(248),
+                    border: Border.all(
+                      color: babySelected ? _kHubPink : Colors.white,
+                      width: babySelected ? 3 : 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _kHubPink.withAlpha(babySelected ? 90 : 38),
+                        blurRadius: babySelected ? 26 : 12,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: FittedBox(fit: BoxFit.cover, child: babyAvatar),
+                ),
+              ),
+              Positioned(
+                top: babySelected ? -4 : 7,
+                left: babySelected ? 18 : 25,
+                child: Image.asset(
+                  'assets/weekly_photo/crown.png',
+                  width: 28,
+                  height: 28,
+                  errorBuilder: (_, __, ___) => Icon(
+                    Icons.workspace_premium_rounded,
+                    size: 28,
+                    color: Colors.amber.shade600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 148,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.bottomCenter,
+        children: [
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 70,
+            height: 2,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(999),
+                gradient: LinearGradient(
+                  colors: [
+                    _kHubPink.withAlpha(0),
+                    _kHubPink.withAlpha(110),
+                    _kHubPink.withAlpha(0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 2,
+            bottom: 8,
+            child: adultNode(
               avatar: motherAvatar,
               label: motherLabel,
               selected: motherSelected,
               onTap: onMother,
-              isBaby: false,
             ),
-          )
-        ),
-        (
-          selected: babySelected,
-          child: Positioned(
-            left: center,
-            top: 2,
-            width: 104,
-            child: personNode(
-              avatar: babyAvatar,
-              label: babyLabel,
-              selected: babySelected,
-              onTap: onBaby,
-              isBaby: true,
-            ),
-          )
-        ),
-        if (hasFather)
-          (
-            selected: fatherSelected,
-            child: Positioned(
-              left: right,
-              top: 18,
-              width: 104,
-              child: personNode(
-                avatar: fatherAvatar!,
-                label: fatherLabel ?? '',
-                selected: fatherSelected,
-                onTap: onFather!,
-                isBaby: false,
-              ),
-            )
           ),
-      ];
-      items.sort((a, b) => a.selected == b.selected ? 0 : (a.selected ? 1 : -1));
-      return [for (final item in items) item.child];
-    }
-
-    return LayoutBuilder(
-      builder: (context, c) {
-        final w = c.maxWidth;
-        return SizedBox(
-          height: 140,
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.center,
-            children: [
-              Positioned(
-                left: 16,
-                right: 16,
-                top: 32,
-                height: 52,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(138),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: _kHubPink.withAlpha(70)),
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 52,
-                right: 52,
-                top: 58,
-                child: Container(
-                  height: 2,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(99),
-                    gradient: LinearGradient(
-                      colors: [
-                        _kHubPink.withAlpha(40),
-                        _kHubPink.withAlpha(150),
-                        _kHubPink.withAlpha(40),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                left: w * 0.31,
-                top: 48,
-                child: _heart,
-              ),
-              Positioned(
-                right: w * 0.31,
-                top: 48,
-                child: _heart,
-              ),
-              ...nodes(w),
-            ],
+          Positioned(
+            right: 2,
+            bottom: 8,
+            child: hasFather
+                ? adultNode(
+                    avatar: fatherAvatar!,
+                    label: fatherLabel ?? '',
+                    selected: fatherSelected,
+                    onTap: onFather!,
+                  )
+                : const SizedBox(width: 94, height: 94),
           ),
-        );
-      },
+          Center(child: babyNode()),
+        ],
+      ),
     );
   }
 }
 
-/// Cartão rosa principal do bebê (mock «Família»).
+class FamilyHubAvatarRibbon extends FamilyRelationshipSelector {
+  const FamilyHubAvatarRibbon({
+    super.key,
+    required super.motherLabel,
+    required super.motherAvatar,
+    required super.motherSelected,
+    required super.onMother,
+    required super.babyLabel,
+    required super.babyAvatar,
+    required super.babySelected,
+    required super.onBaby,
+    super.fatherLabel,
+    super.fatherAvatar,
+    super.fatherSelected,
+    super.onFather,
+  });
+}
+
+/// Cartao rosa principal do bebe.
 class FamilyHubBabyHeroCard extends StatelessWidget {
   const FamilyHubBabyHeroCard({
     super.key,
@@ -280,12 +232,16 @@ class FamilyHubBabyHeroCard extends StatelessWidget {
     required this.babyName,
     required this.ageLabel,
     required this.birthDateStr,
-    required this.birthTimeStr,
     required this.weightStr,
     required this.heightStr,
     required this.signDisplayName,
+    required this.showZodiac,
     required this.babyAvatar,
     this.signId,
+    this.heightEstimateTitle,
+    this.heightEstimateBody,
+    this.heightEstimateDescription,
+    this.heightEstimateAsset,
     this.onTap,
   });
 
@@ -293,353 +249,525 @@ class FamilyHubBabyHeroCard extends StatelessWidget {
   final String babyName;
   final String ageLabel;
   final String birthDateStr;
-  final String birthTimeStr;
   final String weightStr;
   final String heightStr;
   final String signDisplayName;
+  final bool showZodiac;
   final Widget babyAvatar;
   final ZodiacId? signId;
+  final String? heightEstimateTitle;
+  final String? heightEstimateBody;
+  final String? heightEstimateDescription;
+  final String? heightEstimateAsset;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final element = signId == null ? null : zodiacElementFor(signId!);
-    final elementName = element == null ? '—' : s.zodiacElementLabel(element);
+    final elementName = element == null ? '?' : s.zodiacElementLabel(element);
 
-    Widget zodiacArt() {
+    Widget zodiacArt(double size) {
       if (signId == null) {
-        return Icon(Icons.auto_awesome_rounded, size: 52, color: AppTheme.primaryPurple.withAlpha(200));
+        return Icon(
+          Icons.auto_awesome_rounded,
+          size: size,
+          color: AppTheme.primaryPurple.withAlpha(210),
+        );
       }
       return Image.asset(
         familyZodiacIconAsset(signId!),
-        width: 56,
-        height: 56,
-        errorBuilder: (_, __, ___) => Icon(Icons.auto_awesome_rounded, size: 52, color: AppTheme.primaryPurple),
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => Icon(
+          Icons.auto_awesome_rounded,
+          size: size,
+          color: AppTheme.primaryPurple,
+        ),
       );
     }
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(26),
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(26),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFFFFF0F5),
-                Color(0xFFFFD6E8),
-                Color(0xFFFFC4DF),
-              ],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: _kHubPink.withAlpha(35),
-                blurRadius: 22,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Stack(
-            clipBehavior: Clip.none,
+    return LayoutBuilder(
+      builder: (context, c) {
+        final compact = c.maxWidth < 380;
+        final hasHeightEstimate =
+            heightEstimateTitle != null && heightEstimateBody != null;
+        final cardHeight = hasHeightEstimate
+            ? (compact ? 248.0 : 266.0)
+            : (compact ? 165.0 : 180.0);
+        final avatarSize =
+            showZodiac ? (compact ? 76.0 : 82.0) : (compact ? 92.0 : 100.0);
+        const nameSize = 23.0;
+        const itemSize = 14.0;
+
+        Widget infoLine(IconData icon, String text) {
+          return Row(
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 14, 10, 14),
-                child: LayoutBuilder(
-                  builder: (context, c) {
-                    final compact = c.maxWidth < 355;
-                    final photoSize = compact ? 78.0 : 90.0;
-                    final sideGap = compact ? 4.0 : 7.0;
-
-                    Widget photo() {
-                      return Stack(
-                        clipBehavior: Clip.none,
-                        alignment: Alignment.bottomLeft,
-                        children: [
-                          Positioned(
-                            left: -10,
-                            top: -12,
-                            child: Image.asset(
-                              'assets/weekly_photo/crown.png',
-                              width: compact ? 38 : 44,
-                              height: compact ? 38 : 44,
-                              errorBuilder: (_, __, ___) => Icon(
-                                Icons.workspace_premium_rounded,
-                                color: Colors.amber.shade700,
-                                size: compact ? 32 : 38,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 3),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withAlpha(28),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
-                            ),
-                            child: ClipOval(
-                              child: SizedBox(
-                                width: photoSize,
-                                height: photoSize,
-                                child: FittedBox(
-                                  fit: BoxFit.cover,
-                                  child: babyAvatar,
-                                ),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            left: -4,
-                            bottom: -2,
-                            child: Image.asset(
-                              'assets/onboarding/cloud_icon.png',
-                              width: compact ? 28 : 32,
-                              height: compact ? 28 : 32,
-                              errorBuilder: (_, __, ___) =>
-                                  const SizedBox.shrink(),
-                            ),
-                          ),
-                        ],
-                      );
-                    }
-
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                babyName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                  color: _kHubPink,
-                                  height: 1.05,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                ageLabel,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: _kHubInk,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              _iconLine(Icons.calendar_today_rounded,
-                                  birthDateStr),
-                              const SizedBox(height: 3),
-                              _iconLine(Icons.schedule_rounded, birthTimeStr),
-                              const SizedBox(height: 3),
-                              _iconLine(
-                                  Icons.monitor_weight_outlined, weightStr),
-                              const SizedBox(height: 3),
-                              _iconLine(Icons.straighten_rounded, heightStr),
-                            ],
-                          ),
-                        ),
-                        SizedBox(width: sideGap),
-                        photo(),
-                        SizedBox(width: sideGap),
-                        SizedBox(
-                          width: compact ? 62 : 72,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                width: compact ? 42 : 48,
-                                height: compact ? 42 : 48,
-                                child: FittedBox(child: zodiacArt()),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                signDisplayName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w900,
-                                  color: _kHubPink,
-                                ),
-                              ),
-                              const SizedBox(height: 1),
-                              Text(
-                                s.familyFieldElement,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: _kHubMuted.withAlpha(240),
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.water_drop_rounded,
-                                    size: 14,
-                                    color: Colors.blue.shade400,
-                                  ),
-                                  const SizedBox(width: 2),
-                                  Flexible(
-                                    child: Text(
-                                      elementName,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w800,
-                                        color: _kHubInk,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+              Icon(icon, size: 17, color: _kHubPink.withAlpha(220)),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: itemSize,
+                    fontWeight: FontWeight.w700,
+                    color: _kHubInk,
+                    height: 1.1,
+                  ),
                 ),
               ),
             ],
+          );
+        }
+
+        Widget photo() {
+          return SizedBox(
+            width: avatarSize + 10,
+            height: avatarSize + 16,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                Positioned(
+                  bottom: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border:
+                          Border.all(color: _kHubPink.withAlpha(170), width: 2),
+                    ),
+                    child: Container(
+                      width: avatarSize,
+                      height: avatarSize,
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(28),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: FittedBox(fit: BoxFit.cover, child: babyAvatar),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 0,
+                  left: 2,
+                  child: Image.asset(
+                    'assets/weekly_photo/crown.png',
+                    width: compact ? 24 : 26,
+                    height: compact ? 24 : 26,
+                    errorBuilder: (_, __, ___) => Icon(
+                      Icons.workspace_premium_rounded,
+                      color: Colors.amber.shade700,
+                      size: compact ? 24 : 26,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        Widget signBlock() {
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 54,
+                height: 54,
+                child: FittedBox(child: zodiacArt(30)),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                signDisplayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: _kHubPink,
+                  height: 1.05,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                elementName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: _kHubMuted.withAlpha(245),
+                  height: 1.05,
+                ),
+              ),
+            ],
+          );
+        }
+
+        return SizedBox(
+          height: cardHeight,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(26),
+              child: Ink(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(26),
+                  color: Colors.white.withAlpha(_kFamilyBannerAlpha),
+                  border: Border.all(
+                      color: Colors.white.withAlpha(_kFamilyBannerBorderAlpha)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _kHubPink.withAlpha(35),
+                      blurRadius: 22,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            flex: 36,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  babyName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: nameSize,
+                                    fontWeight: FontWeight.w900,
+                                    color: _kHubPink,
+                                    height: 1.05,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  ageLabel,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: _kHubInk,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                infoLine(
+                                    Icons.calendar_today_rounded, birthDateStr),
+                                const SizedBox(height: 5),
+                                infoLine(
+                                    Icons.monitor_weight_outlined, weightStr),
+                                const SizedBox(height: 5),
+                                infoLine(Icons.straighten_rounded, heightStr),
+                              ],
+                            ),
+                          ),
+                          if (showZodiac) ...[
+                            Expanded(flex: 34, child: Center(child: photo())),
+                            Expanded(flex: 30, child: signBlock()),
+                          ] else
+                            Expanded(
+                              flex: 58,
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: Transform.translate(
+                                  offset: const Offset(8, 0),
+                                  child: photo(),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    if (hasHeightEstimate) ...[
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          if (heightEstimateAsset != null)
+                            Transform.translate(
+                              offset: const Offset(0, 18),
+                              child: SizedBox(
+                                width: compact ? 108 : 128,
+                                height: compact ? 132 : 152,
+                                child: Image.asset(
+                                  heightEstimateAsset!,
+                                  fit: BoxFit.contain,
+                                  gaplessPlayback: true,
+                                  errorBuilder: (_, __, ___) => Icon(
+                                    Icons.height_rounded,
+                                    size: compact ? 72 : 84,
+                                    color: _kHubPink.withAlpha(230),
+                                  ),
+                                ),
+                              ),
+                            )
+                          else
+                            Icon(Icons.height_rounded,
+                                size: 68, color: _kHubPink.withAlpha(230)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  heightEstimateTitle!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w900,
+                                    color: _kHubInk,
+                                    height: 1.1,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  heightEstimateBody!,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w900,
+                                    color: _kHubPink,
+                                    height: 1.12,
+                                  ),
+                                ),
+                                if (heightEstimateDescription != null) ...[
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    heightEstimateDescription!,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: _kHubMuted.withAlpha(245),
+                                      height: 1.12,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class FamilyHubAdultHeroCard extends StatelessWidget {
+  const FamilyHubAdultHeroCard({
+    super.key,
+    required this.s,
+    required this.roleLabel,
+    required this.name,
+    required this.ageLabel,
+    required this.birthDateStr,
+    required this.heightStr,
+    required this.signDisplayName,
+    required this.showZodiac,
+    required this.avatar,
+    required this.accent,
+    this.signId,
+    this.onTap,
+  });
+
+  final S s;
+  final String roleLabel;
+  final String name;
+  final String ageLabel;
+  final String birthDateStr;
+  final String heightStr;
+  final String signDisplayName;
+  final bool showZodiac;
+  final Widget avatar;
+  final Color accent;
+  final ZodiacId? signId;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget zodiacArt() {
+      if (signId == null) {
+        return Icon(Icons.auto_awesome_rounded, color: accent, size: 30);
+      }
+      return Image.asset(
+        familyZodiacIconAsset(signId!),
+        width: 30,
+        height: 30,
+        errorBuilder: (_, __, ___) =>
+            Icon(Icons.auto_awesome_rounded, color: accent, size: 30),
+      );
+    }
+
+    Widget infoLine(IconData icon, String value) {
+      return Row(
+        children: [
+          Icon(icon, size: 15, color: accent),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              value,
+              maxLines: 1,
+              softWrap: false,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: _kHubInk,
+                height: 1.08,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return SizedBox(
+      height: 150,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              color: Colors.white.withAlpha(_kFamilyBannerAlpha),
+              border: Border.all(
+                  color: Colors.white.withAlpha(_kFamilyBannerBorderAlpha)),
+              boxShadow: [
+                BoxShadow(
+                  color: accent.withAlpha(22),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 82,
+                    height: 82,
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: accent.withAlpha(34),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: FittedBox(fit: BoxFit.cover, child: avatar),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 21,
+                            height: 1.02,
+                            fontWeight: FontWeight.w900,
+                            color: accent,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          showZodiac
+                              ? '$signDisplayName · $roleLabel'
+                              : roleLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            color: _kHubInk,
+                            height: 1.08,
+                          ),
+                        ),
+                        const SizedBox(height: 7),
+                        infoLine(Icons.calendar_month_rounded, ageLabel),
+                        const SizedBox(height: 4),
+                        infoLine(Icons.cake_outlined, birthDateStr),
+                        const SizedBox(height: 4),
+                        infoLine(Icons.straighten_rounded, heightStr),
+                      ],
+                    ),
+                  ),
+                  if (showZodiac) ...[
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 54,
+                      height: 54,
+                      child: FittedBox(child: zodiacArt()),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
         ),
       ),
     );
   }
-
-  static Widget _iconLine(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 14, color: _kHubPink.withAlpha(220)),
-        const SizedBox(width: 5),
-        Expanded(
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w800,
-              color: _kHubInk,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
-/// Linha branca Nascimento · Hora · Signo · Elemento.
-class FamilyHubQuickStatsRow extends StatelessWidget {
-  const FamilyHubQuickStatsRow({
-    super.key,
-    required this.s,
-    required this.birthDateStr,
-    required this.birthTimeStr,
-    required this.signDisplayName,
-    required this.elementLabel,
-  });
-
-  final S s;
-  final String birthDateStr;
-  final String birthTimeStr;
-  final String signDisplayName;
-  final String elementLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    Widget cell(String label, String value) {
-      return Expanded(
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(14),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: _kHubMuted.withAlpha(240),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                  color: _kHubInk,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Row(
-      children: [
-        cell(s.familyQuickLabelBirth, birthDateStr),
-        const SizedBox(width: 8),
-        cell(s.familyQuickLabelTime, birthTimeStr),
-        const SizedBox(width: 8),
-        cell(s.familyFieldSign, signDisplayName),
-        const SizedBox(width: 8),
-        cell(s.familyFieldElement, elementLabel),
-      ],
-    );
-  }
-}
-
-class FamilyHubPremiumGrid extends StatelessWidget {
-  const FamilyHubPremiumGrid({
+class FamilyHubContentCards extends StatelessWidget {
+  const FamilyHubContentCards({
     super.key,
     required this.s,
     required this.horoscopeTitle,
     required this.horoscopeBody,
     required this.bibleTitle,
     required this.bibleBody,
-    required this.zodiacUnlocked,
+    this.bibleReference,
     required this.showHoroscope,
     required this.showChristian,
-    this.onPremiumTap,
+    required this.contentUnlocked,
+    this.signId,
   });
 
   final S s;
@@ -647,145 +775,184 @@ class FamilyHubPremiumGrid extends StatelessWidget {
   final String horoscopeBody;
   final String bibleTitle;
   final String bibleBody;
-  final bool zodiacUnlocked;
+  final String? bibleReference;
   final bool showHoroscope;
   final bool showChristian;
-  final VoidCallback? onPremiumTap;
+  final bool contentUnlocked;
+  final ZodiacId? signId;
 
   @override
   Widget build(BuildContext context) {
     if (!showHoroscope && !showChristian) return const SizedBox.shrink();
 
-    Widget card({
+    final reference = _cleanReference(bibleReference);
+    final verse = _cleanVerseBody(bibleBody, reference);
+    final lockedBody = s.familyPremiumFeatureLockedBody;
+
+    Widget emotionalCard({
       required IconData icon,
-      required Color iconBg,
+      required Color accent,
       required String title,
       required String body,
-      required bool locked,
       String? assetIcon,
+      String? reference,
     }) {
-      return Expanded(
-        child: Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          elevation: 2,
-          shadowColor: Colors.black.withAlpha(22),
-          child: InkWell(
-            onTap: locked ? onPremiumTap : null,
-            borderRadius: BorderRadius.circular(18),
-            child: Stack(
+      final cleanBody =
+          body.trim().isEmpty ? s.familyEntertainmentNote : body.trim();
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white.withAlpha(_kFamilyBannerAlpha),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+              color: Colors.white.withAlpha(_kFamilyBannerBorderAlpha)),
+          boxShadow: [
+            BoxShadow(
+              color: accent.withAlpha(16),
+              blurRadius: 16,
+              offset: const Offset(0, 7),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              color: iconBg,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: assetIcon == null
-                                ? Icon(icon, size: 20, color: Colors.white)
-                                : Image.asset(
-                                    assetIcon,
-                                    width: 24,
-                                    height: 24,
-                                    errorBuilder: (_, __, ___) => Icon(
-                                      icon,
-                                      size: 20,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w900,
-                                color: _kHubInk,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      if (body.isEmpty)
-                        Text(
-                          s.familyPremiumFeatureLockedBody,
-                          style: TextStyle(
-                            fontSize: 12,
-                            height: 1.35,
-                            fontWeight: FontWeight.w600,
-                            color: _kHubMuted.withAlpha(240),
-                          ),
-                        )
-                      else
-                        Text(
-                          body,
-                          maxLines: 6,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            height: 1.38,
-                            fontWeight: FontWeight.w600,
-                            color: _kHubInk.withAlpha(230),
+                SizedBox(
+                  width: 56,
+                  height: 56,
+                  child: assetIcon == null
+                      ? Icon(icon, size: 48, color: accent)
+                      : Image.asset(
+                          assetIcon,
+                          width: 52,
+                          height: 52,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Icon(
+                            icon,
+                            size: 48,
+                            color: accent,
                           ),
                         ),
-                    ],
-                  ),
                 ),
-                if (locked)
-                  Positioned.fill(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(18),
-                      child: Container(
-                        color: Colors.white.withAlpha(175),
-                        alignment: Alignment.center,
-                        child: Icon(Icons.lock_rounded, color: AppTheme.primaryPurple.withAlpha(200), size: 28),
-                      ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: _kHubInk,
+                      height: 1.15,
                     ),
                   ),
+                ),
               ],
             ),
-          ),
+            const SizedBox(height: 9),
+            Text(
+              cleanBody,
+              style: TextStyle(
+                fontSize: 14.5,
+                height: 1.32,
+                fontWeight: FontWeight.w500,
+                color: _kHubInk.withAlpha(224),
+              ),
+            ),
+            if (reference != null && reference.trim().isNotEmpty) ...[
+              const SizedBox(height: 7),
+              Text(
+                reference.trim(),
+                style: TextStyle(
+                  fontSize: 12.5,
+                  height: 1.25,
+                  fontWeight: FontWeight.w800,
+                  color: accent.withAlpha(225),
+                ),
+              ),
+            ],
+          ],
         ),
       );
     }
 
-    final horoscopeLocked = showHoroscope && !zodiacUnlocked;
-    final bibleLocked = showChristian && !zodiacUnlocked;
+    return LayoutBuilder(
+      builder: (context, c) {
+        final wide = c.maxWidth >= 430 && showHoroscope && showChristian;
+        final cards = <Widget>[
+          if (showChristian)
+            emotionalCard(
+              icon: Icons.menu_book_rounded,
+              accent: _kHubPink,
+              assetIcon: familyChristianCrossAsset,
+              title: bibleTitle,
+              body: contentUnlocked ? verse : lockedBody,
+              reference: contentUnlocked ? reference : null,
+            ),
+          if (showHoroscope)
+            emotionalCard(
+              icon: Icons.auto_awesome_rounded,
+              accent: AppTheme.primaryPurple,
+              assetIcon: signId == null ? null : familyZodiacIconAsset(signId!),
+              title: horoscopeTitle,
+              body:
+                  contentUnlocked ? horoscopeBody : s.familyPremiumZodiacLocked,
+            ),
+        ];
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (showHoroscope)
-          card(
-            icon: Icons.auto_awesome_rounded,
-            iconBg: AppTheme.primaryPurple,
-            title: horoscopeTitle,
-            body: horoscopeLocked ? '' : horoscopeBody,
-            locked: horoscopeLocked,
-          ),
-        if (showHoroscope && showChristian) const SizedBox(width: 10),
-        if (showChristian)
-          card(
-            icon: Icons.menu_book_rounded,
-            iconBg: const Color(0xFFFFF3DF),
-            assetIcon: familyChristianCrossAsset,
-            title: bibleTitle,
-            body: bibleLocked ? '' : bibleBody,
-            locked: bibleLocked,
-          ),
-      ],
+        if (wide) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: cards[0]),
+              const SizedBox(width: 12),
+              Expanded(child: cards[1]),
+            ],
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < cards.length; i++) ...[
+              if (i > 0) const SizedBox(height: 12),
+              cards[i],
+            ],
+          ],
+        );
+      },
     );
+  }
+
+  static String? _cleanReference(String? raw) {
+    final trimmed = raw?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    var value = trimmed;
+    const emDash = '\u2014';
+    while (value.startsWith('-') || value.startsWith(emDash)) {
+      value = value.substring(1).trimLeft();
+    }
+    return value;
+  }
+
+  static String _cleanVerseBody(String rawBody, String? reference) {
+    var body = rawBody.trim();
+    final ref = reference?.trim();
+    if (ref == null || ref.isEmpty) return body;
+
+    const emDash = '\u2014';
+    if (body.endsWith(ref)) {
+      body = body.substring(0, body.length - ref.length).trimRight();
+      while (body.endsWith('-') || body.endsWith(emDash)) {
+        body = body.substring(0, body.length - 1).trimRight();
+      }
+    }
+    return body;
   }
 }
 
@@ -839,7 +1006,8 @@ class FamilyHubDailySummaryStrip extends StatelessWidget {
               'assets/weekly_photo/crown.png',
               width: 22,
               height: 22,
-              errorBuilder: (_, __, ___) => Icon(Icons.star_rounded, size: 22, color: Colors.amber.shade600),
+              errorBuilder: (_, __, ___) => Icon(Icons.star_rounded,
+                  size: 22, color: Colors.amber.shade600),
             ),
             const SizedBox(width: 6),
             Text(
@@ -890,7 +1058,7 @@ class FamilyHubDailySummaryStrip extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         LayoutBuilder(
           builder: (context, _) {
             const gap = 10.0;
@@ -915,7 +1083,7 @@ class FamilyHubDailySummaryStrip extends StatelessWidget {
             final cards = <Widget>[
               card(
                 color: AppTheme.primaryPink,
-                softBg: const Color(0xFFFFF0F5),
+                softBg: Colors.white.withAlpha(_kFamilyBannerAlpha),
                 icon: Icons.local_drink_rounded,
                 title: s.familySummaryFeeding,
                 line1: s.familySummaryFeedingsToday(summary.feedings),
@@ -923,7 +1091,7 @@ class FamilyHubDailySummaryStrip extends StatelessWidget {
               ),
               card(
                 color: const Color(0xFF2EB872),
-                softBg: const Color(0xFFEEFAF3),
+                softBg: Colors.white.withAlpha(_kFamilyBannerAlpha),
                 icon: Icons.baby_changing_station_rounded,
                 title: s.familySummaryDiapers,
                 line1: s.familySummaryDiaperChangesCount(summary.diapers),
@@ -931,7 +1099,7 @@ class FamilyHubDailySummaryStrip extends StatelessWidget {
               ),
               card(
                 color: AppTheme.primary,
-                softBg: const Color(0xFFF1EFFF),
+                softBg: Colors.white.withAlpha(_kFamilyBannerAlpha),
                 icon: Icons.nightlight_round,
                 title: s.familySummarySleep,
                 line1: summary.sleep.replaceAll(' ', ''),
@@ -939,7 +1107,7 @@ class FamilyHubDailySummaryStrip extends StatelessWidget {
               ),
               card(
                 color: AppTheme.yellow,
-                softBg: const Color(0xFFFFF8ED),
+                softBg: Colors.white.withAlpha(_kFamilyBannerAlpha),
                 icon: Icons.monitor_weight_outlined,
                 title: s.familySummaryWeight,
                 line1: summary.weight.replaceAll(' ', ''),
@@ -983,12 +1151,13 @@ class FamilyHubDailySummaryStrip extends StatelessWidget {
     required String line2,
   }) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 112),
-      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+      constraints: const BoxConstraints(minHeight: 104, maxHeight: 112),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: softBg,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: color.withAlpha(55)),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+            color: Colors.white.withAlpha(_kFamilyBannerBorderAlpha)),
         boxShadow: [
           BoxShadow(
             color: color.withAlpha(28),
@@ -1000,14 +1169,17 @@ class FamilyHubDailySummaryStrip extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(height: 8),
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 7),
           Text(
             title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w900,
               color: color.withAlpha(255),
+              height: 1.05,
             ),
           ),
           const SizedBox(height: 4),
@@ -1016,21 +1188,22 @@ class FamilyHubDailySummaryStrip extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
+              fontSize: 17,
+              fontWeight: FontWeight.w900,
               color: _kHubInk,
+              height: 1.05,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 3),
           Text(
             line2,
-            maxLines: 2,
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 11.5,
               fontWeight: FontWeight.w700,
               color: _kHubMuted.withAlpha(235),
-              height: 1.2,
+              height: 1.15,
             ),
           ),
         ],
@@ -1060,12 +1233,9 @@ class FamilyHubPremiumBanner extends StatelessWidget {
         child: Ink(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
-            gradient: LinearGradient(
-              colors: [
-                const Color(0xFFF5ECFF),
-                _kHubPinkSoft.withAlpha(240),
-              ],
-            ),
+            color: Colors.white.withAlpha(_kFamilyBannerAlpha),
+            border: Border.all(
+                color: Colors.white.withAlpha(_kFamilyBannerBorderAlpha)),
             boxShadow: [
               BoxShadow(
                 color: AppTheme.primaryPurple.withAlpha(40),
@@ -1075,10 +1245,11 @@ class FamilyHubPremiumBanner extends StatelessWidget {
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-            child: Row(
-              children: [
-                Container(
+            padding: const EdgeInsets.all(18),
+            child: LayoutBuilder(
+              builder: (context, c) {
+                final compact = c.maxWidth < 360;
+                final icon = Container(
                   padding: const EdgeInsets.all(8),
                   decoration: const BoxDecoration(
                     color: Colors.white,
@@ -1088,51 +1259,86 @@ class FamilyHubPremiumBanner extends StatelessWidget {
                     'assets/weekly_photo/crown.png',
                     width: 32,
                     height: 32,
-                    errorBuilder: (_, __, ___) => Icon(Icons.workspace_premium_rounded, color: Colors.amber.shade700),
+                    errorBuilder: (_, __, ___) => Icon(
+                      Icons.workspace_premium_rounded,
+                      color: Colors.amber.shade700,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        s.familyPremiumBannerTitle,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                          color: AppTheme.primaryPurple,
-                          height: 1.15,
-                        ),
+                );
+                final copy = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.familyPremiumBannerTitle,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.primaryPurple,
+                        height: 1.15,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        s.familyPremiumBannerBody,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: _kHubMuted.withAlpha(245),
-                          height: 1.25,
-                        ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      s.familyPremiumBannerBody,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _kHubMuted.withAlpha(245),
+                        height: 1.25,
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
+                    ),
+                  ],
+                );
+                final button = FilledButton(
                   onPressed: onPremiumTap,
                   style: FilledButton.styleFrom(
                     backgroundColor: AppTheme.primaryPurple,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                   child: Text(
-                    '${s.familyPremiumViewPlans} ›',
-                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                    s.familyPremiumViewPlans,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13,
+                    ),
                   ),
-                ),
-              ],
+                );
+
+                if (compact) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          icon,
+                          const SizedBox(width: 12),
+                          Expanded(child: copy),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Align(alignment: Alignment.centerRight, child: button),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    icon,
+                    const SizedBox(width: 12),
+                    Expanded(child: copy),
+                    const SizedBox(width: 12),
+                    button,
+                  ],
+                );
+              },
             ),
           ),
         ),

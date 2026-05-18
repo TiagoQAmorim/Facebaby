@@ -45,6 +45,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   final MockBabyService babyService = MockBabyService();
   final CurrentBabyController currentBaby = CurrentBabyController.instance;
   int selectedIndex = 0;
+  final ValueNotifier<int> _homeRouteDepth = ValueNotifier<int>(0);
+  late final List<_ShellTabRouteObserver> _tabRouteObservers;
   late final VoidCallback _aiMicListener;
   late final VoidCallback _onBabyChangedPopNavigators;
 
@@ -84,6 +86,13 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     };
     HomePrefs.aiMicEnabled.addListener(_aiMicListener);
     ShellNestedNav.selectTab = _goToTab;
+    _tabRouteObservers = List<_ShellTabRouteObserver>.generate(
+      4,
+      (i) => _ShellTabRouteObserver(
+        tabIndex: i,
+        onDepthChanged: _onTabRouteDepthChanged,
+      ),
+    );
 
     _lastBabyIdForNavCleanup = currentBaby.currentBabyId;
     _onBabyChangedPopNavigators = _popAllTabsToRootOnBabySwitch;
@@ -111,6 +120,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       _lastBabyIdForNavCleanup = id;
     }
   }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
@@ -161,6 +171,12 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     });
   }
 
+  void _onTabRouteDepthChanged(int tabIndex, int depth) {
+    if (!mounted) return;
+    if (tabIndex != 0 || _homeRouteDepth.value == depth) return;
+    _homeRouteDepth.value = depth;
+  }
+
   @override
   void dispose() {
     _portalBgTimer?.cancel();
@@ -168,6 +184,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     ShellNestedNav.selectTab = null;
     HomePrefs.aiMicEnabled.removeListener(_aiMicListener);
     currentBaby.removeListener(_onBabyChangedPopNavigators);
+    _homeRouteDepth.dispose();
     aiController.dispose();
     ReminderMonitor.instance.stop();
     super.dispose();
@@ -179,7 +196,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
 
   /// Volta à raiz do separador (única rota `'/'`), para o ícone do nav corresponder ao ecrã visível.
   void _popTabToRoot(int tabIndex) {
-    ShellNestedNav.tabNavigatorKeys[tabIndex].currentState?.popUntil((route) => route.isFirst);
+    ShellNestedNav.tabNavigatorKeys[tabIndex].currentState
+        ?.popUntil((route) => route.isFirst);
   }
 
   void openQuickRegister() {
@@ -203,7 +221,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       if (didPopInner) return;
       if (selectedIndex != 0) {
         final resumeAt = _lastShellResumeAt;
-        if (resumeAt != null && DateTime.now().difference(resumeAt).inMilliseconds < 900) {
+        if (resumeAt != null &&
+            DateTime.now().difference(resumeAt).inMilliseconds < 900) {
           // Evita saltar para Início quando o SO entrega um evento de voltar extra
           // ao fechar a galeria ou o seletor de ficheiros.
           return;
@@ -221,238 +240,253 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     // Envolver o AnimatedBuilder: senão `LoadingScope.of` apanha o scope do AppGate (árvore errada).
+    final atNight = PortalTimeOfDay.isNight(DateTime.now());
+    final bgAsset = PortalTimeOfDay.backgroundAsset(DateTime.now());
+    final fallback =
+        atNight ? const Color(0xFF152238) : const Color(0xFFFFEEF7);
+    final veil =
+        atNight ? Colors.white.withAlpha(55) : Colors.white.withAlpha(105);
+
     return LoadingScope(
       child: AnimatedBuilder(
-      animation: Listenable.merge([
-        aiController,
-        currentBaby,
-        kAppLanguage,
-        HomePrefs.aiMicEnabled,
-        MeasurementUnitsPrefs.length,
-        MeasurementUnitsPrefs.weight,
-        MeasurementUnitsPrefs.liquid,
-        MeasurementUnitsPrefs.temperature,
-      ]),
-      builder: (context, _) {
-        final s = S.of(context);
-        final baby = _babyFromRow(currentBaby.currentBabyRow, s);
-        final bg = AppTheme.backdropTintForSex(baby.sex);
-        final motherName = (currentBaby.currentMotherRow?['name'] as String?)?.trim();
-        final motherPhoto = currentBaby.currentMotherRow?['photo_b64'] as String?;
-        final tabRoots = [
-          HomePage(
-            baby: baby,
-            babyService: babyService,
-            onOpenQuickRegister: openQuickRegister,
-            motherName: (motherName == null || motherName.isEmpty) ? null : motherName,
-            motherPhotoB64: motherPhoto,
-            onPickMotherPhoto: () async {
-              final mid = (currentBaby.currentMotherRow?['id'] as num?)?.toInt();
-              if (mid == null) return;
-              final b64 = await pickImageAsB64(context: context, maxBytes: 2 * 1024 * 1024);
-              if (!context.mounted || b64 == null) return;
-              await LoadingScope.of(context).run(() async {
-                await AppDatabase.instance.updateMotherPhoto(motherId: mid, photoB64: b64);
-                await currentBaby.refresh();
-                // Só conclui quando a foto estiver persistida na nuvem.
-                await ProfileCloudSync.pushMother(mid);
-              }, label: s.loadingMotherPhoto);
-            },
-            onPickBabyPhoto: () async {
-              final bid = (currentBaby.currentBabyRow?['id'] as num?)?.toInt();
-              if (bid == null) return;
-              final b64 = await pickImageAsB64(context: context, maxBytes: 2 * 1024 * 1024);
-              if (!context.mounted || b64 == null) return;
-              await LoadingScope.of(context).run(() async {
-                await AppDatabase.instance.updateBabyPhoto(babyId: bid, photoB64: b64);
-                await currentBaby.refresh();
-                // Só conclui quando a foto estiver persistida na nuvem.
-                await ProfileCloudSync.pushBaby(bid);
-              }, label: s.loadingBabyPhoto);
-            },
-            onPickBaby: () async {
-              final babies = await LoadingScope.of(context).run(
-                () => currentBaby.listBabies(),
-                label: s.loadingBabies,
-              );
-              if (!context.mounted || babies.isEmpty) return;
-              final picked = await showModalBottomSheet<int>(
-                context: context,
-                showDragHandle: true,
-                builder: (context) {
-                  return SafeArea(
-                    child: ListView(
-                      shrinkWrap: true,
-                      children: [
-                        ListTile(
-                          title: Text(s.pickBabyTitle, style: const TextStyle(fontWeight: FontWeight.w900)),
-                        ),
-                        ...babies.map((b) {
-                          final id = (b['id'] as num).toInt();
-                          final name = (b['name'] as String?) ?? '—';
-                          final selected = currentBaby.currentBabyId == id;
-                          return ListTile(
-                            leading: const CircleAvatar(child: Text('👶')),
-                            title: Text(name),
-                            trailing: selected ? const Icon(Icons.check, color: Colors.green) : null,
-                            onTap: () => Navigator.of(context).pop(id),
-                          );
-                        }),
-                      ],
-                    ),
+        animation: Listenable.merge([
+          aiController,
+          currentBaby,
+          kAppLanguage,
+          HomePrefs.aiMicEnabled,
+          MeasurementUnitsPrefs.length,
+          MeasurementUnitsPrefs.weight,
+          MeasurementUnitsPrefs.liquid,
+          MeasurementUnitsPrefs.temperature,
+        ]),
+        child: _StablePortalBackground(
+          asset: bgAsset,
+          fallback: fallback,
+          veil: veil,
+        ),
+        builder: (context, stableBackground) {
+          final s = S.of(context);
+          final baby = _babyFromRow(currentBaby.currentBabyRow, s);
+          final bg = AppTheme.backdropTintForSex(baby.sex);
+          final motherName =
+              (currentBaby.currentMotherRow?['name'] as String?)?.trim();
+          final motherPhoto =
+              currentBaby.currentMotherRow?['photo_b64'] as String?;
+          final tabRoots = [
+            HomePage(
+              baby: baby,
+              babyService: babyService,
+              onOpenQuickRegister: openQuickRegister,
+              motherName: (motherName == null || motherName.isEmpty)
+                  ? null
+                  : motherName,
+              motherPhotoB64: motherPhoto,
+              onPickMotherPhoto: () async {
+                final mid =
+                    (currentBaby.currentMotherRow?['id'] as num?)?.toInt();
+                if (mid == null) return;
+                final b64 = await pickImageAsB64(
+                    context: context, maxBytes: 2 * 1024 * 1024);
+                if (!context.mounted || b64 == null) return;
+                await LoadingScope.of(context).run(() async {
+                  await AppDatabase.instance
+                      .updateMotherPhoto(motherId: mid, photoB64: b64);
+                  await currentBaby.refresh();
+                  // Só conclui quando a foto estiver persistida na nuvem.
+                  await ProfileCloudSync.pushMother(mid);
+                }, label: s.loadingMotherPhoto);
+              },
+              onPickBabyPhoto: () async {
+                final bid =
+                    (currentBaby.currentBabyRow?['id'] as num?)?.toInt();
+                if (bid == null) return;
+                final b64 = await pickImageAsB64(
+                    context: context, maxBytes: 2 * 1024 * 1024);
+                if (!context.mounted || b64 == null) return;
+                await LoadingScope.of(context).run(() async {
+                  await AppDatabase.instance
+                      .updateBabyPhoto(babyId: bid, photoB64: b64);
+                  await currentBaby.refresh();
+                  // Só conclui quando a foto estiver persistida na nuvem.
+                  await ProfileCloudSync.pushBaby(bid);
+                }, label: s.loadingBabyPhoto);
+              },
+              onPickBaby: () async {
+                final babies = await LoadingScope.of(context).run(
+                  () => currentBaby.listBabies(),
+                  label: s.loadingBabies,
+                );
+                if (!context.mounted || babies.isEmpty) return;
+                final picked = await showModalBottomSheet<int>(
+                  context: context,
+                  showDragHandle: true,
+                  builder: (context) {
+                    return SafeArea(
+                      child: ListView(
+                        shrinkWrap: true,
+                        children: [
+                          ListTile(
+                            title: Text(s.pickBabyTitle,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w900)),
+                          ),
+                          ...babies.map((b) {
+                            final id = (b['id'] as num).toInt();
+                            final name = (b['name'] as String?) ?? '—';
+                            final selected = currentBaby.currentBabyId == id;
+                            return ListTile(
+                              leading: const CircleAvatar(child: Text('👶')),
+                              title: Text(name),
+                              trailing: selected
+                                  ? const Icon(Icons.check, color: Colors.green)
+                                  : null,
+                              onTap: () => Navigator.of(context).pop(id),
+                            );
+                          }),
+                        ],
+                      ),
+                    );
+                  },
+                );
+                if (!context.mounted) return;
+                if (picked != null) {
+                  await LoadingScope.of(context).run(
+                    () => currentBaby.setCurrentBabyId(picked),
+                    label: s.switchingBaby,
                   );
-                },
-              );
-              if (!context.mounted) return;
-              if (picked != null) {
-                await LoadingScope.of(context).run(
-                  () => currentBaby.setCurrentBabyId(picked),
-                  label: s.switchingBaby,
-                );
-              }
-            },
-          ),
-          const QuickRegisterPage(),
-          const new_memories.MemoriesPage(),
-          const SettingsPage(),
-        ];
-        Widget tabNavigator(int i) {
-          final key = ShellNestedNav.tabNavigatorKeys[i];
-          return Navigator(
-            key: key,
-            observers: [LoadingNavigatorObserver(key)],
-            initialRoute: '/',
-            onGenerateRoute: (RouteSettings settings) {
-              if (settings.name == '/') {
-                return MaterialPageRoute<void>(
-                  settings: settings,
-                  builder: (_) => tabRoots[i],
-                );
-              }
-              return null;
-            },
-          );
-        }
+                }
+              },
+            ),
+            const QuickRegisterPage(),
+            const new_memories.MemoriesPage(),
+            const SettingsPage(),
+          ];
+          Widget tabNavigator(int i) {
+            final key = ShellNestedNav.tabNavigatorKeys[i];
+            return Navigator(
+              key: key,
+              observers: [
+                LoadingNavigatorObserver(key),
+                _tabRouteObservers[i],
+              ],
+              initialRoute: '/',
+              onGenerateRoute: (RouteSettings settings) {
+                if (settings.name == '/') {
+                  return MaterialPageRoute<void>(
+                    settings: settings,
+                    builder: (_) => tabRoots[i],
+                  );
+                }
+                return null;
+              },
+            );
+          }
 
-        return PopScope(
+          return PopScope(
             canPop: false,
             onPopInvokedWithResult: (didPop, result) {
               if (didPop) return;
               _handleSystemBack();
             },
-            child: Builder(
-            builder: (context) {
-              final atNight = PortalTimeOfDay.isNight(DateTime.now());
-              final nightTextColor =
-                  atNight ? PortalTimeOfDay.nightTextColor : null;
-              final bgAsset = PortalTimeOfDay.backgroundAsset(DateTime.now());
-              final fallback = atNight
-                  ? const Color(0xFF152238)
-                  : const Color(0xFFFFFBF7);
-              final veil = atNight
-                  ? Colors.white.withAlpha(55)
-                  : Colors.white.withAlpha(105);
-              return Stack(
-            fit: StackFit.expand,
-            children: [
-              Positioned.fill(
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    ColoredBox(color: fallback),
-                    Image.asset(
-                      bgAsset,
-                      fit: BoxFit.cover,
-                      alignment: Alignment.topCenter,
-                      gaplessPlayback: true,
-                      errorBuilder: (_, __, ___) => ColoredBox(color: fallback),
-                    ),
-                    ColoredBox(color: veil),
-                  ],
-                ),
-              ),
-              Positioned.fill(
-                child: Scaffold(
-                  backgroundColor: Colors.transparent,
-                  body: SafeArea(
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 900),
-                        child: IndexedStack(
-                          index: selectedIndex,
-                          sizing: StackFit.expand,
-                          children: [
-                            tabNavigator(0),
-                            tabNavigator(1),
-                            tabNavigator(2),
-                            tabNavigator(3),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  bottomNavigationBar: SafeArea(
-                    top: false,
-                    child: Theme(
-                      data: Theme.of(context).copyWith(
-                        navigationBarTheme: Theme.of(context).navigationBarTheme.copyWith(
-                          backgroundColor: AppTheme.navigationBarSurfaceForTint(bg),
-                          labelTextStyle: WidgetStatePropertyAll(
-                            TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: nightTextColor,
-                            ),
-                          ),
-                          iconTheme: nightTextColor == null
-                              ? null
-                              : WidgetStatePropertyAll(
-                                  IconThemeData(color: nightTextColor),
-                                ),
-                        ),
-                      ),
-                      child: NavigationBar(
-                        selectedIndex: selectedIndex,
-                        onDestinationSelected: _onDestinationSelected,
-                        destinations: [
-                          NavigationDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: s.home),
-                          NavigationDestination(
-                            icon: const Icon(Icons.edit_note_outlined),
-                            selectedIcon: const Icon(Icons.edit_note),
-                            label: s.records,
-                          ),
-                          NavigationDestination(icon: const Icon(Icons.favorite_border), selectedIcon: const Icon(Icons.favorite), label: s.memories),
-                          NavigationDestination(icon: const Icon(Icons.menu), label: s.more),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              if (HomePrefs.aiMicEnabled.value)
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned.fill(child: stableBackground!),
                 Positioned.fill(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      bottom: MediaQuery.of(context).padding.bottom + 72,
+                  child: Scaffold(
+                    backgroundColor: Colors.transparent,
+                    body: SafeArea(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 900),
+                          child: IndexedStack(
+                            index: selectedIndex,
+                            sizing: StackFit.expand,
+                            children: [
+                              tabNavigator(0),
+                              tabNavigator(1),
+                              tabNavigator(2),
+                              tabNavigator(3),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: AiButton(state: aiController.state, onTap: aiController.toggle),
+                    bottomNavigationBar: SafeArea(
+                      top: false,
+                      child: ValueListenableBuilder<int>(
+                        valueListenable: _homeRouteDepth,
+                        builder: (context, homeRouteDepth, _) {
+                          final hideHomeActiveState =
+                              selectedIndex == 0 && homeRouteDepth > 0;
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              navigationBarTheme: Theme.of(context)
+                                  .navigationBarTheme
+                                  .copyWith(
+                                    backgroundColor:
+                                        AppTheme.navigationBarSurfaceForTint(
+                                            bg),
+                                    indicatorColor: hideHomeActiveState
+                                        ? Colors.transparent
+                                        : null,
+                                  ),
+                            ),
+                            child: NavigationBar(
+                              selectedIndex: selectedIndex,
+                              onDestinationSelected: _onDestinationSelected,
+                              destinations: [
+                                NavigationDestination(
+                                    icon: const Icon(Icons.home_outlined),
+                                    selectedIcon: Icon(hideHomeActiveState
+                                        ? Icons.home_outlined
+                                        : Icons.home),
+                                    label: s.home),
+                                NavigationDestination(
+                                  icon: const Icon(Icons.edit_note_outlined),
+                                  selectedIcon: const Icon(Icons.edit_note),
+                                  label: s.records,
+                                ),
+                                NavigationDestination(
+                                    icon: const Icon(Icons.favorite_border),
+                                    selectedIcon: const Icon(Icons.favorite),
+                                    label: s.memories),
+                                NavigationDestination(
+                                    icon: const Icon(Icons.menu),
+                                    label: s.more),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),
-              if (aiController.isActive)
-                AiOverlay(
-                  state: aiController.state,
-                  onClose: aiController.close,
-                ),
-              const WeeklyPhotoWinnerCongratsHost(),
-            ],
-              );
-            },
-          ),
-        );
-      },
-    ),
+                if (HomePrefs.aiMicEnabled.value)
+                  Positioned.fill(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        bottom: MediaQuery.of(context).padding.bottom + 72,
+                      ),
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: AiButton(
+                            state: aiController.state,
+                            onTap: aiController.toggle),
+                      ),
+                    ),
+                  ),
+                if (aiController.isActive)
+                  AiOverlay(
+                    state: aiController.state,
+                    onClose: aiController.close,
+                  ),
+                const WeeklyPhotoWinnerCongratsHost(),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -471,13 +505,15 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     }
 
     final name = (row['name'] as String?)?.trim();
-    final sex = ((row['sex'] as String?)?.trim().toUpperCase() == 'M') ? 'M' : 'F';
+    final sex =
+        ((row['sex'] as String?)?.trim().toUpperCase() == 'M') ? 'M' : 'F';
     final birthRaw = row['birth_date'] as String?;
     DateTime? birthDate;
     if (birthRaw != null && birthRaw.isNotEmpty) {
       birthDate = DateTime.tryParse(birthRaw);
     }
-    final age = birthDate == null ? '—' : s.babyAgeLabel(birthDate, DateTime.now());
+    final age =
+        birthDate == null ? '—' : s.babyAgeLabel(birthDate, DateTime.now());
     final weight = (row['weight_kg'] as num?)?.toDouble() ?? 0;
     final height = (row['height_cm'] as num?)?.toDouble() ?? 0;
     final photoB64 = row['photo_b64'] as String?;
@@ -494,6 +530,103 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       photoB64: photoB64,
       photoUrl: photoUrl,
       birthDate: birthDate,
+    );
+  }
+}
+
+class _ShellTabRouteObserver extends NavigatorObserver {
+  _ShellTabRouteObserver({
+    required this.tabIndex,
+    required this.onDepthChanged,
+  });
+
+  final int tabIndex;
+  final void Function(int tabIndex, int depth) onDepthChanged;
+  int _depth = 0;
+
+  void _emit() {
+    final depth = _depth;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      onDepthChanged(tabIndex, depth);
+    });
+  }
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPush(route, previousRoute);
+    if (!route.isFirst) _depth++;
+    _emit();
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPop(route, previousRoute);
+    if (!route.isFirst && _depth > 0) _depth--;
+    _emit();
+  }
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didRemove(route, previousRoute);
+    if (!route.isFirst && _depth > 0) _depth--;
+    _emit();
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
+    _emit();
+  }
+}
+
+class _StablePortalBackground extends StatefulWidget {
+  const _StablePortalBackground({
+    required this.asset,
+    required this.fallback,
+    required this.veil,
+  });
+
+  final String asset;
+  final Color fallback;
+  final Color veil;
+
+  @override
+  State<_StablePortalBackground> createState() =>
+      _StablePortalBackgroundState();
+}
+
+class _StablePortalBackgroundState extends State<_StablePortalBackground> {
+  late AssetImage _image;
+
+  @override
+  void initState() {
+    super.initState();
+    _image = AssetImage(widget.asset);
+  }
+
+  @override
+  void didUpdateWidget(covariant _StablePortalBackground oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.asset != widget.asset) {
+      _image = AssetImage(widget.asset);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ColoredBox(color: widget.fallback),
+        Image(
+          image: _image,
+          fit: BoxFit.cover,
+          alignment: Alignment.topCenter,
+          gaplessPlayback: true,
+          errorBuilder: (_, __, ___) => ColoredBox(color: widget.fallback),
+        ),
+        ColoredBox(color: widget.veil),
+      ],
     );
   }
 }

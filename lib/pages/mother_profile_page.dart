@@ -101,7 +101,8 @@ class _MotherProfilePageState extends State<MotherProfilePage>
     if (mounted) setState(() {});
   }
 
-  Future<void> _editMother(int motherId, MotherProfileMotherFormSection section) async {
+  Future<void> _editMother(
+      int motherId, MotherProfileMotherFormSection section) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => MotherBabyRegisterPage(
@@ -144,7 +145,8 @@ class _MotherProfilePageState extends State<MotherProfilePage>
             ? Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Text(s.motherProfileNoData, textAlign: TextAlign.center),
+                  child:
+                      Text(s.motherProfileNoData, textAlign: TextAlign.center),
                 ),
               )
             : TabBarView(
@@ -153,12 +155,14 @@ class _MotherProfilePageState extends State<MotherProfilePage>
                   _MotherInfoTab(
                     motherRow: mother!,
                     showFatherHeight: !fatherRegistered,
-                    onEdit: () => _editMother(motherId, MotherProfileMotherFormSection.mother),
+                    onEdit: () => _editMother(
+                        motherId, MotherProfileMotherFormSection.mother),
                   ),
                   if (fatherRegistered)
                     _FatherInfoTab(
                       motherRow: mother,
-                      onEdit: () => _editMother(motherId, MotherProfileMotherFormSection.father),
+                      onEdit: () => _editMother(
+                          motherId, MotherProfileMotherFormSection.father),
                     ),
                   _BabiesTab(motherId: motherId),
                 ],
@@ -253,10 +257,7 @@ class _MotherInfoTabState extends State<_MotherInfoTab> {
     if (motherId == null || _savingPrefs) return;
 
     final nextChristian = showChristian ?? _showChristian;
-    var nextHoroscope = showHoroscope ?? _showHoroscope;
-    if (!nextChristian && !nextHoroscope) {
-      nextHoroscope = true;
-    }
+    final nextHoroscope = showHoroscope ?? _showHoroscope;
 
     setState(() {
       _savingPrefs = true;
@@ -285,8 +286,9 @@ class _MotherInfoTabState extends State<_MotherInfoTab> {
     final name = (motherRow['name'] as String?)?.trim();
     final phone = (motherRow['phone'] as String?)?.trim();
     final birthRaw = (motherRow['birth_date'] as String?)?.trim();
-    final birth =
-        birthRaw == null || birthRaw.isEmpty ? null : DateTime.tryParse(birthRaw);
+    final birth = birthRaw == null || birthRaw.isEmpty
+        ? null
+        : DateTime.tryParse(birthRaw);
     final height = (motherRow['height_cm'] as num?)?.toDouble();
     final fatherHeight = (motherRow['father_height_cm'] as num?)?.toDouble();
     final photoB64 = (motherRow['photo_b64'] as String?)?.trim();
@@ -302,8 +304,9 @@ class _MotherInfoTabState extends State<_MotherInfoTab> {
               children: [
                 PhotoAvatar(
                   photoB64: photoB64,
-                  photoUrl:
-                      (photoUrlRaw == null || photoUrlRaw.isEmpty) ? null : photoUrlRaw,
+                  photoUrl: (photoUrlRaw == null || photoUrlRaw.isEmpty)
+                      ? null
+                      : photoUrlRaw,
                   radius: 34,
                   backgroundColor: const Color(0xFFF1F2F6),
                   fallback: const Text('👩', style: TextStyle(fontSize: 26)),
@@ -312,7 +315,8 @@ class _MotherInfoTabState extends State<_MotherInfoTab> {
                 Expanded(
                   child: Text(
                     (name == null || name.isEmpty) ? '—' : name,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w900),
                   ),
                 ),
               ],
@@ -324,7 +328,8 @@ class _MotherInfoTabState extends State<_MotherInfoTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(s.motherProfileSectionInfo,
-                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900, fontSize: 14)),
                 const SizedBox(height: 12),
                 _ProfileInfoLine(
                   label: s.motherProfileFieldPhone,
@@ -341,7 +346,8 @@ class _MotherInfoTabState extends State<_MotherInfoTab> {
                 if (widget.showFatherHeight)
                   _ProfileInfoLine(
                     label: s.motherProfileFieldFatherHeight,
-                    value: MeasurementFormat.length(fatherHeight, decimalsCm: 0),
+                    value:
+                        MeasurementFormat.length(fatherHeight, decimalsCm: 0),
                   ),
               ],
             ),
@@ -353,7 +359,8 @@ class _MotherInfoTabState extends State<_MotherInfoTab> {
               children: [
                 Text(
                   s.profileFamilyMessagesTitle,
-                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w900, fontSize: 14),
                 ),
                 const SizedBox(height: 4),
                 SwitchListTile.adaptive(
@@ -410,8 +417,9 @@ class _FatherInfoTab extends StatelessWidget {
 
     final name = (motherRow['father_name'] as String?)?.trim();
     final birthRaw = (motherRow['father_birth_date'] as String?)?.trim();
-    final birth =
-        birthRaw == null || birthRaw.isEmpty ? null : DateTime.tryParse(birthRaw);
+    final birth = birthRaw == null || birthRaw.isEmpty
+        ? null
+        : DateTime.tryParse(birthRaw);
     final height = (motherRow['father_height_cm'] as num?)?.toDouble();
     final photoB64 = (motherRow['father_photo_b64'] as String?)?.trim();
     final photoUrlRaw = (motherRow['father_photo_url'] as String?)?.trim();
@@ -437,7 +445,8 @@ class _FatherInfoTab extends StatelessWidget {
                 Expanded(
                   child: Text(
                     (name == null || name.isEmpty) ? s.familyRoleFather : name,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w900),
                   ),
                 ),
               ],
@@ -449,7 +458,8 @@ class _FatherInfoTab extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(s.motherProfileSectionInfo,
-                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900, fontSize: 14)),
                 const SizedBox(height: 12),
                 _ProfileInfoLine(
                   label: s.motherProfileFieldFatherName,
@@ -548,14 +558,16 @@ class _BabiesTabState extends State<_BabiesTab> {
         return AlertDialog(
           title: const Text('Deletar bebê'),
           content: Text(
-            'Tem certeza que deseja deletar \"$name\"?\n\n'
+            'Tem certeza que deseja deletar "$name"?\n\n'
             'Isso vai apagar também os registros relacionados (sono, alimentação, fraldas, vacinas, etc.).',
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false), child: Text(s.cancel)),
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(s.cancel)),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF3B30)),
+              style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF3B30)),
               onPressed: () => Navigator.of(ctx).pop(true),
               child: const Text('Deletar'),
             ),
@@ -608,14 +620,16 @@ class _BabiesTabState extends State<_BabiesTab> {
             future: _future,
             builder: (context, snap) {
               if (snap.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                return const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2));
               }
               final list = snap.data ?? const [];
               if (list.isEmpty) {
                 return Center(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
-                    child: Text(s.motherProfileNoBabies, textAlign: TextAlign.center),
+                    child: Text(s.motherProfileNoBabies,
+                        textAlign: TextAlign.center),
                   ),
                 );
               }
@@ -626,7 +640,9 @@ class _BabiesTabState extends State<_BabiesTab> {
                   final b = list[i];
                   final name = (b['name'] as String?)?.trim();
                   final sex =
-                      ((b['sex'] as String?)?.trim().toUpperCase() == 'M') ? 'M' : 'F';
+                      ((b['sex'] as String?)?.trim().toUpperCase() == 'M')
+                          ? 'M'
+                          : 'F';
                   final birthRaw = (b['birth_date'] as String?)?.trim();
                   final birth = birthRaw == null || birthRaw.isEmpty
                       ? null
@@ -645,7 +661,8 @@ class _BabiesTabState extends State<_BabiesTab> {
                         borderRadius: BorderRadius.circular(18),
                         onTap: () => _openEditBaby(b),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
                           child: Row(
                             children: [
                               PhotoAvatar(
@@ -653,8 +670,8 @@ class _BabiesTabState extends State<_BabiesTab> {
                                 photoUrl: photoUrl,
                                 radius: 26,
                                 backgroundColor: bg,
-                                fallback:
-                                    const Text('👶', style: TextStyle(fontSize: 20)),
+                                fallback: const Text('👶',
+                                    style: TextStyle(fontSize: 20)),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -662,15 +679,19 @@ class _BabiesTabState extends State<_BabiesTab> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      (name == null || name.isEmpty) ? '—' : name,
+                                      (name == null || name.isEmpty)
+                                          ? '—'
+                                          : name,
                                       style: const TextStyle(
-                                          fontWeight: FontWeight.w900, fontSize: 15),
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 15),
                                     ),
                                     const SizedBox(height: 3),
                                     Text(
                                       birth == null
                                           ? '—'
-                                          : s.motherProfileBabyBornAt(_fmtDate(birth)),
+                                          : s.motherProfileBabyBornAt(
+                                              _fmtDate(birth)),
                                       style: TextStyle(
                                         color: Colors.black.withAlpha(140),
                                         fontWeight: FontWeight.w700,
