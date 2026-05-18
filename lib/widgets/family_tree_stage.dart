@@ -7,6 +7,7 @@ import '../i18n/app_i18n.dart';
 import '../models/daily_summary.dart';
 import '../services/family_christian_content_service.dart';
 import '../services/family_zodiac_content_service.dart';
+import '../services/premium/feature_access.dart';
 import '../utils/family_zodiac_art.dart';
 import '../utils/family_height_estimate.dart';
 import '../utils/measurement_format.dart';
@@ -31,6 +32,7 @@ class FamilyTreeStage extends StatefulWidget {
     required this.heightCmByBabyId,
     required this.fatherRegistered,
     this.initialTabIndex = 0,
+
     /// Se true, os separadores ficam numa coluna à esquerda; se false, numa linha horizontal.
     this.verticalMemberTabs = false,
     this.onEditMother,
@@ -62,6 +64,7 @@ class FamilyTreeStage extends StatefulWidget {
   final List<Map<String, Object?>> babies;
   final Map<int, double> heightCmByBabyId;
   final bool fatherRegistered;
+
   /// Índice inicial no separador (ex.: bebé actual por defeito).
   final int initialTabIndex;
   final bool verticalMemberTabs;
@@ -266,11 +269,6 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
             (babyMap['height_cm'] as num?)?.toDouble();
     final wKg = (babyMap['weight_kg'] as num?)?.toDouble();
     final birthDateStr = bb == null ? '—' : fmtDate(bb);
-    final birthTimeStr = bb == null
-        ? '--:--'
-        : (bb.hour == 0 && bb.minute == 0)
-            ? '--:--'
-            : familyHubFmtHm(bb.toLocal());
     final weightStr = wKg == null || wKg <= 0
         ? '—'
         : MeasurementFormat.weight(wKg, decimalsKg: 2);
@@ -287,6 +285,30 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
         : (bb != null
             ? s.familyHoroscopeCardTitle(zodiacIdFromDate(bb))
             : s.familyHoroscopeCardTitle(ZodiacId.pisces));
+    final babySex = (babyMap['sex'] as String?)?.trim().toUpperCase();
+    final motherHeightCm = (widget.mother?['height_cm'] as num?)?.toDouble();
+    final fatherHeightCm =
+        (widget.mother?['father_height_cm'] as num?)?.toDouble();
+    final estimatedHeightCm = FamilyHeightEstimate.tryCompute(
+      babySex: babySex,
+      motherHeightCm: motherHeightCm,
+      fatherHeightCm: fatherHeightCm,
+    );
+    final heightEstimateUnlocked = FeatureAccess.canViewFamilyHeightEstimate;
+    final showHeightEstimate = estimatedHeightCm != null && babySex != null;
+    final heightEstimateAsset = babySex == 'F'
+        ? 'assets/family/regua_menina.png'
+        : 'assets/family/regua_menino.png';
+    final heightEstimateBody = estimatedHeightCm == null
+        ? null
+        : heightEstimateUnlocked
+            ? s.familyEstimatedResult(
+                MeasurementFormat.length(estimatedHeightCm, decimalsCm: 0),
+              )
+            : s.familyPremiumHeightLocked;
+    final heightEstimateDescription = heightEstimateUnlocked
+        ? s.familyEstimatedHeightDescription
+        : s.familyPremiumUnlockCta;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -296,27 +318,35 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
           babyName: model.name,
           ageLabel: ageLabel,
           birthDateStr: birthDateStr,
-          birthTimeStr: birthTimeStr,
           weightStr: weightStr,
           heightStr: heightStr,
           signDisplayName: signName,
+          showZodiac: widget.showHoroscopeMessages,
           babyAvatar: model.avatar,
           signId: signId,
+          heightEstimateTitle: showHeightEstimate
+              ? s.familyEstimatedHeightTitle(model.name)
+              : null,
+          heightEstimateBody: heightEstimateBody,
+          heightEstimateDescription:
+              showHeightEstimate ? heightEstimateDescription : null,
+          heightEstimateAsset: showHeightEstimate ? heightEstimateAsset : null,
           onTap: model.onEdit,
         ),
         const SizedBox(height: 14),
-        FamilyHubPremiumGrid(
+        FamilyHubContentCards(
           s: s,
           horoscopeTitle: horoscopeTitle,
           horoscopeBody: model.horoscopePremiumBody,
           bibleTitle: s.familyBibleVerseCardTitle,
           bibleBody: model.christianFreeBody,
-          zodiacUnlocked: widget.zodiacUnlocked,
+          bibleReference: _christianReference(model.role, babyId: babyId),
           showHoroscope: widget.showHoroscopeMessages,
           showChristian: widget.showChristianMessages,
-          onPremiumTap: widget.onPremiumTap,
+          contentUnlocked: widget.zodiacUnlocked,
+          signId: signId,
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
         FamilyHubDailySummaryStrip(
           s: s,
           summary: _hubSummary,
@@ -328,7 +358,74 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
           lastDiaper: widget.lastDiaperChangedAt,
           lastSleep: widget.lastSleepEndedAt,
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
+        FamilyHubPremiumBanner(s: s, onPremiumTap: widget.onPremiumTap),
+      ],
+    );
+  }
+
+  Widget _adultHubDetailColumn(
+    BuildContext context,
+    _CarouselMember member,
+  ) {
+    final s = widget.s;
+    final model = member.model;
+    final mother = widget.mother;
+    final isFather = model.role == FamilyMemberRole.father;
+    final birth = _parseDate(
+      isFather
+          ? (mother?['father_birth_date'] as String?)
+          : (mother?['birth_date'] as String?),
+    );
+    final height = (isFather
+            ? (mother?['father_height_cm'] as num?)
+            : (mother?['height_cm'] as num?))
+        ?.toDouble();
+    final signId =
+        model.signId ?? (birth == null ? null : zodiacIdFromDate(birth));
+    final signName = signId == null ? '—' : s.familyZodiacName(signId);
+    final ageLabel = birth == null
+        ? '—'
+        : s.familyAgeYears(ageInYears(birth, DateTime.now()));
+    final birthDateStr = birth == null ? '—' : fmtDate(birth);
+    final heightStr = height == null || height <= 0
+        ? '—'
+        : MeasurementFormat.length(height, decimalsCm: 0);
+    final horoscopeTitle = signId == null
+        ? model.sectionTitle
+        : s.familyHoroscopeCardTitle(signId);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        FamilyHubAdultHeroCard(
+          s: s,
+          roleLabel: model.badge,
+          name: model.name,
+          ageLabel: ageLabel,
+          birthDateStr: birthDateStr,
+          heightStr: heightStr,
+          signDisplayName: signName,
+          showZodiac: widget.showHoroscopeMessages,
+          avatar: model.avatar,
+          accent: model.badgeColor,
+          signId: signId,
+          onTap: model.onEdit,
+        ),
+        const SizedBox(height: 14),
+        FamilyHubContentCards(
+          s: s,
+          horoscopeTitle: horoscopeTitle,
+          horoscopeBody: model.horoscopePremiumBody,
+          bibleTitle: s.familyBibleVerseCardTitle,
+          bibleBody: model.christianFreeBody,
+          bibleReference: _christianReference(model.role),
+          showHoroscope: widget.showHoroscopeMessages,
+          showChristian: widget.showChristianMessages,
+          contentUnlocked: widget.zodiacUnlocked,
+          signId: signId,
+        ),
+        const SizedBox(height: 16),
         FamilyHubPremiumBanner(s: s, onPremiumTap: widget.onPremiumTap),
       ],
     );
@@ -339,7 +436,6 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
     List<_CarouselMember> members,
     int tabIndex,
   ) {
-    final s = widget.s;
     final motherI = members.indexWhere((m) => m.slot == _slotKeyMother());
     final fatherI = members.indexWhere((m) => m.slot == _slotKeyFather());
     final firstBabyI = members.indexWhere((m) => m.slot.startsWith('baby_'));
@@ -348,7 +444,8 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
         ? current
         : (firstBabyI >= 0 ? members[firstBabyI] : null);
     final babyMap = heroBaby == null ? null : _babyMapFromSlot(heroBaby.slot);
-    final bb = babyMap == null ? null : _parseDate(babyMap['birth_date'] as String?);
+    final bb =
+        babyMap == null ? null : _parseDate(babyMap['birth_date'] as String?);
     final showRibbon = motherI >= 0 && heroBaby != null;
 
     return Column(
@@ -370,16 +467,19 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
             fatherLabel: fatherI >= 0 ? members[fatherI].model.name : null,
             fatherAvatar: fatherI >= 0 ? members[fatherI].model.avatar : null,
             fatherSelected: tabIndex == fatherI,
-            onFather: fatherI >= 0 ? () => setState(() => _selectedIndex = fatherI) : null,
+            onFather: fatherI >= 0
+                ? () => setState(() => _selectedIndex = fatherI)
+                : null,
           ),
-        if (showRibbon) const SizedBox(height: 10),
-        if (heroBaby != null && babyMap != null && current.model.role == FamilyMemberRole.baby)
+        if (showRibbon) const SizedBox(height: 14),
+        if (heroBaby != null &&
+            babyMap != null &&
+            current.model.role == FamilyMemberRole.baby)
           _babyHubDetailColumn(context, heroBaby, babyMap, bb)
-        else if (heroBaby != null && babyMap != null && current.model.role != FamilyMemberRole.baby) ...[
-          _selectedMemberCard(current),
-          const SizedBox(height: 14),
-          FamilyHubPremiumBanner(s: s, onPremiumTap: widget.onPremiumTap),
-        ] else
+        else if (current.model.role == FamilyMemberRole.mother ||
+            current.model.role == FamilyMemberRole.father)
+          _adultHubDetailColumn(context, current)
+        else
           _selectedMemberCard(current),
       ],
     );
@@ -397,84 +497,84 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
     final s = widget.s;
     final now = DateTime.now();
     final mother = widget.mother;
-    final role = FamilyMemberRole.mother;
-        final mb = _parseDate(mother?['birth_date'] as String?);
-        final mh = (mother?['height_cm'] as num?)?.toDouble();
-        final signId = mb == null ? null : zodiacIdFromDate(mb);
-        return FamilyMemberFrameModel(
-          role: role,
-          badge: s.familyRoleMother,
-          badgeColor: const Color(0xFFE15A72),
-          name: (mother?['name'] as String?)?.trim().isNotEmpty == true
-              ? (mother!['name'] as String).trim()
-              : '—',
-          avatar: PhotoAvatar(
-            photoB64: (mother?['photo_b64'] as String?)?.trim(),
-            photoUrl: (mother?['photo_url'] as String?)?.trim(),
-            radius: 50,
-            backgroundColor: const Color(0xFFFFDCE8),
-            fallback: const Text('👩', style: TextStyle(fontSize: 40)),
-          ),
-          infoLines: [
-            if (mb != null) s.familyBornOn(fmtDate(mb)),
-            if (mb != null) s.familyAgeYears(ageInYears(mb, now)),
-            if (widget.showHoroscopeMessages && signId != null)
-              '${s.familyZodiacName(signId)} · ${s.familyZodiacSolar}',
-            if (mh != null && mh > 0)
-              s.familyHeight(MeasurementFormat.length(mh, decimalsCm: 0)),
-          ],
-          sectionTitle: _sectionTitle(signId, s.familyRoleMother),
-          signId: signId,
-          horoscopePremiumBody:
-              _horoscopePremiumNarrative(FamilyZodiacRole.mother, signId),
-          christianFreeBody: _christianNarrative(role),
-          onEdit: widget.onEditMother,
-        );
+    const role = FamilyMemberRole.mother;
+    final mb = _parseDate(mother?['birth_date'] as String?);
+    final mh = (mother?['height_cm'] as num?)?.toDouble();
+    final signId = mb == null ? null : zodiacIdFromDate(mb);
+    return FamilyMemberFrameModel(
+      role: role,
+      badge: s.familyRoleMother,
+      badgeColor: const Color(0xFFE15A72),
+      name: (mother?['name'] as String?)?.trim().isNotEmpty == true
+          ? (mother!['name'] as String).trim()
+          : '—',
+      avatar: PhotoAvatar(
+        photoB64: (mother?['photo_b64'] as String?)?.trim(),
+        photoUrl: (mother?['photo_url'] as String?)?.trim(),
+        radius: 50,
+        backgroundColor: const Color(0xFFFFDCE8),
+        fallback: const Text('👩', style: TextStyle(fontSize: 40)),
+      ),
+      infoLines: [
+        if (mb != null) s.familyBornOn(fmtDate(mb)),
+        if (mb != null) s.familyAgeYears(ageInYears(mb, now)),
+        if (widget.showHoroscopeMessages && signId != null)
+          '${s.familyZodiacName(signId)} · ${s.familyZodiacSolar}',
+        if (mh != null && mh > 0)
+          s.familyHeight(MeasurementFormat.length(mh, decimalsCm: 0)),
+      ],
+      sectionTitle: _sectionTitle(signId, s.familyRoleMother),
+      signId: signId,
+      horoscopePremiumBody:
+          _horoscopePremiumNarrative(FamilyZodiacRole.mother, signId),
+      christianFreeBody: _christianCardBody(role),
+      onEdit: widget.onEditMother,
+    );
   }
 
   FamilyMemberFrameModel _modelForFather() {
     final s = widget.s;
     final now = DateTime.now();
     final mother = widget.mother;
-    final role = FamilyMemberRole.father;
-        final fb = _parseDate(mother?['father_birth_date'] as String?);
-        final fh = (mother?['father_height_cm'] as num?)?.toDouble();
-        final signId = fb == null ? null : zodiacIdFromDate(fb);
-        return FamilyMemberFrameModel(
-          role: role,
-          badge: s.familyRoleFather,
-          badgeColor: const Color(0xFF4D99DE),
-          name: (mother?['father_name'] as String?)?.trim().isNotEmpty == true
-              ? (mother!['father_name'] as String).trim()
-              : s.familyRoleFather,
-          avatar: PhotoAvatar(
-            photoB64: (mother?['father_photo_b64'] as String?)?.trim(),
-            photoUrl: (mother?['father_photo_url'] as String?)?.trim(),
-            radius: 50,
-            backgroundColor: const Color(0xFFD6EBFF),
-            fallback: const Text('👨', style: TextStyle(fontSize: 40)),
-          ),
-          infoLines: [
-            if (fb != null) s.familyBornOn(fmtDate(fb)),
-            if (fb != null) s.familyAgeYears(ageInYears(fb, now)),
-            if (widget.showHoroscopeMessages && signId != null)
-              '${s.familyZodiacName(signId)} · ${s.familyZodiacSolar}',
-            if (fh != null && fh > 0)
-              s.familyHeight(MeasurementFormat.length(fh, decimalsCm: 0)),
-          ],
-          sectionTitle: _sectionTitle(signId, s.familyRoleFather),
-          signId: signId,
-          horoscopePremiumBody:
-              _horoscopePremiumNarrative(FamilyZodiacRole.father, signId),
-          christianFreeBody: _christianNarrative(role),
-          onEdit: widget.onEditFather ?? widget.onEditMother,
-        );
+    const role = FamilyMemberRole.father;
+    final fb = _parseDate(mother?['father_birth_date'] as String?);
+    final fh = (mother?['father_height_cm'] as num?)?.toDouble();
+    final signId = fb == null ? null : zodiacIdFromDate(fb);
+    return FamilyMemberFrameModel(
+      role: role,
+      badge: s.familyRoleFather,
+      badgeColor: const Color(0xFF4D99DE),
+      name: (mother?['father_name'] as String?)?.trim().isNotEmpty == true
+          ? (mother!['father_name'] as String).trim()
+          : s.familyRoleFather,
+      avatar: PhotoAvatar(
+        photoB64: (mother?['father_photo_b64'] as String?)?.trim(),
+        photoUrl: (mother?['father_photo_url'] as String?)?.trim(),
+        radius: 50,
+        backgroundColor: const Color(0xFFD6EBFF),
+        fallback: const Text('👨', style: TextStyle(fontSize: 40)),
+      ),
+      infoLines: [
+        if (fb != null) s.familyBornOn(fmtDate(fb)),
+        if (fb != null) s.familyAgeYears(ageInYears(fb, now)),
+        if (widget.showHoroscopeMessages && signId != null)
+          '${s.familyZodiacName(signId)} · ${s.familyZodiacSolar}',
+        if (fh != null && fh > 0)
+          s.familyHeight(MeasurementFormat.length(fh, decimalsCm: 0)),
+      ],
+      sectionTitle: _sectionTitle(signId, s.familyRoleFather),
+      signId: signId,
+      horoscopePremiumBody:
+          _horoscopePremiumNarrative(FamilyZodiacRole.father, signId),
+      christianFreeBody: _christianCardBody(role),
+      onEdit: widget.onEditFather ?? widget.onEditMother,
+    );
   }
 
   FamilyMemberFrameModel _modelForBaby(Map<String, Object?> baby) {
     final s = widget.s;
     final now = DateTime.now();
-    final role = FamilyMemberRole.baby;
+    const role = FamilyMemberRole.baby;
     final babyId = (baby['id'] as num?)?.toInt();
     final bb = _parseDate(baby['birth_date'] as String?);
     final sex = (baby['sex'] as String?)?.trim().toUpperCase();
@@ -499,7 +599,7 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
         radius: avatarR,
         backgroundColor:
             sex == 'M' ? const Color(0xFFD6EBFF) : const Color(0xFFFFDCE8),
-        fallback: Text('👶', style: TextStyle(fontSize: emojiSize)),
+        fallback: const Text('👶', style: TextStyle(fontSize: emojiSize)),
       ),
       infoLines: [
         if (bb != null) s.familyBornOn(fmtDate(bb)),
@@ -511,8 +611,6 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
               : signId == null
                   ? '—'
                   : '${s.familyZodiacName(signId)} · ${s.familyZodiacSolar}',
-        if (_christianReference(role, babyId: babyId) case final ref?)
-          s.familyChristianLine(ref),
         if (h != null && h > 0)
           s.familyHeight(MeasurementFormat.length(h, decimalsCm: 0)),
       ],
@@ -520,15 +618,14 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
       signId: signId,
       horoscopePremiumBody:
           _horoscopePremiumNarrative(FamilyZodiacRole.baby, signId),
-      christianFreeBody: _christianNarrative(role, babyId: babyId),
+      christianFreeBody: _christianCardBody(role, babyId: babyId),
       onEdit: babyId == null || widget.onEditBaby == null
           ? null
           : () => widget.onEditBaby!(babyId),
     );
   }
 
-  FamilyChristianRole _christianRole(FamilyMemberRole role) =>
-      switch (role) {
+  FamilyChristianRole _christianRole(FamilyMemberRole role) => switch (role) {
         FamilyMemberRole.mother => FamilyChristianRole.mother,
         FamilyMemberRole.father => FamilyChristianRole.father,
         FamilyMemberRole.baby => FamilyChristianRole.baby,
@@ -539,6 +636,11 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
     return FamilyChristianContentService.instance
         .verseFor(widget.s.lang, _christianRole(role), babyId: babyId)
         ?.reference;
+  }
+
+  String _christianCardBody(FamilyMemberRole role, {int? babyId}) {
+    if (!widget.showChristianMessages || !widget.christianReady) return '';
+    return _christianNarrative(role, babyId: babyId);
   }
 
   /// Título do cartão: signo + papel (se horóscopo ligado), mesmo sem Premium.
@@ -613,7 +715,7 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
 
   Widget _memberTabChip(int index, _CarouselMember m) {
     final selected = index == _selectedIndex;
-    final accent = const Color(0xFF163B68);
+    const accent = Color(0xFF163B68);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -625,7 +727,8 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
           decoration: BoxDecoration(
             color: selected ? accent : Colors.white,
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: accent.withAlpha(selected ? 255 : 100), width: 1.5),
+            border: Border.all(
+                color: accent.withAlpha(selected ? 255 : 100), width: 1.5),
             boxShadow: selected
                 ? [
                     BoxShadow(
@@ -745,7 +848,8 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
           final w = c.maxWidth;
           final screenH = MediaQuery.sizeOf(context).height;
           final stackH = math.max(w * 1.05, screenH * 0.48).clamp(480.0, 640.0);
-          final treeBlock = _legacyTreeBlock(context, stackH, members, tabIndex);
+          final treeBlock =
+              _legacyTreeBlock(context, stackH, members, tabIndex);
           return Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -797,8 +901,10 @@ class FamilyMemberFrameModel {
   final List<String> infoLines;
   final String sectionTitle;
   final ZodiacId? signId;
+
   /// Texto longo do horóscopo (só com Premium); vazio se bloqueado.
   final String horoscopePremiumBody;
+
   /// Mensagem bíblica / afetiva (grátis); separada do bloco Premium.
   final String christianFreeBody;
   final VoidCallback? onEdit;
@@ -860,7 +966,9 @@ class _FamilyMemberCardState extends State<_FamilyMemberCard> {
       if (lower.contains('/') || lower.contains('nasc')) {
         return Icons.cake_outlined;
       }
-      if (lower.contains('ano') || lower.contains('semana') || lower.contains('mês')) {
+      if (lower.contains('ano') ||
+          lower.contains('semana') ||
+          lower.contains('mês')) {
         return Icons.calendar_month_outlined;
       }
       if (lower.contains('solar') ||
@@ -1078,8 +1186,7 @@ class _FamilyMemberCardState extends State<_FamilyMemberCard> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                for (final line in m.infoLines)
-                  infoTile(line),
+                for (final line in m.infoLines) infoTile(line),
                 if (m.horoscopePremiumBody.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Container(
@@ -1096,61 +1203,6 @@ class _FamilyMemberCardState extends State<_FamilyMemberCard> {
                         height: 1.4,
                         fontWeight: FontWeight.w600,
                         color: const Color(0xFF163B68).withAlpha(200),
-                      ),
-                    ),
-                  ),
-                ] else if (widget.showHoroscopeMessages &&
-                    !widget.zodiacUnlocked &&
-                    widget.premiumZodiacLockedMessage != null) ...[
-                  const SizedBox(height: 8),
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: widget.onPremiumTap,
-                      borderRadius: BorderRadius.circular(14),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: m.badgeColor.withAlpha(16),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: m.badgeColor.withAlpha(100),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.auto_awesome_rounded,
-                                  size: 18,
-                                  color: m.badgeColor,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  s.familyPremiumUnlockCta,
-                                  style: TextStyle(
-                                    fontSize: center ? 12.5 : 11,
-                                    fontWeight: FontWeight.w900,
-                                    color: m.badgeColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              widget.premiumZodiacLockedMessage!,
-                              style: TextStyle(
-                                fontSize: center ? 12 : 10.5,
-                                height: 1.38,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF163B68).withAlpha(210),
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                   ),

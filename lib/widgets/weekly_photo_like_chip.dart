@@ -4,6 +4,7 @@ import '../i18n/app_i18n.dart';
 import '../services/firebase/weekly_photo_like_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/portal_layout.dart';
+import '../utils/portal_time_of_day.dart';
 
 Future<void> _handleWeeklyPhotoLikeTap(BuildContext context, String id) async {
   final trimmed = id.trim();
@@ -41,6 +42,7 @@ class WeeklyPhotoLikeChip extends StatelessWidget {
   final bool readOnly;
   final bool compact;
   final bool lightOnPhoto;
+
   /// Barra na Home: botão «Curtir» + contagem única à direita.
   final bool prominent;
 
@@ -52,7 +54,8 @@ class WeeklyPhotoLikeChip extends StatelessWidget {
     return StreamBuilder<WeeklyPhotoLikeState>(
       stream: WeeklyPhotoLikeService.watch(id),
       builder: (context, snap) {
-        final state = snap.data ?? const WeeklyPhotoLikeState(count: 0, likedByMe: false);
+        final state =
+            snap.data ?? const WeeklyPhotoLikeState(count: 0, likedByMe: false);
         final s = S.of(context);
         final countLabel = s.weeklyPhotoLikesCount(state.count);
 
@@ -77,15 +80,15 @@ class WeeklyPhotoLikeChip extends StatelessWidget {
                 ? Colors.white.withAlpha(235)
                 : const Color(0xFF74717F));
 
-        final textColor = lightOnPhoto
-            ? Colors.white
-            : const Color(0xFF1F1F2E);
+        final textColor = lightOnPhoto ? Colors.white : const Color(0xFF1F1F2E);
 
         final content = Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              state.likedByMe ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+              state.likedByMe
+                  ? Icons.favorite_rounded
+                  : Icons.favorite_border_rounded,
               size: iconSize,
               color: heartColor,
             ),
@@ -168,6 +171,10 @@ class _ProminentLikeBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final night = PortalTimeOfDay.isNight(DateTime.now());
+    final nightTextColor =
+        night ? PortalTimeOfDay.nightOutlinedTextColor : null;
+    final nightShadows = night ? PortalTimeOfDay.nightTextOutlineShadows : null;
     return Row(
       children: [
         if (readOnly)
@@ -185,7 +192,8 @@ class _ProminentLikeBar extends StatelessWidget {
                 style: TextStyle(
                   fontSize: portalSp(context, 14),
                   fontWeight: FontWeight.w800,
-                  color: AppTheme.textPrimary,
+                  color: nightTextColor ?? AppTheme.textPrimary,
+                  shadows: nightShadows,
                 ),
               ),
             ],
@@ -225,7 +233,8 @@ class _ProminentLikeBar extends StatelessWidget {
             style: TextStyle(
               fontSize: portalSp(context, 14),
               fontWeight: FontWeight.w800,
-              color: AppTheme.textSecondary,
+              color: nightTextColor ?? AppTheme.textSecondary,
+              shadows: nightShadows,
             ),
           ),
         ],

@@ -93,9 +93,11 @@ class _HomeRecentMemoriesSectionState extends State<HomeRecentMemoriesSection> {
     final radius = portalSp(context, 20).clamp(16.0, 24.0);
     final night = PortalTimeOfDay.isNight(DateTime.now());
     final headingColor =
-        night ? PortalTimeOfDay.nightTextColor : AppTheme.textSecondary;
-    final seeAllColor =
-        night ? PortalTimeOfDay.nightTextColor : const Color(0xFF5B6B8C);
+        night ? PortalTimeOfDay.nightOutlinedTextColor : AppTheme.textSecondary;
+    final seeAllColor = night
+        ? PortalTimeOfDay.nightOutlinedTextColor
+        : const Color(0xFF5B6B8C);
+    final nightShadows = night ? PortalTimeOfDay.nightTextOutlineShadows : null;
 
     return Padding(
       padding: const EdgeInsets.only(top: 20),
@@ -111,6 +113,7 @@ class _HomeRecentMemoriesSectionState extends State<HomeRecentMemoriesSection> {
                     fontWeight: FontWeight.w900,
                     fontSize: portalSp(context, 18),
                     color: headingColor,
+                    shadows: nightShadows,
                     height: 1.2,
                   ),
                 ),
@@ -128,6 +131,7 @@ class _HomeRecentMemoriesSectionState extends State<HomeRecentMemoriesSection> {
                   style: TextStyle(
                     fontWeight: FontWeight.w900,
                     fontSize: portalSp(context, 14),
+                    shadows: nightShadows,
                   ),
                 ),
               ),

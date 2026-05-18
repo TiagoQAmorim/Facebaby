@@ -6,12 +6,14 @@ class SectionTitle extends StatelessWidget {
   final String title;
   final Widget? action;
   final Color? titleColor;
+  final List<Shadow>? titleShadows;
 
   const SectionTitle({
     super.key,
     required this.title,
     this.action,
     this.titleColor,
+    this.titleShadows,
   });
 
   @override
@@ -29,12 +31,14 @@ class SectionTitle extends StatelessWidget {
               fontSize: portalSp(context, 22),
               fontWeight: FontWeight.w800,
               color: titleColor ?? AppTheme.textSecondary,
+              shadows: titleShadows,
               height: 1.2,
             ),
           ),
         ),
         const SizedBox(width: 10),
-        if (action != null) Align(alignment: Alignment.centerRight, child: action!),
+        if (action != null)
+          Align(alignment: Alignment.centerRight, child: action!),
       ],
     );
   }

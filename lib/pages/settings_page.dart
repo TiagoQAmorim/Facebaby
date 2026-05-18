@@ -36,7 +36,8 @@ Future<bool> _promptTypeDeleteToConfirmWord(BuildContext ctx, S s) async {
       builder: (dialogCtx) {
         return StatefulBuilder(
           builder: (context, setLocalState) {
-            final matches = controller.text.trim().toLowerCase() == _kAccountDeleteConfirmWord;
+            final matches = controller.text.trim().toLowerCase() ==
+                _kAccountDeleteConfirmWord;
             return AlertDialog(
               title: Text(s.deleteAccountTypeWordTitle),
               content: SingleChildScrollView(
@@ -57,8 +58,10 @@ Future<bool> _promptTypeDeleteToConfirmWord(BuildContext ctx, S s) async {
                       ),
                       onChanged: (_) => setLocalState(() {}),
                       onSubmitted: (_) {
-                        final okSubmit = controller.text.trim().toLowerCase() == _kAccountDeleteConfirmWord;
-                        if (okSubmit && dialogCtx.mounted) Navigator.of(dialogCtx).pop(true);
+                        final okSubmit = controller.text.trim().toLowerCase() ==
+                            _kAccountDeleteConfirmWord;
+                        if (okSubmit && dialogCtx.mounted)
+                          Navigator.of(dialogCtx).pop(true);
                       },
                     ),
                   ],
@@ -74,7 +77,8 @@ Future<bool> _promptTypeDeleteToConfirmWord(BuildContext ctx, S s) async {
                     backgroundColor: const Color(0xFFFF3B30),
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: matches ? () => Navigator.of(dialogCtx).pop(true) : null,
+                  onPressed:
+                      matches ? () => Navigator.of(dialogCtx).pop(true) : null,
                   child: Text(s.deleteAccountConfirm),
                 ),
               ],
@@ -108,7 +112,8 @@ Future<bool> _promptReauthenticateForDeletion(BuildContext ctx, S s) async {
 
   if (!hasGoogle && !hasPassword) {
     if (!ctx.mounted) return false;
-    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(s.deleteAccountReauthCantPassword)));
+    ScaffoldMessenger.of(ctx).showSnackBar(
+        SnackBar(content: Text(s.deleteAccountReauthCantPassword)));
     return false;
   }
 
@@ -155,11 +160,14 @@ Future<bool> _promptReauthenticateForDeletion(BuildContext ctx, S s) async {
                   SizedBox(
                     width: double.maxFinite,
                     child: FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF3B30), foregroundColor: Colors.white),
+                      style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF3B30),
+                          foregroundColor: Colors.white),
                       onPressed: () async {
                         try {
                           await AuthService.instance.reauthenticateWithGoogle();
-                          if (dialogCtx.mounted) Navigator.of(dialogCtx).pop(true);
+                          if (dialogCtx.mounted)
+                            Navigator.of(dialogCtx).pop(true);
                         } catch (e) {
                           await toastErr(_userVisibleDeleteError(e));
                         }
@@ -171,7 +179,8 @@ Future<bool> _promptReauthenticateForDeletion(BuildContext ctx, S s) async {
                   SizedBox(
                     width: double.maxFinite,
                     child: FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF3B30)),
+                      style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF3B30)),
                       onPressed: () async {
                         final p = passCtrl.text.trim();
                         if (p.isEmpty) {
@@ -179,8 +188,10 @@ Future<bool> _promptReauthenticateForDeletion(BuildContext ctx, S s) async {
                           return;
                         }
                         try {
-                          await AuthService.instance.reauthenticateWithPassword(password: p);
-                          if (dialogCtx.mounted) Navigator.of(dialogCtx).pop(true);
+                          await AuthService.instance
+                              .reauthenticateWithPassword(password: p);
+                          if (dialogCtx.mounted)
+                            Navigator.of(dialogCtx).pop(true);
                         } catch (e) {
                           await toastErr(_userVisibleDeleteError(e));
                         }
@@ -206,54 +217,26 @@ Future<void> _inviteFriendShare(BuildContext context) async {
 Future<void> _openStoreRating(BuildContext context) async {
   final s = S.of(context);
   if (kIsWeb) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.settingsRateCouldNotOpen)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(s.settingsRateCouldNotOpen)));
     return;
   }
   final uri = !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS
       ? Uri.parse('https://apps.apple.com/search?term=FaceBaby')
-      : Uri.parse('https://play.google.com/store/apps/details?id=com.facebaby.app');
+      : Uri.parse(
+          'https://play.google.com/store/apps/details?id=com.facebaby.app');
   try {
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.settingsRateCouldNotOpen)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(s.settingsRateCouldNotOpen)));
     }
   } catch (_) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.settingsRateCouldNotOpen)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(s.settingsRateCouldNotOpen)));
     }
   }
-}
-
-void _showPremiumBenefitsDialog(BuildContext context) {
-  final s = S.of(context);
-  final plus = PremiumService.instance.isPremium;
-  showDialog<void>(
-    context: context,
-    builder: (ctx) {
-      return AlertDialog(
-        title: Text(s.settingsPremiumBenefitsTitle),
-        content: SingleChildScrollView(
-          child: SelectableText(
-            plus
-                ? '${s.plusPremiumActiveBody}\n\n${s.plusSheetBullets}'
-                : '${s.settingsPlusCardBodyFree}\n\n${s.plusSheetBullets}',
-            style: const TextStyle(height: 1.45, fontWeight: FontWeight.w600, fontSize: 14),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(s.plusDoneClose)),
-          if (!plus)
-            FilledButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                openPremiumPaywall(context);
-              },
-              child: Text(s.settingsPlusUpgradeCta),
-            ),
-        ],
-      );
-    },
-  );
 }
 
 class SettingsPage extends StatelessWidget {
@@ -268,9 +251,12 @@ class SettingsPage extends StatelessWidget {
           title: Text(s.deleteAccountTitle),
           content: Text(s.deleteAccountBody),
           actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(s.cancel)),
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(s.cancel)),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF3B30)),
+              style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF3B30)),
               onPressed: () => Navigator.of(ctx).pop(true),
               child: Text(s.deleteAccountConfirm),
             ),
@@ -287,7 +273,8 @@ class SettingsPage extends StatelessWidget {
 
     Future<void> onSuccessUx() async {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.deleteAccountSuccess)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(s.deleteAccountSuccess)));
       Navigator.of(context).popUntil((r) => r.isFirst);
     }
 
@@ -303,7 +290,8 @@ class SettingsPage extends StatelessWidget {
       if (verified != true || !context.mounted) return;
       try {
         await LoadingScope.of(context).run(
-          () => AccountDeletionService.instance.deleteFirebaseAuthAndLocalOnly(),
+          () =>
+              AccountDeletionService.instance.deleteFirebaseAuthAndLocalOnly(),
           label: s.deleteAccountDeleting,
         );
         await onSuccessUx();
@@ -324,13 +312,15 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
-    final accent = Color.lerp(AppTheme.primaryPurple, AppTheme.primaryPink, 0.4)!;
+    final accent =
+        Color.lerp(AppTheme.primaryPurple, AppTheme.primaryPink, 0.4)!;
     final nightTitleColor = PortalTimeOfDay.isNight(DateTime.now())
         ? PortalTimeOfDay.nightTextColor
         : null;
 
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(AppTheme.pageHPadding, 12, AppTheme.pageHPadding, 100),
+      padding: EdgeInsets.fromLTRB(
+          AppTheme.pageHPadding, 12, AppTheme.pageHPadding, 100),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -349,7 +339,8 @@ class SettingsPage extends StatelessWidget {
             icon: Icons.person_outline,
             title: s.settingsMotherProfile,
             onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const MotherProfilePage()),
+              MaterialPageRoute<void>(
+                  builder: (_) => const MotherProfilePage()),
             ),
           ),
           _SettingsTile(
@@ -401,14 +392,16 @@ class SettingsPage extends StatelessWidget {
             icon: Icons.notifications_none,
             title: s.settingsAlerts,
             onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const AlertsSettingsPage()),
+              MaterialPageRoute<void>(
+                  builder: (_) => const AlertsSettingsPage()),
             ),
           ),
           _SettingsTile(
             compact: true,
             icon: Icons.settings_rounded,
             title: s.unitsTitle,
-            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const UnitsSettingsPage())),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => const UnitsSettingsPage())),
           ),
           const _SettingsRulerDivider(widthFactor: 0.94),
           _SettingsTile(
@@ -424,7 +417,8 @@ class SettingsPage extends StatelessWidget {
             icon: Icons.privacy_tip_outlined,
             title: s.settingsPrivacyPolicy,
             onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const PrivacyPolicyPage()),
+              MaterialPageRoute<void>(
+                  builder: (_) => const PrivacyPolicyPage()),
             ),
           ),
           const _SettingsRulerDivider(widthFactor: 0.94),
@@ -436,13 +430,15 @@ class SettingsPage extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 6),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(16),
-                  onTap: () => _showPremiumBenefitsDialog(context),
+                  onTap: () => openPremiumPaywall(context),
                   child: CardBox(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.workspace_premium_rounded, color: accent, size: 22),
+                        Icon(Icons.workspace_premium_rounded,
+                            color: accent, size: 22),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(
@@ -473,18 +469,23 @@ class SettingsPage extends StatelessWidget {
                           Padding(
                             padding: const EdgeInsets.only(left: 6, top: 2),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
                                 color: accent.withAlpha(36),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Text(
                                 'PLUS',
-                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: accent),
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 10,
+                                    color: accent),
                               ),
                             ),
                           ),
-                        Icon(Icons.chevron_right, color: accent.withAlpha(200), size: 22),
+                        Icon(Icons.chevron_right,
+                            color: accent.withAlpha(200), size: 22),
                       ],
                     ),
                   ),
@@ -562,7 +563,8 @@ class _SettingsTile extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
           child: Row(
             children: [
-              Icon(icon, size: iconSize, color: AppTheme.textPrimary.withAlpha(220)),
+              Icon(icon,
+                  size: iconSize, color: AppTheme.textPrimary.withAlpha(220)),
               SizedBox(width: compact ? 10 : 12),
               Expanded(
                 child: Text(
@@ -577,7 +579,8 @@ class _SettingsTile extends StatelessWidget {
                   ),
                 ),
               ),
-              Icon(Icons.chevron_right, size: compact ? 20 : 24, color: AppTheme.textMuted),
+              Icon(Icons.chevron_right,
+                  size: compact ? 20 : 24, color: AppTheme.textMuted),
             ],
           ),
         ),
@@ -592,7 +595,11 @@ class _DangerSettingsTile extends StatelessWidget {
   final bool compact;
   final VoidCallback? onTap;
 
-  const _DangerSettingsTile({required this.icon, required this.title, this.compact = false, this.onTap});
+  const _DangerSettingsTile(
+      {required this.icon,
+      required this.title,
+      this.compact = false,
+      this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -625,7 +632,8 @@ class _DangerSettingsTile extends StatelessWidget {
                   ),
                 ),
               ),
-              Icon(Icons.chevron_right, size: compact ? 20 : 24, color: const Color(0xFFFF3B30)),
+              Icon(Icons.chevron_right,
+                  size: compact ? 20 : 24, color: const Color(0xFFFF3B30)),
             ],
           ),
         ),

@@ -7,8 +7,17 @@ abstract final class PortalTimeOfDay {
   static const backgroundDay = 'assets/onboarding/background_day.png';
   static const backgroundNight = 'assets/onboarding/background_night.png';
   static const backgroundLoading = 'assets/onboarding/background_loading.png';
-  static const backgroundLogin = 'assets/onboarding/login_balloon_background.png';
+  static const backgroundLogin =
+      'assets/onboarding/login_balloon_background.png';
   static const nightTextColor = Color(0xFFDDF3FF);
+  static const nightOutlinedTextColor = Colors.white;
+  static const nightTextOutlineShadows = [
+    Shadow(blurRadius: 1.6, color: Color(0xCC273044), offset: Offset(1, 0)),
+    Shadow(blurRadius: 1.6, color: Color(0xCC273044), offset: Offset(-1, 0)),
+    Shadow(blurRadius: 1.6, color: Color(0xCC273044), offset: Offset(0, 1)),
+    Shadow(blurRadius: 1.6, color: Color(0xCC273044), offset: Offset(0, -1)),
+    Shadow(blurRadius: 5, color: Color(0xAA273044), offset: Offset(0, 1)),
+  ];
 
   /// `true` entre 18:30 (inclusive) e 06:00 (exclusive).
   static bool isNight(DateTime at) {

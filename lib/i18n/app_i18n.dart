@@ -854,16 +854,24 @@ class S {
   String get familyChristianCardTitle => _t('familyChristianCardTitle');
   String familyChristianLine(String reference) =>
       _t('familyChristianLine').replaceAll('{ref}', reference);
-  String familyBornOn(String date) => _t('familyBornOn').replaceAll('{date}', date);
-  String familyAgeYears(int years) =>
-      years == 1 ? _t('familyAgeOneYear') : _t('familyAgeYears').replaceAll('{n}', '$years');
-  String familyHeight(String value) => _t('familyHeight').replaceAll('{value}', value);
+  String familyBornOn(String date) =>
+      _t('familyBornOn').replaceAll('{date}', date);
+  String familyAgeYears(int years) => years == 1
+      ? _t('familyAgeOneYear')
+      : _t('familyAgeYears').replaceAll('{n}', '$years');
+  String familyHeight(String value) =>
+      _t('familyHeight').replaceAll('{value}', value);
   String familyMotherBlurb(String sign, String traits) =>
-      _t('familyMotherBlurb').replaceAll('{sign}', sign).replaceAll('{traits}', traits);
+      _t('familyMotherBlurb')
+          .replaceAll('{sign}', sign)
+          .replaceAll('{traits}', traits);
   String familyFatherBlurb(String sign, String traits) =>
-      _t('familyFatherBlurb').replaceAll('{sign}', sign).replaceAll('{traits}', traits);
-  String familyBabyBlurb(String sign, String traits) =>
-      _t('familyBabyBlurb').replaceAll('{sign}', sign).replaceAll('{traits}', traits);
+      _t('familyFatherBlurb')
+          .replaceAll('{sign}', sign)
+          .replaceAll('{traits}', traits);
+  String familyBabyBlurb(String sign, String traits) => _t('familyBabyBlurb')
+      .replaceAll('{sign}', sign)
+      .replaceAll('{traits}', traits);
   String familyZodiacName(ZodiacId id) => _t('familyZodiacName_${id.name}');
   String familyZodiacTrait(ZodiacId id) => _t('familyZodiacTrait_${id.name}');
   String get familyFatherDataComplete => _t('familyFatherDataComplete');
@@ -885,6 +893,8 @@ class S {
   String get familyHowCalculated => _t('familyHowCalculated');
   String get familyFormulaBoy => _t('familyFormulaBoy');
   String get familyFormulaGirl => _t('familyFormulaGirl');
+  String get familyEstimatedHeightDescription =>
+      _t('familyEstimatedHeightDescription');
   String familyFormulaExampleGirl(int father, int mother, int result) =>
       _t('familyFormulaExampleGirl')
           .replaceAll('{father}', '$father')
@@ -928,7 +938,8 @@ class S {
   String get familyFieldHeight => _t('familyFieldHeight');
   String get familyFieldWeight => _t('familyFieldWeight');
   String get familyPremiumShortBadge => _t('familyPremiumShortBadge');
-  String get familyPremiumFeatureLockedBody => _t('familyPremiumFeatureLockedBody');
+  String get familyPremiumFeatureLockedBody =>
+      _t('familyPremiumFeatureLockedBody');
   String get familyPremiumBannerTitle => _t('familyPremiumBannerTitle');
   String get familyPremiumBannerBody => _t('familyPremiumBannerBody');
   String get familyPremiumViewPlans => _t('familyPremiumViewPlans');
@@ -946,8 +957,10 @@ class S {
         return _t('familyElementWater');
     }
   }
+
   String get familyTapToOpen => _t('familyTapToOpen');
   String get familyCarouselSwipe => _t('familyCarouselSwipe');
+
   /// Rótulo do separador do bebé quando só há um filho (ex.: «Nenê» em PT).
   String get familyTabNene => _t('familyTabNene');
   String get familyTabsHint => _t('familyTabsHint');
@@ -1519,8 +1532,7 @@ class S {
   String get motherProfileTabMother => _t('motherProfileTabMother');
   String get motherProfileTabFather => _t('motherProfileTabFather');
   String get motherProfileTabBabies => _t('motherProfileTabBabies');
-  String get motherProfileFieldFatherName =>
-      _t('motherProfileFieldFatherName');
+  String get motherProfileFieldFatherName => _t('motherProfileFieldFatherName');
   String get motherProfileNoData => _t('motherProfileNoData');
   String get motherProfileSectionInfo => _t('motherProfileSectionInfo');
   String get motherProfileFieldPhone => _t('motherProfileFieldPhone');
@@ -2649,6 +2661,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'onbMessagePrefChristian': 'Mensagens cristãs',
     'onbMessagePrefHoroscope': 'Horóscopo',
     'onbMessagePrefBoth': 'Ambas',
+    'onbMessagePrefNone': 'Nenhuma das opções',
     'onbDragToAdjust': 'Arraste para ajustar',
     'onbEmailSheetTitle': 'Criar conta com e-mail',
     'onbYourNameHint': 'Seu nome',
@@ -2738,10 +2751,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'familyHowCalculated': 'Como é feito o cálculo?',
     'familyFormulaBoy': 'Menino: (altura do pai + altura da mãe + 13) ÷ 2',
     'familyFormulaGirl': 'Menina: (altura do pai + altura da mãe − 13) ÷ 2',
-    'familyFormulaExampleGirl':
-        '({father} + {mother} − 13) ÷ 2 = {result} cm',
-    'familyFormulaExampleBoy':
-        '({father} + {mother} + 13) ÷ 2 = {result} cm',
+    'familyEstimatedHeightDescription':
+        'Estimativa baseada na altura da mãe e do pai, ajustada pelo sexo do bebê. Serve apenas como referência familiar.',
+    'familyFormulaExampleGirl': '({father} + {mother} − 13) ÷ 2 = {result} cm',
+    'familyFormulaExampleBoy': '({father} + {mother} + 13) ÷ 2 = {result} cm',
     'familyHeightDisclaimer':
         'Esta é uma estimativa simples usada como referência em pediatria. A altura final pode variar por genética, alimentação, sono, saúde, puberdade e outros fatores. O acompanhamento com pediatra continua sendo o mais importante.',
     'familyZodiacReadMore': 'Ler texto completo',
@@ -4627,6 +4640,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'onbMessagePrefChristian': 'Christian messages',
     'onbMessagePrefHoroscope': 'Horoscope',
     'onbMessagePrefBoth': 'Both',
+    'onbMessagePrefNone': 'Neither',
     'onbDragToAdjust': 'Drag to adjust',
     'onbEmailSheetTitle': 'Create account with email',
     'onbYourNameHint': 'Your name',
@@ -4670,8 +4684,7 @@ const Map<AppLang, Map<String, String>> _strings = {
         'As a {sign} mom, you tend to show love in a {traits} way.',
     'familyFatherBlurb':
         'As a {sign} dad, you tend to protect, teach and bond with your baby in a {traits} way.',
-    'familyBabyBlurb':
-        'As a {sign} baby, they may show traits like {traits}.',
+    'familyBabyBlurb': 'As a {sign} baby, they may show traits like {traits}.',
     'familyZodiacName_capricorn': 'Capricorn',
     'familyZodiacName_aquarius': 'Aquarius',
     'familyZodiacName_pisces': 'Pisces',
@@ -4704,8 +4717,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'familyCompleteBabySex':
         "Add your baby's sex in their profile to calculate estimated height.",
     'familyEditBabyData': "Edit baby's profile",
-    'familyCompleteHeights':
-        'We need both parents\' heights for the estimate.',
+    'familyCompleteHeights': 'We need both parents\' heights for the estimate.',
     'familyCompleteHeightsButton': 'Complete heights',
     'familyEstimatedHeightTitle': 'Estimated height for {name}',
     'familyMotherHeightLabel': "Mom's height",
@@ -4716,10 +4728,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'familyHowCalculated': 'How is it calculated?',
     'familyFormulaBoy': 'Boy: (father + mother + 13) ÷ 2',
     'familyFormulaGirl': 'Girl: (father + mother − 13) ÷ 2',
-    'familyFormulaExampleGirl':
-        '({father} + {mother} − 13) ÷ 2 = {result} cm',
-    'familyFormulaExampleBoy':
-        '({father} + {mother} + 13) ÷ 2 = {result} cm',
+    'familyEstimatedHeightDescription':
+        "Estimate based on mom's and dad's heights, adjusted by the baby's sex. It is only a family reference.",
+    'familyFormulaExampleGirl': '({father} + {mother} − 13) ÷ 2 = {result} cm',
+    'familyFormulaExampleBoy': '({father} + {mother} + 13) ÷ 2 = {result} cm',
     'familyHeightDisclaimer':
         'This is a simple estimate used as a pediatric reference. Final height can vary with genetics, nutrition, sleep, health, puberty and other factors. Follow-up with your pediatrician remains essential.',
     'familyZodiacReadMore': 'Read full text',
