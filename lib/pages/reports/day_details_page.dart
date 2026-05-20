@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 
 import '../../i18n/app_i18n.dart';
 import '../../models/daily_report_snapshot.dart';
-import '../../services/daily_report_service.dart' show DailyReportService, formatTimeHm;
+import '../../services/daily_report_service.dart'
+    show DailyReportService, formatTimeHm;
 import '../../theme/app_theme.dart';
 import '../../utils/portal_layout.dart';
+import 'report_page_shell.dart';
 
 /// Detalhes do dia — sono, mamadas, fraldas e timeline num único relatório (sem separadores por guias).
 class DayDetailsPage extends StatelessWidget {
@@ -47,7 +49,8 @@ class DayDetailsPage extends StatelessWidget {
       if (!out.contains(x)) out.add(x);
     }
 
-    if (snap.ageSleepBenchmarkBand == 'above' || snap.ageSleepBenchmarkBand == 'near') {
+    if (snap.ageSleepBenchmarkBand == 'above' ||
+        snap.ageSleepBenchmarkBand == 'near') {
       addOnce(s.reportInsightSleepAgeGood);
     } else if (snap.ageSleepBenchmarkBand == 'below') {
       addOnce(s.reportInsightSleepAgeLow);
@@ -93,30 +96,35 @@ class DayDetailsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = S.of(context);
     final snap = snapshot;
-    const bg = Color(0xFFF7F4FD);
 
     final vs = snap.sleepVsYesterdayPercent;
     final vsStr = vs == null
         ? s.reportVsYesterdayNA
         : '${vs >= 0 ? '+' : ''}${vs.round()}%';
-    final longestHint = snap.longestSleepStart != null && snap.longestSleepEnd != null
-        ? s.reportLongestStretchHint
-            .replaceAll('{start}', formatTimeHm(snap.longestSleepStart))
-            .replaceAll('{end}', formatTimeHm(snap.longestSleepEnd))
-        : '—';
+    final longestHint =
+        snap.longestSleepStart != null && snap.longestSleepEnd != null
+            ? s.reportLongestStretchHint
+                .replaceAll('{start}', formatTimeHm(snap.longestSleepStart))
+                .replaceAll('{end}', formatTimeHm(snap.longestSleepEnd))
+            : '—';
+
+    final reportBg = reportScaffoldBackground();
 
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: reportBg,
       appBar: AppBar(
-        backgroundColor: bg,
+        backgroundColor: reportBg,
+        surfaceTintColor: reportBg,
         elevation: 0,
-        title: Text(s.reportDayDetailsTitle, style: const TextStyle(fontWeight: FontWeight.w900)),
+        title: Text(s.reportDayDetailsTitle,
+            style: const TextStyle(fontWeight: FontWeight.w900)),
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded),
             onSelected: (v) {
               if (v == 'share') {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.reportShareSoon)));
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text(s.reportShareSoon)));
               }
             },
             itemBuilder: (ctx) => [
@@ -126,7 +134,8 @@ class DayDetailsPage extends StatelessWidget {
         ],
       ),
       body: ListView(
-        padding: EdgeInsets.fromLTRB(AppTheme.pageHPadding, 14, AppTheme.pageHPadding, 110),
+        padding: EdgeInsets.fromLTRB(
+            AppTheme.pageHPadding, 14, AppTheme.pageHPadding, 110),
         children: [
           _pastelCard(
             child: Column(
@@ -134,9 +143,14 @@ class DayDetailsPage extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.nightlight_round, color: AppTheme.primaryPurple.withAlpha(230)),
+                    Icon(Icons.nightlight_round,
+                        color: AppTheme.primaryPurple.withAlpha(230)),
                     const SizedBox(width: 8),
-                    Text(s.reportTabSleep, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: AppTheme.primaryPurple)),
+                    Text(s.reportTabSleep,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 17,
+                            color: AppTheme.primaryPurple)),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -149,9 +163,15 @@ class DayDetailsPage extends StatelessWidget {
                         children: [
                           Text(
                             snap.summary.sleep,
-                            style: TextStyle(fontSize: portalSp(context, 32), fontWeight: FontWeight.w900, height: 1.05),
+                            style: TextStyle(
+                                fontSize: portalSp(context, 32),
+                                fontWeight: FontWeight.w900,
+                                height: 1.05),
                           ),
-                          Text(s.reportDailySubtitleTotalSleep, style: TextStyle(color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+                          Text(s.reportDailySubtitleTotalSleep,
+                              style: TextStyle(
+                                  color: AppTheme.textMuted,
+                                  fontWeight: FontWeight.w600)),
                         ],
                       ),
                     ),
@@ -163,36 +183,61 @@ class DayDetailsPage extends StatelessWidget {
                           style: TextStyle(
                             fontWeight: FontWeight.w900,
                             fontSize: 18,
-                            color: vs != null && vs >= 0 ? const Color(0xFF34C759) : const Color(0xFFFF3B30),
+                            color: vs != null && vs >= 0
+                                ? const Color(0xFF34C759)
+                                : const Color(0xFFFF3B30),
                           ),
                         ),
-                        Text(s.reportVsYesterdayShort, style: TextStyle(fontSize: 11, color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+                        Text(s.reportVsYesterdayShort,
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: AppTheme.textMuted,
+                                fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ],
                 ),
                 const SizedBox(height: 18),
-                Text(s.reportSleepChartCaption, style: TextStyle(fontWeight: FontWeight.w800, color: AppTheme.textMuted, fontSize: 12)),
+                Text(s.reportSleepChartCaption,
+                    style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textMuted,
+                        fontSize: 12)),
                 const SizedBox(height: 8),
-                _HourBars(values: snap.sleepSecondsPerHour, barColor: AppTheme.primaryPurple),
+                _HourBars(
+                    values: snap.sleepSecondsPerHour,
+                    barColor: AppTheme.primaryPurple),
                 const Divider(height: 28),
-                _kvRow(s.reportDailySubtitleLongestStretch, DailyReportService.formatDurationShort(snap.longestSleepSessionSec), sub: longestHint),
+                _kvRow(
+                    s.reportDailySubtitleLongestStretch,
+                    DailyReportService.formatDurationShort(
+                        snap.longestSleepSessionSec),
+                    sub: longestHint),
                 const Divider(height: 22),
-                _kvRow(s.reportNapsLabel, '${snap.napCount}', sub: s.reportTotalSmallLabel),
+                _kvRow(s.reportNapsLabel, '${snap.napCount}',
+                    sub: s.reportTotalSmallLabel),
                 const Divider(height: 22),
-                _kvRow(s.reportDailySubtitleSleepQuality, _sleepQualityFromCounts(s, snap.sleepQualityCounts)),
+                _kvRow(s.reportDailySubtitleSleepQuality,
+                    _sleepQualityFromCounts(s, snap.sleepQualityCounts)),
                 const SizedBox(height: 18),
-                Text(s.reportComparedAgeLabel, style: TextStyle(fontSize: 12, color: AppTheme.textMuted, fontWeight: FontWeight.w700)),
+                Text(s.reportComparedAgeLabel,
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textMuted,
+                        fontWeight: FontWeight.w700)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
                       child: Text(
                         _benchmarkTitle(s, snap.ageSleepBenchmarkBand),
-                        style: TextStyle(fontWeight: FontWeight.w900, color: _benchmarkColor(snap.ageSleepBenchmarkBand)),
+                        style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            color: _benchmarkColor(snap.ageSleepBenchmarkBand)),
                       ),
                     ),
-                    Text('${snap.ageSleepBenchmarkPercent}%', style: const TextStyle(fontWeight: FontWeight.w900)),
+                    Text('${snap.ageSleepBenchmarkPercent}%',
+                        style: const TextStyle(fontWeight: FontWeight.w900)),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -213,20 +258,36 @@ class DayDetailsPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(s.reportTabFeedings, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFFE08A3E))),
+                Text(s.reportTabFeedings,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                        color: Color(0xFFE08A3E))),
                 const SizedBox(height: 12),
-                _kvRow(s.reportDailySubtitleFeedTotal, '${snap.summary.feedings}', sub: s.reportTotalSmallLabel),
+                _kvRow(
+                    s.reportDailySubtitleFeedTotal, '${snap.summary.feedings}',
+                    sub: s.reportTotalSmallLabel),
                 const Divider(height: 20),
                 _kvRow(
                   s.reportDailySubtitleFeedAvg,
-                  snap.avgFeedingDurationSec > 0 ? DailyReportService.formatDurationShort(snap.avgFeedingDurationSec) : '—',
+                  snap.avgFeedingDurationSec > 0
+                      ? DailyReportService.formatDurationShort(
+                          snap.avgFeedingDurationSec)
+                      : '—',
                 ),
                 const Divider(height: 20),
-                _kvRow(s.reportDailySubtitleFeedLast, formatTimeHm(snap.lastFeedingEndedAt)),
+                _kvRow(s.reportDailySubtitleFeedLast,
+                    formatTimeHm(snap.lastFeedingEndedAt)),
                 const SizedBox(height: 18),
-                Text(s.reportFeedingChartCaption, style: TextStyle(fontWeight: FontWeight.w800, color: AppTheme.textMuted, fontSize: 12)),
+                Text(s.reportFeedingChartCaption,
+                    style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textMuted,
+                        fontSize: 12)),
                 const SizedBox(height: 8),
-                _HourBars(values: snap.feedingCountPerHour, barColor: const Color(0xFFE08A3E)),
+                _HourBars(
+                    values: snap.feedingCountPerHour,
+                    barColor: const Color(0xFFE08A3E)),
               ],
             ),
           ),
@@ -235,13 +296,20 @@ class DayDetailsPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(s.reportTabDiapers, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppTheme.babyBlue)),
+                Text(s.reportTabDiapers,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                        color: AppTheme.babyBlue)),
                 const SizedBox(height: 12),
-                _kvRow(s.reportDailySubtitleDiaperTotal, '${snap.summary.diapers}'),
+                _kvRow(s.reportDailySubtitleDiaperTotal,
+                    '${snap.summary.diapers}'),
                 const Divider(height: 20),
-                _kvRow(s.reportDailySubtitleDiaperWet, '${snap.summary.diaperPee}'),
+                _kvRow(s.reportDailySubtitleDiaperWet,
+                    '${snap.summary.diaperPee}'),
                 const Divider(height: 20),
-                _kvRow(s.reportDailySubtitleDiaperDirty, '${snap.summary.diaperPoo}'),
+                _kvRow(s.reportDailySubtitleDiaperDirty,
+                    '${snap.summary.diaperPoo}'),
               ],
             ),
           ),
@@ -250,7 +318,9 @@ class DayDetailsPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(s.reportAiInsightsTitle, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                Text(s.reportAiInsightsTitle,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900, fontSize: 16)),
                 const SizedBox(height: 8),
                 ..._insights(s, snap).map(
                   (t) => Padding(
@@ -259,16 +329,24 @@ class DayDetailsPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text('✨ ', style: TextStyle(fontSize: 14)),
-                        Expanded(child: Text(t, style: const TextStyle(height: 1.35, fontWeight: FontWeight.w600))),
+                        Expanded(
+                            child: Text(t,
+                                style: const TextStyle(
+                                    height: 1.35,
+                                    fontWeight: FontWeight.w600))),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text(s.reportTimelineTitle, style: const TextStyle(fontWeight: FontWeight.w900)),
+                Text(s.reportTimelineTitle,
+                    style: const TextStyle(fontWeight: FontWeight.w900)),
                 const SizedBox(height: 8),
-                ...snap.timeline.map((e) => _timelineTile(context, s, e, _diaperKindLabel)),
-                if (snap.timeline.isEmpty) Text(s.reportNoDataHint, style: TextStyle(color: AppTheme.textMuted)),
+                ...snap.timeline
+                    .map((e) => _timelineTile(context, s, e, _diaperKindLabel)),
+                if (snap.timeline.isEmpty)
+                  Text(s.reportNoDataHint,
+                      style: TextStyle(color: AppTheme.textMuted)),
               ],
             ),
           ),
@@ -300,12 +378,24 @@ class DayDetailsPage extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: Text(k, style: TextStyle(color: AppTheme.textMuted, fontWeight: FontWeight.w700, fontSize: 13.5))),
+        Expanded(
+            child: Text(k,
+                style: TextStyle(
+                    color: AppTheme.textMuted,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5))),
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text(v, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-            if (sub != null) Text(sub, style: TextStyle(fontSize: 11, color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+            Text(v,
+                style:
+                    const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+            if (sub != null)
+              Text(sub,
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.textMuted,
+                      fontWeight: FontWeight.w600)),
           ],
         ),
       ],
@@ -334,7 +424,9 @@ Widget _timelineTile(
     DailyTimelineKind.feeding => s.reportTabFeedings,
     DailyTimelineKind.diaper => s.shortcutDiaper,
   };
-  final detail = e.kind == DailyTimelineKind.diaper ? diaperKindLabel(s, e.detail) : (e.detail ?? '');
+  final detail = e.kind == DailyTimelineKind.diaper
+      ? diaperKindLabel(s, e.detail)
+      : (e.detail ?? '');
 
   return Padding(
     padding: const EdgeInsets.only(bottom: 10),
@@ -349,10 +441,15 @@ Widget _timelineTile(
             children: [
               Text(
                 '${formatTimeHm(e.at)} · $title',
-                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
+                style:
+                    const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
               ),
               if (detail.isNotEmpty)
-                Text(detail, style: TextStyle(color: AppTheme.textMuted, fontSize: 12.5, fontWeight: FontWeight.w600)),
+                Text(detail,
+                    style: TextStyle(
+                        color: AppTheme.textMuted,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600)),
             ],
           ),
         ),
@@ -417,7 +514,10 @@ class _HourBars extends StatelessWidget {
               child: Text(
                 label,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 9, color: AppTheme.textMuted, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                    fontSize: 9,
+                    color: AppTheme.textMuted,
+                    fontWeight: FontWeight.w700),
               ),
             );
           }),

@@ -8,7 +8,9 @@ import '../../models/weekly_report_snapshot.dart';
 import '../../services/weekly_report_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/portal_layout.dart';
+import '../../utils/portal_page_route.dart';
 import '../../widgets/photo_avatar.dart';
+import 'report_page_shell.dart';
 import 'week_details_page.dart';
 
 /// Relatório semanal — resumo + tendências; detalhes em [WeekDetailsPage].
@@ -28,7 +30,6 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
   late DateTime _anchor;
   final _babyCtrl = CurrentBabyController.instance;
 
-  static const _bg = Color(0xFFF5F3FA);
   static const _heroPurple = Color(0xFF8E7CC3);
 
   @override
@@ -61,7 +62,8 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
     }
     if (mounted) setState(() => _error = null);
     try {
-      final snap = await WeeklyReportService.load(babyId: id, anchorDay: _anchor);
+      final snap =
+          await WeeklyReportService.load(babyId: id, anchorDay: _anchor);
       if (mounted) {
         setState(() {
           _snapshot = snap;
@@ -115,16 +117,22 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
   }
 
   String _heroParagraph(S s, WeeklyReportSnapshot w, String babyName) {
-    final tone = w.narrativeToneKey == 'calm' ? s.reportWeeklyToneCalm : s.reportWeeklyToneActive;
+    final tone = w.narrativeToneKey == 'calm'
+        ? s.reportWeeklyToneCalm
+        : s.reportWeeklyToneActive;
     final sp = w.sleepPctVsPrev;
     final hasCurrentData = w.aggregatedDayCount > 0 &&
         (w.avgDailyFeedings > 0 ||
             w.avgDailyDiapers > 0 ||
-            w.currentWeekDays.take(w.aggregatedDayCount).any((d) => d.sleepTotalSeconds > 0));
+            w.currentWeekDays
+                .take(w.aggregatedDayCount)
+                .any((d) => d.sleepTotalSeconds > 0));
     // Em vez de “Sem dados suficientes para comparar…”, quando estamos na primeira
     // semana com dados (sem histórico anterior) descrevemos o que JÁ foi registado.
     final sleepSentence = sp == null
-        ? (hasCurrentData ? s.reportWeeklyFirstWeekSleepLine : s.reportWeeklySleepUnknown)
+        ? (hasCurrentData
+            ? s.reportWeeklyFirstWeekSleepLine
+            : s.reportWeeklySleepUnknown)
         : sp.abs() < 4
             ? s.reportWeeklySleepStableShort
             : sp > 0
@@ -136,7 +144,8 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
         : fp < 0
             ? s.reportWeeklyFeedDown(fp.round().abs())
             : s.reportWeeklyFeedUp(fp.round());
-    return s.reportWeeklyHeroTemplate(babyName, tone, sleepSentence, feedSentence);
+    return s.reportWeeklyHeroTemplate(
+        babyName, tone, sleepSentence, feedSentence);
   }
 
   String _highlightLine(S s, WeeklyReportSnapshot w) {
@@ -225,19 +234,25 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
     final birthRaw = babyRow?['birth_date'] as String?;
     final birth = DateTime.tryParse(birthRaw ?? '');
     final name = (babyRow?['name'] as String?)?.trim();
-    final babyName = (name == null || name.isEmpty) ? s.placeholderBabyName : name;
+    final babyName =
+        (name == null || name.isEmpty) ? s.placeholderBabyName : name;
     final ageAtEndOfWeek = birth == null
         ? '—'
-        : s.babyAgeLabel(birth, snap?.weekMonday.add(const Duration(days: 6)) ?? DateTime.now());
+        : s.babyAgeLabel(birth,
+            snap?.weekMonday.add(const Duration(days: 6)) ?? DateTime.now());
     final photoB64 = babyRow?['photo_b64'] as String?;
     final photoUrl = (babyRow?['photo_url'] as String?)?.trim();
 
+    final reportBg = reportScaffoldBackground();
+
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: reportBg,
       appBar: AppBar(
-        backgroundColor: _bg,
+        backgroundColor: reportBg,
+        surfaceTintColor: reportBg,
         elevation: 0,
-        title: Text(s.reportWeeklyScreenTitle, style: const TextStyle(fontWeight: FontWeight.w900)),
+        title: Text(s.reportWeeklyScreenTitle,
+            style: const TextStyle(fontWeight: FontWeight.w900)),
         actions: [
           IconButton(
             tooltip: s.reportWeeklyPickWeekTooltip,
@@ -247,31 +262,48 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
         ],
       ),
       body: bid == null
-          ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(s.feedingNoBabyHint)))
+          ? Center(
+              child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(s.feedingNoBabyHint)))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
-                padding: EdgeInsets.fromLTRB(AppTheme.pageHPadding, 0, AppTheme.pageHPadding, 110),
+                padding: EdgeInsets.fromLTRB(
+                    AppTheme.pageHPadding, 0, AppTheme.pageHPadding, 110),
                 children: [
                   if (snap != null) ...[
                     Text(
                       _weekRangeLabel(context, snap.weekMonday),
-                      style: TextStyle(fontSize: portalSp(context, 15), fontWeight: FontWeight.w800, color: AppTheme.textMuted),
+                      style: TextStyle(
+                          fontSize: portalSp(context, 15),
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.textMuted),
                     ),
-                    if (snap.aggregatedDayCount > 0 && snap.aggregatedDayCount < 7) ...[
+                    if (snap.aggregatedDayCount > 0 &&
+                        snap.aggregatedDayCount < 7) ...[
                       const SizedBox(height: 8),
                       Text(
                         s.reportWeeklyPartialWeekHint(
-                          _weekdayName(context, snap.weekMonday.add(Duration(days: snap.aggregatedDayCount - 1))),
+                          _weekdayName(
+                              context,
+                              snap.weekMonday.add(
+                                  Duration(days: snap.aggregatedDayCount - 1))),
                         ),
-                        style: TextStyle(fontSize: portalSp(context, 13), fontWeight: FontWeight.w700, color: AppTheme.primaryPurple),
+                        style: TextStyle(
+                            fontSize: portalSp(context, 13),
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.primaryPurple),
                       ),
                     ],
                     if (snap.aggregatedDayCount == 0) ...[
                       const SizedBox(height: 8),
                       Text(
                         s.reportWeeklyFutureWeekHint,
-                        style: TextStyle(fontSize: portalSp(context, 13), fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+                        style: TextStyle(
+                            fontSize: portalSp(context, 13),
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textSecondary),
                       ),
                     ],
                   ],
@@ -280,18 +312,26 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
                     children: [
                       PhotoAvatar(
                         photoB64: photoB64,
-                        photoUrl: photoUrl == null || photoUrl.isEmpty ? null : photoUrl,
+                        photoUrl: photoUrl == null || photoUrl.isEmpty
+                            ? null
+                            : photoUrl,
                         radius: 26,
                         backgroundColor: AppTheme.softPurple,
-                        fallback: const Text('👶', style: TextStyle(fontSize: 30)),
+                        fallback:
+                            const Text('👶', style: TextStyle(fontSize: 30)),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(babyName, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20)),
-                            Text(ageAtEndOfWeek, style: TextStyle(color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+                            Text(babyName,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w900, fontSize: 20)),
+                            Text(ageAtEndOfWeek,
+                                style: TextStyle(
+                                    color: AppTheme.textMuted,
+                                    fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ),
@@ -306,7 +346,9 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
                         children: [
                           Text(
                             '${s.reportWeeklyLoadErrorPrefix} $_error',
-                            style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600),
+                            style: const TextStyle(
+                                color: Colors.redAccent,
+                                fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(height: 12),
                           FilledButton(
@@ -333,7 +375,10 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
                         ),
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
-                          BoxShadow(color: _heroPurple.withAlpha(60), blurRadius: 20, offset: const Offset(0, 10)),
+                          BoxShadow(
+                              color: _heroPurple.withAlpha(60),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10)),
                         ],
                       ),
                       child: Stack(
@@ -341,24 +386,35 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
                           Positioned(
                             right: -4,
                             bottom: -4,
-                            child: Icon(Icons.nightlight_round, size: 72, color: Colors.amber.withAlpha(220)),
+                            child: Icon(Icons.nightlight_round,
+                                size: 72, color: Colors.amber.withAlpha(220)),
                           ),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 s.reportWeeklySummaryTitle,
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18),
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 18),
                               ),
                               const SizedBox(height: 10),
                               Text(
                                 _heroParagraph(s, snap, babyName),
-                                style: const TextStyle(color: Colors.white, height: 1.4, fontWeight: FontWeight.w600, fontSize: 15),
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    height: 1.4,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15),
                               ),
                               const SizedBox(height: 12),
                               Text(
                                 _highlightLine(s, snap),
-                                style: TextStyle(color: Colors.white.withAlpha(245), fontWeight: FontWeight.w800, fontSize: 14),
+                                style: TextStyle(
+                                    color: Colors.white.withAlpha(245),
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14),
                               ),
                             ],
                           ),
@@ -366,7 +422,9 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
                       ),
                     ),
                     const SizedBox(height: 18),
-                    Text(s.reportWeeklyTrendsTitle, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+                    Text(s.reportWeeklyTrendsTitle,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w900, fontSize: 17)),
                     const SizedBox(height: 10),
                     _whiteCard(child: _buildTrendsList(s, snap)),
                     const SizedBox(height: 18),
@@ -377,16 +435,16 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
                           backgroundColor: AppTheme.lavender,
                           foregroundColor: AppTheme.textPrimary,
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999)),
                         ),
                         onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => WeekDetailsPage(snapshot: snap),
-                            ),
-                          );
+                          pushPortalPage<void>(
+                              context, WeekDetailsPage(snapshot: snap));
                         },
-                        child: Text(s.reportWeeklySeeFullDetails, style: const TextStyle(fontWeight: FontWeight.w900)),
+                        child: Text(s.reportWeeklySeeFullDetails,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w900)),
                       ),
                     ),
                   ],
@@ -404,7 +462,10 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
-          BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 18, offset: const Offset(0, 8)),
+          BoxShadow(
+              color: Colors.black.withAlpha(10),
+              blurRadius: 18,
+              offset: const Offset(0, 8)),
         ],
       ),
       child: child,
@@ -419,14 +480,18 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
     final agg = snap.aggregatedDayCount.clamp(0, 7);
     final currSlice = agg <= 0
         ? const <DailySummary>[]
-        : snap.currentWeekDays.sublist(0, agg.clamp(0, snap.currentWeekDays.length));
+        : snap.currentWeekDays
+            .sublist(0, agg.clamp(0, snap.currentWeekDays.length));
     final avgSleepH = WeeklyReportService.avgSleepHours(currSlice);
 
     final sleepValue = WeeklyReportService.formatHoursMinutes(avgSleepH);
-    final feedsValue = s.reportWeeklyAvgFeedsDay(snap.avgDailyFeedings.toStringAsFixed(1));
-    final diapersValue = s.reportWeeklyAvgDiapersDay(snap.avgDailyDiapers.toStringAsFixed(1));
+    final feedsValue =
+        s.reportWeeklyAvgFeedsDay(snap.avgDailyFeedings.toStringAsFixed(1));
+    final diapersValue =
+        s.reportWeeklyAvgDiapersDay(snap.avgDailyDiapers.toStringAsFixed(1));
     final wDelta = snap.weightDeltaGramsThisWeek;
-    final weightValue = wDelta == null ? '—' : '${wDelta > 0 ? '+' : ''}${wDelta}g';
+    final weightValue =
+        wDelta == null ? '—' : '${wDelta > 0 ? '+' : ''}${wDelta}g';
 
     return Column(
       children: [
@@ -499,7 +564,9 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
       children: [
         Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: iconColor.withAlpha(36), borderRadius: BorderRadius.circular(14)),
+          decoration: BoxDecoration(
+              color: iconColor.withAlpha(36),
+              borderRadius: BorderRadius.circular(14)),
           child: Icon(icon, color: iconColor, size: 22),
         ),
         const SizedBox(width: 12),
@@ -507,8 +574,14 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
-              Text(subtitle, style: TextStyle(fontSize: 12, color: AppTheme.textMuted, fontWeight: FontWeight.w700)),
+              Text(label,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w900, fontSize: 15)),
+              Text(subtitle,
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textMuted,
+                      fontWeight: FontWeight.w700)),
             ],
           ),
         ),
@@ -518,7 +591,10 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
           children: [
             Text(
               mainValue,
-              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.textPrimary),
+              style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                  color: AppTheme.textPrimary),
             ),
             if (comparison != null) ...[
               const SizedBox(height: 2),
@@ -526,7 +602,8 @@ class _WeeklyReportPageState extends State<WeeklyReportPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (comparisonIcon != null)
-                    Icon(comparisonIcon, color: comparisonColor ?? AppTheme.textMuted, size: 14),
+                    Icon(comparisonIcon,
+                        color: comparisonColor ?? AppTheme.textMuted, size: 14),
                   if (comparisonIcon != null) const SizedBox(width: 2),
                   Text(
                     comparison,

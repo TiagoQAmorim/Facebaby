@@ -13,9 +13,13 @@ import '../services/firebase/firestore_service.dart';
 import '../services/home_prefs.dart';
 import '../services/measurement_units_prefs.dart';
 import '../services/scheduled_local_reminders.dart';
+import '../services/portal_layout_prefs.dart';
 import '../theme/app_theme.dart';
-import '../widgets/android_exact_alarm_card.dart';
 import '../utils/measurement_format.dart';
+import '../utils/portal_night_ui.dart';
+import '../utils/portal_time_of_day.dart';
+import '../widgets/android_exact_alarm_card.dart';
+import '../widgets/card_option_picker_field.dart';
 
 /// Hub de **Alimentação**: abas Amamentação · Mamadeira · Sólidos (layout próximo ao mock).
 class FeedingHubPage extends StatefulWidget {
@@ -27,16 +31,21 @@ class FeedingHubPage extends StatefulWidget {
   State<FeedingHubPage> createState() => _FeedingHubPageState();
 }
 
-class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProviderStateMixin {
+class _FeedingHubPageState extends State<FeedingHubPage>
+    with SingleTickerProviderStateMixin {
+  static const int _historyPageSize = 10;
+
   /// Peito esquerdo — contraste forte no donut (evita duas tonalidades só de roxo).
   static const Color _pieBreastLeft = Color(0xFF0F766E);
+
   /// Peito direito — cor distinta do esquerdo.
   static const Color _pieBreastRight = Color(0xFFB83280);
   static const Color _breastCardBg = Color(0xFFF3EEFF); // lavanda
   static const Color _bottleCardBg = Color(0xFFFFF0F6); // rosinha
   static const Color _solidsCardBg = Color(0xFFFFF3E8); // pêssego
 
-  static const BorderSide _pieSectionDivider = BorderSide(color: Colors.white, width: 3.5);
+  static const BorderSide _pieSectionDivider =
+      BorderSide(color: Colors.white, width: 3.5);
 
   static const TextStyle _pieArcTitleStyle = TextStyle(
     color: Colors.white,
@@ -51,7 +60,11 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
 
   late TabController _tabController;
   final _currentBaby = CurrentBabyController.instance;
-  static final BreastfeedingTimerController _breastTimer = BreastfeedingTimerController.instance;
+  final _breastScrollController = ScrollController();
+  final _bottleScrollController = ScrollController();
+  final _solidsScrollController = ScrollController();
+  static final BreastfeedingTimerController _breastTimer =
+      BreastfeedingTimerController.instance;
 
   final _bottleMlCtrl = TextEditingController();
   final _bottleNoteCtrl = TextEditingController();
@@ -59,12 +72,11 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
 
   Future<List<Map<String, Object?>>>? _feedingsFuture;
 
-  /// Visão geral: só até [overviewWindow] — lista dedicada para não cortar o gráfico (últimos 50).
+  /// Lista dedicada ao histórico editável; a UI mostra em lotes de 10.
   Future<List<Map<String, Object?>>>? _overviewFeedingsFuture;
 
-  static const Duration _overviewWindow = Duration(days: 5);
-
   bool _overviewExpanded = false;
+  int _feedingHistoryVisible = _historyPageSize;
 
   final GlobalKey _overviewResultsKeyBreast = GlobalKey();
   final GlobalKey _overviewResultsKeyBottle = GlobalKey();
@@ -88,6 +100,9 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
   void dispose() {
     _currentBaby.removeListener(_onBabyChanged);
     _breastTimer.removeListener(_onBreastTimerTick);
+    _breastScrollController.dispose();
+    _bottleScrollController.dispose();
+    _solidsScrollController.dispose();
     _tabController.dispose();
     _bottleMlCtrl.dispose();
     _bottleNoteCtrl.dispose();
@@ -115,6 +130,7 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
 
   void _onBabyChanged() {
     _breastTimer.discardIfBabyMismatch(_currentBaby.currentBabyId);
+    _feedingHistoryVisible = _historyPageSize;
     _refreshFeedingsFuture();
     if (mounted) setState(() {});
   }
@@ -128,9 +144,9 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
       _overviewFeedingsFuture = null;
       return;
     }
-    final since = DateTime.now().subtract(_overviewWindow);
-    _feedingsFuture = AppDatabase.instance.listFeedings(babyId: id, limit: 50);
-    _overviewFeedingsFuture = AppDatabase.instance.listFeedings(babyId: id, limit: 500, startedSince: since);
+    _feedingsFuture = AppDatabase.instance.listFeedings(babyId: id, limit: 500);
+    _overviewFeedingsFuture =
+        AppDatabase.instance.listFeedings(babyId: id, limit: 500);
     if (mounted) setState(() {});
   }
 
@@ -166,10 +182,16 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
 
   bool _breastCircleActive(String side) {
     final bid = _babyId;
-    return bid != null && _breastTimer.babyId == bid && _breastTimer.side == side && _breastTimer.isRunning;
+    return bid != null &&
+        _breastTimer.babyId == bid &&
+        _breastTimer.side == side &&
+        _breastTimer.isRunning;
   }
 
-  Future<void> _persistBreast({required DateTime start, required DateTime end, required String side}) async {
+  Future<void> _persistBreast(
+      {required DateTime start,
+      required DateTime end,
+      required String side}) async {
     final id = _babyId;
     if (id == null) return;
     final sec = end.difference(start).inSeconds;
@@ -185,7 +207,8 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
     FeedingCloudSync.pushLocalSoon(localBabyId: id, localFeedingId: newId);
     await _syncLocalReminders(id);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(S.of(context).feedingSavedOk)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(S.of(context).feedingSavedOk)));
     }
     _refreshFeedingsFuture();
   }
@@ -194,18 +217,23 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
     final sTxt = S.of(context);
     final bid = _babyId;
     if (bid == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(sTxt.feedingSelectBabyFirst)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(sTxt.feedingSelectBabyFirst)));
       return;
     }
 
     await _breastTimer.onCircleTap(
       babyId: bid,
       tappedSide: side,
-      persistBreast: ({required DateTime start, required DateTime end, required String side}) =>
+      persistBreast: (
+              {required DateTime start,
+              required DateTime end,
+              required String side}) =>
           _persistBreast(start: start, end: end, side: side),
       snackbarTooShort: () {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(sTxt.feedingHubTimerTooShort)));
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(sTxt.feedingHubTimerTooShort)));
         }
       },
     );
@@ -215,55 +243,78 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
     final s = S.of(context);
     final id = _babyId;
     if (id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.feedingSelectBabyFirst)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(s.feedingSelectBabyFirst)));
       return;
     }
 
-    var sideSel = (_breastTimer.isRunning && _breastTimer.babyId == id) ? (_breastTimer.side ?? 'esquerdo') : 'esquerdo';
+    var sideSel = (_breastTimer.isRunning && _breastTimer.babyId == id)
+        ? (_breastTimer.side ?? 'esquerdo')
+        : 'esquerdo';
     var minText = '10';
 
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: AppTheme.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
       builder: (ctx) {
-        return StatefulBuilder(builder: (ctx, setSheet) {
-          return Padding(
-            padding: EdgeInsets.only(
-              left: 22,
-              right: 22,
-              top: 20,
-              bottom: MediaQuery.viewInsetsOf(ctx).bottom + 24,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(s.feedingHubManualTitle, style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
-                const SizedBox(height: 14),
-                TextFormField(
-                  initialValue: minText,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: s.feedingHubManualMinutes, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
-                  onChanged: (v) => minText = v,
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  key: ValueKey(sideSel),
-                  initialValue: sideSel,
-                  decoration: InputDecoration(labelText: s.feedingSideLabel, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
-                  items: [
-                    DropdownMenuItem(value: 'esquerdo', child: Text(s.feedingSideLeft)),
-                    DropdownMenuItem(value: 'direito', child: Text(s.feedingSideRight)),
-                  ],
-                  onChanged: (v) => setSheet(() => sideSel = v ?? sideSel),
-                ),
+        return Theme(
+          data: PortalNightUi.cardFormTheme(ctx),
+          child: StatefulBuilder(builder: (ctx, setSheet) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 22,
+                right: 22,
+                top: 20,
+                bottom: MediaQuery.viewInsetsOf(ctx).bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(s.feedingHubManualTitle,
+                      style: Theme.of(ctx)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    initialValue: minText,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                        labelText: s.feedingHubManualMinutes,
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14))),
+                    onChanged: (v) => minText = v,
+                  ),
+                  const SizedBox(height: 12),
+                  CardOptionPickerField<String>(
+                    label: s.feedingSideLabel,
+                    sheetTitle: s.feedingSideLabel,
+                    value: sideSel,
+                    options: [
+                      CardOption(
+                          value: 'esquerdo', label: s.feedingSideLeft),
+                      CardOption(
+                          value: 'direito', label: s.feedingSideRight),
+                    ],
+                    onChanged: (v) => setSheet(() => sideSel = v),
+                  ),
                 const SizedBox(height: 18),
                 FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: AppTheme.feedingAlertAccent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16)),
+                  style: FilledButton.styleFrom(
+                      backgroundColor: AppTheme.feedingAlertAccent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16)),
                   onPressed: () async {
-                    final mins = int.tryParse(minText.trim().replaceAll(',', '')) ?? 0;
+                    final mins =
+                        int.tryParse(minText.trim().replaceAll(',', '')) ?? 0;
                     if (mins <= 0) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(s.feedingHubManualInvalid)));
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                          SnackBar(content: Text(s.feedingHubManualInvalid)));
                       return;
                     }
                     final ended = DateTime.now();
@@ -279,24 +330,28 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
                         quantityMl: null,
                         note: null,
                       );
-                      FeedingCloudSync.pushLocalSoon(localBabyId: id, localFeedingId: newId);
+                      FeedingCloudSync.pushLocalSoon(
+                          localBabyId: id, localFeedingId: newId);
                       await _syncLocalReminders(id);
                       if (ctx.mounted) Navigator.pop(ctx);
                       if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.feedingSavedOk)));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(s.feedingSavedOk)));
                       setState(() => _refreshFeedingsFuture());
                     } catch (e) {
                       if (ctx.mounted) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('${s.feedingSaveFail} $e')));
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text('${s.feedingSaveFail} $e')));
                       }
                     }
                   },
                   child: Text(s.add),
                 ),
-              ],
-            ),
-          );
-        });
+                ],
+              ),
+            );
+          }),
+        );
       },
     );
   }
@@ -308,7 +363,11 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
     final type = (r.type ?? '').trim();
     var minText = '${math.max(1, (r.durationSec / 60).ceil())}';
     final q = r.quantityMl;
-    var mlText = q == null ? '' : (q.truncateToDouble() == q ? '${q.round()}' : '$q'.replaceAll('.', ','));
+    var mlText = q == null
+        ? ''
+        : (q.truncateToDouble() == q
+            ? '${q.round()}'
+            : '$q'.replaceAll('.', ','));
     var noteText = (r.note ?? '');
 
     String sideSel = () {
@@ -320,53 +379,72 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: AppTheme.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
       builder: (ctx) {
-        return StatefulBuilder(builder: (ctx, setSheet) {
-          return Padding(
-            padding: EdgeInsets.only(
-              left: 22,
-              right: 22,
-              top: 18,
-              bottom: MediaQuery.viewInsetsOf(ctx).bottom + 24,
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(child: Text(s.edit, style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900))),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  if (type == 'peito' || type.isEmpty) ...[
-                    TextFormField(
-                      initialValue: minText,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(labelText: s.feedingHubManualMinutes, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
-                      onChanged: (v) => minText = v,
+        return Theme(
+          data: PortalNightUi.cardFormTheme(ctx),
+          child: StatefulBuilder(builder: (ctx, setSheet) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 22,
+                right: 22,
+                top: 18,
+                bottom: MediaQuery.viewInsetsOf(ctx).bottom + 24,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                            child: Text(s.edit,
+                                style: Theme.of(ctx)
+                                    .textTheme
+                                    .titleLarge
+                                    ?.copyWith(fontWeight: FontWeight.w900))),
+                      ],
                     ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      key: ValueKey(sideSel),
-                      initialValue: sideSel,
-                      decoration: InputDecoration(labelText: s.feedingSideLabel, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
-                      items: [
-                        DropdownMenuItem(value: 'esquerdo', child: Text(s.feedingSideLeft)),
-                        DropdownMenuItem(value: 'direito', child: Text(s.feedingSideRight)),
-                        DropdownMenuItem(value: 'ambos', child: Text(s.feedingSideBoth)),
-                      ],
-                      onChanged: (v) => setSheet(() => sideSel = v ?? sideSel),
-                    ),
-                  ],
+                    if (type == 'peito' || type.isEmpty) ...[
+                      TextFormField(
+                        initialValue: minText,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                            labelText: s.feedingHubManualMinutes,
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14))),
+                        onChanged: (v) => minText = v,
+                      ),
+                      const SizedBox(height: 12),
+                      CardOptionPickerField<String>(
+                        label: s.feedingSideLabel,
+                        sheetTitle: s.feedingSideLabel,
+                        value: sideSel,
+                        options: [
+                          CardOption(
+                              value: 'esquerdo', label: s.feedingSideLeft),
+                          CardOption(
+                              value: 'direito', label: s.feedingSideRight),
+                          CardOption(
+                              value: 'ambos', label: s.feedingSideBoth),
+                        ],
+                        onChanged: (v) => setSheet(() => sideSel = v),
+                      ),
+                    ],
                   if (type == 'mamadeira') ...[
                     TextFormField(
                       initialValue: mlText,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
                         labelText: '${s.feedingQty} (${_liquidUnitLabel(s)})',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14)),
                       ),
                       onChanged: (v) => mlText = v,
                     ),
@@ -374,7 +452,10 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
                     TextFormField(
                       initialValue: noteText,
                       maxLines: 2,
-                      decoration: InputDecoration(labelText: s.feedingNote, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
+                      decoration: InputDecoration(
+                          labelText: s.feedingNote,
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14))),
                       onChanged: (v) => noteText = v,
                     ),
                   ],
@@ -383,25 +464,35 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
                       initialValue: noteText,
                       minLines: 2,
                       maxLines: 4,
-                      decoration: InputDecoration(labelText: s.feedingHubSolidDescribe, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
+                      decoration: InputDecoration(
+                          labelText: s.feedingHubSolidDescribe,
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14))),
                       onChanged: (v) => noteText = v,
                     ),
                   ],
                   const SizedBox(height: 18),
                   FilledButton(
-                    style: FilledButton.styleFrom(backgroundColor: AppTheme.feedingAlertAccent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16)),
+                    style: FilledButton.styleFrom(
+                        backgroundColor: AppTheme.feedingAlertAccent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16)),
                     onPressed: () async {
                       try {
                         if (type == 'peito' || type.isEmpty) {
-                          final mins = int.tryParse(minText.trim().replaceAll(',', '')) ?? 0;
+                          final mins = int.tryParse(
+                                  minText.trim().replaceAll(',', '')) ??
+                              0;
                           if (mins <= 0) {
                             if (ctx.mounted) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(s.feedingHubManualInvalid)));
+                              ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                                  content: Text(s.feedingHubManualInvalid)));
                             }
                             return;
                           }
                           final durSec = mins * 60;
-                          final newEnd = r.startedAt.add(Duration(seconds: durSec));
+                          final newEnd =
+                              r.startedAt.add(Duration(seconds: durSec));
                           await AppDatabase.instance.updateFeeding(
                             id: r.id,
                             babyId: bid,
@@ -413,12 +504,15 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
                             quantityMl: null,
                             note: null,
                           );
-                          FeedingCloudSync.pushLocalSoon(localBabyId: bid, localFeedingId: r.id);
+                          FeedingCloudSync.pushLocalSoon(
+                              localBabyId: bid, localFeedingId: r.id);
                         } else if (type == 'mamadeira') {
-                          final ml = MeasurementFormat.parseLiquidToMl(mlText) ?? -1;
+                          final ml =
+                              MeasurementFormat.parseLiquidToMl(mlText) ?? -1;
                           if (ml <= 0) {
                             if (ctx.mounted) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(s.feedingHubMlRequired)));
+                              ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                                  content: Text(s.feedingHubMlRequired)));
                             }
                             return;
                           }
@@ -431,9 +525,12 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
                             side: null,
                             type: 'mamadeira',
                             quantityMl: ml,
-                            note: noteText.trim().isEmpty ? null : noteText.trim(),
+                            note: noteText.trim().isEmpty
+                                ? null
+                                : noteText.trim(),
                           );
-                          FeedingCloudSync.pushLocalSoon(localBabyId: bid, localFeedingId: r.id);
+                          FeedingCloudSync.pushLocalSoon(
+                              localBabyId: bid, localFeedingId: r.id);
                         } else if (type == 'solidos') {
                           await AppDatabase.instance.updateFeeding(
                             id: r.id,
@@ -444,19 +541,24 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
                             side: null,
                             type: 'solidos',
                             quantityMl: null,
-                            note: noteText.trim().isEmpty ? null : noteText.trim(),
+                            note: noteText.trim().isEmpty
+                                ? null
+                                : noteText.trim(),
                           );
-                          FeedingCloudSync.pushLocalSoon(localBabyId: bid, localFeedingId: r.id);
+                          FeedingCloudSync.pushLocalSoon(
+                              localBabyId: bid, localFeedingId: r.id);
                         }
 
                         await _syncLocalReminders(bid);
                         if (ctx.mounted) Navigator.pop(ctx);
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.feedingHubFeedingUpdatedOk)));
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(s.feedingHubFeedingUpdatedOk)));
                         setState(() => _refreshFeedingsFuture());
                       } catch (e) {
                         if (ctx.mounted) {
-                          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('${s.feedingSaveFail} $e')));
+                          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                              content: Text('${s.feedingSaveFail} $e')));
                         }
                       }
                     },
@@ -466,7 +568,8 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
               ),
             ),
           );
-        });
+          }),
+        );
       },
     );
   }
@@ -476,7 +579,8 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
     if (id == null) return;
     final ml = MeasurementFormat.parseLiquidToMl(_bottleMlCtrl.text) ?? -1;
     if (ml <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.feedingHubMlRequired)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(s.feedingHubMlRequired)));
       return;
     }
     final now = DateTime.now();
@@ -489,18 +593,22 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
         side: null,
         type: 'mamadeira',
         quantityMl: ml,
-        note: _bottleNoteCtrl.text.trim().isEmpty ? null : _bottleNoteCtrl.text.trim(),
+        note: _bottleNoteCtrl.text.trim().isEmpty
+            ? null
+            : _bottleNoteCtrl.text.trim(),
       );
       FeedingCloudSync.pushLocalSoon(localBabyId: id, localFeedingId: newId);
       await _syncLocalReminders(id);
       _bottleMlCtrl.clear();
       _bottleNoteCtrl.clear();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.feedingSavedOk)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(s.feedingSavedOk)));
       setState(() => _refreshFeedingsFuture());
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${s.feedingSaveFail} $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('${s.feedingSaveFail} $e')));
       }
     }
   }
@@ -525,11 +633,13 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
       await _syncLocalReminders(id);
       _solidNoteCtrl.clear();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.feedingSavedOk)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(s.feedingSavedOk)));
       setState(() => _refreshFeedingsFuture());
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${s.feedingSaveFail} $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('${s.feedingSaveFail} $e')));
       }
     }
   }
@@ -556,7 +666,9 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
           title: Text(s.delete),
           content: Text(s.confirmDelete),
           actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(s.cancel)),
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(s.cancel)),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () => Navigator.of(ctx).pop(true),
@@ -569,7 +681,8 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
     if (ok != true || !mounted) return;
 
     try {
-      final cloudId = await AppDatabase.instance.getRowCloudId(table: 'feedings', id: r.id, babyId: bid);
+      final cloudId = await AppDatabase.instance
+          .getRowCloudId(table: 'feedings', id: r.id, babyId: bid);
       await AppDatabase.instance.deleteFeeding(id: r.id, babyId: bid);
       await _syncLocalReminders(bid);
       if (cloudId != null) {
@@ -578,11 +691,13 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
         } catch (_) {}
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.deletedOk)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(s.deletedOk)));
       _refreshFeedingsFuture();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${s.deleteFail} $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('${s.deleteFail} $e')));
     }
   }
 
@@ -629,7 +744,8 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
     required bool active,
     required Color sideColor,
   }) {
-    final borderInactive = Border.all(color: sideColor.withAlpha(150), width: 2.2);
+    final borderInactive =
+        Border.all(color: sideColor.withAlpha(150), width: 2.2);
     final borderActive = Border.all(color: sideColor, width: 4.0);
     return Material(
       color: Colors.transparent,
@@ -648,7 +764,11 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
             border: active ? borderActive : borderInactive,
             boxShadow: active
                 ? [
-                    BoxShadow(color: sideColor.withAlpha(115), blurRadius: 22, spreadRadius: 2, offset: const Offset(0, 10)),
+                    BoxShadow(
+                        color: sideColor.withAlpha(115),
+                        blurRadius: 22,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 10)),
                   ]
                 : null,
           ),
@@ -657,7 +777,8 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
             style: TextStyle(
               fontSize: active ? 36 : 32,
               fontWeight: FontWeight.w900,
-              color: active ? sideColor.withAlpha(250) : sideColor.withAlpha(195),
+              color:
+                  active ? sideColor.withAlpha(250) : sideColor.withAlpha(195),
               letterSpacing: -0.5,
             ),
           ),
@@ -703,7 +824,10 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
         Text(
           s.feedingHubBreastPieTitle,
           textAlign: TextAlign.center,
-          style: TextStyle(fontWeight: FontWeight.w900, color: Colors.black.withAlpha(170), fontSize: 15),
+          style: TextStyle(
+              fontWeight: FontWeight.w900,
+              color: Colors.black.withAlpha(170),
+              fontSize: 15),
         ),
         const SizedBox(height: 14),
         Container(
@@ -731,6 +855,7 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
               builder: (context, constraints) {
                 // fl_chart usa o rect inteiro do pai; caixa alta + pouca altura fazia overflow.
                 const maxPieSide = 280.0;
+
                 /// Diâmetro exterior ≈ `2 * (holeR + ringR)`; margem para `%` nos arcos.
                 const baseHoleR = 52.0;
                 const baseRingR = 62.0;
@@ -761,7 +886,8 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
                               radius: ringR,
                               borderSide: divider,
                               title: '${leftPct.round()}%',
-                              titleStyle: _pieArcTitleStyle.copyWith(fontSize: 15 * scale),
+                              titleStyle: _pieArcTitleStyle.copyWith(
+                                  fontSize: 15 * scale),
                               titlePositionPercentageOffset: 0.6,
                             ),
                             PieChartSectionData(
@@ -770,7 +896,8 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
                               radius: ringR,
                               borderSide: divider,
                               title: '${rightPct.round()}%',
-                              titleStyle: _pieArcTitleStyle.copyWith(fontSize: 15 * scale),
+                              titleStyle: _pieArcTitleStyle.copyWith(
+                                  fontSize: 15 * scale),
                               titlePositionPercentageOffset: 0.6,
                             ),
                           ],
@@ -823,8 +950,14 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
           spacing: 14,
           runSpacing: 8,
           children: [
-            _LegendDot(color: _pieBreastLeft, label: '${s.feedingSideLeft}: ${_fmtDurationShort(Duration(seconds: left.round()))}'),
-            _LegendDot(color: _pieBreastRight, label: '${s.feedingSideRight}: ${_fmtDurationShort(Duration(seconds: right.round()))}'),
+            _LegendDot(
+                color: _pieBreastLeft,
+                label:
+                    '${s.feedingSideLeft}: ${_fmtDurationShort(Duration(seconds: left.round()))}'),
+            _LegendDot(
+                color: _pieBreastRight,
+                label:
+                    '${s.feedingSideRight}: ${_fmtDurationShort(Duration(seconds: right.round()))}'),
           ],
         ),
       ],
@@ -842,7 +975,10 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(s.feedingHubTapSidesHint, textAlign: TextAlign.center, style: TextStyle(color: Colors.black.withAlpha(150), height: 1.35)),
+          Text(s.feedingHubTapSidesHint,
+              textAlign: TextAlign.center,
+              style:
+                  TextStyle(color: Colors.black.withAlpha(150), height: 1.35)),
           const SizedBox(height: 22),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -858,7 +994,10 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
                   const SizedBox(height: 12),
                   Text(
                     _fmtHms(_elapsedBreastDisplay('esquerdo')),
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: 1.2),
+                    style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2),
                   ),
                 ],
               ),
@@ -873,7 +1012,10 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
                   const SizedBox(height: 12),
                   Text(
                     _fmtHms(_elapsedBreastDisplay('direito')),
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: 1.2),
+                    style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2),
                   ),
                 ],
               ),
@@ -887,10 +1029,13 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
                 backgroundColor: AppTheme.feedingAlertAccent,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18)),
               ),
               onPressed: _showManualBreastSheet,
-              child: Text(s.feedingHubAddManualEntry.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.8)),
+              child: Text(s.feedingHubAddManualEntry.toUpperCase(),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w900, letterSpacing: 0.8)),
             ),
           ),
           FutureBuilder<List<Map<String, Object?>>>(
@@ -909,7 +1054,8 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
   Widget _bottleCard(S s) {
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
-      decoration: BoxDecoration(color: _bottleCardBg, borderRadius: BorderRadius.circular(22)),
+      decoration: BoxDecoration(
+          color: _bottleCardBg, borderRadius: BorderRadius.circular(22)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -921,7 +1067,8 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
               prefixIcon: const Icon(Icons.local_drink_outlined),
               filled: true,
               fillColor: Colors.white,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
             ),
           ),
           const SizedBox(height: 14),
@@ -933,7 +1080,8 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
               prefixIcon: const Icon(Icons.notes_outlined),
               filled: true,
               fillColor: Colors.white,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
             ),
           ),
           const SizedBox(height: 20),
@@ -942,10 +1090,13 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
               backgroundColor: AppTheme.feedingAlertAccent,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18)),
             ),
             onPressed: () => _saveBottle(s),
-            child: Text(s.feedingHubSaveBottle.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.8)),
+            child: Text(s.feedingHubSaveBottle.toUpperCase(),
+                style: const TextStyle(
+                    fontWeight: FontWeight.w900, letterSpacing: 0.8)),
           ),
         ],
       ),
@@ -955,7 +1106,8 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
   Widget _solidsCard(S s) {
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
-      decoration: BoxDecoration(color: _solidsCardBg, borderRadius: BorderRadius.circular(22)),
+      decoration: BoxDecoration(
+          color: _solidsCardBg, borderRadius: BorderRadius.circular(22)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -968,7 +1120,8 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
               alignLabelWithHint: true,
               filled: true,
               fillColor: Colors.white,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
             ),
           ),
           const SizedBox(height: 20),
@@ -977,10 +1130,13 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
               backgroundColor: AppTheme.feedingAlertAccent,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18)),
             ),
             onPressed: () => _saveSolid(s),
-            child: Text(s.feedingHubSaveSolid.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.8)),
+            child: Text(s.feedingHubSaveSolid.toUpperCase(),
+                style: const TextStyle(
+                    fontWeight: FontWeight.w900, letterSpacing: 0.8)),
           ),
         ],
       ),
@@ -1000,7 +1156,10 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
               borderRadius: BorderRadius.circular(18),
               onTap: () {
                 final willExpand = !_overviewExpanded;
-                setState(() => _overviewExpanded = willExpand);
+                setState(() {
+                  _overviewExpanded = willExpand;
+                  _feedingHistoryVisible = _historyPageSize;
+                });
                 if (willExpand) {
                   _scrollOverviewResultsIntoView(resultsKey);
                 }
@@ -1013,10 +1172,18 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
                     Text(
                       s.feedingHubOverviewTitle,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20, height: 1.25),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 20,
+                          height: 1.25),
                     ),
                     const SizedBox(height: 8),
-                    Icon(_overviewExpanded ? Icons.expand_less : Icons.expand_more, color: Colors.white70),
+                    Icon(
+                        _overviewExpanded
+                            ? Icons.expand_less
+                            : Icons.expand_more,
+                        color: Colors.white70),
                   ],
                 ),
               ),
@@ -1027,7 +1194,9 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
           firstCurve: Curves.easeOut,
           secondCurve: Curves.easeOut,
           sizeCurve: Curves.easeOut,
-          crossFadeState: _overviewExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          crossFadeState: _overviewExpanded
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
           duration: const Duration(milliseconds: 220),
           firstChild: const SizedBox(width: double.infinity, height: 0),
           secondChild: Container(
@@ -1040,57 +1209,84 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
                 if (snap.connectionState == ConnectionState.waiting) {
                   return const Padding(
                     padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    child: Center(
+                        child: CircularProgressIndicator(strokeWidth: 2)),
                   );
                 }
                 final rows = snap.data ?? [];
                 if (rows.isEmpty) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(s.feedingHubOverviewEmpty, style: TextStyle(color: Colors.black.withAlpha(140))),
+                    child: Text(s.feedingHubOverviewEmpty,
+                        style: TextStyle(color: Colors.black.withAlpha(140))),
                   );
                 }
-                final recs = rows.map(FeedingRecord.fromRow).toList();
+                final recs = rows
+                    .map(FeedingRecord.fromRow)
+                    .take(_feedingHistoryVisible)
+                    .toList();
                 return Column(
-                  children: recs.map((r) {
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      elevation: 0,
-                      color: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: Colors.black.withAlpha(18))),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                        onTap: () => _showEditFeedingSheet(s, r),
-                        title: Text(_typeBadge(s, r), style: const TextStyle(fontWeight: FontWeight.w800)),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(_recordSubtitle(s, r), maxLines: 2, overflow: TextOverflow.ellipsis),
-                            const SizedBox(height: 4),
-                            Text(
-                              _fmtLineTime(r.startedAt),
-                              style: TextStyle(color: Colors.black.withAlpha(120), fontWeight: FontWeight.w700, fontSize: 12),
-                            ),
-                          ],
+                  children: [
+                    ...recs.map((r) {
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        elevation: 0,
+                        color: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            side:
+                                BorderSide(color: Colors.black.withAlpha(18))),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 6),
+                          onTap: () => _showEditFeedingSheet(s, r),
+                          title: Text(_typeBadge(s, r),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w800)),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(_recordSubtitle(s, r),
+                                  maxLines: 2, overflow: TextOverflow.ellipsis),
+                              const SizedBox(height: 4),
+                              Text(
+                                _fmtLineTime(r.startedAt),
+                                style: TextStyle(
+                                    color: Colors.black.withAlpha(120),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12),
+                              ),
+                            ],
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: s.edit,
+                                onPressed: () => _showEditFeedingSheet(s, r),
+                                icon: Icon(Icons.edit_outlined,
+                                    color: AppTheme.feedingAlertAccent
+                                        .withAlpha(200)),
+                              ),
+                              IconButton(
+                                tooltip: s.delete,
+                                onPressed: () => _confirmAndDeleteFeeding(s, r),
+                                icon: Icon(Icons.delete_outline,
+                                    color: Colors.red.withAlpha(190)),
+                              ),
+                            ],
+                          ),
                         ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              tooltip: s.edit,
-                              onPressed: () => _showEditFeedingSheet(s, r),
-                              icon: Icon(Icons.edit_outlined, color: AppTheme.feedingAlertAccent.withAlpha(200)),
-                            ),
-                            IconButton(
-                              tooltip: s.delete,
-                              onPressed: () => _confirmAndDeleteFeeding(s, r),
-                              icon: Icon(Icons.delete_outline, color: Colors.red.withAlpha(190)),
-                            ),
-                          ],
-                        ),
+                      );
+                    }),
+                    if (_feedingHistoryVisible < rows.length)
+                      TextButton.icon(
+                        onPressed: () => setState(
+                            () => _feedingHistoryVisible += _historyPageSize),
+                        icon: const Icon(Icons.expand_more_rounded),
+                        label: Text(s.historyViewMoreButton),
                       ),
-                    );
-                  }).toList(),
+                  ],
                 );
               },
             ),
@@ -1100,119 +1296,220 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
     );
   }
 
+  AppBar _feedingAppBar(String title, bool night) {
+    return AppBar(
+      title: Text(
+        title,
+        style: TextStyle(
+          fontWeight: FontWeight.w900,
+          color: night ? PortalTimeOfDay.nightOutlinedTextColor : null,
+          shadows: night ? PortalTimeOfDay.nightTextOutlineShadows : null,
+        ),
+      ),
+      iconTheme: night
+          ? const IconThemeData(color: PortalTimeOfDay.nightOutlinedTextColor)
+          : null,
+      actionsIconTheme: night
+          ? const IconThemeData(color: PortalTimeOfDay.nightOutlinedTextColor)
+          : null,
+      foregroundColor:
+          night ? PortalTimeOfDay.nightOutlinedTextColor : null,
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+    );
+  }
+
+  TextStyle _feedingNightAlertTextStyle(bool night, {double fontSize = 14}) {
+    if (!night) {
+      return TextStyle(fontSize: fontSize);
+    }
+    return TextStyle(
+      fontSize: fontSize,
+      color: PortalTimeOfDay.nightOutlinedTextColor,
+      shadows: PortalTimeOfDay.nightTextOutlineShadows,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
     final id = _babyId;
 
-    if (id == null) {
-      return Scaffold(
-        appBar: AppBar(title: Text(widget.appBarTitle)),
-        body: SafeArea(
-          top: false,
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(s.feedingNoBabyHint, textAlign: TextAlign.center),
-            ),
-          ),
-        ),
-      );
-    }
+    return ListenableBuilder(
+      listenable: PortalLayoutPrefs.instance,
+      builder: (context, _) {
+        final night = PortalTimeOfDay.isNight(DateTime.now());
+        final tabLabelColor = night
+            ? PortalTimeOfDay.nightOutlinedTextColor
+            : AppTheme.feedingAlertAccent;
+        final tabUnselectedColor = night
+            ? PortalTimeOfDay.nightOutlinedTextColor.withAlpha(200)
+            : Colors.black.withAlpha(120);
+        final tabIndicatorColor = night
+            ? PortalTimeOfDay.nightOutlinedTextColor
+            : AppTheme.feedingAlertAccent;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.appBarTitle)),
-      body: SafeArea(
-        top: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Material(
-              color: Theme.of(context).colorScheme.surface,
-              child: TabBar(
-                controller: _tabController,
-                labelColor: AppTheme.feedingAlertAccent,
-                unselectedLabelColor: Colors.black.withAlpha(120),
-                indicatorColor: AppTheme.feedingAlertAccent,
-                indicatorWeight: 3,
-                tabs: [
-                  Tab(text: s.feedingTabBreastfeeding.toUpperCase()),
-                  Tab(text: s.feedingTabBottle.toUpperCase()),
-                  Tab(text: s.feedingTabSolids.toUpperCase()),
-                ],
+        if (id == null) {
+          return Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: _feedingAppBar(widget.appBarTitle, night),
+            body: SafeArea(
+              top: false,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(s.feedingNoBabyHint, textAlign: TextAlign.center),
+                ),
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(12, 8, 12, 0),
-              child: AndroidExactAlarmCard(),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
-              child: ValueListenableBuilder<bool>(
-                valueListenable: HomePrefs.feedingAlertsEnabled,
-                builder: (context, enabled, _) {
-                  final a = AppTheme.feedingAlertAccent;
-                  return SwitchTheme(
-                    data: AppTheme.switchThemeColored(a),
-                    child: SwitchListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                      dense: true,
-                      secondary: Icon(Icons.notifications_active_outlined, color: a.withAlpha(220)),
-                      title: Text(s.feedingAlertsSwitchTitle, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(s.feedingAlertsSwitchSubtitle, style: TextStyle(fontSize: 12, color: Colors.black.withAlpha(135), height: 1.25)),
-                          if (enabled)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Text(s.feedingScreenAlertsHint, style: TextStyle(fontSize: 11, color: Colors.black.withAlpha(110), height: 1.2)),
-                            ),
-                        ],
-                      ),
-                      value: enabled,
-                      activeTrackColor: a.withAlpha(90),
-                      onChanged: (v) => HomePrefs.setFeedingAlertsEnabled(v),
-                    ),
-                  );
-                },
-              ),
-            ),
+          );
+        }
+
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: _feedingAppBar(widget.appBarTitle, night),
+          body: SafeArea(
+            top: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Material(
+                  color: Colors.transparent,
+                  child: TabBar(
+                    controller: _tabController,
+                    labelColor: tabLabelColor,
+                    unselectedLabelColor: tabUnselectedColor,
+                    indicatorColor: tabIndicatorColor,
+                    indicatorWeight: 3,
+                    tabs: [
+                      Tab(text: s.feedingTabBreastfeeding.toUpperCase()),
+                      Tab(text: s.feedingTabBottle.toUpperCase()),
+                      Tab(text: s.feedingTabSolids.toUpperCase()),
+                    ],
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(12, 8, 12, 0),
+                  child: AndroidExactAlarmCard(),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: HomePrefs.feedingAlertsEnabled,
+                    builder: (context, enabled, _) {
+                      final a = AppTheme.feedingAlertAccent;
+                      final alertIconColor = night
+                          ? PortalTimeOfDay.nightOutlinedTextColor
+                          : a.withAlpha(220);
+                      final alertTitleStyle = TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        color: night
+                            ? PortalTimeOfDay.nightOutlinedTextColor
+                            : null,
+                        shadows: night
+                            ? PortalTimeOfDay.nightTextOutlineShadows
+                            : null,
+                      );
+                      final alertBodyStyle = _feedingNightAlertTextStyle(
+                        night,
+                        fontSize: 12,
+                      ).copyWith(height: 1.25);
+                      final alertHintStyle = _feedingNightAlertTextStyle(
+                        night,
+                        fontSize: 11,
+                      ).copyWith(height: 1.2);
+                      return SwitchTheme(
+                        data: AppTheme.switchThemeColored(a),
+                        child: SwitchListTile(
+                          contentPadding:
+                              const EdgeInsets.symmetric(horizontal: 8),
+                          dense: true,
+                          secondary: Icon(
+                            Icons.notifications_active_outlined,
+                            color: alertIconColor,
+                          ),
+                          title: Text(
+                            s.feedingAlertsSwitchTitle,
+                            style: alertTitleStyle,
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                s.feedingAlertsSwitchSubtitle,
+                                style: night
+                                    ? alertBodyStyle
+                                    : alertBodyStyle.copyWith(
+                                        color: Colors.black.withAlpha(135),
+                                      ),
+                              ),
+                              if (enabled)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    s.feedingScreenAlertsHint,
+                                    style: night
+                                        ? alertHintStyle
+                                        : alertHintStyle.copyWith(
+                                            color: Colors.black.withAlpha(110),
+                                          ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          value: enabled,
+                          activeTrackColor: a.withAlpha(90),
+                          onChanged: (v) =>
+                              HomePrefs.setFeedingAlertsEnabled(v),
+                        ),
+                      );
+                    },
+                  ),
+                ),
             Expanded(
               child: TabBarView(
                 controller: _tabController,
                 children: [
                   SingleChildScrollView(
+                    controller: _breastScrollController,
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _breastCard(s),
                         const SizedBox(height: 18),
-                        _overviewBlock(s, resultsKey: _overviewResultsKeyBreast),
+                        _overviewBlock(s,
+                            resultsKey: _overviewResultsKeyBreast),
                       ],
                     ),
                   ),
                   SingleChildScrollView(
+                    controller: _bottleScrollController,
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _bottleCard(s),
                         const SizedBox(height: 18),
-                        _overviewBlock(s, resultsKey: _overviewResultsKeyBottle),
+                        _overviewBlock(s,
+                            resultsKey: _overviewResultsKeyBottle),
                       ],
                     ),
                   ),
                   SingleChildScrollView(
+                    controller: _solidsScrollController,
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _solidsCard(s),
                         const SizedBox(height: 18),
-                        _overviewBlock(s, resultsKey: _overviewResultsKeySolids),
+                        _overviewBlock(s,
+                            resultsKey: _overviewResultsKeySolids),
                       ],
                     ),
                   ),
@@ -1222,6 +1519,8 @@ class _FeedingHubPageState extends State<FeedingHubPage> with SingleTickerProvid
           ],
         ),
       ),
+        );
+      },
     );
   }
 }
@@ -1239,10 +1538,24 @@ class _LegendDot extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(width: 11, height: 11, decoration: BoxDecoration(color: color, shape: BoxShape.circle, boxShadow: [BoxShadow(color: color.withAlpha(80), blurRadius: 4)])),
+          Container(
+              width: 11,
+              height: 11,
+              decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(color: color.withAlpha(80), blurRadius: 4)
+                  ])),
           const SizedBox(width: 8),
           Flexible(
-            child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black.withAlpha(150), fontSize: 12.5)),
+            child: Text(label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black.withAlpha(150),
+                    fontSize: 12.5)),
           ),
         ],
       ),

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:crop_your_image/crop_your_image.dart';
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
 
 /// Ajuste de foto em tela cheia: pinça/arrastar; recorte quadrado centralizado.
 class PhotoAdjustPage extends StatefulWidget {
@@ -17,9 +18,31 @@ class PhotoAdjustPage extends StatefulWidget {
 class _PhotoAdjustPageState extends State<PhotoAdjustPage> {
   final _controller = CropController();
   var _busy = false;
+  late Uint8List _imageBytes;
 
   static const _maxScale = 48.0;
   static const _minScale = 0.04;
+
+  @override
+  void initState() {
+    super.initState();
+    _imageBytes = widget.imageBytes;
+  }
+
+  void _rotate(int angle) {
+    if (_busy) return;
+    final decoded = img.decodeImage(_imageBytes);
+    if (decoded == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível rotacionar a foto.')),
+      );
+      return;
+    }
+    final rotated = img.copyRotate(decoded, angle: angle);
+    final bytes = Uint8List.fromList(img.encodeJpg(rotated, quality: 95));
+    setState(() => _imageBytes = bytes);
+    _controller.image = bytes;
+  }
 
   void _onCropped(CropResult result) {
     if (!mounted) return;
@@ -42,7 +65,7 @@ class _PhotoAdjustPageState extends State<PhotoAdjustPage> {
         fit: StackFit.expand,
         children: [
           Crop(
-            image: widget.imageBytes,
+            image: _imageBytes,
             controller: _controller,
             interactive: true,
             fixCropRect: true,
@@ -50,7 +73,8 @@ class _PhotoAdjustPageState extends State<PhotoAdjustPage> {
             aspectRatio: 1,
             maskColor: Colors.black.withAlpha(175),
             baseColor: Colors.black,
-            initialRectBuilder: InitialRectBuilder.withBuilder(_initialCropSquare),
+            initialRectBuilder:
+                InitialRectBuilder.withBuilder(_initialCropSquare),
             onCropped: _onCropped,
             willUpdateScale: (next) => next >= _minScale && next <= _maxScale,
             scrollZoomSensitivity: 0.28,
@@ -71,7 +95,8 @@ class _PhotoAdjustPageState extends State<PhotoAdjustPage> {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.close, color: Colors.white),
-                        onPressed: _busy ? null : () => Navigator.of(context).pop(),
+                        onPressed:
+                            _busy ? null : () => Navigator.of(context).pop(),
                       ),
                       const Expanded(
                         child: Text(
@@ -90,7 +115,7 @@ class _PhotoAdjustPageState extends State<PhotoAdjustPage> {
                   padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
                   child: Text(
                     'Use dois dedos para ampliar bem a foto e um dedo para centralizar. '
-                    'O quadrado branco é a área que será salva.',
+                    'Se precisar, rotacione a imagem antes de salvar.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white.withAlpha(210),
@@ -101,6 +126,42 @@ class _PhotoAdjustPageState extends State<PhotoAdjustPage> {
                   ),
                 ),
                 const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _busy ? null : () => _rotate(-90),
+                          icon: const Icon(Icons.rotate_left_rounded),
+                          label: const Text('Girar'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: BorderSide(
+                              color: Colors.white.withAlpha(180),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _busy ? null : () => _rotate(90),
+                          icon: const Icon(Icons.rotate_right_rounded),
+                          label: const Text('Girar'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: BorderSide(
+                              color: Colors.white.withAlpha(180),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                   child: FilledButton(

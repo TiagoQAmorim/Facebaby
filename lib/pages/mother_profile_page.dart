@@ -9,11 +9,13 @@ import '../services/firebase/baby_deletion_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/measurement_format.dart';
 import '../widgets/card_box.dart';
+import '../widgets/language_picker.dart';
+import '../widgets/portal_layout_preference_control.dart';
 import '../widgets/photo_avatar.dart';
 import 'mother_baby_register_page.dart';
 
 /// Aba inicial ao abrir [MotherProfilePage] (ex.: vindo da tela Família).
-enum MotherProfileInitialTab { mother, father, babies }
+enum MotherProfileInitialTab { preferences, mother, father, babies }
 
 class MotherProfilePage extends StatefulWidget {
   final MotherProfileInitialTab initialTab;
@@ -32,12 +34,14 @@ int motherProfileTabIndex({
   required bool fatherRegistered,
 }) {
   switch (tab) {
-    case MotherProfileInitialTab.mother:
+    case MotherProfileInitialTab.preferences:
       return 0;
+    case MotherProfileInitialTab.mother:
+      return 1;
     case MotherProfileInitialTab.father:
-      return fatherRegistered ? 1 : 0;
-    case MotherProfileInitialTab.babies:
       return fatherRegistered ? 2 : 1;
+    case MotherProfileInitialTab.babies:
+      return fatherRegistered ? 3 : 2;
   }
 }
 
@@ -121,10 +125,11 @@ class _MotherProfilePageState extends State<MotherProfilePage>
     final motherId = (mother?['id'] as num?)?.toInt();
     final fatherRegistered =
         mother != null && motherProfileFatherRegistered(mother);
-    final tabCount = fatherRegistered ? 3 : 2;
+    final tabCount = fatherRegistered ? 4 : 3;
     final tabs = _tabsFor(tabCount, fatherRegistered: fatherRegistered);
 
     final tabWidgets = <Widget>[
+      Tab(text: s.motherProfileTabPreferences),
       Tab(text: s.motherProfileTabMother),
       if (fatherRegistered) Tab(text: s.motherProfileTabFather),
       Tab(text: s.motherProfileTabBabies),
@@ -135,6 +140,7 @@ class _MotherProfilePageState extends State<MotherProfilePage>
         title: Text(s.settingsMotherProfile),
         bottom: TabBar(
           controller: tabs,
+          isScrollable: true,
           labelStyle: const TextStyle(fontWeight: FontWeight.w900),
           tabs: tabWidgets,
         ),
@@ -152,8 +158,9 @@ class _MotherProfilePageState extends State<MotherProfilePage>
             : TabBarView(
                 controller: tabs,
                 children: [
+                  _PreferencesTab(motherRow: mother!),
                   _MotherInfoTab(
-                    motherRow: mother!,
+                    motherRow: mother,
                     showFatherHeight: !fatherRegistered,
                     onEdit: () => _editMother(
                         motherId, MotherProfileMotherFormSection.mother),
@@ -211,39 +218,33 @@ class _ProfileInfoLine extends StatelessWidget {
 String _profileFmtDate(DateTime d) =>
     '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
-class _MotherInfoTab extends StatefulWidget {
+class _PreferencesTab extends StatefulWidget {
   final Map<String, Object?> motherRow;
-  final bool showFatherHeight;
-  final Future<void> Function()? onEdit;
 
-  const _MotherInfoTab({
-    required this.motherRow,
-    this.showFatherHeight = false,
-    this.onEdit,
-  });
+  const _PreferencesTab({required this.motherRow});
 
   @override
-  State<_MotherInfoTab> createState() => _MotherInfoTabState();
+  State<_PreferencesTab> createState() => _PreferencesTabState();
 }
 
-class _MotherInfoTabState extends State<_MotherInfoTab> {
+class _PreferencesTabState extends State<_PreferencesTab> {
   late bool _showChristian;
   late bool _showHoroscope;
-  bool _savingPrefs = false;
+  bool _savingMessagePrefs = false;
 
   @override
   void initState() {
     super.initState();
-    _readPrefsFromRow();
+    _readMessagePrefsFromRow();
   }
 
   @override
-  void didUpdateWidget(covariant _MotherInfoTab oldWidget) {
+  void didUpdateWidget(covariant _PreferencesTab oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.motherRow != widget.motherRow) _readPrefsFromRow();
+    if (oldWidget.motherRow != widget.motherRow) _readMessagePrefsFromRow();
   }
 
-  void _readPrefsFromRow() {
+  void _readMessagePrefsFromRow() {
     final prefs = FamilyMessagePrefs.fromMother(widget.motherRow);
     _showChristian = prefs.showChristian;
     _showHoroscope = prefs.showHoroscope;
@@ -254,13 +255,13 @@ class _MotherInfoTabState extends State<_MotherInfoTab> {
     bool? showHoroscope,
   }) async {
     final motherId = (widget.motherRow['id'] as num?)?.toInt();
-    if (motherId == null || _savingPrefs) return;
+    if (motherId == null || _savingMessagePrefs) return;
 
     final nextChristian = showChristian ?? _showChristian;
     final nextHoroscope = showHoroscope ?? _showHoroscope;
 
     setState(() {
-      _savingPrefs = true;
+      _savingMessagePrefs = true;
       _showChristian = nextChristian;
       _showHoroscope = nextHoroscope;
     });
@@ -274,15 +275,81 @@ class _MotherInfoTabState extends State<_MotherInfoTab> {
       await ProfileCloudSync.pushMother(motherId);
       await CurrentBabyController.instance.refresh();
     } finally {
-      if (mounted) setState(() => _savingPrefs = false);
+      if (mounted) setState(() => _savingMessagePrefs = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
-    final motherRow = widget.motherRow;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const CardBox(
+            child: LanguagePreferencePicker(),
+          ),
+          const SizedBox(height: 14),
+          const CardBox(
+            child: PortalLayoutPreferenceControl(),
+          ),
+          const SizedBox(height: 14),
+          CardBox(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  s.profileFamilyMessagesTitle,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w900, fontSize: 14),
+                ),
+                const SizedBox(height: 4),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    s.profileShowChristian,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  value: _showChristian,
+                  onChanged: _savingMessagePrefs
+                      ? null
+                      : (v) => _setMessagePref(showChristian: v),
+                ),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    s.profileShowHoroscope,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  value: _showHoroscope,
+                  onChanged: _savingMessagePrefs
+                      ? null
+                      : (v) => _setMessagePref(showHoroscope: v),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
+class _MotherInfoTab extends StatelessWidget {
+  final Map<String, Object?> motherRow;
+  final bool showFatherHeight;
+  final Future<void> Function()? onEdit;
+
+  const _MotherInfoTab({
+    required this.motherRow,
+    this.showFatherHeight = false,
+    this.onEdit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
     final name = (motherRow['name'] as String?)?.trim();
     final phone = (motherRow['phone'] as String?)?.trim();
     final birthRaw = (motherRow['birth_date'] as String?)?.trim();
@@ -343,7 +410,7 @@ class _MotherInfoTabState extends State<_MotherInfoTab> {
                   label: s.motherProfileFieldHeight,
                   value: MeasurementFormat.length(height, decimalsCm: 0),
                 ),
-                if (widget.showFatherHeight)
+                if (showFatherHeight)
                   _ProfileInfoLine(
                     label: s.motherProfileFieldFatherHeight,
                     value:
@@ -352,48 +419,12 @@ class _MotherInfoTabState extends State<_MotherInfoTab> {
               ],
             ),
           ),
-          const SizedBox(height: 14),
-          CardBox(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  s.profileFamilyMessagesTitle,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w900, fontSize: 14),
-                ),
-                const SizedBox(height: 4),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    s.profileShowChristian,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  value: _showChristian,
-                  onChanged: _savingPrefs
-                      ? null
-                      : (v) => _setMessagePref(showChristian: v),
-                ),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    s.profileShowHoroscope,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  value: _showHoroscope,
-                  onChanged: _savingPrefs
-                      ? null
-                      : (v) => _setMessagePref(showHoroscope: v),
-                ),
-              ],
-            ),
-          ),
-          if (widget.onEdit != null) ...[
+          if (onEdit != null) ...[
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
               child: FilledButton.tonalIcon(
-                onPressed: () => widget.onEdit!(),
+                onPressed: () => onEdit!(),
                 icon: const Icon(Icons.edit_outlined),
                 label: Text(s.profileEditData),
               ),

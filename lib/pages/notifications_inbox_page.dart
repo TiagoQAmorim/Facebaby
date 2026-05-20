@@ -346,7 +346,6 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
     );
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: Text(s.notificationsInboxTitle),
         actions: [

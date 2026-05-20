@@ -53,7 +53,8 @@ InputDecoration _modernInputDecoration({
 class _OnboardingAssets {
   static const logo = 'assets/onboarding/logo.png';
   static const welcomeLogo = 'assets/onboarding/logo_welcome.png';
-  static const backgroundDay = 'assets/onboarding/background_day.png';
+  /// Mesmo fundo diurno do portal ([PortalTimeOfDay.backgroundDay]).
+  static const registrationBackground = PortalTimeOfDay.backgroundDay;
   static const backgroundLoading = 'assets/onboarding/background_loading.png';
   static const cloudIcon = 'assets/onboarding/cloud_icon.png';
   static const dateBirthIcon = 'assets/onboarding/date_birth_icon.png';
@@ -162,7 +163,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
     super.didChangeDependencies();
     if (_didPrecacheBackgrounds) return;
     _didPrecacheBackgrounds = true;
-    unawaited(PortalTimeOfDay.precacheBackgrounds(context));
+    unawaited(Future.wait<void>([
+      PortalTimeOfDay.precacheBackgrounds(context),
+      precacheImage(
+        const AssetImage(_OnboardingAssets.registrationBackground),
+        context,
+      ),
+    ]));
   }
 
   @override
@@ -981,7 +988,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     final keyboardBottom = MediaQuery.viewInsetsOf(context).bottom;
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      backgroundColor: const Color(0xFFFFFBF7),
+      backgroundColor: const Color(0xFFB8D9EE),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -1499,22 +1506,20 @@ class _StageBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const fallback = Color(0xFFB8D9EE);
     return Stack(
       fit: StackFit.expand,
       children: [
-        const ColoredBox(color: Color(0xFFFFFBF7)),
+        const ColoredBox(color: fallback),
         Image.asset(
           stage == 'processing'
               ? _OnboardingAssets.backgroundLoading
-              : _OnboardingAssets.backgroundDay,
+              : _OnboardingAssets.registrationBackground,
           fit: BoxFit.cover,
           alignment: Alignment.topCenter,
           gaplessPlayback: true,
-          errorBuilder: (_, __, ___) =>
-              const ColoredBox(color: Color(0xFFFFFBF7)),
+          errorBuilder: (_, __, ___) => const ColoredBox(color: fallback),
         ),
-        if (stage != 'processing')
-          ColoredBox(color: Colors.white.withAlpha(105)),
       ],
     );
   }

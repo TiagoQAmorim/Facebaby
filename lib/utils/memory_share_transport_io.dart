@@ -38,3 +38,9 @@ Future<String> savePdfBytes(Uint8List data, String fileName) async {
   await File(path).writeAsBytes(data);
   return path;
 }
+
+Future<void> sharePdfFile(String filePath) async {
+  await Share.shareXFiles([
+    XFile(filePath, mimeType: 'application/pdf'),
+  ]);
+}

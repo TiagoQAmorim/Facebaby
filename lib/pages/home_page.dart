@@ -21,6 +21,7 @@ import '../services/home_prefs.dart';
 import '../services/sleep_events.dart';
 import '../services/sleep_routine.dart';
 import '../utils/measurement_format.dart';
+import '../utils/portal_page_route.dart';
 import '../services/measurement_units_prefs.dart';
 import '../services/mock_baby_service.dart';
 import '../services/baby_daily_tips_service.dart';
@@ -115,6 +116,7 @@ class HomePage extends StatefulWidget {
   final String? motherPhotoB64;
   final VoidCallback? onPickMotherPhoto;
   final VoidCallback? onPickBabyPhoto;
+  final ScrollController? scrollController;
 
   const HomePage({
     super.key,
@@ -126,6 +128,7 @@ class HomePage extends StatefulWidget {
     this.motherPhotoB64,
     this.onPickMotherPhoto,
     this.onPickBabyPhoto,
+    this.scrollController,
   });
 
   @override
@@ -277,6 +280,33 @@ class _HomePageState extends State<HomePage> {
             ?.trim();
     if (n != null && n.isNotEmpty) return n;
     return widget.baby.name;
+  }
+
+  Baby _liveBabyForUi(S s) {
+    final row = CurrentBabyController.instance.currentBabyRow;
+    if (row == null) return widget.baby;
+
+    final name = (row['name'] as String?)?.trim();
+    final sex =
+        ((row['sex'] as String?)?.trim().toUpperCase() == 'M') ? 'M' : 'F';
+    final birthRaw = row['birth_date'] as String?;
+    DateTime? birthDate;
+    if (birthRaw != null && birthRaw.isNotEmpty) {
+      birthDate = DateTime.tryParse(birthRaw);
+    }
+
+    return Baby(
+      name: (name == null || name.isEmpty) ? s.placeholderBabyName : name,
+      ageLabel:
+          birthDate == null ? '—' : s.babyAgeLabel(birthDate, DateTime.now()),
+      avatar: widget.baby.avatar,
+      weightKg: (row['weight_kg'] as num?)?.toDouble() ?? widget.baby.weightKg,
+      heightCm: (row['height_cm'] as num?)?.toDouble() ?? widget.baby.heightCm,
+      sex: sex,
+      photoB64: row['photo_b64'] as String?,
+      photoUrl: (row['photo_url'] as String?)?.trim(),
+      birthDate: birthDate,
+    );
   }
 
   /// Próxima consulta a mostrar no banner (até 30 dias).
@@ -510,14 +540,13 @@ class _HomePageState extends State<HomePage> {
       widget.babyService.snapshotForDay(_selectedDay);
 
   void _openFamilyTree() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const FamilyTreePage()),
-    );
+    pushPortalPage<void>(context, const FamilyTreePage());
   }
 
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
+    final liveBaby = _liveBabyForUi(s);
     final motherRaw = (widget.motherName ?? '').trim();
     final greeting =
         motherRaw.isEmpty ? s.helloMom : s.helloMomNamed(motherRaw);
@@ -585,6 +614,7 @@ class _HomePageState extends State<HomePage> {
       child: RefreshIndicator(
         onRefresh: _onPullRefresh,
         child: SingleChildScrollView(
+          controller: widget.scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           child: Center(
             child: ConstrainedBox(
@@ -600,14 +630,14 @@ class _HomePageState extends State<HomePage> {
                       decoration: BoxDecoration(
                         color: Color.lerp(
                           Colors.white,
-                          widget.baby.sex == 'M'
+                          liveBaby.sex == 'M'
                               ? AppTheme.babyBlue
                               : AppTheme.primaryPurple,
                           0.05,
                         )!,
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
-                          color: (widget.baby.sex == 'M'
+                          color: (liveBaby.sex == 'M'
                                   ? AppTheme.babyBlue
                                   : AppTheme.primaryPurple)
                               .withAlpha(52),
@@ -619,7 +649,7 @@ class _HomePageState extends State<HomePage> {
                             offset: const Offset(0, 10),
                           ),
                           BoxShadow(
-                            color: (widget.baby.sex == 'M'
+                            color: (liveBaby.sex == 'M'
                                     ? AppTheme.babyBlue
                                     : AppTheme.mint)
                                 .withAlpha(18),
@@ -665,12 +695,8 @@ class _HomePageState extends State<HomePage> {
                                 minWidth: 40, minHeight: 40),
                             iconSize: 22,
                             onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) =>
-                                      const NotificationsInboxPage(),
-                                ),
-                              );
+                              pushPortalPage<void>(
+                                  context, const NotificationsInboxPage());
                             },
                             icon: CircleAvatar(
                               radius: 16,
@@ -679,11 +705,6 @@ class _HomePageState extends State<HomePage> {
                                   size: 21, color: AppTheme.secondary),
                             ),
                           ),
-                          if (pickBabyButton != null)
-                            Transform.translate(
-                              offset: const Offset(0, 4),
-                              child: pickBabyButton,
-                            ),
                           const SizedBox(width: 4),
                           Material(
                             type: MaterialType.transparency,
@@ -738,30 +759,46 @@ class _HomePageState extends State<HomePage> {
                         final greetBlock = Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text.rich(
-                              TextSpan(
-                                style: TextStyle(
-                                  fontSize: portalSp(context, 22),
-                                  fontWeight: FontWeight.w900,
-                                  height: 1.02,
-                                  color: _homeNightAwareHeadingColor(),
-                                  shadows: _homeNightAwareTextShadows(),
-                                ),
-                                children: [
-                                  TextSpan(text: greeting),
-                                  TextSpan(
-                                    text: ' 💜',
-                                    style: TextStyle(
-                                      fontSize: portalSp(context, 22),
-                                      color: AppTheme.primaryPurple,
-                                    ),
+                            Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Padding(
+                                  padding: EdgeInsets.only(
+                                    right: pickBabyButton == null ? 0 : 46,
                                   ),
-                                ],
-                              ),
-                              maxLines: 3,
-                              softWrap: true,
+                                  child: Text.rich(
+                                    TextSpan(
+                                      style: TextStyle(
+                                        fontSize: portalSp(context, 22),
+                                        fontWeight: FontWeight.w900,
+                                        height: 1.02,
+                                        color: _homeNightAwareHeadingColor(),
+                                        shadows: _homeNightAwareTextShadows(),
+                                      ),
+                                      children: [
+                                        TextSpan(text: greeting),
+                                        TextSpan(
+                                          text: ' 💜',
+                                          style: TextStyle(
+                                            fontSize: portalSp(context, 22),
+                                            color: AppTheme.primaryPurple,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    maxLines: 3,
+                                    softWrap: true,
+                                  ),
+                                ),
+                                if (pickBabyButton != null)
+                                  Positioned(
+                                    right: 0,
+                                    top: -8,
+                                    child: pickBabyButton,
+                                  ),
+                              ],
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 2),
                             Text(
                               s.homeGreetingSubtitle,
                               style: TextStyle(
@@ -829,7 +866,7 @@ class _HomePageState extends State<HomePage> {
                           : 10,
                     ),
                     _PrimaryBabyCard(
-                      baby: widget.baby,
+                      baby: liveBaby,
                       routineBirthDate: _liveBabyBirthDate,
                       babyId: CurrentBabyController.instance.currentBabyId,
                       isTodayView: _isTodayView,
@@ -852,16 +889,19 @@ class _HomePageState extends State<HomePage> {
                       feedingIntervalMinutes:
                           HomePrefs.feedingAlertIntervalMinutes.value,
                       onTapOpenDiaperBanner: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                              builder: (_) => const DiaperPage())),
+                        portalPageRoute<void>(
+                          builder: (_) => const DiaperPage(),
+                        ),
+                      ),
                       onTapOpenSleepBanner: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                              builder: (_) => const SleepPage())),
-                      onTapFeedNow: () =>
-                          Navigator.of(context).push(MaterialPageRoute<void>(
-                        builder: (_) =>
-                            FeedingHubPage(appBarTitle: s.shortcutMilk),
-                      )),
+                        portalPageRoute<void>(
+                          builder: (_) => const SleepPage(),
+                        ),
+                      ),
+                      onTapFeedNow: () => pushPortalPage<void>(
+                        context,
+                        FeedingHubPage(appBarTitle: s.shortcutMilk),
+                      ),
                       onOpenBabyPhoto: _openFamilyTree,
                       onPickBabyPhoto: widget.onPickBabyPhoto,
                       babyAvatarPhotoB64: _liveBabyPhotoB64,
@@ -918,12 +958,10 @@ class _HomePageState extends State<HomePage> {
                                     title: s.shortcutMilk,
                                     subtitle: s.shortcutMilkHomeSub,
                                     color: AppTheme.primaryPink,
-                                    softBg: const Color(0xFFFFE8F0),
-                                    onTap: () => Navigator.of(context).push(
-                                      MaterialPageRoute<void>(
-                                        builder: (_) => FeedingHubPage(
-                                            appBarTitle: s.shortcutMilk),
-                                      ),
+                                    onTap: () => pushPortalPage<void>(
+                                      context,
+                                      FeedingHubPage(
+                                          appBarTitle: s.shortcutMilk),
                                     ),
                                   ),
                                 ),
@@ -934,12 +972,10 @@ class _HomePageState extends State<HomePage> {
                                     title: s.growth,
                                     subtitle: s.shortcutGrowthHomeSub,
                                     color: const Color(0xFF00C4CC),
-                                    softBg: const Color(0xFFE7FBFC),
-                                    onTap: () => Navigator.of(context).push(
-                                      MaterialPageRoute<void>(
-                                        builder: (_) => GrowthDashboardPage(
-                                            appBarTitle: s.growth),
-                                      ),
+                                    onTap: () => pushPortalPage<void>(
+                                      context,
+                                      GrowthDashboardPage(
+                                          appBarTitle: s.growth),
                                     ),
                                   ),
                                 ),
@@ -950,11 +986,9 @@ class _HomePageState extends State<HomePage> {
                                     title: s.shortcutSleep,
                                     subtitle: s.shortcutSleepHomeSub,
                                     color: AppTheme.primary,
-                                    softBg: AppTheme.softPurple,
-                                    onTap: () => Navigator.of(context).push(
-                                      MaterialPageRoute<void>(
-                                        builder: (_) => const SleepPage(),
-                                      ),
+                                    onTap: () => pushPortalPage<void>(
+                                      context,
+                                      const SleepPage(),
                                     ),
                                   ),
                                 ),
@@ -969,11 +1003,9 @@ class _HomePageState extends State<HomePage> {
                                     title: s.shortcutHealth,
                                     subtitle: s.shortcutHealthHomeSub,
                                     color: AppTheme.green,
-                                    softBg: const Color(0xFFE8F8F0),
-                                    onTap: () => Navigator.of(context).push(
-                                      MaterialPageRoute<void>(
-                                        builder: (_) => const HealthHubPage(),
-                                      ),
+                                    onTap: () => pushPortalPage<void>(
+                                      context,
+                                      const HealthHubPage(),
                                     ),
                                   ),
                                 ),
@@ -984,7 +1016,6 @@ class _HomePageState extends State<HomePage> {
                                     title: s.shortcutFamily,
                                     subtitle: s.shortcutFamilyHomeSub,
                                     color: const Color(0xFF5B6B8C),
-                                    softBg: const Color(0xFFE8ECF4),
                                     onTap: _openFamilyTree,
                                   ),
                                 ),
@@ -1260,9 +1291,7 @@ class _HomeDayHealthStrip extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: () {
-              Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (_) => const VaccinesPage(),
-              ));
+              pushPortalPage<void>(context, const VaccinesPage());
             },
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
@@ -2991,11 +3020,13 @@ class _BabyQuickTile extends StatelessWidget {
 }
 
 class _ShortcutCard extends StatelessWidget {
+  static const Color _cardAccent = Color(0xFF00C4CC);
+  static const Color _cardSoftBg = Color(0xFFE7FBFC);
+
   final IconData icon;
   final String title;
   final String subtitle;
   final Color color;
-  final Color? softBg;
   final VoidCallback? onTap;
 
   const _ShortcutCard({
@@ -3003,7 +3034,6 @@ class _ShortcutCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.color,
-    this.softBg,
     this.onTap,
   });
 
@@ -3011,7 +3041,6 @@ class _ShortcutCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final titleSize = portalSp(context, 14);
     final subSize = portalSp(context, 11.5);
-    final iconBg = softBg ?? color.withAlpha(31);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -3020,10 +3049,10 @@ class _ShortcutCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(26),
-            color: color.withAlpha(48),
+            color: _cardAccent.withAlpha(48),
             boxShadow: [
               BoxShadow(
-                  color: color.withAlpha(32),
+                  color: _cardAccent.withAlpha(32),
                   blurRadius: 16,
                   offset: const Offset(0, 8)),
             ],
@@ -3041,11 +3070,11 @@ class _ShortcutCard extends StatelessWidget {
                 children: [
                   DecoratedBox(
                     decoration: BoxDecoration(
-                      color: iconBg,
+                      color: _cardSoftBg,
                       borderRadius: BorderRadius.circular(14),
                       boxShadow: [
                         BoxShadow(
-                            color: color.withAlpha(35),
+                            color: _cardAccent.withAlpha(35),
                             blurRadius: 8,
                             offset: const Offset(0, 3)),
                       ],

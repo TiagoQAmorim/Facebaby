@@ -9,6 +9,7 @@ import '../pages/growth_dashboard_page.dart';
 import '../pages/sleep_page.dart';
 import '../pages/consultations_page.dart';
 import '../pages/vaccines_page.dart';
+import '../utils/portal_page_route.dart';
 
 /// Payloads gravados ao mostrar notificações; ao tocar, navega para o separador certo no [ShellNestedNav].
 abstract final class NotificationNav {
@@ -75,31 +76,31 @@ abstract final class NotificationNav {
       case payloadFeeding:
         pushOnTab(
             0,
-            MaterialPageRoute<void>(
+            portalPageRoute<void>(
                 builder: (_) => FeedingHubPage(appBarTitle: s.shortcutMilk)));
         return;
       case payloadDiaper:
         pushOnTab(
-            1, MaterialPageRoute<void>(builder: (_) => const DiaperPage()));
+            1, portalPageRoute<void>(builder: (_) => const DiaperPage()));
         return;
       case payloadGrowth:
         pushOnTab(
             0,
-            MaterialPageRoute<void>(
+            portalPageRoute<void>(
                 builder: (_) => GrowthDashboardPage(appBarTitle: s.growth)));
         return;
       case payloadSleep:
         pushOnTab(
-            1, MaterialPageRoute<void>(builder: (_) => const SleepPage()));
+            1, portalPageRoute<void>(builder: (_) => const SleepPage()));
         return;
       case 'nav_vaccines':
         pushOnTab(
-            0, MaterialPageRoute<void>(builder: (_) => const VaccinesPage()));
+            0, portalPageRoute<void>(builder: (_) => const VaccinesPage()));
         return;
       default:
         if (payload.startsWith(payloadSleepWakeOverduePrefix)) {
           pushOnTab(
-              1, MaterialPageRoute<void>(builder: (_) => const SleepPage()));
+              1, portalPageRoute<void>(builder: (_) => const SleepPage()));
           return;
         }
         if (payload.startsWith('nav_consultation:')) {
@@ -108,7 +109,7 @@ abstract final class NotificationNav {
           if (cid != null) {
             pushOnTab(
               0,
-              MaterialPageRoute<void>(
+              portalPageRoute<void>(
                 builder: (_) => ConsultationsPage(openConsultationId: cid),
               ),
             );
@@ -121,7 +122,7 @@ abstract final class NotificationNav {
           if (vid != null) {
             pushOnTab(
               0,
-              MaterialPageRoute<void>(
+              portalPageRoute<void>(
                 builder: (_) => VaccinesPage(openVaccineId: vid),
               ),
             );

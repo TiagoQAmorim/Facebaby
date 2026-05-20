@@ -12,6 +12,7 @@ import '../../services/weekly_report_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/portal_layout.dart';
 import '../../widgets/photo_avatar.dart';
+import 'report_page_shell.dart';
 
 /// Relatório avançado de sono — score, métricas derivadas de registos e gráficos suaves.
 class AdvancedSleepReportPage extends StatefulWidget {
@@ -20,10 +21,12 @@ class AdvancedSleepReportPage extends StatefulWidget {
   final DateTime anchorDay;
 
   @override
-  State<AdvancedSleepReportPage> createState() => _AdvancedSleepReportPageState();
+  State<AdvancedSleepReportPage> createState() =>
+      _AdvancedSleepReportPageState();
 }
 
-class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with SingleTickerProviderStateMixin {
+class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage>
+    with SingleTickerProviderStateMixin {
   AdvancedSleepReportSnapshot? _snapshot;
   Object? _error;
   late DateTime _anchor;
@@ -31,7 +34,6 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
   late AnimationController _gaugeCtrl;
   late Animation<double> _gaugeAnim;
 
-  static const _bg = Color(0xFFF4F2FB);
   static const _purple = Color(0xFF8E7CC3);
   static const _green = Color(0xFF34C759);
   static const _sky = Color(0xFF74B9FF);
@@ -41,8 +43,10 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
     super.initState();
     final n = widget.anchorDay;
     _anchor = DateTime(n.year, n.month, n.day);
-    _gaugeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400));
-    _gaugeAnim = CurvedAnimation(parent: _gaugeCtrl, curve: Curves.easeOutCubic);
+    _gaugeCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1400));
+    _gaugeAnim =
+        CurvedAnimation(parent: _gaugeCtrl, curve: Curves.easeOutCubic);
     _babyCtrl.addListener(_onBaby);
     _load();
   }
@@ -63,7 +67,8 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
       return;
     }
     try {
-      final snap = await AdvancedSleepReportService.load(babyId: id, anchorDay: _anchor);
+      final snap =
+          await AdvancedSleepReportService.load(babyId: id, anchorDay: _anchor);
       if (mounted) {
         setState(() {
           _snapshot = snap;
@@ -151,7 +156,8 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
     return s.reportSleepAdvBadgeAttention;
   }
 
-  String _formatIdealWindow(BuildContext context, AdvancedSleepReportSnapshot snap) {
+  String _formatIdealWindow(
+      BuildContext context, AdvancedSleepReportSnapshot snap) {
     final h = snap.idealBedtimeHour;
     final m = snap.idealBedtimeMinute;
     if (h == null || m == null) return '—';
@@ -179,7 +185,10 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
-          BoxShadow(color: Colors.black.withAlpha(12), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(
+              color: Colors.black.withAlpha(12),
+              blurRadius: 20,
+              offset: const Offset(0, 10)),
         ],
       ),
       child: child,
@@ -199,11 +208,18 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
         children: [
           Expanded(
             flex: 5,
-            child: Text(label, style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textSecondary, fontSize: portalSp(context, 14))),
+            child: Text(label,
+                style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textSecondary,
+                    fontSize: portalSp(context, 14))),
           ),
           Expanded(
             flex: 4,
-            child: Text(value, textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+            child: Text(value,
+                textAlign: TextAlign.right,
+                style:
+                    const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
           ),
           const SizedBox(width: 8),
           SizedBox(
@@ -211,13 +227,21 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Container(width: 4, height: 18, decoration: BoxDecoration(color: badgeColor, borderRadius: BorderRadius.circular(3))),
+                Container(
+                    width: 4,
+                    height: 18,
+                    decoration: BoxDecoration(
+                        color: badgeColor,
+                        borderRadius: BorderRadius.circular(3))),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     badge,
                     textAlign: TextAlign.right,
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, color: badgeColor),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12.5,
+                        color: badgeColor),
                   ),
                 ),
               ],
@@ -242,27 +266,37 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
     }
 
     final loc = Localizations.localeOf(context).toString();
-    final labels = List<DateTime>.generate(7, (i) => snap.weekMonday.add(Duration(days: i)));
+    final labels = List<DateTime>.generate(
+        7, (i) => snap.weekMonday.add(Duration(days: i)));
 
     return SizedBox(
       height: 200,
       child: LineChart(
         LineChartData(
           clipData: const FlClipData.all(),
-          gridData: FlGridData(show: true, drawVerticalLine: false, getDrawingHorizontalLine: (_) => FlLine(color: Colors.black.withAlpha(12))),
+          gridData: FlGridData(
+              show: true,
+              drawVerticalLine: false,
+              getDrawingHorizontalLine: (_) =>
+                  FlLine(color: Colors.black.withAlpha(12))),
           borderData: FlBorderData(show: false),
           minY: minY,
           maxY: maxY,
           titlesData: FlTitlesData(
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 32,
                 getTitlesWidget: (v, _) => Text(
                   '${v.round()}h',
-                  style: TextStyle(fontSize: 10, color: AppTheme.textMuted, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                      fontSize: 10,
+                      color: AppTheme.textMuted,
+                      fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -277,7 +311,10 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
                       padding: const EdgeInsets.only(top: 6),
                       child: Text(
                         DateFormat.E(loc).format(labels[i]),
-                        style: TextStyle(fontSize: 10, color: AppTheme.textMuted, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                            fontSize: 10,
+                            color: AppTheme.textMuted,
+                            fontWeight: FontWeight.w700),
                       ),
                     );
                   } catch (_) {
@@ -296,7 +333,11 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
               color: _purple,
               dotData: FlDotData(
                 show: true,
-                getDotPainter: (s0, p, b, i) => FlDotCirclePainter(radius: 4.5, color: Colors.white, strokeWidth: 2.5, strokeColor: _purple),
+                getDotPainter: (s0, p, b, i) => FlDotCirclePainter(
+                    radius: 4.5,
+                    color: Colors.white,
+                    strokeWidth: 2.5,
+                    strokeColor: _purple),
               ),
               belowBarData: BarAreaData(
                 show: true,
@@ -325,25 +366,33 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
       maxY = math.max(maxY, p.y + 1);
     }
     final loc = Localizations.localeOf(context).toString();
-    final labels = List<DateTime>.generate(7, (i) => snap.weekMonday.add(Duration(days: i)));
+    final labels = List<DateTime>.generate(
+        7, (i) => snap.weekMonday.add(Duration(days: i)));
 
     return SizedBox(
       height: 210,
       child: LineChart(
         LineChartData(
           clipData: const FlClipData.all(),
-          gridData: FlGridData(show: true, drawVerticalLine: false, getDrawingHorizontalLine: (_) => FlLine(color: Colors.black.withAlpha(10))),
+          gridData: FlGridData(
+              show: true,
+              drawVerticalLine: false,
+              getDrawingHorizontalLine: (_) =>
+                  FlLine(color: Colors.black.withAlpha(10))),
           borderData: FlBorderData(show: false),
           minY: 0,
           maxY: maxY,
           titlesData: FlTitlesData(
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 30,
-                getTitlesWidget: (v, _) => Text('${v.round()}h', style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                getTitlesWidget: (v, _) => Text('${v.round()}h',
+                    style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
               ),
             ),
             bottomTitles: AxisTitles(
@@ -355,7 +404,9 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
                   try {
                     return Padding(
                       padding: const EdgeInsets.only(top: 6),
-                      child: Text(DateFormat.E(loc).format(labels[i]), style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                      child: Text(DateFormat.E(loc).format(labels[i]),
+                          style: TextStyle(
+                              fontSize: 10, color: AppTheme.textMuted)),
                     );
                   } catch (_) {
                     return const SizedBox.shrink();
@@ -392,7 +443,8 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
     final nightH = snap.nightSleepHoursWeek;
     final total = dayH + nightH;
     if (total <= 0.01) {
-      return Text(s.reportSleepAdvDistributionEmpty, style: TextStyle(color: AppTheme.textMuted));
+      return Text(s.reportSleepAdvDistributionEmpty,
+          style: TextStyle(color: AppTheme.textMuted));
     }
     final dayPct = dayH / total * 100;
     final nightPct = nightH / total * 100;
@@ -409,14 +461,20 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
               value: math.max(0.01, dayH),
               title: '${dayPct.round()}%',
               radius: 44,
-              titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.white),
+              titleStyle: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white),
             ),
             PieChartSectionData(
               color: _purple.withAlpha(230),
               value: math.max(0.01, nightH),
               title: '${nightPct.round()}%',
               radius: 44,
-              titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.white),
+              titleStyle: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white),
             ),
           ],
         ),
@@ -427,7 +485,9 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
   Widget _roundedBars(S s, AdvancedSleepReportSnapshot snap) {
     const h = 168.0;
     final allHours = [...snap.lineSeriesSleepHours, ...snap.prevWeekSleepHours];
-    final cap = allHours.isEmpty ? 18.0 : math.max(18.0, allHours.reduce(math.max) + 1.0);
+    final cap = allHours.isEmpty
+        ? 18.0
+        : math.max(18.0, allHours.reduce(math.max) + 1.0);
     return SizedBox(
       height: h + 28,
       child: Column(
@@ -456,7 +516,10 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
                                   gradient: LinearGradient(
                                     begin: Alignment.bottomCenter,
                                     end: Alignment.topCenter,
-                                    colors: [_purple.withAlpha(230), _purple.withAlpha(120)],
+                                    colors: [
+                                      _purple.withAlpha(230),
+                                      _purple.withAlpha(120)
+                                    ],
                                   ),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
@@ -476,7 +539,10 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
                                   gradient: LinearGradient(
                                     begin: Alignment.bottomCenter,
                                     end: Alignment.topCenter,
-                                    colors: [_sky.withAlpha(200), _sky.withAlpha(90)],
+                                    colors: [
+                                      _sky.withAlpha(200),
+                                      _sky.withAlpha(90)
+                                    ],
                                   ),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
@@ -508,9 +574,17 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
   Widget _legendDot(Color c, String label) {
     return Row(
       children: [
-        Container(width: 10, height: 10, decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(3))),
+        Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+                color: c, borderRadius: BorderRadius.circular(3))),
         const SizedBox(width: 6),
-        Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textMuted)),
+        Text(label,
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textMuted)),
       ],
     );
   }
@@ -525,19 +599,27 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
     final birthRaw = babyRow?['birth_date'] as String?;
     final birth = DateTime.tryParse(birthRaw ?? '');
     final name = (babyRow?['name'] as String?)?.trim();
-    final babyName = (name == null || name.isEmpty) ? s.placeholderBabyName : name;
+    final babyName =
+        (name == null || name.isEmpty) ? s.placeholderBabyName : name;
 
-    final weekEnd = snap == null ? _anchor : snap.weekMonday.add(const Duration(days: 6));
+    final weekEnd =
+        snap == null ? _anchor : snap.weekMonday.add(const Duration(days: 6));
     final ageLabel = birth == null ? '—' : s.babyAgeLabel(birth, weekEnd);
 
+    final reportBg = reportScaffoldBackground();
+
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: reportBg,
       appBar: AppBar(
-        backgroundColor: _bg,
+        backgroundColor: reportBg,
+        surfaceTintColor: reportBg,
         elevation: 0,
-        title: Text(s.reportSleepAdvScreenTitle, style: const TextStyle(fontWeight: FontWeight.w900)),
+        title: Text(s.reportSleepAdvScreenTitle,
+            style: const TextStyle(fontWeight: FontWeight.w900)),
         actions: [
-          IconButton(onPressed: _pickWeekDay, icon: const Icon(Icons.calendar_month_rounded, color: _purple)),
+          IconButton(
+              onPressed: _pickWeekDay,
+              icon: const Icon(Icons.calendar_month_rounded, color: _purple)),
         ],
       ),
       body: bid == null
@@ -549,31 +631,46 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
                   : RefreshIndicator(
                       onRefresh: _load,
                       child: ListView(
-                        padding: EdgeInsets.fromLTRB(AppTheme.pageHPadding, 0, AppTheme.pageHPadding, 120),
+                        padding: EdgeInsets.fromLTRB(AppTheme.pageHPadding, 0,
+                            AppTheme.pageHPadding, 120),
                         children: [
                           Text(
                             _weekRangeLabel(context, snap.weekMonday),
-                            style: TextStyle(color: AppTheme.textMuted, fontWeight: FontWeight.w700, fontSize: portalSp(context, 14)),
+                            style: TextStyle(
+                                color: AppTheme.textMuted,
+                                fontWeight: FontWeight.w700,
+                                fontSize: portalSp(context, 14)),
                           ),
                           const SizedBox(height: 14),
                           Row(
                             children: [
                               PhotoAvatar(
                                 photoB64: babyRow?['photo_b64'] as String?,
-                                photoUrl: ((babyRow?['photo_url'] as String?) ?? '').trim().isEmpty
-                                    ? null
-                                    : (babyRow?['photo_url'] as String?)?.trim(),
+                                photoUrl:
+                                    ((babyRow?['photo_url'] as String?) ?? '')
+                                            .trim()
+                                            .isEmpty
+                                        ? null
+                                        : (babyRow?['photo_url'] as String?)
+                                            ?.trim(),
                                 radius: 28,
                                 backgroundColor: AppTheme.softPurple,
-                                fallback: const Text('👶', style: TextStyle(fontSize: 28)),
+                                fallback: const Text('👶',
+                                    style: TextStyle(fontSize: 28)),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(babyName, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-                                    Text(ageLabel, style: TextStyle(color: AppTheme.textMuted, fontWeight: FontWeight.w700)),
+                                    Text(babyName,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 18)),
+                                    Text(ageLabel,
+                                        style: TextStyle(
+                                            color: AppTheme.textMuted,
+                                            fontWeight: FontWeight.w700)),
                                   ],
                                 ),
                               ),
@@ -583,7 +680,10 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
                           if (!snap.hasEnoughData)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: Text(s.reportSleepAdvNotEnoughData, style: TextStyle(color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+                              child: Text(s.reportSleepAdvNotEnoughData,
+                                  style: TextStyle(
+                                      color: AppTheme.textMuted,
+                                      fontWeight: FontWeight.w600)),
                             ),
                           _SleepScoreHero(
                             animation: _gaugeAnim,
@@ -597,59 +697,95 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(s.reportSleepAdvMetricsTitle, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+                                Text(s.reportSleepAdvMetricsTitle,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 17)),
                                 const Divider(height: 22),
                                 _metricRow(
                                   label: s.reportSleepAdvEfficiency,
                                   value: '${snap.sleepEfficiencyPct.round()}%',
-                                  badge: _efficiencyBadge(s, snap.sleepEfficiencyPct),
+                                  badge: _efficiencyBadge(
+                                      s, snap.sleepEfficiencyPct),
                                   badgeColor: _green,
                                 ),
-                                if (AdvancedSleepReportService.efficiencyPctVsPrev(snap) != null)
+                                if (AdvancedSleepReportService
+                                        .efficiencyPctVsPrev(snap) !=
+                                    null)
                                   Padding(
-                                    padding: const EdgeInsets.only(bottom: 8, left: 4),
+                                    padding: const EdgeInsets.only(
+                                        bottom: 8, left: 4),
                                     child: Text(
-                                      s.reportSleepAdvVsPrevPct(AdvancedSleepReportService.efficiencyPctVsPrev(snap)!.round()),
-                                      style: TextStyle(fontSize: 12.5, color: AppTheme.textMuted, fontWeight: FontWeight.w600),
+                                      s.reportSleepAdvVsPrevPct(
+                                          AdvancedSleepReportService
+                                                  .efficiencyPctVsPrev(snap)!
+                                              .round()),
+                                      style: TextStyle(
+                                          fontSize: 12.5,
+                                          color: AppTheme.textMuted,
+                                          fontWeight: FontWeight.w600),
                                     ),
                                   ),
                                 const Divider(height: 1),
                                 _metricRow(
                                   label: s.reportSleepAdvOnset,
-                                  value: _formatMinutes(snap.sleepOnsetMinutesAvg),
-                                  badge: _onsetBadge(s, snap.sleepOnsetMinutesAvg),
+                                  value:
+                                      _formatMinutes(snap.sleepOnsetMinutesAvg),
+                                  badge:
+                                      _onsetBadge(s, snap.sleepOnsetMinutesAvg),
                                   badgeColor: _green,
                                 ),
                                 const Divider(height: 1),
                                 _metricRow(
                                   label: s.reportSleepAdvAwakenings,
-                                  value: snap.awakeningsAvgNightly <= 0 ? '—' : snap.awakeningsAvgNightly.toStringAsFixed(1),
-                                  badge: snap.awakeningsAvgNightly <= 0 ? s.reportSleepAdvBadgeUnknown : _awakenBadge(s, snap.awakeningsAvgNightly),
+                                  value: snap.awakeningsAvgNightly <= 0
+                                      ? '—'
+                                      : snap.awakeningsAvgNightly
+                                          .toStringAsFixed(1),
+                                  badge: snap.awakeningsAvgNightly <= 0
+                                      ? s.reportSleepAdvBadgeUnknown
+                                      : _awakenBadge(
+                                          s, snap.awakeningsAvgNightly),
                                   badgeColor: _green,
                                 ),
                                 Padding(
-                                  padding: const EdgeInsets.only(left: 4, bottom: 8),
+                                  padding:
+                                      const EdgeInsets.only(left: 4, bottom: 8),
                                   child: Text(
-                                    s.reportSleepAdvAwakeningsTotal(snap.awakeningsTotalWeek),
-                                    style: TextStyle(fontSize: 12.5, color: AppTheme.textMuted, fontWeight: FontWeight.w600),
+                                    s.reportSleepAdvAwakeningsTotal(
+                                        snap.awakeningsTotalWeek),
+                                    style: TextStyle(
+                                        fontSize: 12.5,
+                                        color: AppTheme.textMuted,
+                                        fontWeight: FontWeight.w600),
                                   ),
                                 ),
                                 const Divider(height: 1),
                                 _metricRow(
                                   label: s.reportSleepAdvLongest,
-                                  value: WeeklyReportService.formatHoursMinutes(snap.longestContinuousSleepSec / 3600.0),
-                                  badge: _longestBadge(s, snap.longestContinuousSleepSec),
+                                  value: WeeklyReportService.formatHoursMinutes(
+                                      snap.longestContinuousSleepSec / 3600.0),
+                                  badge: _longestBadge(
+                                      s, snap.longestContinuousSleepSec),
                                   badgeColor: _green,
                                 ),
                                 const Divider(height: 1),
                                 _metricRow(
                                   label: s.reportSleepAdvAvgDailySleep,
                                   value: WeeklyReportService.formatHoursMinutes(
-                                    snap.currentWeekDays.fold<int>(0, (a, d) => a + d.sleepTotalSeconds) / math.max(1, snap.currentWeekDays.length) / 3600.0,
+                                    snap.currentWeekDays.fold<int>(0,
+                                            (a, d) => a + d.sleepTotalSeconds) /
+                                        math.max(
+                                            1, snap.currentWeekDays.length) /
+                                        3600.0,
                                   ),
                                   badge: _avgSleepBadge(
                                     s,
-                                    snap.currentWeekDays.fold<int>(0, (a, d) => a + d.sleepTotalSeconds) / math.max(1, snap.currentWeekDays.length) / 3600.0,
+                                    snap.currentWeekDays.fold<int>(0,
+                                            (a, d) => a + d.sleepTotalSeconds) /
+                                        math.max(
+                                            1, snap.currentWeekDays.length) /
+                                        3600.0,
                                   ),
                                   badgeColor: _green,
                                 ),
@@ -661,25 +797,39 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(s.reportSleepAdvIdealTitle, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+                                Text(s.reportSleepAdvIdealTitle,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 17)),
                                 const SizedBox(height: 12),
                                 Text(
                                   _formatIdealWindow(context, snap),
-                                  style: TextStyle(fontSize: portalSp(context, 28), fontWeight: FontWeight.w900, color: _purple),
+                                  style: TextStyle(
+                                      fontSize: portalSp(context, 28),
+                                      fontWeight: FontWeight.w900,
+                                      color: _purple),
                                 ),
                                 const SizedBox(height: 8),
-                                Text(s.reportSleepAdvIdealFooter, style: TextStyle(color: AppTheme.textMuted, fontWeight: FontWeight.w600, fontSize: 13)),
+                                Text(s.reportSleepAdvIdealFooter,
+                                    style: TextStyle(
+                                        color: AppTheme.textMuted,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13)),
                               ],
                             ),
                           ),
                           const SizedBox(height: 18),
-                          Text(s.reportSleepAdvChartsSection, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+                          Text(s.reportSleepAdvChartsSection,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w900, fontSize: 18)),
                           const SizedBox(height: 12),
                           _card(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(s.reportSleepAdvChartsSleepTrend, style: const TextStyle(fontWeight: FontWeight.w900)),
+                                Text(s.reportSleepAdvChartsSleepTrend,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w900)),
                                 const SizedBox(height: 8),
                                 _lineChart(snap),
                               ],
@@ -690,7 +840,9 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(s.reportSleepAdvChartsCompare, style: const TextStyle(fontWeight: FontWeight.w900)),
+                                Text(s.reportSleepAdvChartsCompare,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w900)),
                                 const SizedBox(height: 6),
                                 _compareLines(snap),
                               ],
@@ -701,25 +853,42 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(s.reportSleepAdvChartsDistribution, style: const TextStyle(fontWeight: FontWeight.w900)),
+                                Text(s.reportSleepAdvChartsDistribution,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w900)),
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
                                     Expanded(child: _donut(s, snap)),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          Text(s.reportSleepAdvDayPhase, style: TextStyle(color: AppTheme.textMuted, fontWeight: FontWeight.w700)),
+                                          Text(s.reportSleepAdvDayPhase,
+                                              style: TextStyle(
+                                                  color: AppTheme.textMuted,
+                                                  fontWeight: FontWeight.w700)),
                                           Text(
-                                            WeeklyReportService.formatHoursMinutes(snap.daySleepHoursWeek),
-                                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
+                                            WeeklyReportService
+                                                .formatHoursMinutes(
+                                                    snap.daySleepHoursWeek),
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.w900,
+                                                fontSize: 20),
                                           ),
                                           const SizedBox(height: 12),
-                                          Text(s.reportSleepAdvNightPhase, style: TextStyle(color: AppTheme.textMuted, fontWeight: FontWeight.w700)),
+                                          Text(s.reportSleepAdvNightPhase,
+                                              style: TextStyle(
+                                                  color: AppTheme.textMuted,
+                                                  fontWeight: FontWeight.w700)),
                                           Text(
-                                            WeeklyReportService.formatHoursMinutes(snap.nightSleepHoursWeek),
-                                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
+                                            WeeklyReportService
+                                                .formatHoursMinutes(
+                                                    snap.nightSleepHoursWeek),
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.w900,
+                                                fontSize: 20),
                                           ),
                                         ],
                                       ),
@@ -734,7 +903,9 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(s.reportSleepAdvChartsBars, style: const TextStyle(fontWeight: FontWeight.w900)),
+                                Text(s.reportSleepAdvChartsBars,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w900)),
                                 const SizedBox(height: 10),
                                 _roundedBars(s, snap),
                               ],
@@ -745,7 +916,9 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(s.reportSleepAdvScoreBreakdown, style: const TextStyle(fontWeight: FontWeight.w900)),
+                                Text(s.reportSleepAdvScoreBreakdown,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w900)),
                                 const SizedBox(height: 8),
                                 Text(
                                   s.reportSleepAdvBreakdownLine(
@@ -754,7 +927,8 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage> with 
                                     snap.scoreAwakenPoints.round(),
                                     snap.scoreConsistencyPoints.round(),
                                   ),
-                                  style: const TextStyle(height: 1.4, fontWeight: FontWeight.w600),
+                                  style: const TextStyle(
+                                      height: 1.4, fontWeight: FontWeight.w600),
                                 ),
                               ],
                             ),
@@ -792,80 +966,100 @@ class _SleepScoreHero extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
-          BoxShadow(color: Colors.black.withAlpha(12), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(
+              color: Colors.black.withAlpha(12),
+              blurRadius: 20,
+              offset: const Offset(0, 10)),
         ],
       ),
       child: LayoutBuilder(
-      builder: (context, cons) {
-        final w = cons.maxWidth;
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              flex: 3,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(s.reportSleepAdvScoreTitle, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
-                  const SizedBox(height: 8),
-                  AnimatedBuilder(
-                    animation: animation,
-                    builder: (ctx, _) {
-                      final v = (score * animation.value).round();
-                      return Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(text: '$v', style: TextStyle(fontSize: portalSp(context, 36), fontWeight: FontWeight.w900, height: 1.05)),
-                            TextSpan(text: '/100', style: TextStyle(fontSize: portalSp(context, 20), fontWeight: FontWeight.w800, color: AppTheme.textMuted)),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 6),
-                  Text(statusLabel, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: green)),
-                ],
-              ),
-            ),
-            SizedBox(
-              width: math.min(200, w * 0.42),
-              height: 130,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned.fill(
-                    child: AnimatedBuilder(
+        builder: (context, cons) {
+          final w = cons.maxWidth;
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(s.reportSleepAdvScoreTitle,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w900, fontSize: 17)),
+                    const SizedBox(height: 8),
+                    AnimatedBuilder(
                       animation: animation,
                       builder: (ctx, _) {
-                        return CustomPaint(
-                          painter: _SleepGaugePainter(
-                            progress: (score / 100.0) * animation.value,
-                            purple: purple,
-                            green: green,
+                        final v = (score * animation.value).round();
+                        return Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                  text: '$v',
+                                  style: TextStyle(
+                                      fontSize: portalSp(context, 36),
+                                      fontWeight: FontWeight.w900,
+                                      height: 1.05)),
+                              TextSpan(
+                                  text: '/100',
+                                  style: TextStyle(
+                                      fontSize: portalSp(context, 20),
+                                      fontWeight: FontWeight.w800,
+                                      color: AppTheme.textMuted)),
+                            ],
                           ),
                         );
                       },
                     ),
-                  ),
-                  const Positioned(
-                    bottom: 6,
-                    left: 0,
-                    right: 0,
-                    child: _MoonCloudsRow(),
-                  ),
-                ],
+                    const SizedBox(height: 6),
+                    Text(statusLabel,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                            color: green)),
+                  ],
+                ),
               ),
-            ),
-          ],
-        );
-      },
-    ),
+              SizedBox(
+                width: math.min(200, w * 0.42),
+                height: 130,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned.fill(
+                      child: AnimatedBuilder(
+                        animation: animation,
+                        builder: (ctx, _) {
+                          return CustomPaint(
+                            painter: _SleepGaugePainter(
+                              progress: (score / 100.0) * animation.value,
+                              purple: purple,
+                              green: green,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const Positioned(
+                      bottom: 6,
+                      left: 0,
+                      right: 0,
+                      child: _MoonCloudsRow(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
 
 class _SleepGaugePainter extends CustomPainter {
-  _SleepGaugePainter({required this.progress, required this.purple, required this.green});
+  _SleepGaugePainter(
+      {required this.progress, required this.purple, required this.green});
 
   final double progress;
   final Color purple;
@@ -917,7 +1111,8 @@ class _MoonCloudsRow extends StatelessWidget {
         height: 54,
         fit: BoxFit.contain,
         filterQuality: FilterQuality.medium,
-        errorBuilder: (_, __, ___) => Icon(Icons.nightlight_round, size: 40, color: Colors.white.withAlpha(220)),
+        errorBuilder: (_, __, ___) => Icon(Icons.nightlight_round,
+            size: 40, color: Colors.white.withAlpha(220)),
       ),
     );
   }

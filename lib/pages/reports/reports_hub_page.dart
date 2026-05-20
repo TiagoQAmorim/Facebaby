@@ -6,6 +6,9 @@ import '../../services/premium/feature_access.dart';
 import '../../services/premium/premium_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/portal_layout.dart';
+import '../../utils/portal_page_route.dart';
+import 'report_page_shell.dart';
+import '../../widgets/premium_locked_content_card.dart';
 import '../premium/premium_paywall_screen.dart';
 import 'advanced_sleep_report_page.dart';
 import 'daily_report_page.dart';
@@ -23,18 +26,16 @@ class ReportsHubPage extends StatelessWidget {
   }
 
   void _openDaily(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => DailyReportPage(initialDay: _today()),
-      ),
+    pushPortalPage<void>(
+      context,
+      DailyReportPage(initialDay: _today()),
     );
   }
 
   void _openWeekly(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => WeeklyReportPage(anchorDay: _today()),
-      ),
+    pushPortalPage<void>(
+      context,
+      WeeklyReportPage(anchorDay: _today()),
     );
   }
 
@@ -43,10 +44,9 @@ class ReportsHubPage extends StatelessWidget {
       openPremiumPaywall(context);
       return;
     }
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => MonthlyReportPage(anchorDay: _today()),
-      ),
+    pushPortalPage<void>(
+      context,
+      MonthlyReportPage(anchorDay: _today()),
     );
   }
 
@@ -55,10 +55,9 @@ class ReportsHubPage extends StatelessWidget {
       openPremiumPaywall(context);
       return;
     }
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => AdvancedSleepReportPage(anchorDay: _today()),
-      ),
+    pushPortalPage<void>(
+      context,
+      AdvancedSleepReportPage(anchorDay: _today()),
     );
   }
 
@@ -67,10 +66,9 @@ class ReportsHubPage extends StatelessWidget {
       openPremiumPaywall(context);
       return;
     }
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => PediatricReportPage(anchorDay: _today()),
-      ),
+    pushPortalPage<void>(
+      context,
+      PediatricReportPage(anchorDay: _today()),
     );
   }
 
@@ -78,9 +76,13 @@ class ReportsHubPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = S.of(context);
     final babyId = CurrentBabyController.instance.currentBabyId;
+    final nightBackground = reportScaffoldBackground();
 
     return Scaffold(
+      backgroundColor: nightBackground,
       appBar: AppBar(
+        backgroundColor: nightBackground,
+        surfaceTintColor: nightBackground,
         title: Text(s.reportsTitle),
       ),
       body: SafeArea(
@@ -88,23 +90,33 @@ class ReportsHubPage extends StatelessWidget {
           listenable: PremiumService.instance,
           builder: (context, _) {
             return SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(AppTheme.pageHPadding, 18, AppTheme.pageHPadding, 110),
+              padding: EdgeInsets.fromLTRB(
+                  AppTheme.pageHPadding, 18, AppTheme.pageHPadding, 110),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     s.reportsSubtitle,
-                    style: TextStyle(fontSize: portalSp(context, 15), color: AppTheme.textMuted, height: 1.35),
+                    style: TextStyle(
+                        fontSize: portalSp(context, 15),
+                        color: AppTheme.textMuted,
+                        height: 1.35),
                   ),
                   if (babyId == null) ...[
                     const SizedBox(height: 18),
                     Text(
                       s.feedingNoBabyHint,
-                      style: TextStyle(color: Colors.black.withAlpha(140), fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                          color: Colors.black.withAlpha(140),
+                          fontWeight: FontWeight.w700),
                     ),
                   ],
                   const SizedBox(height: 18),
-                  Text(s.reportsHubSectionTitle, style: TextStyle(fontSize: portalSp(context, 13), fontWeight: FontWeight.w800, color: AppTheme.textMuted)),
+                  Text(s.reportsHubSectionTitle,
+                      style: TextStyle(
+                          fontSize: portalSp(context, 13),
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.textMuted)),
                   const SizedBox(height: 10),
                   _ReportTile(
                     icon: Icons.today_rounded,
@@ -182,6 +194,22 @@ class _ReportTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (locked) {
+      final s = S.of(context);
+      final trimmedHint = lockHint?.trim();
+      final lockedSubtitle = trimmedHint == null || trimmedHint.isEmpty
+          ? subtitle
+          : '$trimmedHint. $subtitle';
+      return PremiumLockedContentCard(
+        title: title,
+        subtitle: lockedSubtitle,
+        ctaLabel: s.familyPremiumUnlockCta,
+        onTap: onTap,
+        compact: true,
+        accent: color,
+      );
+    }
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -211,13 +239,15 @@ class _ReportTile extends StatelessWidget {
                     CircleAvatar(
                       radius: 22,
                       backgroundColor: color.withAlpha(locked ? 22 : 36),
-                      child: Icon(icon, color: color.withAlpha(locked ? 170 : 255), size: 24),
+                      child: Icon(icon,
+                          color: color.withAlpha(locked ? 170 : 255), size: 24),
                     ),
                     if (locked)
                       Positioned(
                         right: -2,
                         bottom: -2,
-                        child: Icon(Icons.lock_rounded, size: 16, color: Colors.black.withAlpha(140)),
+                        child: Icon(Icons.lock_rounded,
+                            size: 16, color: Colors.black.withAlpha(140)),
                       ),
                   ],
                 ),
@@ -235,14 +265,16 @@ class _ReportTile extends StatelessWidget {
                                 fontSize: 17,
                                 fontWeight: FontWeight.w900,
                                 height: 1.15,
-                                color: AppTheme.textPrimary.withAlpha(locked ? 200 : 255),
+                                color: AppTheme.textPrimary
+                                    .withAlpha(locked ? 200 : 255),
                               ),
                             ),
                           ),
                           if (locked)
                             Container(
                               margin: const EdgeInsets.only(left: 6),
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF7C6BA8).withAlpha(36),
                                 borderRadius: BorderRadius.circular(8),
@@ -265,11 +297,14 @@ class _ReportTile extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 13,
                           height: 1.25,
-                          color: AppTheme.textMuted.withAlpha(locked ? 200 : 255),
+                          color:
+                              AppTheme.textMuted.withAlpha(locked ? 200 : 255),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      if (locked && lockHint != null && lockHint!.trim().isNotEmpty) ...[
+                      if (locked &&
+                          lockHint != null &&
+                          lockHint!.trim().isNotEmpty) ...[
                         const SizedBox(height: 6),
                         Text(
                           lockHint!.trim(),
@@ -284,7 +319,8 @@ class _ReportTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right_rounded, color: Colors.black.withAlpha(locked ? 55 : 90)),
+                Icon(Icons.chevron_right_rounded,
+                    color: Colors.black.withAlpha(locked ? 55 : 90)),
               ],
             ),
           ),

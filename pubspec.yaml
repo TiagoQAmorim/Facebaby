@@ -1,5 +1,5 @@
 name: facebaby_flutter
-version: 1.0.28+78
+version: 1.0.29+94
 publish_to: 'none'
 description: MVP Flutter do FaceBaby, organizado com Page Objects/Screens, widgets, models, services e controllers.
 

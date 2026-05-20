@@ -7,7 +7,7 @@ import '../theme/app_theme.dart';
 const _rulerInk = Color(0xFF163B68);
 
 /// Arrasto horizontal (px) para percorrer min→max. Valor maior = régua mais lenta.
-const _rulerDragPixelsPerFullRange = 1450.0;
+const _rulerDragPixelsPerFullRange = 5000.0;
 
 /// Ruler for weight/height used in onboarding and in the portal (growth, etc.).
 class GrowthRulerPicker extends StatefulWidget {
@@ -98,9 +98,7 @@ class _GrowthRulerUnitBar extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
-                    color: selected == option
-                        ? AppTheme.ctaPrimary
-                        : _rulerInk,
+                    color: selected == option ? AppTheme.ctaPrimary : _rulerInk,
                   ),
                 ),
               ),
@@ -230,8 +228,7 @@ class _GrowthRulerPickerState extends State<GrowthRulerPicker> {
                                 style: TextStyle(
                                   fontSize: _usesMetersLabel ? 34 : 44,
                                   height: 0.95,
-                                  letterSpacing:
-                                      _usesMetersLabel ? -0.8 : -1.6,
+                                  letterSpacing: _usesMetersLabel ? -0.8 : -1.6,
                                   fontWeight: FontWeight.w900,
                                   color: _rulerInk,
                                 ),

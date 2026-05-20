@@ -10,6 +10,9 @@ import '../widgets/section_title.dart';
 import '../services/firebase/vaccine_cloud_sync.dart';
 import '../services/vaccine_reminder_scheduler.dart';
 import '../services/firebase/firestore_service.dart';
+import '../theme/app_theme.dart';
+import '../utils/portal_night_ui.dart';
+import '../utils/portal_time_of_day.dart';
 import '../widgets/vaccine_due_confirm_sheet.dart';
 
 class VaccinesPage extends StatefulWidget {
@@ -214,9 +217,11 @@ class _VaccinesPageState extends State<VaccinesPage> {
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(s.vaccinesTitle)),
-      body: SafeArea(
+    return PortalNightUi.listen((context, night) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: PortalNightUi.appBar(s.vaccinesTitle, night: night),
+        body: SafeArea(
         top: false,
         child: SingleChildScrollView(
           child: Center(
@@ -227,69 +232,91 @@ class _VaccinesPageState extends State<VaccinesPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(s.vaccinesCard, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                    Text(
+                      s.vaccinesCard,
+                      style: PortalNightUi.titleStyle(night, fontSize: 22),
+                    ),
                     const SizedBox(height: 6),
-                    Text(s.vaccinesSubtitle),
+                    Text(
+                      s.vaccinesSubtitle,
+                      style: PortalNightUi.bodyStyle(night, fontSize: 14).copyWith(
+                        height: 1.35,
+                        color: night
+                            ? PortalTimeOfDay.nightOutlinedTextColor
+                                .withAlpha(220)
+                            : Colors.black.withAlpha(140),
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     CardBox(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SectionTitle(title: s.baby),
-                          const SizedBox(height: 10),
-                          FutureBuilder<List<Map<String, Object?>>>(
-                            future: _babiesFuture,
-                            builder: (context, snapshot) {
-                              final babies = snapshot.data ?? const [];
-                              if (snapshot.connectionState == ConnectionState.waiting) {
-                                return const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 10),
-                                  child: Center(child: FaceBabySpinner(size: 30)),
-                                );
-                              }
-                              if (babies.isEmpty) {
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(s.vaccNoBabies),
-                                    const SizedBox(height: 12),
-                                    Text(s.exampleCard, style: const TextStyle(fontWeight: FontWeight.w900)),
-                                    const SizedBox(height: 10),
-                                    _VaccinesTable(records: _exampleRecords),
-                                  ],
-                                );
-                              }
+                      child: Theme(
+                        data: PortalNightUi.cardFormTheme(context),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SectionTitle(title: s.baby),
+                            const SizedBox(height: 10),
+                            FutureBuilder<List<Map<String, Object?>>>(
+                              future: _babiesFuture,
+                              builder: (context, snapshot) {
+                                final babies = snapshot.data ?? const [];
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Padding(
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 10),
+                                    child: Center(
+                                        child: FaceBabySpinner(size: 30)),
+                                  );
+                                }
+                                if (babies.isEmpty) {
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(s.vaccNoBabies),
+                                      const SizedBox(height: 12),
+                                      Text(s.exampleCard,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w900)),
+                                      const SizedBox(height: 10),
+                                      _VaccinesTable(
+                                          records: _exampleRecords),
+                                    ],
+                                  );
+                                }
 
-                              return DropdownButtonFormField<int>(
-                                key: ValueKey(_selectedBabyId),
-                                initialValue: _selectedBabyId,
-                                items: babies.map((b) {
-                                  final id = (b['id'] as num).toInt();
-                                  final name = (b['name'] as String?) ?? '—';
-                                  return DropdownMenuItem(value: id, child: Text(name));
-                                }).toList(),
-                                onChanged: _selectBaby,
-                                decoration: InputDecoration(
-                                  prefixIcon: const Icon(Icons.child_care),
-                                  labelText: s.selectBaby,
-                                ),
-                              );
-                          },
+                                return _BabySelectorField(
+                                  babies: babies,
+                                  selectedId: _selectedBabyId,
+                                  label: s.selectBaby,
+                                  onChanged: _selectBaby,
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 14),
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton.icon(
+                                onPressed: _selectedBabyId == null
+                                    ? null
+                                    : _addVaccine,
+                                icon: const Icon(Icons.add),
+                                label: Text(s.addVaccine),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.icon(
-                            onPressed: _selectedBabyId == null ? null : _addVaccine,
-                            icon: const Icon(Icons.add),
-                            label: Text(s.addVaccine),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 18),
-                  SectionTitle(title: s.recordsTitle),
+                  SectionTitle(
+                    title: s.recordsTitle,
+                    titleColor: night ? PortalTimeOfDay.nightTextColor : null,
+                    titleShadows: night
+                        ? PortalTimeOfDay.nightTextOutlineShadows
+                        : null,
+                  ),
                   const SizedBox(height: 12),
                   FutureBuilder<List<Map<String, Object?>>>(
                     future: _vaccinesFuture,
@@ -338,8 +365,9 @@ class _VaccinesPageState extends State<VaccinesPage> {
           ),
         ),
       ),
-      ),
+    ),
     );
+    });
   }
 }
 
@@ -553,6 +581,175 @@ class _VaccineEditorSheetState extends State<_VaccineEditorSheet> {
                     label: Text(_saving ? loc.commonSaving : loc.commonSave),
                   ),
                 ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Seletor de bebê via bottom sheet (evita menu transparente do dropdown no portal noturno).
+class _BabySelectorField extends StatelessWidget {
+  const _BabySelectorField({
+    required this.babies,
+    required this.selectedId,
+    required this.label,
+    required this.onChanged,
+  });
+
+  final List<Map<String, Object?>> babies;
+  final int? selectedId;
+  final String label;
+  final ValueChanged<int?> onChanged;
+
+  static const TextStyle _valueStyle = TextStyle(
+    color: AppTheme.textPrimary,
+    fontWeight: FontWeight.w600,
+    fontSize: 16,
+  );
+
+  String? _nameFor(int? id) {
+    if (id == null) return null;
+    for (final b in babies) {
+      if ((b['id'] as num).toInt() == id) {
+        return (b['name'] as String?) ?? '—';
+      }
+    }
+    return null;
+  }
+
+  Future<void> _openPicker(BuildContext context) async {
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: AppTheme.card,
+      barrierColor: Colors.black54,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetCtx) {
+        final maxH = MediaQuery.sizeOf(sheetCtx).height * 0.55;
+        return SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 17,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ),
+              Flexible(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: maxH),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.only(bottom: 16),
+                    itemCount: babies.length,
+                    separatorBuilder: (_, __) => Divider(
+                      height: 1,
+                      color: Colors.black.withAlpha(18),
+                    ),
+                    itemBuilder: (_, index) {
+                      final b = babies[index];
+                      final id = (b['id'] as num).toInt();
+                      final name = (b['name'] as String?) ?? '—';
+                      final selected = selectedId == id;
+                      return ListTile(
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 16),
+                        leading: const Icon(Icons.child_care,
+                            color: AppTheme.textSecondary),
+                        title: Text(
+                          name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight:
+                                selected ? FontWeight.w900 : FontWeight.w600,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        trailing: selected
+                            ? const Icon(Icons.check_circle,
+                                color: AppTheme.ctaPrimary)
+                            : null,
+                        onTap: () => Navigator.of(sheetCtx).pop(id),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (picked != null) onChanged(picked);
+  }
+
+  static final InputDecoration _fieldDecoration = InputDecoration(
+    filled: true,
+    fillColor: AppTheme.card,
+    prefixIcon:
+        Icon(Icons.child_care, color: AppTheme.textSecondary),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.all(Radius.circular(14)),
+      borderSide: BorderSide(color: Color(0x47000000)),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.all(Radius.circular(14)),
+      borderSide: BorderSide(color: Color(0x47000000)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.all(Radius.circular(14)),
+      borderSide: BorderSide(color: AppTheme.primary, width: 2),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedName = _nameFor(selectedId);
+    final decoration = _fieldDecoration.copyWith(
+      labelText: label,
+      labelStyle: const TextStyle(color: AppTheme.textSecondary),
+    );
+
+    return SizedBox(
+      width: double.infinity,
+      child: Material(
+        color: AppTheme.card,
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => _openPicker(context),
+          child: InputDecorator(
+            decoration: decoration,
+            isEmpty: selectedName == null,
+            child: Row(
+              children: [
+                Expanded(
+                  child: selectedName == null
+                      ? const SizedBox.shrink()
+                      : Text(
+                          selectedName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: _valueStyle,
+                        ),
+                ),
+                const Icon(Icons.arrow_drop_down,
+                    color: AppTheme.textSecondary),
               ],
             ),
           ),

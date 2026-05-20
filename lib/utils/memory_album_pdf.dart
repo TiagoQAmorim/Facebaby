@@ -1,9 +1,8 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:http/http.dart' as http;
-import 'package:image/image.dart' as img;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -11,9 +10,9 @@ import 'package:printing/printing.dart';
 import '../i18n/app_i18n.dart';
 import '../models/baby_memory.dart';
 import '../models/memory_badge.dart';
+import '../services/memory_album_image_cache.dart';
 import 'measurement_format.dart';
 import 'memory_moment_localizations.dart';
-import 'photo_b64.dart';
 
 /// Um momento do álbum: mesmos dados usados no cartão de partilha individual.
 class MemoryAlbumPageInput {
@@ -24,6 +23,56 @@ class MemoryAlbumPageInput {
     required this.badge,
     required this.memory,
   });
+}
+
+/// Rótulos localizados das páginas de memória (capturados na UI antes do async).
+class MemoryAlbumPdfPageLabels {
+  final String momentLabel;
+  final String ageLabel;
+  final String weightLabel;
+  final String heightLabel;
+  final String moodLabel;
+  final String notesLabel;
+  final String Function(MemoryBadge badge) badgeTitle;
+  final String Function(BabyMemory memory) dateText;
+
+  const MemoryAlbumPdfPageLabels({
+    required this.momentLabel,
+    required this.ageLabel,
+    required this.weightLabel,
+    required this.heightLabel,
+    required this.moodLabel,
+    required this.notesLabel,
+    required this.badgeTitle,
+    required this.dateText,
+  });
+}
+
+/// Página já preparada (textos + caminho opcional da imagem em cache).
+class MemoryAlbumPreparedPageInput {
+  final BabyMemory memory;
+  final String badgeTitle;
+  final String dateText;
+  final String momentText;
+  final String? imageFilePath;
+
+  const MemoryAlbumPreparedPageInput({
+    required this.memory,
+    required this.badgeTitle,
+    required this.dateText,
+    required this.momentText,
+    this.imageFilePath,
+  });
+
+  MemoryAlbumPreparedPageInput copyWith({String? imageFilePath}) {
+    return MemoryAlbumPreparedPageInput(
+      memory: memory,
+      badgeTitle: badgeTitle,
+      dateText: dateText,
+      momentText: momentText,
+      imageFilePath: imageFilePath ?? this.imageFilePath,
+    );
+  }
 }
 
 class MemoryAlbumPdfStrings {
@@ -191,31 +240,14 @@ pw.TextStyle _styleScript(
   );
 }
 
-// ─── Image helpers ──────────────────────────────────────────────────────────
-Future<Uint8List?> _imageBytesForMemory(BabyMemory m) async {
-  final b = decodePhotoB64(m.photoB64);
-  if (b != null && b.isNotEmpty) return _resizeForPdf(b);
-  final url = m.photoUrl?.trim();
-  if (url == null || url.isEmpty) return null;
+Future<Uint8List?> _readImageFile(String? path) async {
+  if (path == null || path.isEmpty) return null;
   try {
-    final r = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 25));
-    if (r.statusCode != 200 || r.bodyBytes.isEmpty) return null;
-    return _resizeForPdf(Uint8List.fromList(r.bodyBytes));
+    final file = File(path);
+    if (!await file.exists()) return null;
+    return file.readAsBytes();
   } catch (_) {
     return null;
-  }
-}
-
-Uint8List _resizeForPdf(Uint8List raw) {
-  try {
-    final decoded = img.decodeImage(raw);
-    if (decoded == null) return raw;
-    const maxW = 1400;
-    if (decoded.width <= maxW) return raw;
-    final scaled = img.copyResize(decoded, width: maxW, interpolation: img.Interpolation.cubic);
-    return Uint8List.fromList(img.encodeJpg(scaled, quality: 86));
-  } catch (_) {
-    return raw;
   }
 }
 
@@ -613,23 +645,18 @@ pw.Widget _memoryPage({
 }
 
 // ─── Public API ─────────────────────────────────────────────────────────────
-Future<Uint8List> buildMemoryAlbumMemoryBookPdf({
-  required BuildContext context,
+
+/// Monta o PDF a partir de páginas já preparadas (imagens em ficheiros em cache).
+Future<Uint8List> buildMemoryAlbumMemoryBookPdfFromPrepared({
   required String babyName,
   required MemoryAlbumPdfStrings strings,
-  required List<MemoryAlbumPageInput> pages,
+  required MemoryAlbumPdfPageLabels labels,
+  required List<MemoryAlbumPreparedPageInput> pages,
+  bool Function()? isCanceled,
+  void Function(int built, int total)? onBuildProgress,
 }) async {
   final doc = pw.Document();
   final bookFmt = _bookPageFormat();
-  // Capturamos as strings localizadas ANTES de qualquer `await` para evitar
-  // usar [BuildContext] através de async gaps.
-  final s = S.of(context);
-  final momentLabel = s.memoryTellMomentTitle;
-  final ageLabel = s.memoryStatAgeLabel;
-  final weightLabel = s.memoryStatWeightLabel;
-  final heightLabel = s.memoryStatHeightLabel;
-  final moodLabel = s.memoryStatMoodLabel;
-  final notesLabel = s.memoryMotherNotesLabel;
 
   final fonts = await _loadFonts();
   final coverImg = await _loadAsset(_kCoverAsset);
@@ -731,36 +758,35 @@ Future<Uint8List> buildMemoryAlbumMemoryBookPdf({
 
   // ── Páginas de memória (ciclam pelos 4 temas, com numeração própria) ─────
   for (var i = 0; i < pages.length; i++) {
+    if (isCanceled?.call() == true) {
+      throw const MemoryAlbumCanceledException();
+    }
     final entry = pages[i];
     final theme = _kPageThemes[i % _kPageThemes.length];
-    final photo = await _imageBytesForMemory(entry.memory);
-    if (!context.mounted) {
-      throw StateError('Exportação do álbum interrompida.');
-    }
-    final title = s.memoryBadgeTitle(entry.badge);
-    final dateText = formatMemoryMomentDateTime(context, entry.memory.memoryDate);
-    final descRaw = (entry.memory.description ?? '').trim();
+    final photo = await _readImageFile(entry.imageFilePath);
+    await Future<void>.delayed(Duration.zero);
 
     addMemoryPage(
       builder: (ctx, w, h) => _memoryPage(
         theme: theme,
         memory: entry.memory,
-        badgeTitle: title,
-        momentLabel: momentLabel,
-        momentText: descRaw,
+        badgeTitle: entry.badgeTitle,
+        momentLabel: labels.momentLabel,
+        momentText: entry.momentText,
         photoBytes: photo,
-        ageLabel: ageLabel,
-        weightLabel: weightLabel,
-        heightLabel: heightLabel,
-        moodLabel: moodLabel,
-        notesLabel: notesLabel,
-        dateText: dateText,
+        ageLabel: labels.ageLabel,
+        weightLabel: labels.weightLabel,
+        heightLabel: labels.heightLabel,
+        moodLabel: labels.moodLabel,
+        notesLabel: labels.notesLabel,
+        dateText: entry.dateText,
         pageW: w,
         pageH: h,
         fonts: fonts,
       ),
       idx: i + 1,
     );
+    onBuildProgress?.call(i + 1, pages.length);
   }
 
   // ── Página final (sem footer) ────────────────────────────────────────────
@@ -778,4 +804,41 @@ Future<Uint8List> buildMemoryAlbumMemoryBookPdf({
   );
 
   return doc.save();
+}
+
+/// API legada: resolve rótulos via [BuildContext] e delega para [buildMemoryAlbumMemoryBookPdfFromPrepared]
+/// sem cache em disco (preferir [MemoryAlbumPdfGenerator] na UI).
+Future<Uint8List> buildMemoryAlbumMemoryBookPdf({
+  required BuildContext context,
+  required String babyName,
+  required MemoryAlbumPdfStrings strings,
+  required List<MemoryAlbumPageInput> pages,
+}) async {
+  final s = S.of(context);
+  final labels = MemoryAlbumPdfPageLabels(
+    momentLabel: s.memoryTellMomentTitle,
+    ageLabel: s.memoryStatAgeLabel,
+    weightLabel: s.memoryStatWeightLabel,
+    heightLabel: s.memoryStatHeightLabel,
+    moodLabel: s.memoryStatMoodLabel,
+    notesLabel: s.memoryMotherNotesLabel,
+    badgeTitle: (b) => s.memoryBadgeTitle(b),
+    dateText: (m) => formatMemoryMomentDateTime(context, m.memoryDate),
+  );
+  final prepared = pages
+      .map(
+        (e) => MemoryAlbumPreparedPageInput(
+          memory: e.memory,
+          badgeTitle: labels.badgeTitle(e.badge),
+          dateText: labels.dateText(e.memory),
+          momentText: (e.memory.description ?? '').trim(),
+        ),
+      )
+      .toList();
+  return buildMemoryAlbumMemoryBookPdfFromPrepared(
+    babyName: babyName,
+    strings: strings,
+    labels: labels,
+    pages: prepared,
+  );
 }

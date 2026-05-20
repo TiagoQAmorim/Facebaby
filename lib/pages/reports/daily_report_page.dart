@@ -4,11 +4,14 @@ import 'package:intl/intl.dart';
 import '../../controllers/current_baby_controller.dart';
 import '../../i18n/app_i18n.dart';
 import '../../models/daily_report_snapshot.dart';
-import '../../services/daily_report_service.dart' show DailyReportService, formatTimeHm;
+import '../../services/daily_report_service.dart'
+    show DailyReportService, formatTimeHm;
 import '../../theme/app_theme.dart';
 import '../../utils/portal_layout.dart';
+import '../../utils/portal_page_route.dart';
 import '../../widgets/photo_avatar.dart';
 import 'day_details_page.dart';
+import 'report_page_shell.dart';
 
 /// Relatório diário — cartões resumo; detalhes em [DayDetailsPage].
 class DailyReportPage extends StatefulWidget {
@@ -25,8 +28,6 @@ class _DailyReportPageState extends State<DailyReportPage> {
   DailyReportSnapshot? _snapshot;
   Object? _error;
   final _babyCtrl = CurrentBabyController.instance;
-
-  static const _bg = Color(0xFFF7F4FD);
 
   @override
   void initState() {
@@ -115,12 +116,11 @@ class _DailyReportPageState extends State<DailyReportPage> {
   void _openDetails() {
     final snap = _snapshot;
     if (snap == null) return;
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => DayDetailsPage(
-          calendarDay: _day,
-          snapshot: snap,
-        ),
+    pushPortalPage<void>(
+      context,
+      DayDetailsPage(
+        calendarDay: _day,
+        snapshot: snap,
       ),
     );
   }
@@ -135,17 +135,22 @@ class _DailyReportPageState extends State<DailyReportPage> {
     final birthRaw = babyRow?['birth_date'] as String?;
     final birth = DateTime.tryParse(birthRaw ?? '');
     final name = (babyRow?['name'] as String?)?.trim();
-    final babyName = (name == null || name.isEmpty) ? s.placeholderBabyName : name;
+    final babyName =
+        (name == null || name.isEmpty) ? s.placeholderBabyName : name;
     final ageAtDay = birth == null ? '—' : s.babyAgeLabel(birth, _day);
     final photoB64 = babyRow?['photo_b64'] as String?;
     final photoUrl = (babyRow?['photo_url'] as String?)?.trim();
 
+    final reportBg = reportScaffoldBackground();
+
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: reportBg,
       appBar: AppBar(
-        backgroundColor: _bg,
+        backgroundColor: reportBg,
+        surfaceTintColor: reportBg,
         elevation: 0,
-        title: Text(s.reportDailyScreenTitle, style: const TextStyle(fontWeight: FontWeight.w900)),
+        title: Text(s.reportDailyScreenTitle,
+            style: const TextStyle(fontWeight: FontWeight.w900)),
         actions: [
           IconButton(
             tooltip: s.reportDailyPickDayTooltip,
@@ -164,7 +169,8 @@ class _DailyReportPageState extends State<DailyReportPage> {
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
-                padding: EdgeInsets.fromLTRB(AppTheme.pageHPadding, 0, AppTheme.pageHPadding, 110),
+                padding: EdgeInsets.fromLTRB(
+                    AppTheme.pageHPadding, 0, AppTheme.pageHPadding, 110),
                 children: [
                   Row(
                     children: [
@@ -178,7 +184,10 @@ class _DailyReportPageState extends State<DailyReportPage> {
                           ),
                         ),
                       ),
-                      IconButton(onPressed: _pickDay, icon: const Icon(Icons.event_rounded, color: AppTheme.primary)),
+                      IconButton(
+                          onPressed: _pickDay,
+                          icon: const Icon(Icons.event_rounded,
+                              color: AppTheme.primary)),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -186,10 +195,13 @@ class _DailyReportPageState extends State<DailyReportPage> {
                     children: [
                       PhotoAvatar(
                         photoB64: photoB64,
-                        photoUrl: photoUrl == null || photoUrl.isEmpty ? null : photoUrl,
+                        photoUrl: photoUrl == null || photoUrl.isEmpty
+                            ? null
+                            : photoUrl,
                         radius: 28,
                         backgroundColor: AppTheme.softPurple,
-                        fallback: const Text('👶', style: TextStyle(fontSize: 32)),
+                        fallback:
+                            const Text('👶', style: TextStyle(fontSize: 32)),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -198,11 +210,17 @@ class _DailyReportPageState extends State<DailyReportPage> {
                           children: [
                             Text(
                               babyName,
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
+                              style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppTheme.textPrimary),
                             ),
                             Text(
                               ageAtDay,
-                              style: TextStyle(fontSize: portalSp(context, 14), color: AppTheme.textMuted, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                  fontSize: portalSp(context, 14),
+                                  color: AppTheme.textMuted,
+                                  fontWeight: FontWeight.w600),
                             ),
                           ],
                         ),
@@ -211,11 +229,15 @@ class _DailyReportPageState extends State<DailyReportPage> {
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 16),
-                    Text('$_error', style: const TextStyle(color: Colors.redAccent)),
+                    Text('$_error',
+                        style: const TextStyle(color: Colors.redAccent)),
                   ],
                   const SizedBox(height: 22),
                   if (snap == null)
-                    const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+                    const Center(
+                        child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: CircularProgressIndicator()))
                   else ...[
                     _SummaryCard(
                       icon: Icons.nightlight_round,
@@ -227,7 +249,8 @@ class _DailyReportPageState extends State<DailyReportPage> {
                       extraValue: _sleepQualityLabel(s, snap),
                       extraLine2: s.reportDailySubtitleLongestStretch,
                       extraValue2: snap.longestSleepSessionSec > 0
-                          ? DailyReportService.formatDurationShort(snap.longestSleepSessionSec)
+                          ? DailyReportService.formatDurationShort(
+                              snap.longestSleepSessionSec)
                           : '—',
                       onTap: _openDetails,
                     ),
@@ -240,7 +263,8 @@ class _DailyReportPageState extends State<DailyReportPage> {
                       value: '${snap.summary.feedings}',
                       extraLine: s.reportDailySubtitleFeedAvg,
                       extraValue: snap.avgFeedingDurationSec > 0
-                          ? DailyReportService.formatDurationShort(snap.avgFeedingDurationSec)
+                          ? DailyReportService.formatDurationShort(
+                              snap.avgFeedingDurationSec)
                           : '—',
                       extraLine2: s.reportDailySubtitleFeedLast,
                       extraValue2: formatTimeHm(snap.lastFeedingEndedAt),
@@ -338,14 +362,25 @@ class _SummaryCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.textPrimary)),
+                      Text(title,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 16,
+                              color: AppTheme.textPrimary)),
                       const SizedBox(height: 2),
-                      Text(subtitle, style: TextStyle(fontSize: 12.5, color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+                      Text(subtitle,
+                          style: TextStyle(
+                              fontSize: 12.5,
+                              color: AppTheme.textMuted,
+                              fontWeight: FontWeight.w600)),
                       if (extraLine != null && extraValue != null) ...[
                         const SizedBox(height: 6),
                         Text(
                           '$extraLine · $extraValue',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.textSecondary),
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textSecondary),
                           maxLines: 2,
                         ),
                       ],
@@ -353,7 +388,10 @@ class _SummaryCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           '$extraLine2 · $extraValue2',
-                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppTheme.textMuted.withAlpha(230)),
+                          style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textMuted.withAlpha(230)),
                           maxLines: 2,
                         ),
                       ],
@@ -365,11 +403,15 @@ class _SummaryCard extends StatelessWidget {
                   children: [
                     Text(
                       value,
-                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: AppTheme.textPrimary),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 17,
+                          color: AppTheme.textPrimary),
                       textAlign: TextAlign.right,
                     ),
                     const SizedBox(height: 4),
-                    Icon(Icons.chevron_right_rounded, color: Colors.black.withAlpha(70)),
+                    Icon(Icons.chevron_right_rounded,
+                        color: Colors.black.withAlpha(70)),
                   ],
                 ),
               ],

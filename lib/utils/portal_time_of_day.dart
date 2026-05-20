@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 
-/// Fundo do portal (logado) conforme o relógio do dispositivo: noite 18h30–6h.
+import '../services/portal_layout_prefs.dart';
+
+/// Fundo do portal (logado): automático 18h30–6h ou manual nas Preferências.
 abstract final class PortalTimeOfDay {
   PortalTimeOfDay._();
 
-  static const backgroundDay = 'assets/onboarding/background_day.png';
+  /// Dia no portal: mesmo céu/nuvens do cadastro inicial (sem sol).
+  static const backgroundDay =
+      'assets/onboarding/registration_background.png';
   static const backgroundNight = 'assets/onboarding/background_night.png';
   static const backgroundLoading = 'assets/onboarding/background_loading.png';
   static const backgroundLogin =
@@ -19,11 +23,9 @@ abstract final class PortalTimeOfDay {
     Shadow(blurRadius: 5, color: Color(0xAA273044), offset: Offset(0, 1)),
   ];
 
-  /// `true` entre 18:30 (inclusive) e 06:00 (exclusive).
-  static bool isNight(DateTime at) {
-    final h = at.hour;
-    return h < 6 || h > 18 || (h == 18 && at.minute >= 30);
-  }
+  /// `true` no modo noturno (manual ou automático).
+  static bool isNight(DateTime at) =>
+      PortalLayoutPrefs.instance.resolveIsNight(at);
 
   static String backgroundAsset(DateTime at) =>
       isNight(at) ? backgroundNight : backgroundDay;
@@ -47,7 +49,7 @@ abstract final class PortalTimeOfDay {
   static DateTime nextTransitionAfter(DateTime at) {
     final day6 = DateTime(at.year, at.month, at.day, 6);
     final day1830 = DateTime(at.year, at.month, at.day, 18, 30);
-    if (isNight(at)) {
+    if (PortalLayoutPrefs.isNightByClock(at)) {
       return at.isBefore(day6) ? day6 : day6.add(const Duration(days: 1));
     }
     return at.isBefore(day1830)

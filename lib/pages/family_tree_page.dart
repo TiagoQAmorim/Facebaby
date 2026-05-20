@@ -13,6 +13,7 @@ import '../services/family_zodiac_content_service.dart'
 import '../services/premium/feature_access.dart';
 import '../services/premium/premium_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/portal_page_route.dart';
 import '../utils/portal_time_of_day.dart';
 import '../widgets/family_tree_stage.dart';
 import 'mother_profile_page.dart';
@@ -208,10 +209,9 @@ class _FamilyTreePageState extends State<FamilyTreePage> {
   }
 
   Future<void> _openMyProfile(MotherProfileInitialTab tab) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => MotherProfilePage(initialTab: tab),
-      ),
+    await pushPortalPage<void>(
+      context,
+      MotherProfilePage(initialTab: tab),
     );
     await _refresh();
   }
@@ -240,25 +240,18 @@ class _FamilyTreePageState extends State<FamilyTreePage> {
     final zodiacUnlocked = FeatureAccess.canViewFamilyZodiac;
 
     final bottomPadding = MediaQuery.of(context).padding.bottom + 140;
-    final now = DateTime.now();
-    final atNight = PortalTimeOfDay.isNight(now);
+    final atNight = PortalTimeOfDay.isNight(DateTime.now());
     final fallback =
-        atNight ? const Color(0xFF152238) : const Color(0xFFFFEEF7);
-    final veil =
-        atNight ? Colors.white.withAlpha(55) : Colors.white.withAlpha(105);
+        atNight ? const Color(0xFF152238) : const Color(0xFFB8D9EE);
 
     return Scaffold(
-      backgroundColor: fallback,
+      // O MainShell já mantém o background do portal em cache atrás do Navigator.
+      // Evita recriar a mesma imagem ao abrir/fechar Família, que causava flash.
+      backgroundColor: Colors.transparent,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset(
-            PortalTimeOfDay.backgroundAsset(now),
-            fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
-            gaplessPlayback: true,
-          ),
-          ColoredBox(color: veil),
+          ColoredBox(color: fallback.withAlpha(18)),
           SafeArea(
             child: ListenableBuilder(
               listenable: PremiumService.instance,
@@ -278,7 +271,7 @@ class _FamilyTreePageState extends State<FamilyTreePage> {
                           onSettings: motherId == null
                               ? null
                               : () => _openMyProfile(
-                                    MotherProfileInitialTab.mother,
+                                    MotherProfileInitialTab.preferences,
                                   ),
                         ),
                         const SizedBox(height: 8),
@@ -306,6 +299,7 @@ class _FamilyTreePageState extends State<FamilyTreePage> {
                             babies: _babies,
                             heightCmByBabyId: _heightByBabyId,
                             fatherRegistered: fatherRegistered,
+                            activeBabyId: babyId,
                             initialTabIndex: _initialTabIndex(
                               fatherRegistered: fatherRegistered,
                               currentBabyId: babyId,

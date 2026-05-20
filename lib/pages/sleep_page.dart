@@ -11,6 +11,8 @@ import '../services/firebase/firestore_service.dart';
 import '../services/home_prefs.dart';
 import '../services/scheduled_local_reminders.dart';
 import '../services/sleep_routine.dart';
+import '../utils/portal_night_ui.dart';
+import '../utils/portal_time_of_day.dart';
 
 /// Tela de sono: modo idle com “Iniciar sono”; modo ativo com cronómetro, ilustração e gravar ao acordar.
 class SleepPage extends StatefulWidget {
@@ -21,15 +23,16 @@ class SleepPage extends StatefulWidget {
 }
 
 class _SleepPageState extends State<SleepPage> {
+  static const int _historyPageSize = 10;
   static const Color _pink = Color(0xFFFF5C8D);
   static const Color _purple = Color(0xFF9D8AF2);
-  static const Color _pageBg = Color(0xFFF5F6F8);
-
   final _sleepTimer = SleepTimerController.instance;
   final _currentBaby = CurrentBabyController.instance;
-  final _noteCtrl = TextEditingController();
+  final _scrollController = ScrollController();
   Future<List<Map<String, Object?>>>? _sleepHistoryFuture;
   Future<_RoutineVm>? _routineFuture;
+  bool _sleepHistoryExpanded = false;
+  int _sleepHistoryVisible = _historyPageSize;
 
   /// Com o sono parado já não há [SleepTimerController] ticking; esta régua e o próximo sono
   /// dependem da hora actual — atualizamos a cada poucos segundos em modo idle.
@@ -92,9 +95,11 @@ class _SleepPageState extends State<SleepPage> {
   void _reloadHistory() {
     final bid = _currentBaby.currentBabyId;
     setState(() {
+      _sleepHistoryVisible = _historyPageSize;
+      _sleepHistoryExpanded = false;
       _sleepHistoryFuture = bid == null
           ? null
-          : AppDatabase.instance.listSleepRecords(babyId: bid, limit: 40);
+          : AppDatabase.instance.listSleepRecords(babyId: bid, limit: 500);
       _routineFuture = bid == null ? null : _loadRoutineVm();
     });
   }
@@ -202,7 +207,7 @@ class _SleepPageState extends State<SleepPage> {
     _idleWakeRoutineTicker?.cancel();
     _sleepTimer.removeListener(_onTick);
     _currentBaby.removeListener(_onBaby);
-    _noteCtrl.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -236,6 +241,89 @@ class _SleepPageState extends State<SleepPage> {
     return '$m min';
   }
 
+  ({String title, String body, IconData icon, Color color})
+      _sleepResultForDuration(S strings, Duration duration) {
+    final birthRaw = _currentBaby.currentBabyRow?['birth_date'] as String?;
+    final birth = DateTime.tryParse(birthRaw ?? '');
+    final months = SleepRoutine.monthsOld(birth);
+    final window = SleepRoutine.windowForMonths(months);
+    final maxExpectedMin = SleepRoutine.sessionCapMinutesForWindow(window);
+    final minutes = duration.inMinutes;
+
+    if (minutes < 20) {
+      return (
+        title: strings.sleepResultShortTitle,
+        body: strings.sleepResultShortBody,
+        icon: Icons.sentiment_dissatisfied_rounded,
+        color: const Color(0xFFFFB020),
+      );
+    }
+    if (minutes > maxExpectedMin) {
+      return (
+        title: strings.sleepResultLongTitle,
+        body: strings.sleepResultLongBody,
+        icon: Icons.bedtime_rounded,
+        color: _purple,
+      );
+    }
+    return (
+      title: strings.sleepResultExpectedTitle,
+      body: strings.sleepResultExpectedBody,
+      icon: Icons.check_circle_rounded,
+      color: const Color(0xFF2EB872),
+    );
+  }
+
+  Future<void> _showSleepResultDialog(S strings, Duration duration) async {
+    final result = _sleepResultForDuration(strings, duration);
+    final birthRaw = _currentBaby.currentBabyRow?['birth_date'] as String?;
+    final birth = DateTime.tryParse(birthRaw ?? '');
+    final months = SleepRoutine.monthsOld(birth);
+    final window = SleepRoutine.windowForMonths(months);
+    final maxExpectedMin = SleepRoutine.sessionCapMinutesForWindow(window);
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(result.icon, color: result.color),
+              const SizedBox(width: 10),
+              Expanded(child: Text(strings.sleepResultDialogTitle)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                result.title,
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  color: result.color,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(strings.sleepResultDurationLine(_fmtDurShort(duration))),
+              const SizedBox(height: 6),
+              Text(strings.sleepResultExpectedLine(20, maxExpectedMin)),
+              const SizedBox(height: 12),
+              Text(result.body),
+            ],
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(MaterialLocalizations.of(ctx).okButtonLabel),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _startSleep(S strings) async {
     final bid = _currentBaby.currentBabyId;
     if (bid == null) {
@@ -244,7 +332,6 @@ class _SleepPageState extends State<SleepPage> {
           SnackBar(content: Text(strings.feedingSelectBabyFirst)));
       return;
     }
-    _noteCtrl.clear();
     _sleepTimer.begin(babyId: bid);
     await _syncLocalReminders(bid);
   }
@@ -264,7 +351,6 @@ class _SleepPageState extends State<SleepPage> {
     }
 
     final ended = DateTime.now();
-    final note = _noteCtrl.text.trim();
 
     try {
       final quality = _qualityForDuration(elapsed);
@@ -274,16 +360,14 @@ class _SleepPageState extends State<SleepPage> {
         endedAt: ended,
         durationSec: sec,
         quality: quality.key,
-        note: note.isEmpty ? null : note,
+        note: null,
       );
       SleepCloudSync.pushLocalSoon(localBabyId: bid, localSleepId: newId);
       _sleepTimer.clearSession();
-      _noteCtrl.clear();
       await _syncLocalReminders(bid);
       _reloadHistory();
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(strings.sleepSavedOk)));
+      await _showSleepResultDialog(strings, elapsed);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -310,7 +394,6 @@ class _SleepPageState extends State<SleepPage> {
     if (ok == true && mounted) {
       final bid = _currentBaby.currentBabyId;
       _sleepTimer.clearSession();
-      _noteCtrl.clear();
       if (bid != null) await _syncLocalReminders(bid);
       setState(() {});
     }
@@ -329,9 +412,6 @@ class _SleepPageState extends State<SleepPage> {
         DateTime.tryParse(row['started_at'] as String? ?? '') ?? DateTime.now();
     var ended =
         DateTime.tryParse(row['ended_at'] as String? ?? '') ?? DateTime.now();
-    final noteCtrl =
-        TextEditingController(text: (row['note'] as String?) ?? '');
-
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -416,16 +496,6 @@ class _SleepPageState extends State<SleepPage> {
                       });
                     },
                   ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: noteCtrl,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      labelText: strings.sleepObservationsTitle,
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14)),
-                    ),
-                  ),
                   const SizedBox(height: 18),
                   FilledButton(
                     style: FilledButton.styleFrom(
@@ -447,9 +517,7 @@ class _SleepPageState extends State<SleepPage> {
                           endedAt: ended,
                           durationSec: sec,
                           quality: quality.key,
-                          note: noteCtrl.text.trim().isEmpty
-                              ? null
-                              : noteCtrl.text.trim(),
+                          note: null,
                         );
                         SleepCloudSync.pushLocalSoon(
                             localBabyId: bid, localSleepId: id);
@@ -465,7 +533,7 @@ class _SleepPageState extends State<SleepPage> {
                               .showSnackBar(SnackBar(content: Text('$e')));
                       }
                     },
-                    child: Text(strings.saveRecord),
+                    child: Text(strings.commonSave),
                   ),
                 ],
               ),
@@ -474,7 +542,6 @@ class _SleepPageState extends State<SleepPage> {
         );
       },
     );
-    noteCtrl.dispose();
   }
 
   Future<void> _confirmDeleteSleep(S strings, Map<String, Object?> row) async {
@@ -523,7 +590,7 @@ class _SleepPageState extends State<SleepPage> {
     }
   }
 
-  Widget _sleepHistorySection(S strings) {
+  Widget _sleepHistorySection(S strings, {required bool night}) {
     final todayStart =
         DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
 
@@ -532,109 +599,139 @@ class _SleepPageState extends State<SleepPage> {
       children: [
         const SizedBox(height: 8),
         Text(strings.sleepHistoryTitle,
-            style: TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 17,
-                color: Colors.black.withAlpha(200))),
+            style: PortalNightUi.titleStyle(night, fontSize: 17)),
         const SizedBox(height: 12),
-        FutureBuilder<List<Map<String, Object?>>>(
-          future: _sleepHistoryFuture,
-          builder: (context, snap) {
-            if (snap.connectionState == ConnectionState.waiting) {
-              return const Padding(
-                  padding: EdgeInsets.all(16),
-                  child:
-                      Center(child: CircularProgressIndicator(strokeWidth: 2)));
-            }
-            final rows = snap.data ?? const [];
-            if (rows.isEmpty) {
-              return Text(strings.sleepHistoryEmpty,
-                  style: TextStyle(color: Colors.black.withAlpha(130)));
-            }
-
-            final todayRows = rows.where((row) {
-              final e = DateTime.tryParse(row['ended_at'] as String? ?? '');
-              return e != null && !e.isBefore(todayStart);
-            }).toList();
-
-            final older = rows.where((row) {
-              final e = DateTime.tryParse(row['ended_at'] as String? ?? '');
-              return e == null || e.isBefore(todayStart);
-            }).toList();
-
-            Widget rowTile(Map<String, Object?> row) {
-              final id = (row['id'] as num?)?.toInt();
-              final started =
-                  DateTime.tryParse(row['started_at'] as String? ?? '');
-              final ended = DateTime.tryParse(row['ended_at'] as String? ?? '');
-              final sec = (row['duration_sec'] as num?)?.toInt() ?? 0;
-              final dur = Duration(seconds: sec < 0 ? 0 : sec);
-              final line = started != null && ended != null
-                  ? '${_fmtClock(started)} – ${_fmtClock(ended)} (${_fmtDurShort(dur)})'
-                  : _fmtDurShort(dur);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Material(
-                  color: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      side: BorderSide(color: Colors.black.withAlpha(14))),
-                  child: ListTile(
-                    title: Text(line,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 14)),
-                    trailing: id == null
-                        ? null
-                        : Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                tooltip: strings.edit,
-                                onPressed: () => _showEditSleep(strings, row),
-                                icon: Icon(Icons.edit_outlined,
-                                    color: _purple.withAlpha(230)),
-                              ),
-                              IconButton(
-                                tooltip: strings.delete,
-                                onPressed: () =>
-                                    _confirmDeleteSleep(strings, row),
-                                icon: Icon(Icons.delete_outline,
-                                    color: Colors.red.withAlpha(200)),
-                              ),
-                            ],
-                          ),
-                  ),
-                ),
-              );
-            }
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (todayRows.isNotEmpty) ...[
-                  Text(strings.sleepHistoryToday,
-                      style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 13,
-                          color: _purple.withAlpha(220))),
-                  const SizedBox(height: 8),
-                  ...todayRows.map(rowTile),
-                  if (older.isNotEmpty) const SizedBox(height: 14),
-                ],
-                if (older.isNotEmpty) ...[
-                  Text(strings.recordsTitle,
-                      style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                          color: Colors.black.withAlpha(140))),
-                  const SizedBox(height: 8),
-                  ...older.take(12).map(rowTile),
-                ],
-              ],
-            );
-          },
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => setState(() {
+              _sleepHistoryExpanded = !_sleepHistoryExpanded;
+              _sleepHistoryVisible = _historyPageSize;
+            }),
+            icon: Icon(_sleepHistoryExpanded
+                ? Icons.expand_less_rounded
+                : Icons.history_rounded),
+            label: Text(_sleepHistoryExpanded
+                ? strings.historyHideButton
+                : strings.historyShowButton),
+          ),
         ),
+        if (!_sleepHistoryExpanded)
+          const SizedBox.shrink()
+        else ...[
+          const SizedBox(height: 12),
+          FutureBuilder<List<Map<String, Object?>>>(
+            future: _sleepHistoryFuture,
+            builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(
+                        child: CircularProgressIndicator(strokeWidth: 2)));
+              }
+              final rows = snap.data ?? const [];
+              if (rows.isEmpty) {
+                return Text(strings.sleepHistoryEmpty,
+                    style: TextStyle(color: Colors.black.withAlpha(130)));
+              }
+
+              final visibleRows = rows.take(_sleepHistoryVisible).toList();
+              final todayRows = visibleRows.where((row) {
+                final e = DateTime.tryParse(row['ended_at'] as String? ?? '');
+                return e != null && !e.isBefore(todayStart);
+              }).toList();
+
+              final older = visibleRows.where((row) {
+                final e = DateTime.tryParse(row['ended_at'] as String? ?? '');
+                return e == null || e.isBefore(todayStart);
+              }).toList();
+
+              Widget rowTile(Map<String, Object?> row) {
+                final id = (row['id'] as num?)?.toInt();
+                final started =
+                    DateTime.tryParse(row['started_at'] as String? ?? '');
+                final ended =
+                    DateTime.tryParse(row['ended_at'] as String? ?? '');
+                final sec = (row['duration_sec'] as num?)?.toInt() ?? 0;
+                final dur = Duration(seconds: sec < 0 ? 0 : sec);
+                final line = started != null && ended != null
+                    ? '${_fmtClock(started)} – ${_fmtClock(ended)} (${_fmtDurShort(dur)})'
+                    : _fmtDurShort(dur);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Material(
+                    color: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(color: Colors.black.withAlpha(14))),
+                    child: ListTile(
+                      title: Text(line,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 14)),
+                      trailing: id == null
+                          ? null
+                          : Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  tooltip: strings.edit,
+                                  onPressed: () => _showEditSleep(strings, row),
+                                  icon: Icon(Icons.edit_outlined,
+                                      color: _purple.withAlpha(230)),
+                                ),
+                                IconButton(
+                                  tooltip: strings.delete,
+                                  onPressed: () =>
+                                      _confirmDeleteSleep(strings, row),
+                                  icon: Icon(Icons.delete_outline,
+                                      color: Colors.red.withAlpha(200)),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                );
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (todayRows.isNotEmpty) ...[
+                    Text(strings.sleepHistoryToday,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                            color: _purple.withAlpha(220))),
+                    const SizedBox(height: 8),
+                    ...todayRows.map(rowTile),
+                    if (older.isNotEmpty) const SizedBox(height: 14),
+                  ],
+                  if (older.isNotEmpty) ...[
+                    Text(strings.recordsTitle,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            color: Colors.black.withAlpha(140))),
+                    const SizedBox(height: 8),
+                    ...older.map(rowTile),
+                  ],
+                  if (_sleepHistoryVisible < rows.length) ...[
+                    const SizedBox(height: 8),
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: () => setState(
+                            () => _sleepHistoryVisible += _historyPageSize),
+                        icon: const Icon(Icons.expand_more_rounded),
+                        label: Text(strings.historyViewMoreButton),
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
       ],
     );
   }
@@ -644,69 +741,90 @@ class _SleepPageState extends State<SleepPage> {
     final strings = S.of(context);
     final bid = _currentBaby.currentBabyId;
 
-    if (bid == null) {
-      _idleWakeRoutineTicker?.cancel();
-      _idleWakeRoutineTicker = null;
-      return Scaffold(
-        appBar: AppBar(title: Text(strings.sleepAppBar)),
-        body: SafeArea(
-          child: Center(
-            child: Padding(
+    return PortalNightUi.listen((context, night) {
+      if (bid == null) {
+        _idleWakeRoutineTicker?.cancel();
+        _idleWakeRoutineTicker = null;
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: PortalNightUi.appBar(strings.sleepAppBar, night: night),
+          body: SafeArea(
+            child: Center(
+              child: Padding(
                 padding: const EdgeInsets.all(24),
-                child: Text(strings.feedingNoBabyHint,
-                    textAlign: TextAlign.center)),
+                child: Text(
+                  strings.feedingNoBabyHint,
+                  textAlign: TextAlign.center,
+                  style: PortalNightUi.bodyStyle(night),
+                ),
+              ),
+            ),
           ),
+        );
+      }
+
+      _syncIdleWakeRoutineTicker();
+
+      final tracking = _sleepTimer.isTracking;
+      final started = _sleepTimer.startedAt;
+      final nightTitle = PortalNightUi.titleStyle(night, fontSize: 17);
+      final nightSubtitle = PortalNightUi.bodyStyle(night, fontSize: 13).copyWith(
+        fontWeight: FontWeight.w600,
+        color: night
+            ? PortalTimeOfDay.nightOutlinedTextColor.withAlpha(220)
+            : Colors.black.withAlpha(140),
+      );
+
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          iconTheme: night
+              ? const IconThemeData(
+                  color: PortalTimeOfDay.nightOutlinedTextColor)
+              : null,
+          foregroundColor:
+              night ? PortalTimeOfDay.nightOutlinedTextColor : null,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back,
+              color: night
+                  ? PortalTimeOfDay.nightOutlinedTextColor
+                  : Colors.black.withAlpha(200),
+            ),
+            onPressed: _handleBack,
+          ),
+          title: tracking && started != null
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(strings.sleepSessionTitle, style: nightTitle),
+                    const SizedBox(height: 2),
+                    Text(
+                      strings.sleepSessionStartedAt(_fmtClock(started)),
+                      style: nightSubtitle,
+                    ),
+                  ],
+                )
+              : Text(strings.sleepAppBar, style: nightTitle),
+          centerTitle: true,
+        ),
+        body: SafeArea(
+          child: tracking
+              ? _buildActive(context, strings, started!, night: night)
+              : _buildIdle(context, strings, night: night),
         ),
       );
-    }
-
-    _syncIdleWakeRoutineTicker();
-
-    final tracking = _sleepTimer.isTracking;
-    final started = _sleepTimer.startedAt;
-
-    return Scaffold(
-      backgroundColor: _pageBg,
-      appBar: AppBar(
-        backgroundColor: _pageBg,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.black.withAlpha(200)),
-          onPressed: _handleBack,
-        ),
-        title: tracking && started != null
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(strings.sleepSessionTitle,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w900, fontSize: 17)),
-                  const SizedBox(height: 2),
-                  Text(
-                    strings.sleepSessionStartedAt(_fmtClock(started)),
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black.withAlpha(140)),
-                  ),
-                ],
-              )
-            : Text(strings.sleepAppBar,
-                style: const TextStyle(fontWeight: FontWeight.w900)),
-        centerTitle: true,
-        scrolledUnderElevation: 0,
-      ),
-      body: SafeArea(
-        child: tracking
-            ? _buildActive(context, strings, started!)
-            : _buildIdle(context, strings),
-      ),
-    );
+    });
   }
 
-  Widget _buildIdle(BuildContext context, S strings) {
+  Widget _buildIdle(BuildContext context, S strings, {required bool night}) {
     return SingleChildScrollView(
+      controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -761,7 +879,7 @@ class _SleepPageState extends State<SleepPage> {
                             fontWeight: FontWeight.w900, letterSpacing: 1)),
                   ),
                   const SizedBox(height: 22),
-                  _sleepHistorySection(strings),
+                  _sleepHistorySection(strings, night: night),
                   const SizedBox(height: 18),
                   _SleepInsightsCard(strings: strings, vm: vm),
                   const SizedBox(height: 8),
@@ -772,9 +890,10 @@ class _SleepPageState extends State<SleepPage> {
                         contentPadding: EdgeInsets.zero,
                         secondary: Icon(Icons.notifications_active_outlined,
                             color: _purple.withAlpha(220)),
-                        title: Text(strings.sleepToggleAlerts,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w800, fontSize: 15)),
+                        title: Text(
+                          strings.sleepToggleAlerts,
+                          style: PortalNightUi.alertTitleStyle(night),
+                        ),
                         value: enabled,
                         activeThumbColor: _purple,
                         onChanged: (v) async {
@@ -806,7 +925,12 @@ class _SleepPageState extends State<SleepPage> {
     return strings.sleepNextApproxMin(next);
   }
 
-  Widget _buildActive(BuildContext context, S strings, DateTime started) {
+  Widget _buildActive(
+    BuildContext context,
+    S strings,
+    DateTime started, {
+    required bool night,
+  }) {
     final elapsed = _sleepTimer.effectiveElapsed;
     final paused = _sleepTimer.isPaused;
     final quality = _qualityForDuration(elapsed);
@@ -825,20 +949,15 @@ class _SleepPageState extends State<SleepPage> {
                 Text(
                   strings.sleepSleepingFor(_sleepingMinLabel(elapsed)),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.3),
+                  style: PortalNightUi.titleStyle(night, fontSize: 22),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   _fmtHms(elapsed),
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.2,
-                      color: Colors.black.withAlpha(210)),
+                  style: PortalNightUi.titleStyle(night, fontSize: 36).copyWith(
+                    letterSpacing: 1.2,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -846,10 +965,12 @@ class _SleepPageState extends State<SleepPage> {
                       ? strings.sleepStatusPaused
                       : strings.sleepStatusSleeping,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black.withAlpha(130)),
+                  style: PortalNightUi.bodyStyle(night).copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: night
+                        ? PortalTimeOfDay.nightOutlinedTextColor.withAlpha(220)
+                        : Colors.black.withAlpha(130),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 ClipRRect(
@@ -913,41 +1034,6 @@ class _SleepPageState extends State<SleepPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 14),
-                _whiteCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(strings.sleepObservationsTitle,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w900,
-                              color: _purple,
-                              fontSize: 13)),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _noteCtrl,
-                        maxLines: 3,
-                        decoration: InputDecoration(
-                          hintText: strings.sleepObservationHint,
-                          filled: true,
-                          fillColor: const Color(0xFFF9FAFB),
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: BorderSide(
-                                  color: Colors.black.withAlpha(26))),
-                          enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: BorderSide(
-                                  color: Colors.black.withAlpha(26))),
-                          focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide:
-                                  const BorderSide(color: _purple, width: 1.4)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 const SizedBox(height: 6),
                 ValueListenableBuilder<bool>(
                   valueListenable: HomePrefs.sleepAlertsEnabled,
@@ -956,9 +1042,10 @@ class _SleepPageState extends State<SleepPage> {
                       contentPadding: EdgeInsets.zero,
                       secondary: Icon(Icons.notifications_active_outlined,
                           color: _purple.withAlpha(220)),
-                      title: Text(strings.sleepToggleAlerts,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 15)),
+                      title: Text(
+                        strings.sleepToggleAlerts,
+                        style: PortalNightUi.alertTitleStyle(night),
+                      ),
                       value: enabled,
                       activeThumbColor: _purple,
                       onChanged: (v) async {
@@ -969,7 +1056,7 @@ class _SleepPageState extends State<SleepPage> {
                     );
                   },
                 ),
-                _sleepHistorySection(strings),
+                _sleepHistorySection(strings, night: night),
               ],
             ),
           ),

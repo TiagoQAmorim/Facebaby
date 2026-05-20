@@ -138,6 +138,39 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
     return const Color(0xFFD63384);
   }
 
+  Widget _heroTitleText(
+    BuildContext context, {
+    required String text,
+    required Color fillColor,
+    required bool night,
+  }) {
+    final style = TextStyle(
+      fontSize: portalSp(context, 19),
+      fontWeight: FontWeight.w900,
+      height: 1.15,
+      letterSpacing: 0.35,
+    );
+    if (!night) {
+      return Text(text, style: style.copyWith(color: fillColor));
+    }
+    const strokeWidth = 2.25;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Text(
+          text,
+          style: style.copyWith(
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = strokeWidth
+              ..color = Colors.white,
+          ),
+        ),
+        Text(text, style: style.copyWith(color: fillColor)),
+      ],
+    );
+  }
+
   String? _normalisedSpotlightBabySex(Map<String, dynamic> data) {
     for (final value in [
       data['winner_baby_sex'],
@@ -215,10 +248,10 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
     final spotlightSex = _normalisedSpotlightBabySex(d);
     final heroTitle = s.weeklyPhotoHomeHeroTitle(spotlightSex);
     final night = PortalTimeOfDay.isNight(DateTime.now());
+    final heroColor = _heroTitleColor(spotlightSex);
     final nightTextColor =
         night ? PortalTimeOfDay.nightOutlinedTextColor : null;
     final nightShadows = night ? PortalTimeOfDay.nightTextOutlineShadows : null;
-    final heroColor = nightTextColor ?? _heroTitleColor(spotlightSex);
 
     final catalogBadge = (badgeId != null && badgeId.isNotEmpty)
         ? MemoryBadgesCatalog.findBadgeById(badgeId)
@@ -250,16 +283,11 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
               WeeklyPhotoCrownIcon(size: portalSp(context, 24)),
               SizedBox(width: portalSp(context, 10)),
               Expanded(
-                child: Text(
-                  heroTitle,
-                  style: TextStyle(
-                    fontSize: portalSp(context, 19),
-                    fontWeight: FontWeight.w900,
-                    color: heroColor,
-                    shadows: nightShadows,
-                    height: 1.15,
-                    letterSpacing: 0.35,
-                  ),
+                child: _heroTitleText(
+                  context,
+                  text: heroTitle,
+                  fillColor: heroColor,
+                  night: night,
                 ),
               ),
             ],
