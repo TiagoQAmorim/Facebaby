@@ -12,6 +12,7 @@ class MemoryBadge {
   final bool isMonthlyBadge;
   final int? monthNumber; // 1..23
   final int? yearNumber; // 1..2 (birthday)
+  final bool isCustom;
 
   const MemoryBadge({
     required this.id,
@@ -24,6 +25,6 @@ class MemoryBadge {
     this.isMonthlyBadge = false,
     this.monthNumber,
     this.yearNumber,
+    this.isCustom = false,
   });
 }
-

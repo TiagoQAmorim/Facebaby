@@ -12,7 +12,10 @@ import '../services/firebase/firestore_service.dart';
 import '../services/growth_events.dart';
 import '../services/home_prefs.dart';
 import '../services/measurement_units_prefs.dart';
+import '../services/portal_layout_prefs.dart';
 import '../utils/measurement_format.dart';
+import '../utils/portal_night_ui.dart';
+import '../utils/portal_time_of_day.dart';
 import '../widgets/growth_ruler_picker.dart';
 
 /// Converte kg → valor mostrado na régua conforme preferência de peso.
@@ -89,7 +92,11 @@ Widget _buildPortalGrowthRuler({
       snapStartToZeroWhenAtMax: snapStartToZeroWhenAtMax,
       onUnitSelected: (u) async {
         await MeasurementUnitsPrefs.setWeight(
-          u == 'Lb' ? WeightUnit.lb : u == 'St' ? WeightUnit.st : WeightUnit.kg,
+          u == 'Lb'
+              ? WeightUnit.lb
+              : u == 'St'
+                  ? WeightUnit.st
+                  : WeightUnit.kg,
         );
         if (context.mounted) onAfterUnitChange?.call();
       },
@@ -112,7 +119,8 @@ Widget _buildPortalGrowthRuler({
     selectedUnit: inch ? 'pol' : 'cm',
     snapStartToZeroWhenAtMax: snapStartToZeroWhenAtMax,
     onUnitSelected: (u) async {
-      await MeasurementUnitsPrefs.setLength(u == 'pol' ? LengthUnit.inch : LengthUnit.cm);
+      await MeasurementUnitsPrefs.setLength(
+          u == 'pol' ? LengthUnit.inch : LengthUnit.cm);
       if (context.mounted) onAfterUnitChange?.call();
     },
     onChanged: (v) => onBaseChanged(_growthLengthCmFromDisplay(v)),
@@ -129,7 +137,9 @@ class GrowthDashboardPage extends StatefulWidget {
   State<GrowthDashboardPage> createState() => _GrowthDashboardPageState();
 }
 
-class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTickerProviderStateMixin {
+class _GrowthDashboardPageState extends State<GrowthDashboardPage>
+    with SingleTickerProviderStateMixin {
+  static const int _historyPageSize = 10;
   static const _accent = Color(0xFF00C4CC);
 
   /// Só os N registos mais recentes entram na linha do gráfico (por `measured_at`).
@@ -137,10 +147,17 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
 
   late final TabController _tabController;
   final _currentBaby = CurrentBabyController.instance;
+  final _weightScrollController = ScrollController();
+  final _heightScrollController = ScrollController();
+  final _summaryScrollController = ScrollController();
 
   List<Map<String, Object?>> _weight = const [];
   List<Map<String, Object?>> _height = const [];
   bool _loading = false;
+  bool _weightHistoryExpanded = false;
+  bool _heightHistoryExpanded = false;
+  int _weightHistoryVisible = _historyPageSize;
+  int _heightHistoryVisible = _historyPageSize;
 
   @override
   void initState() {
@@ -156,6 +173,9 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
   @override
   void dispose() {
     _currentBaby.removeListener(_onBabyChanged);
+    _weightScrollController.dispose();
+    _heightScrollController.dispose();
+    _summaryScrollController.dispose();
     _tabController.dispose();
     super.dispose();
   }
@@ -169,6 +189,10 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
         setState(() {
           _weight = const [];
           _height = const [];
+          _weightHistoryExpanded = false;
+          _heightHistoryExpanded = false;
+          _weightHistoryVisible = _historyPageSize;
+          _heightHistoryVisible = _historyPageSize;
           _loading = false;
         });
       }
@@ -182,6 +206,10 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
     setState(() {
       _weight = w;
       _height = h;
+      _weightHistoryExpanded = false;
+      _heightHistoryExpanded = false;
+      _weightHistoryVisible = _historyPageSize;
+      _heightHistoryVisible = _historyPageSize;
       _loading = false;
     });
   }
@@ -345,12 +373,14 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
                     snapStartToZeroWhenAtMax: false,
                   )
                 : TextField(
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     autofocus: true,
                     onChanged: (v) => setSheet(() => rawValue = v),
                     decoration: InputDecoration(
                       labelText: '$label ($unit)',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14)),
                     ),
                   );
 
@@ -366,7 +396,11 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(label, style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+                    Text(label,
+                        style: Theme.of(ctx)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w900)),
                     const SizedBox(height: 12),
                     valueEditor,
                     const SizedBox(height: 18),
@@ -382,21 +416,28 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
                           parsed = baseValue;
                         } else {
                           parsed = kind == 'weight'
-                              ? MeasurementFormat.parseWeightToKg(rawValue.trim())
-                              : MeasurementFormat.parseLengthToCm(rawValue.trim());
+                              ? MeasurementFormat.parseWeightToKg(
+                                  rawValue.trim())
+                              : MeasurementFormat.parseLengthToCm(
+                                  rawValue.trim());
                         }
                         if (parsed == null || parsed <= 0) {
                           if (ctx.mounted) {
-                            ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(s.invalidGrowthValue(label))));
+                            ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                                content: Text(s.invalidGrowthValue(label))));
                           }
                           return;
                         }
-                        final newId = await AppDatabase.instance.insertGrowthRecord(babyId: bid, kind: kind, value: parsed);
-                        GrowthCloudSync.pushLocalSoon(localBabyId: bid, localGrowthId: newId);
+                        final newId = await AppDatabase.instance
+                            .insertGrowthRecord(
+                                babyId: bid, kind: kind, value: parsed);
+                        GrowthCloudSync.pushLocalSoon(
+                            localBabyId: bid, localGrowthId: newId);
                         GrowthEvents.ping();
                         if (ctx.mounted) Navigator.pop(ctx);
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.growthSaved(label))));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(s.growthSaved(label))));
                         await _reload();
                       },
                       child: Text(s.add),
@@ -411,7 +452,8 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
     );
   }
 
-  Future<void> _showEditGrowthSheet(S s, String kind, Map<String, Object?> row) async {
+  Future<void> _showEditGrowthSheet(
+      S s, String kind, Map<String, Object?> row) async {
     final bid = _currentBaby.currentBabyId;
     final id = _growthRowId(row);
     if (bid == null || id == null) return;
@@ -463,7 +505,8 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
           initialMeasuredAt: initialMeasured,
           onSaved: () {
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.growthSaved(label))));
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text(s.growthSaved(label))));
             unawaited(_reload());
           },
         );
@@ -471,7 +514,8 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
     );
   }
 
-  Future<void> _confirmDeleteGrowth(S s, String kind, Map<String, Object?> row) async {
+  Future<void> _confirmDeleteGrowth(
+      S s, String kind, Map<String, Object?> row) async {
     final bid = _currentBaby.currentBabyId;
     final id = _growthRowId(row);
     if (bid == null || id == null) return;
@@ -481,7 +525,9 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
         title: Text(s.delete),
         content: Text(s.confirmDelete),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.cancel)),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(s.cancel)),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
@@ -493,7 +539,8 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
     if (ok != true || !mounted) return;
     try {
       final cloudId = (row['cloud_id'] as String?)?.trim();
-      final n = await AppDatabase.instance.deleteGrowthRecord(id: id, babyId: bid);
+      final n =
+          await AppDatabase.instance.deleteGrowthRecord(id: id, babyId: bid);
       if (!mounted) return;
       if (n > 0) {
         GrowthEvents.ping();
@@ -503,12 +550,14 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
           } catch (_) {}
         }
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.deletedOk)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(s.deletedOk)));
         await _reload();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${s.deleteFail} $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('${s.deleteFail} $e')));
       }
     }
   }
@@ -516,46 +565,92 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
   Widget _growthHistoryList(S s, String kind, List<Map<String, Object?>> rows) {
     if (rows.isEmpty) return const SizedBox.shrink();
     final label = _metricShortLabel(s, kind);
-    final items = _desc(rows);
+    final expanded =
+        kind == 'weight' ? _weightHistoryExpanded : _heightHistoryExpanded;
+    final visibleCount =
+        kind == 'weight' ? _weightHistoryVisible : _heightHistoryVisible;
+    final items = _desc(rows).take(visibleCount).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 22),
-        Text(s.growthHistoryTitle(label), style: TextStyle(color: Colors.black.withAlpha(150), fontWeight: FontWeight.w900, fontSize: 14)),
+        Text(s.growthHistoryTitle(label),
+            style: TextStyle(
+                color: Colors.black.withAlpha(150),
+                fontWeight: FontWeight.w900,
+                fontSize: 14)),
         const SizedBox(height: 10),
-        ...items.map((row) {
-          final id = _growthRowId(row);
-          final dt = _measuredDateTime(row);
-          final v = (row['value'] as num?)?.toDouble();
-          return Card(
-            margin: const EdgeInsets.only(bottom: 8),
-            elevation: 0,
-            color: const Color(0xFFF5F6F8),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: Colors.black.withAlpha(14))),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              title: Text(_formatMeasurement(kind, v), style: const TextStyle(fontWeight: FontWeight.w800)),
-              subtitle: Text(_fmtDateDdMmYy(dt), style: TextStyle(color: Colors.black.withAlpha(130), fontWeight: FontWeight.w600)),
-              trailing: id == null
-                  ? null
-                  : Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          tooltip: s.edit,
-                          onPressed: () => _showEditGrowthSheet(s, kind, row),
-                          icon: Icon(Icons.edit_outlined, color: _accent.withAlpha(220)),
-                        ),
-                        IconButton(
-                          tooltip: s.delete,
-                          onPressed: () => _confirmDeleteGrowth(s, kind, row),
-                          icon: Icon(Icons.delete_outline, color: Colors.red.withAlpha(200)),
-                        ),
-                      ],
-                    ),
+        OutlinedButton.icon(
+          onPressed: () => setState(() {
+            if (kind == 'weight') {
+              _weightHistoryExpanded = !_weightHistoryExpanded;
+              _weightHistoryVisible = _historyPageSize;
+            } else {
+              _heightHistoryExpanded = !_heightHistoryExpanded;
+              _heightHistoryVisible = _historyPageSize;
+            }
+          }),
+          icon: Icon(
+              expanded ? Icons.expand_less_rounded : Icons.history_rounded),
+          label: Text(expanded ? s.historyHideButton : s.historyShowButton),
+        ),
+        if (expanded) ...[
+          const SizedBox(height: 10),
+          ...items.map((row) {
+            final id = _growthRowId(row);
+            final dt = _measuredDateTime(row);
+            final v = (row['value'] as num?)?.toDouble();
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              elevation: 0,
+              color: const Color(0xFFF5F6F8),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: Colors.black.withAlpha(14))),
+              child: ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                title: Text(_formatMeasurement(kind, v),
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle: Text(_fmtDateDdMmYy(dt),
+                    style: TextStyle(
+                        color: Colors.black.withAlpha(130),
+                        fontWeight: FontWeight.w600)),
+                trailing: id == null
+                    ? null
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: s.edit,
+                            onPressed: () => _showEditGrowthSheet(s, kind, row),
+                            icon: Icon(Icons.edit_outlined,
+                                color: _accent.withAlpha(220)),
+                          ),
+                          IconButton(
+                            tooltip: s.delete,
+                            onPressed: () => _confirmDeleteGrowth(s, kind, row),
+                            icon: Icon(Icons.delete_outline,
+                                color: Colors.red.withAlpha(200)),
+                          ),
+                        ],
+                      ),
+              ),
+            );
+          }),
+          if (visibleCount < rows.length)
+            TextButton.icon(
+              onPressed: () => setState(() {
+                if (kind == 'weight') {
+                  _weightHistoryVisible += _historyPageSize;
+                } else {
+                  _heightHistoryVisible += _historyPageSize;
+                }
+              }),
+              icon: const Icon(Icons.expand_more_rounded),
+              label: Text(s.historyViewMoreButton),
             ),
-          );
-        }),
+        ],
       ],
     );
   }
@@ -588,16 +683,25 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: TextStyle(color: titleColor, fontWeight: FontWeight.w700, fontSize: 12)),
+              Text(title,
+                  style: TextStyle(
+                      color: titleColor,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12)),
               const Divider(height: 14),
               Text(
                 value,
-                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: -0.4),
+                style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                    letterSpacing: -0.4),
               ),
               if (subtitle != null && subtitle.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text(subtitle, style: TextStyle(color: titleColor.withAlpha(180), fontSize: 11)),
+                  child: Text(subtitle,
+                      style: TextStyle(
+                          color: titleColor.withAlpha(180), fontSize: 11)),
                 ),
             ],
           ),
@@ -613,32 +717,49 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
     final current = _latestValue(rows);
     final birthRaw = baby?['birth_date'] as String?;
     final birthDt = _tryParseIso(birthRaw);
-    final birthSub = birthDt == null ? (birthRaw?.isNotEmpty == true ? birthRaw! : '') : _fmtDateDdMmYy(birthDt);
+    final birthSub = birthDt == null
+        ? (birthRaw?.isNotEmpty == true ? birthRaw! : '')
+        : _fmtDateDdMmYy(birthDt);
 
     final currentRaw = _latestDateRaw(rows);
     final curDt = _tryParseIso(currentRaw);
-    final curSub =
-        rows.isEmpty ? '' : (curDt == null ? (currentRaw ?? '') : _fmtDateDdMmYy(curDt));
+    final curSub = rows.isEmpty
+        ? ''
+        : (curDt == null ? (currentRaw ?? '') : _fmtDateDdMmYy(curDt));
 
     final deltaStr = _formatDelta(kind, baseline, current);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _summaryCard(title: s.growthAtBirth, subtitle: birthSub.isEmpty ? null : birthSub, value: _formatMeasurement(kind, baseline), titleColor: muted),
+        _summaryCard(
+            title: s.growthAtBirth,
+            subtitle: birthSub.isEmpty ? null : birthSub,
+            value: _formatMeasurement(kind, baseline),
+            titleColor: muted),
         const SizedBox(width: 8),
-        _summaryCard(title: s.growthCardCurrent, subtitle: curSub.isEmpty ? null : curSub, value: _formatMeasurement(kind, current), titleColor: muted),
+        _summaryCard(
+            title: s.growthCardCurrent,
+            subtitle: curSub.isEmpty ? null : curSub,
+            value: _formatMeasurement(kind, current),
+            titleColor: muted),
         const SizedBox(width: 8),
-        _summaryCard(title: s.growthCardChange, subtitle: null, value: deltaStr, titleColor: muted),
+        _summaryCard(
+            title: s.growthCardChange,
+            subtitle: null,
+            value: deltaStr,
+            titleColor: muted),
       ],
     );
   }
 
   /// Eixo X = dias desde a meia-noite da data de nascimento (se existir), senão da primeira medição.
   static double _growthXDays(DateTime anchorMidnight, DateTime measured) =>
-      measured.difference(anchorMidnight).inMilliseconds / Duration.millisecondsPerDay;
+      measured.difference(anchorMidnight).inMilliseconds /
+      Duration.millisecondsPerDay;
 
-  static DateTime _dateOnlyLocal(DateTime d) => DateTime(d.year, d.month, d.day);
+  static DateTime _dateOnlyLocal(DateTime d) =>
+      DateTime(d.year, d.month, d.day);
 
   double _growthChartVerticalInterval(double minY, double maxY) {
     final span = math.max(maxY - minY, 1e-6);
@@ -655,7 +776,8 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
     return (approx / 10).ceilToDouble() * 10;
   }
 
-  String _growthAxisYLabel(String kind, double v, {required bool deltaMode, required double spanY}) {
+  String _growthAxisYLabel(String kind, double v,
+      {required bool deltaMode, required double spanY}) {
     String comma(String s) => s.replaceAll('.', ',');
     if (!deltaMode) {
       if (kind == 'weight') {
@@ -694,13 +816,16 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
     return (approx / 7).ceilToDouble() * 7;
   }
 
-  Widget _growthLineChart(String kind, List<Map<String, Object?>> rows, String metricTitle) {
+  Widget _growthLineChart(
+      String kind, List<Map<String, Object?>> rows, String metricTitle) {
     final s = S.of(context);
     final ascFull = _asc(rows);
     if (ascFull.isEmpty) {
       return SizedBox(
         height: 200,
-        child: Center(child: Text(s.growthEmpty(metricTitle), style: TextStyle(color: Colors.black.withAlpha(140)))),
+        child: Center(
+            child: Text(s.growthEmpty(metricTitle),
+                style: TextStyle(color: Colors.black.withAlpha(140)))),
       );
     }
     final asc = ascFull.length <= _growthChartMaxRecords
@@ -710,7 +835,9 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
     final baby = _currentBaby.currentBabyRow;
     final birthRaw = baby?['birth_date'] as String?;
     final birthDt = _tryParseIso(birthRaw);
-    final anchor = birthDt != null ? _dateOnlyLocal(birthDt) : _dateOnlyLocal(_measuredDateTime(asc.first));
+    final anchor = birthDt != null
+        ? _dateOnlyLocal(birthDt)
+        : _dateOnlyLocal(_measuredDateTime(asc.first));
 
     final b0 = _birthBaseline(kind, baby);
     final deltaMode = (kind == 'weight' || kind == 'height') && b0 != null;
@@ -787,7 +914,10 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
     // Span real de tempo (em dias) só para decidir quão curto é o label (dd vs dd/mm vs mm/aa).
     final double timeSpanDays = xLabels.length <= 1
         ? 0
-        : math.max(0.0, _growthXDays(_dateOnlyLocal(xLabels.first), _dateOnlyLocal(xLabels.last)));
+        : math.max(
+            0.0,
+            _growthXDays(
+                _dateOnlyLocal(xLabels.first), _dateOnlyLocal(xLabels.last)));
 
     final leftReserved = deltaMode && kind == 'weight' ? 44.0 : 40.0;
 
@@ -807,21 +937,27 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
               drawVerticalLine: true,
               verticalInterval: bottomInterval,
               horizontalInterval: verticalInterval,
-              getDrawingHorizontalLine: (_) => const FlLine(color: Color(0x22000000), strokeWidth: 1),
-              getDrawingVerticalLine: (_) => const FlLine(color: Color(0x22000000), strokeWidth: 1),
+              getDrawingHorizontalLine: (_) =>
+                  const FlLine(color: Color(0x22000000), strokeWidth: 1),
+              getDrawingVerticalLine: (_) =>
+                  const FlLine(color: Color(0x22000000), strokeWidth: 1),
             ),
             borderData: FlBorderData(show: false),
             titlesData: FlTitlesData(
-              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               leftTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
                   reservedSize: leftReserved,
                   interval: verticalInterval,
                   getTitlesWidget: (v, _) => Text(
-                    _growthAxisYLabel(kind, v, deltaMode: deltaMode, spanY: spanY),
-                    style: TextStyle(fontSize: 10, color: Colors.black.withAlpha(140)),
+                    _growthAxisYLabel(kind, v,
+                        deltaMode: deltaMode, spanY: spanY),
+                    style: TextStyle(
+                        fontSize: 10, color: Colors.black.withAlpha(140)),
                   ),
                 ),
               ),
@@ -841,7 +977,8 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
                       padding: const EdgeInsets.only(top: 6),
                       child: Text(
                         _fmtAxisX(labelDt, spanDays: timeSpanDays),
-                        style: TextStyle(fontSize: 9, color: Colors.black.withAlpha(120)),
+                        style: TextStyle(
+                            fontSize: 9, color: Colors.black.withAlpha(120)),
                       ),
                     );
                   },
@@ -883,7 +1020,8 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
           padding: const EdgeInsets.only(top: 6, right: 8),
           child: Text(
             s.growthChartDeltaHint,
-            style: TextStyle(fontSize: 10, height: 1.25, color: Colors.black.withAlpha(120)),
+            style: TextStyle(
+                fontSize: 10, height: 1.25, color: Colors.black.withAlpha(120)),
           ),
         ),
       ],
@@ -894,13 +1032,18 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
     final name = _displayBabyName(_currentBaby.currentBabyRow, s);
     final metric = _metricShortLabel(s, kind);
     return SingleChildScrollView(
+      controller:
+          kind == 'weight' ? _weightScrollController : _heightScrollController,
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 110),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _cardsRow(kind, rows, s),
           const SizedBox(height: 18),
-          Text(s.growthChartCaption(name, metric), style: TextStyle(color: Colors.black.withAlpha(130), fontWeight: FontWeight.w700)),
+          Text(s.growthChartCaption(name, metric),
+              style: TextStyle(
+                  color: Colors.black.withAlpha(130),
+                  fontWeight: FontWeight.w700)),
           const SizedBox(height: 10),
           _growthLineChart(kind, rows, metric),
           _growthHistoryList(s, kind, rows),
@@ -912,25 +1055,34 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
   Widget _summaryScroll(S s) {
     final name = _displayBabyName(_currentBaby.currentBabyRow, s);
     return SingleChildScrollView(
+      controller: _summaryScrollController,
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 110),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(s.growthSummaryIntro, style: TextStyle(color: Colors.black.withAlpha(130), height: 1.35)),
+          Text(s.growthSummaryIntro,
+              style:
+                  TextStyle(color: Colors.black.withAlpha(130), height: 1.35)),
           const SizedBox(height: 20),
-          Text(s.labelWeight.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900)),
+          Text(s.labelWeight.toUpperCase(),
+              style: const TextStyle(fontWeight: FontWeight.w900)),
           const SizedBox(height: 10),
           _cardsRow('weight', _weight, s),
           const SizedBox(height: 12),
-          Text(s.growthChartCaption(name, s.labelWeight), style: TextStyle(color: Colors.black.withAlpha(120), fontSize: 13)),
+          Text(s.growthChartCaption(name, s.labelWeight),
+              style:
+                  TextStyle(color: Colors.black.withAlpha(120), fontSize: 13)),
           _growthLineChart('weight', _weight, s.labelWeight),
           _growthHistoryList(s, 'weight', _weight),
           const SizedBox(height: 28),
-          Text(s.labelHeight.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900)),
+          Text(s.labelHeight.toUpperCase(),
+              style: const TextStyle(fontWeight: FontWeight.w900)),
           const SizedBox(height: 10),
           _cardsRow('height', _height, s),
           const SizedBox(height: 12),
-          Text(s.growthChartCaption(name, s.labelHeight), style: TextStyle(color: Colors.black.withAlpha(120), fontSize: 13)),
+          Text(s.growthChartCaption(name, s.labelHeight),
+              style:
+                  TextStyle(color: Colors.black.withAlpha(120), fontSize: 13)),
           _growthLineChart('height', _height, s.labelHeight),
           _growthHistoryList(s, 'height', _height),
         ],
@@ -943,28 +1095,40 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
     final s = S.of(context);
     final bid = _currentBaby.currentBabyId;
 
-    if (bid == null) {
-      return Scaffold(
-        appBar: AppBar(title: Text(widget.appBarTitle)),
-        body: Center(
-          child: Padding(padding: const EdgeInsets.all(24), child: Text(s.feedingNoBabyHint, textAlign: TextAlign.center)),
-        ),
-      );
-    }
+    return ListenableBuilder(
+      listenable: PortalLayoutPrefs.instance,
+      builder: (context, _) {
+        final night = PortalTimeOfDay.isNight(DateTime.now());
+        final tabs = PortalNightUi.tabColors(night, dayAccent: _accent);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.appBarTitle)),
-      body: Column(
+        if (bid == null) {
+          return Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: PortalNightUi.appBar(widget.appBarTitle, night: night),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child:
+                    Text(s.feedingNoBabyHint, textAlign: TextAlign.center),
+              ),
+            ),
+          );
+        }
+
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: PortalNightUi.appBar(widget.appBarTitle, night: night),
+          body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Material(
-            color: Theme.of(context).colorScheme.surface,
+            color: Colors.transparent,
             child: TabBar(
               controller: _tabController,
               isScrollable: false,
-              labelColor: _accent,
-              unselectedLabelColor: Colors.black.withAlpha(120),
-              indicatorColor: _accent,
+              labelColor: tabs.label,
+              unselectedLabelColor: tabs.unselected,
+              indicatorColor: tabs.indicator,
               indicatorWeight: 3,
               tabs: [
                 Tab(text: s.growthTabWeight.toUpperCase()),
@@ -981,9 +1145,18 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
                 return SwitchListTile.adaptive(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4),
                   dense: true,
-                  secondary: Icon(Icons.notifications_active_outlined, color: _accent.withAlpha(220)),
-                  title: Text(s.healthGrowthToggleAlerts, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
-                  subtitle: Text(s.healthGrowthToggleAlertsSubtitle, style: TextStyle(fontSize: 12, color: Colors.black.withAlpha(130))),
+                  secondary: Icon(
+                    Icons.notifications_active_outlined,
+                    color: PortalNightUi.alertIconColor(night, _accent),
+                  ),
+                  title: Text(
+                    s.healthGrowthToggleAlerts,
+                    style: PortalNightUi.alertTitleStyle(night, fontSize: 14),
+                  ),
+                  subtitle: Text(
+                    s.healthGrowthToggleAlertsSubtitle,
+                    style: PortalNightUi.alertSubtitleStyle(night),
+                  ),
                   value: enabled,
                   activeThumbColor: _accent,
                   onChanged: (v) => HomePrefs.setGrowthHealthAlertsEnabled(v),
@@ -1005,14 +1178,16 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
           ),
           if (!_loading && _tabController.index != 2)
             Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 14 + MediaQuery.paddingOf(context).bottom),
+              padding: EdgeInsets.fromLTRB(
+                  20, 0, 20, 14 + MediaQuery.paddingOf(context).bottom),
               child: SizedBox(
                 width: double.infinity,
                 child: FilledButton(
                   style: FilledButton.styleFrom(
                     backgroundColor: _accent,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(22)),
                     padding: const EdgeInsets.symmetric(vertical: 18),
                   ),
                   onPressed: () {
@@ -1021,7 +1196,8 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
                   },
                   child: Text(
                     _ctaLabel(s, _tabController.index).toUpperCase(),
-                    style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.8),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900, letterSpacing: 0.8),
                   ),
                 ),
               ),
@@ -1030,6 +1206,8 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage> with SingleTi
             SizedBox(height: MediaQuery.paddingOf(context).bottom + 8),
         ],
       ),
+        );
+      },
     );
   }
 }
@@ -1101,18 +1279,21 @@ class _EditGrowthSheetBodyState extends State<_EditGrowthSheetBody> {
     );
     if (d != null) {
       setState(() {
-        _picked = DateTime(d.year, d.month, d.day, _picked.hour, _picked.minute);
+        _picked =
+            DateTime(d.year, d.month, d.day, _picked.hour, _picked.minute);
       });
     }
   }
 
   Future<void> _save() async {
     final s = widget.strings;
-    final double? parsed =
-        widget.kind == 'head' ? MeasurementFormat.parseLengthToCm(_headCtrl!.text.trim()) : _rulerBase;
+    final double? parsed = widget.kind == 'head'
+        ? MeasurementFormat.parseLengthToCm(_headCtrl!.text.trim())
+        : _rulerBase;
     if (parsed == null || parsed <= 0) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.invalidGrowthValue(widget.label))));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(s.invalidGrowthValue(widget.label))));
       }
       return;
     }
@@ -1122,7 +1303,8 @@ class _EditGrowthSheetBodyState extends State<_EditGrowthSheetBody> {
       value: parsed,
       measuredAt: _picked,
     );
-    GrowthCloudSync.pushLocalSoon(localBabyId: widget.babyId, localGrowthId: widget.recordId);
+    GrowthCloudSync.pushLocalSoon(
+        localBabyId: widget.babyId, localGrowthId: widget.recordId);
     GrowthEvents.ping();
     if (mounted) Navigator.pop(context);
     widget.onSaved();
@@ -1137,7 +1319,8 @@ class _EditGrowthSheetBodyState extends State<_EditGrowthSheetBody> {
             controller: _headCtrl,
             decoration: InputDecoration(
               labelText: '${widget.label} (${widget.unit})',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
             ),
           )
         : _buildPortalGrowthRuler(
@@ -1166,7 +1349,10 @@ class _EditGrowthSheetBodyState extends State<_EditGrowthSheetBody> {
           children: [
             Text(
               '${s.edit} — ${widget.label}',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 12),
             valueField,
@@ -1186,7 +1372,7 @@ class _EditGrowthSheetBodyState extends State<_EditGrowthSheetBody> {
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               onPressed: _save,
-              child: Text(s.saveRecord),
+              child: Text(s.commonSave),
             ),
           ],
         ),

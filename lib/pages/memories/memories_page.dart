@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -14,8 +12,10 @@ import '../../services/app_database.dart';
 import '../../services/memory_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/portal_time_of_day.dart';
+import '../../services/memory_album_pdf_quality.dart';
 import '../../utils/memory_album_pdf.dart';
-import '../../utils/memory_share_transport.dart';
+import '../../utils/memory_moment_localizations.dart';
+import 'memory_album_export_page.dart';
 import '../premium/premium_paywall_screen.dart';
 import '../../utils/portal_layout.dart';
 import '../../widgets/card_box.dart';
@@ -29,7 +29,8 @@ class MemoriesPage extends StatefulWidget {
   State<MemoriesPage> createState() => _MemoriesPageState();
 }
 
-class _MemoriesPageState extends State<MemoriesPage> with AutomaticKeepAliveClientMixin {
+class _MemoriesPageState extends State<MemoriesPage>
+    with AutomaticKeepAliveClientMixin {
   final currentBaby = CurrentBabyController.instance;
   late final MemoryController controller;
 
@@ -52,54 +53,50 @@ class _MemoriesPageState extends State<MemoriesPage> with AutomaticKeepAliveClie
     controller.loadForBaby(currentBaby.currentBabyId);
   }
 
-  Future<void> _showAlbumPdfActions(Uint8List pdfBytes, String fileName) async {
+  Future<MemoryAlbumPdfQuality?> _pickAlbumQuality() async {
     final s = S.of(context);
-    await showModalBottomSheet<void>(
+    return showModalBottomSheet<MemoryAlbumPdfQuality>(
       context: context,
       showDragHandle: true,
       builder: (ctx) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                s.memoriesAlbumPdfReadyTitle,
-                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                s.memoriesAlbumQualityTitle,
+                style: Theme.of(ctx)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w900),
               ),
-              const SizedBox(height: 14),
-              FilledButton.icon(
-                onPressed: () async {
-                  Navigator.pop(ctx);
-                  await shareTempBytes(pdfBytes, fileName, 'application/pdf');
-                },
-                icon: const Icon(Icons.ios_share_rounded),
-                label: Text(s.memoriesAlbumShareAction),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.send_rounded),
+                title: Text(s.memoriesAlbumQualityShareTitle),
+                subtitle: Text(s.memoriesAlbumQualityShareDesc),
+                onTap: () =>
+                    Navigator.pop(ctx, MemoryAlbumPdfQuality.share),
               ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: () async {
-                  Navigator.pop(ctx);
-                  try {
-                    await savePdfBytes(pdfBytes, fileName);
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.memoriesAlbumSavedSnack)));
-                  } catch (e) {
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${s.memoriesAlbumSaveFailedSnack} ($e)')),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.download_rounded),
-                label: Text(s.memoriesAlbumSaveAction),
+              ListTile(
+                leading: const Icon(Icons.print_rounded),
+                title: Text(s.memoriesAlbumQualityPrintTitle),
+                subtitle: Text(s.memoriesAlbumQualityPrintDesc),
+                onTap: () =>
+                    Navigator.pop(ctx, MemoryAlbumPdfQuality.print),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  MemoryBadge _badgeForMemory(String badgeId, String title) {
+    return MemoryBadgesCatalog.findBadgeById(badgeId) ??
+        MemoryBadgesCatalog.customFromMemory(id: badgeId, title: title);
   }
 
   Future<void> _exportMemoryAlbum(List<MemoryBadge> badges) async {
@@ -109,31 +106,39 @@ class _MemoriesPageState extends State<MemoriesPage> with AutomaticKeepAliveClie
     final s = S.of(context);
 
     if (!FeatureAccess.canGenerateMemoryBook) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.plusSnackLockedFeature)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(s.plusSnackLockedFeature)));
       await openPremiumPaywall(context);
       return;
     }
 
-    final filled = _filledCount(badges);
+    final filled = _filledCount();
     if (filled == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.memoriesAlbumNeedFilled)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(s.memoriesAlbumNeedFilled)));
       return;
     }
 
     final pages = <MemoryAlbumPageInput>[];
-    for (final b in badges) {
-      final m = controller.byBadge[b.id];
-      if (m == null) continue;
-      final hasPhoto = (m.photoB64?.trim().isNotEmpty == true) || (m.photoUrl?.trim().isNotEmpty == true);
+    final memories = controller.byBadge.values.toList()
+      ..sort((a, b) {
+        final byMemoryDate = b.memoryDate.compareTo(a.memoryDate);
+        if (byMemoryDate != 0) return byMemoryDate;
+        return b.createdAt.compareTo(a.createdAt);
+      });
+    for (final m in memories) {
+      final hasPhoto = (m.photoB64?.trim().isNotEmpty == true) ||
+          (m.photoUrl?.trim().isNotEmpty == true);
       final hasDesc = (m.description ?? '').trim().isNotEmpty;
       if (!hasPhoto && !hasDesc) continue;
       pages.add(MemoryAlbumPageInput(
-        badge: b,
+        badge: _badgeForMemory(m.badgeId, m.title),
         memory: m,
       ));
     }
     if (pages.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.memoriesAlbumNeedFilled)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(s.memoriesAlbumNeedFilled)));
       return;
     }
 
@@ -144,88 +149,64 @@ class _MemoriesPageState extends State<MemoriesPage> with AutomaticKeepAliveClie
       return;
     }
 
-    // Helper local: garante que o diálogo de loading é fechado uma única vez,
-    // antes de mostrarmos o bottom sheet de “PDF pronto” ou um SnackBar de erro.
-    var loadingDismissed = false;
-    void dismissLoading() {
-      if (loadingDismissed) return;
-      loadingDismissed = true;
-      if (!mounted) return;
-      final nav = Navigator.of(context, rootNavigator: true);
-      if (nav.canPop()) nav.pop();
-    }
+    final quality = await _pickAlbumQuality();
+    if (!mounted || quality == null) return;
 
-    showDialog<void>(
-      context: context,
-      useRootNavigator: true,
-      barrierDismissible: false,
-      builder: (ctx) => PopScope(
-        canPop: false,
-        child: AlertDialog(
-          content: Row(
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(width: 20),
-              Expanded(child: Text(s.memoriesAlbumGenerating)),
-            ],
+    final babyName = ((babyRow['name'] as String?) ?? '').trim();
+    final displayName = babyName.isEmpty ? '—' : babyName;
+
+    final labels = MemoryAlbumPdfPageLabels(
+      momentLabel: s.memoryTellMomentTitle,
+      ageLabel: s.memoryStatAgeLabel,
+      weightLabel: s.memoryStatWeightLabel,
+      heightLabel: s.memoryStatHeightLabel,
+      moodLabel: s.memoryStatMoodLabel,
+      notesLabel: s.memoryMotherNotesLabel,
+      badgeTitle: (b) => s.memoryBadgeTitle(b),
+      dateText: (m) => formatMemoryMomentDateTime(context, m.memoryDate),
+    );
+
+    if (!mounted) return;
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => MemoryAlbumExportPage(
+          babyName: displayName,
+          strings: MemoryAlbumPdfStrings(
+            coverMainTitle: s.memoriesAlbumCoverMain,
+            coverTagline: s.memoriesAlbumCoverTagline(displayName),
+            footer: s.memoriesAlbumFooter,
+            backCoverBody: s.memoriesAlbumBackCoverBody,
+            backCoverFinale: s.memoriesAlbumBackCoverFinale,
           ),
+          labels: labels,
+          pages: pages,
+          quality: quality,
         ),
       ),
     );
-
-    try {
-      final babyName = ((babyRow['name'] as String?) ?? '').trim();
-      final displayName = babyName.isEmpty ? '—' : babyName;
-      final pdfBytes = await buildMemoryAlbumMemoryBookPdf(
-        context: context,
-        babyName: displayName,
-        strings: MemoryAlbumPdfStrings(
-          coverMainTitle: s.memoriesAlbumCoverMain,
-          coverTagline: s.memoriesAlbumCoverTagline(displayName),
-          footer: s.memoriesAlbumFooter,
-          backCoverBody: s.memoriesAlbumBackCoverBody,
-          backCoverFinale: s.memoriesAlbumBackCoverFinale,
-        ),
-        pages: pages,
-      );
-      final stamp = DateTime.now().toIso8601String().replaceAll(':', '').split('.').first;
-      final fileName = 'facebaby_album_$stamp.pdf';
-      if (!mounted) return;
-      // Fecha o loading ANTES do bottom sheet — caso contrário o `await` do
-      // bottom sheet segura o `finally` e o diálogo de progresso fica visível
-      // (e a bloquear toques) sobre as ações de Partilhar / Guardar.
-      dismissLoading();
-      if (!mounted) return;
-      await _showAlbumPdfActions(pdfBytes, fileName);
-    } catch (e) {
-      dismissLoading();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${s.memoriesAlbumError} ($e)')),
-        );
-      }
-    } finally {
-      // Salvaguarda caso saiamos por um `return` (ex.: !mounted) sem ter passado
-      // pelo caminho normal.
-      dismissLoading();
-    }
   }
 
   @override
   bool get wantKeepAlive => true;
 
-  int _filledCount(List<MemoryBadge> badges) {
+  int _filledCount() {
     var n = 0;
-    for (final b in badges) {
-      final m = controller.byBadge[b.id];
-      if (m != null &&
-          (m.photoB64?.trim().isNotEmpty == true ||
-              m.photoUrl?.trim().isNotEmpty == true ||
-              (m.description ?? '').trim().isNotEmpty)) {
+    for (final m in controller.byBadge.values) {
+      if (m.photoB64?.trim().isNotEmpty == true ||
+          m.photoUrl?.trim().isNotEmpty == true ||
+          (m.description ?? '').trim().isNotEmpty) {
         n++;
       }
     }
     return n;
+  }
+
+  int _memoryProgressTotal() {
+    final standard = MemoryBadgesCatalog.standardBadgeCount;
+    final custom =
+        MemoryBadgesCatalog.countCustomBadges(controller.byBadge.keys);
+    return standard + custom;
   }
 
   @override
@@ -233,20 +214,24 @@ class _MemoriesPageState extends State<MemoriesPage> with AutomaticKeepAliveClie
     super.build(context);
     final s = S.of(context);
     final nightTitleColor = PortalTimeOfDay.isNight(DateTime.now())
-        ? PortalTimeOfDay.nightTextColor
+        ? PortalTimeOfDay.nightOutlinedTextColor
         : null;
     final babyId = currentBaby.currentBabyId;
     final babyRow = currentBaby.currentBabyRow;
     final badges = MemoryBadgesCatalog.all();
 
     return AnimatedBuilder(
-      animation: Listenable.merge([controller, currentBaby, PremiumService.instance]),
+      animation:
+          Listenable.merge([controller, currentBaby, PremiumService.instance]),
       builder: (context, _) {
         final tint = AppTheme.backdropTintForSex(
-          ((babyRow?['sex'] as String?)?.trim().toUpperCase() == 'M') ? 'M' : 'F',
+          ((babyRow?['sex'] as String?)?.trim().toUpperCase() == 'M')
+              ? 'M'
+              : 'F',
         );
-        final filled = _filledCount(badges);
-        final total = badges.length;
+        final filled = _filledCount();
+        final standardTotal = MemoryBadgesCatalog.standardBadgeCount;
+        final total = _memoryProgressTotal();
         final showProgress = babyId != null &&
             babyRow != null &&
             !controller.loading &&
@@ -290,13 +275,19 @@ class _MemoriesPageState extends State<MemoriesPage> with AutomaticKeepAliveClie
                   filled: filled,
                   total: total,
                   progressLabel: s.memoriesProgressSaved(filled, total),
+                  standardBadgesHint:
+                      s.memoriesProgressStandardBadges(standardTotal),
                   cheerEmpty: filled == 0 ? s.memoriesCheerEmpty : null,
                   freePlanCaption: PremiumService.instance.isPremium
                       ? null
-                      : s.plusMemoryCounterFree(filled, PremiumConstants.freeMemoryMomentsMax),
+                      : s.plusMemoryCounterFree(
+                          filled, PremiumConstants.freeMemoryMomentsMax),
                 ),
               ],
-              if (babyId != null && babyRow != null && !controller.loading && controller.error == null) ...[
+              if (babyId != null &&
+                  babyRow != null &&
+                  !controller.loading &&
+                  controller.error == null) ...[
                 const SizedBox(height: 14),
                 _MemoryAlbumPromoCard(
                   onDownload: () => _exportMemoryAlbum(badges),
@@ -310,7 +301,9 @@ class _MemoriesPageState extends State<MemoriesPage> with AutomaticKeepAliveClie
                 CardBox(
                   child: Text(
                     s.feedingNoBabyHint,
-                    style: TextStyle(color: Colors.black.withAlpha(140), fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                        color: Colors.black.withAlpha(140),
+                        fontWeight: FontWeight.w700),
                   ),
                 )
               else if (controller.loading)
@@ -358,7 +351,8 @@ class _MemoryAlbumPromoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = Color.lerp(AppTheme.primaryPink, AppTheme.primaryPurple, 0.45)!;
+    final accent =
+        Color.lerp(AppTheme.primaryPink, AppTheme.primaryPurple, 0.45)!;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -405,11 +399,15 @@ class _MemoryAlbumPromoCard extends StatelessWidget {
                         ),
                         shape: BoxShape.circle,
                         boxShadow: [
-                          BoxShadow(color: accent.withAlpha(50), blurRadius: 10, offset: const Offset(0, 4)),
+                          BoxShadow(
+                              color: accent.withAlpha(50),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4)),
                         ],
                         border: Border.all(color: Colors.white.withAlpha(200)),
                       ),
-                      child: Icon(Icons.menu_book_rounded, size: 28, color: accent.withAlpha(245)),
+                      child: Icon(Icons.menu_book_rounded,
+                          size: 28, color: accent.withAlpha(245)),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -431,7 +429,8 @@ class _MemoryAlbumPromoCard extends StatelessWidget {
                                 ),
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: accent.withAlpha(36),
                                   borderRadius: BorderRadius.circular(8),
@@ -439,7 +438,8 @@ class _MemoryAlbumPromoCard extends StatelessWidget {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.picture_as_pdf_rounded, size: 15, color: accent.withAlpha(240)),
+                                    Icon(Icons.picture_as_pdf_rounded,
+                                        size: 15, color: accent.withAlpha(240)),
                                     const SizedBox(width: 4),
                                     Text(
                                       'PDF',
@@ -475,13 +475,16 @@ class _MemoryAlbumPromoCard extends StatelessWidget {
                   child: FilledButton.icon(
                     onPressed: onDownload,
                     icon: const Icon(Icons.download_rounded, size: 22),
-                    label: Text(cta, style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.2)),
+                    label: Text(cta,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w800, letterSpacing: 0.2)),
                     style: FilledButton.styleFrom(
                       backgroundColor: accent,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
                     ),
                   ),
                 ),
@@ -500,6 +503,7 @@ class _MemoriesProgressBanner extends StatelessWidget {
   final int filled;
   final int total;
   final String progressLabel;
+  final String standardBadgesHint;
   final String? cheerEmpty;
   final String? freePlanCaption;
 
@@ -508,6 +512,7 @@ class _MemoriesProgressBanner extends StatelessWidget {
     required this.filled,
     required this.total,
     required this.progressLabel,
+    required this.standardBadgesHint,
     this.cheerEmpty,
     this.freePlanCaption,
   });
@@ -551,30 +556,51 @@ class _MemoriesProgressBanner extends StatelessWidget {
                   color: Colors.white.withAlpha(200),
                   shape: BoxShape.circle,
                   boxShadow: [
-                    BoxShadow(color: AppTheme.primaryPurple.withAlpha(24), blurRadius: 8, offset: const Offset(0, 2)),
+                    BoxShadow(
+                        color: AppTheme.primaryPurple.withAlpha(24),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2)),
                   ],
                 ),
-                child: Icon(Icons.auto_awesome_rounded, size: 22, color: AppTheme.primaryPurple.withAlpha(240)),
+                child: Icon(Icons.auto_awesome_rounded,
+                    size: 22, color: AppTheme.primaryPurple.withAlpha(240)),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  progressLabel,
-                  style: TextStyle(
-                    fontSize: portalSp(context, 14.5),
-                    fontWeight: FontWeight.w900,
-                    height: 1.2,
-                    color: AppTheme.textPrimary,
-                    letterSpacing: -0.2,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      progressLabel,
+                      style: TextStyle(
+                        fontSize: portalSp(context, 14.5),
+                        fontWeight: FontWeight.w900,
+                        height: 1.2,
+                        color: AppTheme.textPrimary,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      standardBadgesHint,
+                      style: TextStyle(
+                        fontSize: portalSp(context, 11.5),
+                        fontWeight: FontWeight.w600,
+                        height: 1.2,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: Colors.white.withAlpha(230),
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: AppTheme.primaryPurple.withAlpha(50)),
+                  border:
+                      Border.all(color: AppTheme.primaryPurple.withAlpha(50)),
                 ),
                 child: Text(
                   '$filled/$total',
@@ -618,7 +644,8 @@ class _MemoriesProgressBanner extends StatelessWidget {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(top: 2),
-                  child: Icon(Icons.touch_app_rounded, size: 18, color: AppTheme.textSecondary.withAlpha(220)),
+                  child: Icon(Icons.touch_app_rounded,
+                      size: 18, color: AppTheme.textSecondary.withAlpha(220)),
                 ),
                 const SizedBox(width: 8),
                 Expanded(

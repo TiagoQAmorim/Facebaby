@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
@@ -13,9 +14,13 @@ import '../utils/family_height_estimate.dart';
 import '../utils/measurement_format.dart';
 import '../utils/memory_share_file.dart';
 import '../utils/memory_share_transport.dart';
+import '../utils/photo_b64.dart';
 import '../utils/zodiac_keys.dart';
 import 'family_hub_widgets.dart';
 import 'photo_avatar.dart';
+
+const Color _kFamilyFemaleAccent = Color(0xFFE84D7A);
+const Color _kFamilyMaleAccent = Color(0xFF4D99DE);
 
 /// Integrantes da família sobre a ilustração da árvore (separadores + cartão).
 class FamilyTreeStage extends StatefulWidget {
@@ -31,6 +36,7 @@ class FamilyTreeStage extends StatefulWidget {
     required this.babies,
     required this.heightCmByBabyId,
     required this.fatherRegistered,
+    this.activeBabyId,
     this.initialTabIndex = 0,
 
     /// Se true, os separadores ficam numa coluna à esquerda; se false, numa linha horizontal.
@@ -64,6 +70,7 @@ class FamilyTreeStage extends StatefulWidget {
   final List<Map<String, Object?>> babies;
   final Map<int, double> heightCmByBabyId;
   final bool fatherRegistered;
+  final int? activeBabyId;
 
   /// Índice inicial no separador (ex.: bebé actual por defeito).
   final int initialTabIndex;
@@ -103,12 +110,22 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
   static String _slotKeyFather() => 'father';
   static String _slotKeyBaby(int babyId) => 'baby_$babyId';
 
+  int _preferredIndex(List<_CarouselMember> members) {
+    final activeBabyId = widget.activeBabyId;
+    if (activeBabyId != null) {
+      final activeBabyIndex =
+          members.indexWhere((m) => m.slot == _slotKeyBaby(activeBabyId));
+      if (activeBabyIndex >= 0) return activeBabyIndex;
+    }
+    final maxI = members.isEmpty ? 0 : members.length - 1;
+    return widget.initialTabIndex.clamp(0, maxI);
+  }
+
   @override
   void initState() {
     super.initState();
     final members = _buildMembers();
-    final maxI = members.isEmpty ? 0 : members.length - 1;
-    _selectedIndex = widget.initialTabIndex.clamp(0, maxI);
+    _selectedIndex = _preferredIndex(members);
   }
 
   @override
@@ -117,12 +134,19 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
     final members = _buildMembers();
     if (members.isEmpty) return;
     if (_selectedIndex >= members.length) {
-      setState(() => _selectedIndex = members.length - 1);
+      setState(() => _selectedIndex = _preferredIndex(members));
       return;
     }
-    if (oldWidget.initialTabIndex != widget.initialTabIndex ||
-        oldWidget.fatherRegistered != widget.fatherRegistered) {
-      final i = widget.initialTabIndex.clamp(0, members.length - 1);
+    final activeSlot =
+        widget.activeBabyId == null ? null : _slotKeyBaby(widget.activeBabyId!);
+    final selectedSlot = members[_selectedIndex].slot;
+    final shouldSyncSelection = oldWidget.activeBabyId != widget.activeBabyId ||
+        oldWidget.initialTabIndex != widget.initialTabIndex ||
+        oldWidget.fatherRegistered != widget.fatherRegistered ||
+        oldWidget.babies.length != widget.babies.length ||
+        (activeSlot != null && selectedSlot != activeSlot);
+    if (shouldSyncSelection) {
+      final i = _preferredIndex(members);
       if (i != _selectedIndex) setState(() => _selectedIndex = i);
     }
   }
@@ -159,6 +183,78 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
         sleepTotalSeconds: 0,
       );
 
+  void _openPhotoPreview({
+    required String? photoB64,
+    required String? photoUrl,
+    required Widget fallback,
+  }) {
+    final bytes = decodePhotoB64(photoB64);
+    final url = photoUrl?.trim();
+    final hasUrl = url != null && url.isNotEmpty;
+    if ((bytes == null || bytes.isEmpty) && !hasUrl) return;
+
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withAlpha(230),
+      builder: (dialogContext) {
+        return GestureDetector(
+          onTap: () => Navigator.of(dialogContext).pop(),
+          child: Material(
+            color: Colors.transparent,
+            child: Stack(
+              children: [
+                Center(
+                  child: InteractiveViewer(
+                    minScale: 0.8,
+                    maxScale: 4,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: bytes != null && bytes.isNotEmpty
+                          ? Image.memory(
+                              bytes,
+                              fit: BoxFit.contain,
+                              gaplessPlayback: true,
+                            )
+                          : CachedNetworkImage(
+                              imageUrl: url!,
+                              fit: BoxFit.contain,
+                              placeholder: (_, __) => const Padding(
+                                padding: EdgeInsets.all(32),
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                ),
+                              ),
+                              errorWidget: (_, __, ___) => CircleAvatar(
+                                radius: 72,
+                                child: fallback,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: MediaQuery.paddingOf(dialogContext).top + 8,
+                  right: 12,
+                  child: IconButton(
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.black.withAlpha(150),
+                    ),
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Map<String, Object?>? _babyMapFromSlot(String slot) {
     if (!slot.startsWith('baby_')) return null;
     final id = int.tryParse(slot.substring(5));
@@ -167,6 +263,25 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
       if ((b['id'] as num?)?.toInt() == id) return b;
     }
     return null;
+  }
+
+  Color _accentForBabySex(String? sex) => sex?.trim().toUpperCase() == 'M'
+      ? _kFamilyMaleAccent
+      : _kFamilyFemaleAccent;
+
+  Color _activeBabyAccent() {
+    final activeBabyId = widget.activeBabyId;
+    Map<String, Object?>? baby;
+    if (activeBabyId != null) {
+      for (final b in widget.babies) {
+        if ((b['id'] as num?)?.toInt() == activeBabyId) {
+          baby = b;
+          break;
+        }
+      }
+    }
+    baby ??= widget.babies.isEmpty ? null : widget.babies.first;
+    return _accentForBabySex(baby?['sex'] as String?);
   }
 
   Widget _legacyTreeBlock(
@@ -286,6 +401,7 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
             ? s.familyHoroscopeCardTitle(zodiacIdFromDate(bb))
             : s.familyHoroscopeCardTitle(ZodiacId.pisces));
     final babySex = (babyMap['sex'] as String?)?.trim().toUpperCase();
+    final accent = _accentForBabySex(babySex);
     final motherHeightCm = (widget.mother?['height_cm'] as num?)?.toDouble();
     final fatherHeightCm =
         (widget.mother?['father_height_cm'] as num?)?.toDouble();
@@ -308,7 +424,7 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
             : s.familyPremiumHeightLocked;
     final heightEstimateDescription = heightEstimateUnlocked
         ? s.familyEstimatedHeightDescription
-        : s.familyPremiumUnlockCta;
+        : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -322,6 +438,7 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
           heightStr: heightStr,
           signDisplayName: signName,
           showZodiac: widget.showHoroscopeMessages,
+          accent: accent,
           babyAvatar: model.avatar,
           signId: signId,
           heightEstimateTitle: showHeightEstimate
@@ -331,7 +448,14 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
           heightEstimateDescription:
               showHeightEstimate ? heightEstimateDescription : null,
           heightEstimateAsset: showHeightEstimate ? heightEstimateAsset : null,
-          onTap: model.onEdit,
+          heightEstimateLocked: showHeightEstimate && !heightEstimateUnlocked,
+          onPremiumTap: widget.onPremiumTap,
+          onPhotoTap: () => _openPhotoPreview(
+            photoB64: babyMap['photo_b64'] as String?,
+            photoUrl: babyMap['photo_url'] as String?,
+            fallback: const Text('👶', style: TextStyle(fontSize: 56)),
+          ),
+          onTap: null,
         ),
         const SizedBox(height: 14),
         FamilyHubContentCards(
@@ -344,7 +468,9 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
           showHoroscope: widget.showHoroscopeMessages,
           showChristian: widget.showChristianMessages,
           contentUnlocked: widget.zodiacUnlocked,
+          accent: accent,
           signId: signId,
+          onPremiumTap: widget.onPremiumTap,
         ),
         const SizedBox(height: 16),
         FamilyHubDailySummaryStrip(
@@ -357,6 +483,7 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
           lastFeed: widget.lastFeedEndedAt,
           lastDiaper: widget.lastDiaperChangedAt,
           lastSleep: widget.lastSleepEndedAt,
+          accent: accent,
         ),
         const SizedBox(height: 16),
         FamilyHubPremiumBanner(s: s, onPremiumTap: widget.onPremiumTap),
@@ -394,6 +521,7 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
     final horoscopeTitle = signId == null
         ? model.sectionTitle
         : s.familyHoroscopeCardTitle(signId);
+    final pageAccent = _activeBabyAccent();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -410,7 +538,19 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
           avatar: model.avatar,
           accent: model.badgeColor,
           signId: signId,
-          onTap: model.onEdit,
+          onPhotoTap: () => _openPhotoPreview(
+            photoB64: isFather
+                ? (mother?['father_photo_b64'] as String?)
+                : (mother?['photo_b64'] as String?),
+            photoUrl: isFather
+                ? (mother?['father_photo_url'] as String?)
+                : (mother?['photo_url'] as String?),
+            fallback: Text(
+              isFather ? '👨' : '👩',
+              style: const TextStyle(fontSize: 56),
+            ),
+          ),
+          onTap: null,
         ),
         const SizedBox(height: 14),
         FamilyHubContentCards(
@@ -423,7 +563,9 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
           showHoroscope: widget.showHoroscopeMessages,
           showChristian: widget.showChristianMessages,
           contentUnlocked: widget.zodiacUnlocked,
+          accent: pageAccent,
           signId: signId,
+          onPremiumTap: widget.onPremiumTap,
         ),
         const SizedBox(height: 16),
         FamilyHubPremiumBanner(s: s, onPremiumTap: widget.onPremiumTap),
@@ -439,10 +581,15 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
     final motherI = members.indexWhere((m) => m.slot == _slotKeyMother());
     final fatherI = members.indexWhere((m) => m.slot == _slotKeyFather());
     final firstBabyI = members.indexWhere((m) => m.slot.startsWith('baby_'));
+    final activeBabyI = widget.activeBabyId == null
+        ? -1
+        : members
+            .indexWhere((m) => m.slot == _slotKeyBaby(widget.activeBabyId!));
+    final defaultBabyI = activeBabyI >= 0 ? activeBabyI : firstBabyI;
     final current = members[tabIndex];
     final heroBaby = current.model.role == FamilyMemberRole.baby
         ? current
-        : (firstBabyI >= 0 ? members[firstBabyI] : null);
+        : (defaultBabyI >= 0 ? members[defaultBabyI] : null);
     final babyMap = heroBaby == null ? null : _babyMapFromSlot(heroBaby.slot);
     final bb =
         babyMap == null ? null : _parseDate(babyMap['birth_date'] as String?);
@@ -461,8 +608,11 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
             babyLabel: heroBaby.model.name,
             babyAvatar: heroBaby.model.avatar,
             babySelected: current.model.role == FamilyMemberRole.baby,
+            accent: _activeBabyAccent(),
             onBaby: () {
-              if (firstBabyI >= 0) setState(() => _selectedIndex = firstBabyI);
+              if (defaultBabyI >= 0) {
+                setState(() => _selectedIndex = defaultBabyI);
+              }
             },
             fatherLabel: fatherI >= 0 ? members[fatherI].model.name : null,
             fatherAvatar: fatherI >= 0 ? members[fatherI].model.avatar : null,

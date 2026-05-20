@@ -6,13 +6,14 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../i18n/app_i18n.dart';
 import '../theme/app_theme.dart';
+import '../utils/portal_page_route.dart';
 import '../utils/portal_time_of_day.dart';
 import '../services/firebase/account_deletion_service.dart';
 import '../services/firebase/auth_service.dart';
 import '../services/premium/premium_service.dart';
 import '../widgets/card_box.dart';
+import '../widgets/dev_qa_tools_section.dart';
 import '../utils/portal_layout.dart';
-import '../widgets/language_picker.dart';
 import '../widgets/loading_scope.dart';
 import 'alerts_settings_page.dart';
 import 'contact_page.dart';
@@ -338,32 +339,24 @@ class SettingsPage extends StatelessWidget {
             compact: true,
             icon: Icons.person_outline,
             title: s.settingsMotherProfile,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                  builder: (_) => const MotherProfilePage()),
+            onTap: () => pushPortalPage<void>(
+              context,
+              const MotherProfilePage(
+                initialTab: MotherProfileInitialTab.preferences,
+              ),
             ),
           ),
           _SettingsTile(
             compact: true,
             icon: Icons.family_restroom_outlined,
             title: s.settingsFamilyTree,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const FamilyTreePage()),
-            ),
-          ),
-          _SettingsTile(
-            compact: true,
-            icon: Icons.language,
-            title: s.language,
-            onTap: () => showLanguagePicker(context),
+            onTap: () => pushPortalPage<void>(context, const FamilyTreePage()),
           ),
           _SettingsTile(
             compact: true,
             icon: Icons.insert_chart_outlined,
             title: s.reportsTitle,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const ReportsHubPage()),
-            ),
+            onTap: () => pushPortalPage<void>(context, const ReportsHubPage()),
           ),
           const _SettingsRulerDivider(widthFactor: 0.38),
           _SettingsTile(
@@ -382,44 +375,36 @@ class SettingsPage extends StatelessWidget {
             compact: true,
             icon: Icons.mail_outline,
             title: s.contactTitle,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const ContactPage()),
-            ),
+            onTap: () => pushPortalPage<void>(context, const ContactPage()),
           ),
           const _SettingsRulerDivider(widthFactor: 0.94),
           _SettingsTile(
             compact: true,
             icon: Icons.notifications_none,
             title: s.settingsAlerts,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                  builder: (_) => const AlertsSettingsPage()),
-            ),
+            onTap: () =>
+                pushPortalPage<void>(context, const AlertsSettingsPage()),
           ),
           _SettingsTile(
             compact: true,
             icon: Icons.settings_rounded,
             title: s.unitsTitle,
-            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (_) => const UnitsSettingsPage())),
+            onTap: () =>
+                pushPortalPage<void>(context, const UnitsSettingsPage()),
           ),
           const _SettingsRulerDivider(widthFactor: 0.94),
           _SettingsTile(
             compact: true,
             icon: Icons.description_outlined,
             title: s.settingsTermsOfUse,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const TermsOfUsePage()),
-            ),
+            onTap: () => pushPortalPage<void>(context, const TermsOfUsePage()),
           ),
           _SettingsTile(
             compact: true,
             icon: Icons.privacy_tip_outlined,
             title: s.settingsPrivacyPolicy,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                  builder: (_) => const PrivacyPolicyPage()),
-            ),
+            onTap: () =>
+                pushPortalPage<void>(context, const PrivacyPolicyPage()),
           ),
           const _SettingsRulerDivider(widthFactor: 0.94),
           ListenableBuilder(
@@ -493,6 +478,7 @@ class SettingsPage extends StatelessWidget {
               );
             },
           ),
+          const DevQaToolsSection(),
           const _SettingsRulerDivider(widthFactor: 0.42),
           _DangerSettingsTile(
             compact: true,

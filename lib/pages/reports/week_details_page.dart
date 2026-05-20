@@ -9,14 +9,13 @@ import '../../models/weekly_report_snapshot.dart';
 import '../../services/weekly_report_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/portal_layout.dart';
+import 'report_page_shell.dart';
 
 /// Detalhes da semana — sono, mamadas e fraldas num único relatório (sem guias).
 class WeekDetailsPage extends StatelessWidget {
   const WeekDetailsPage({super.key, required this.snapshot});
 
   final WeeklyReportSnapshot snapshot;
-
-  static const _bg = Color(0xFFF5F3FA);
 
   String _patternLine(S s, String key) {
     switch (key) {
@@ -48,11 +47,16 @@ class WeekDetailsPage extends StatelessWidget {
     final curr = snap.currentWeekDays;
     final prev = snap.previousWeekDays;
     final n = snap.aggregatedDayCount.clamp(0, 7);
-    final currSlice = n <= 0 ? <DailySummary>[] : curr.sublist(0, n > curr.length ? curr.length : n);
-    final prevSlice = n <= 0 ? <DailySummary>[] : prev.sublist(0, n > prev.length ? prev.length : n);
+    final currSlice = n <= 0
+        ? <DailySummary>[]
+        : curr.sublist(0, n > curr.length ? curr.length : n);
+    final prevSlice = n <= 0
+        ? <DailySummary>[]
+        : prev.sublist(0, n > prev.length ? prev.length : n);
     final sleepHours = WeeklyReportService.sleepHoursPerDay(curr);
     final avgH = WeeklyReportService.avgSleepHours(currSlice);
-    final pctAvg = WeeklyReportService.pctVsPrevWeekAvgSleep(currSlice, prevSlice);
+    final pctAvg =
+        WeeklyReportService.pctVsPrevWeekAvgSleep(currSlice, prevSlice);
     final labels = _weekdayLabels(context, snap.weekMonday);
 
     String weekdayLong(DateTime d) {
@@ -64,25 +68,32 @@ class WeekDetailsPage extends StatelessWidget {
       }
     }
 
-    final vs = pctAvg == null ? s.reportWeeklyTrendNA : '${pctAvg >= 0 ? '+' : ''}${pctAvg.round()}%';
+    final vs = pctAvg == null
+        ? s.reportWeeklyTrendNA
+        : '${pctAvg >= 0 ? '+' : ''}${pctAvg.round()}%';
 
     final feedCounts = curr.map<int>((e) => e.feedings).toList();
     final feedDoubles = feedCounts.map((e) => e.toDouble()).toList();
     final diaperCounts = curr.map<int>((e) => e.diapers).toList();
     final diaperDoubles = diaperCounts.map((e) => e.toDouble()).toList();
 
+    final reportBg = reportScaffoldBackground();
+
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: reportBg,
       appBar: AppBar(
-        backgroundColor: _bg,
+        backgroundColor: reportBg,
+        surfaceTintColor: reportBg,
         elevation: 0,
-        title: Text(s.reportWeekDetailsTitle, style: const TextStyle(fontWeight: FontWeight.w900)),
+        title: Text(s.reportWeekDetailsTitle,
+            style: const TextStyle(fontWeight: FontWeight.w900)),
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded),
             onSelected: (v) {
               if (v == 'share') {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.reportShareSoon)));
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text(s.reportShareSoon)));
               }
             },
             itemBuilder: (ctx) => [
@@ -92,7 +103,8 @@ class WeekDetailsPage extends StatelessWidget {
         ],
       ),
       body: ListView(
-        padding: EdgeInsets.fromLTRB(AppTheme.pageHPadding, 14, AppTheme.pageHPadding, 110),
+        padding: EdgeInsets.fromLTRB(
+            AppTheme.pageHPadding, 14, AppTheme.pageHPadding, 110),
         children: [
           _sectionCard(
             child: Column(
@@ -100,13 +112,20 @@ class WeekDetailsPage extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.nightlight_round, color: AppTheme.primaryPurple.withAlpha(230)),
+                    Icon(Icons.nightlight_round,
+                        color: AppTheme.primaryPurple.withAlpha(230)),
                     const SizedBox(width: 8),
-                    Text(s.reportTabSleep, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: AppTheme.primaryPurple)),
+                    Text(s.reportTabSleep,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 17,
+                            color: AppTheme.primaryPurple)),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(s.reportWeeklySleepHoursChartTitle, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+                Text(s.reportWeeklySleepHoursChartTitle,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900, fontSize: 17)),
                 const SizedBox(height: 12),
                 _WeeklyBars(
                   values: sleepHours,
@@ -122,10 +141,15 @@ class WeekDetailsPage extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(s.reportWeeklyAvgWeekLabel, style: TextStyle(color: AppTheme.textMuted, fontWeight: FontWeight.w700)),
+                          Text(s.reportWeeklyAvgWeekLabel,
+                              style: TextStyle(
+                                  color: AppTheme.textMuted,
+                                  fontWeight: FontWeight.w700)),
                           Text(
                             WeeklyReportService.formatHoursMinutes(avgH),
-                            style: TextStyle(fontSize: portalSp(context, 28), fontWeight: FontWeight.w900),
+                            style: TextStyle(
+                                fontSize: portalSp(context, 28),
+                                fontWeight: FontWeight.w900),
                           ),
                         ],
                       ),
@@ -138,10 +162,16 @@ class WeekDetailsPage extends StatelessWidget {
                           style: TextStyle(
                             fontWeight: FontWeight.w900,
                             fontSize: 18,
-                            color: pctAvg != null && pctAvg >= 0 ? const Color(0xFF34C759) : const Color(0xFFFF9500),
+                            color: pctAvg != null && pctAvg >= 0
+                                ? const Color(0xFF34C759)
+                                : const Color(0xFFFF9500),
                           ),
                         ),
-                        Text(s.reportWeeklyVsPrevWeekShort, style: TextStyle(fontSize: 11, color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+                        Text(s.reportWeeklyVsPrevWeekShort,
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: AppTheme.textMuted,
+                                fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ],
@@ -149,8 +179,13 @@ class WeekDetailsPage extends StatelessWidget {
                 if (n > 0 && n < 7) ...[
                   const SizedBox(height: 10),
                   Text(
-                    s.reportWeeklyPartialWeekHint(weekdayLong(snap.weekMonday.add(Duration(days: n - 1)))),
-                    style: TextStyle(fontSize: 12.5, color: AppTheme.textSecondary, fontWeight: FontWeight.w600, height: 1.35),
+                    s.reportWeeklyPartialWeekHint(weekdayLong(
+                        snap.weekMonday.add(Duration(days: n - 1)))),
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        color: AppTheme.textSecondary,
+                        fontWeight: FontWeight.w600,
+                        height: 1.35),
                   ),
                 ],
               ],
@@ -161,15 +196,22 @@ class WeekDetailsPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(s.reportWeeklyPatternsTitle, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                Text(s.reportWeeklyPatternsTitle,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900, fontSize: 16)),
                 const SizedBox(height: 8),
                 ...snap.patternKeys.map((k) => Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('• ', style: TextStyle(fontWeight: FontWeight.w900)),
-                          Expanded(child: Text(_patternLine(s, k), style: const TextStyle(height: 1.35, fontWeight: FontWeight.w600))),
+                          const Text('• ',
+                              style: TextStyle(fontWeight: FontWeight.w900)),
+                          Expanded(
+                              child: Text(_patternLine(s, k),
+                                  style: const TextStyle(
+                                      height: 1.35,
+                                      fontWeight: FontWeight.w600))),
                         ],
                       ),
                     )),
@@ -177,7 +219,11 @@ class WeekDetailsPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Text(s.reportWeeklyHeatmapSoon, style: TextStyle(fontSize: 12, color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+          Text(s.reportWeeklyHeatmapSoon,
+              style: TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.textMuted,
+                  fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           TextButton(
             onPressed: () {
@@ -189,7 +235,9 @@ class WeekDetailsPage extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(s.reportWeeklyPatternsTitle, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+                      Text(s.reportWeeklyPatternsTitle,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w900, fontSize: 18)),
                       const SizedBox(height: 12),
                       ...snap.patternKeys.map((k) => Padding(
                             padding: const EdgeInsets.only(bottom: 10),
@@ -200,7 +248,8 @@ class WeekDetailsPage extends StatelessWidget {
                 ),
               );
             },
-            child: Text(s.reportWeeklySeeAllAnalyses, style: const TextStyle(fontWeight: FontWeight.w800)),
+            child: Text(s.reportWeeklySeeAllAnalyses,
+                style: const TextStyle(fontWeight: FontWeight.w800)),
           ),
           const SizedBox(height: 18),
           _sectionCard(
@@ -209,13 +258,20 @@ class WeekDetailsPage extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.restaurant_outlined, color: const Color(0xFFE08A3E).withAlpha(230)),
+                    Icon(Icons.restaurant_outlined,
+                        color: const Color(0xFFE08A3E).withAlpha(230)),
                     const SizedBox(width: 8),
-                    Text(s.reportTabFeedings, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Color(0xFFE08A3E))),
+                    Text(s.reportTabFeedings,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 17,
+                            color: Color(0xFFE08A3E))),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(s.reportWeeklyFeedChartCaption, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+                Text(s.reportWeeklyFeedChartCaption,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900, fontSize: 17)),
                 const SizedBox(height: 12),
                 _WeeklyBars(
                   values: feedDoubles,
@@ -225,8 +281,10 @@ class WeekDetailsPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  s.reportWeeklyAvgFeedsDay(snap.avgDailyFeedings.toStringAsFixed(1)),
-                  style: TextStyle(color: AppTheme.textMuted, fontWeight: FontWeight.w700),
+                  s.reportWeeklyAvgFeedsDay(
+                      snap.avgDailyFeedings.toStringAsFixed(1)),
+                  style: TextStyle(
+                      color: AppTheme.textMuted, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -238,13 +296,20 @@ class WeekDetailsPage extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.baby_changing_station_rounded, color: AppTheme.babyBlue.withAlpha(230)),
+                    Icon(Icons.baby_changing_station_rounded,
+                        color: AppTheme.babyBlue.withAlpha(230)),
                     const SizedBox(width: 8),
-                    Text(s.reportTabDiapers, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: AppTheme.babyBlue)),
+                    Text(s.reportTabDiapers,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 17,
+                            color: AppTheme.babyBlue)),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(s.reportWeeklyDiaperChartCaption, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+                Text(s.reportWeeklyDiaperChartCaption,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900, fontSize: 17)),
                 const SizedBox(height: 12),
                 _WeeklyBars(
                   values: diaperDoubles,
@@ -254,8 +319,10 @@ class WeekDetailsPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  s.reportWeeklyAvgDiapersDay(snap.avgDailyDiapers.toStringAsFixed(1)),
-                  style: TextStyle(color: AppTheme.textMuted, fontWeight: FontWeight.w700),
+                  s.reportWeeklyAvgDiapersDay(
+                      snap.avgDailyDiapers.toStringAsFixed(1)),
+                  style: TextStyle(
+                      color: AppTheme.textMuted, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -273,7 +340,10 @@ class WeekDetailsPage extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
-          BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 18, offset: const Offset(0, 8)),
+          BoxShadow(
+              color: Colors.black.withAlpha(10),
+              blurRadius: 18,
+              offset: const Offset(0, 8)),
         ],
       ),
       child: child,
@@ -296,7 +366,8 @@ class _WeeklyBars extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (values.length != 7 || labels.length != 7) return const SizedBox.shrink();
+    if (values.length != 7 || labels.length != 7)
+      return const SizedBox.shrink();
     final cap = math.max(1.0, maxY);
     const chartHeight = 160.0;
 
@@ -322,7 +393,10 @@ class _WeeklyBars extends StatelessWidget {
                           gradient: LinearGradient(
                             begin: Alignment.bottomCenter,
                             end: Alignment.topCenter,
-                            colors: [barColor.withAlpha(230), barColor.withAlpha(110)],
+                            colors: [
+                              barColor.withAlpha(230),
+                              barColor.withAlpha(110)
+                            ],
                           ),
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -341,7 +415,10 @@ class _WeeklyBars extends StatelessWidget {
               child: Text(
                 labels[i],
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: AppTheme.textMuted),
+                style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textMuted),
               ),
             );
           }),

@@ -34,7 +34,8 @@ abstract final class PediatricReportService {
     var cursor = DateTime(poolStart.year, poolStart.month, poolStart.day);
     final end = DateTime(poolEnd.year, poolEnd.month, poolEnd.day);
     while (!cursor.isAfter(end)) {
-      final rows = await db.listSleepRecordsForCalendarDay(babyId: babyId, calendarDay: cursor);
+      final rows = await db.listSleepRecordsForCalendarDay(
+          babyId: babyId, calendarDay: cursor);
       for (final r in rows) {
         final id = (r['id'] as num?)?.toInt();
         if (id != null && id > 0) byId[id] = r;
@@ -103,9 +104,13 @@ abstract final class PediatricReportService {
 
   static String _feedingKind(String? raw) {
     final t = (raw ?? '').trim().toLowerCase();
-    if (t.contains('solid') || t == 'solidos' || t.contains('pap')) return 'solid';
-    if (t.contains('mamadeira') || t.contains('formula') || t.contains('fórmula')) return 'formula';
-    if (t.contains('peito') || t.contains('breast') || t.contains('mama')) return 'breast';
+    if (t.contains('solid') || t == 'solidos' || t.contains('pap'))
+      return 'solid';
+    if (t.contains('mamadeira') ||
+        t.contains('formula') ||
+        t.contains('fórmula')) return 'formula';
+    if (t.contains('peito') || t.contains('breast') || t.contains('mama'))
+      return 'breast';
     if (t.isEmpty) return 'breast';
     return 'other';
   }
@@ -143,7 +148,8 @@ abstract final class PediatricReportService {
     return false;
   }
 
-  static void _sortSymptomOccurrences(Map<String, List<PediatricSymptomOccurrence>> byKind) {
+  static void _sortSymptomOccurrences(
+      Map<String, List<PediatricSymptomOccurrence>> byKind) {
     for (final list in byKind.values) {
       list.sort((a, b) => a.at.compareTo(b.at));
     }
@@ -195,15 +201,19 @@ abstract final class PediatricReportService {
     final db = AppDatabase.instance;
 
     final summaries = <DailySummary>[];
-    for (var cursor = start; !cursor.isAfter(end); cursor = cursor.add(const Duration(days: 1))) {
-      summaries.add(await db.dailySummaryForHomePicker(babyId: babyId, calendarDay: cursor));
+    for (var cursor = start;
+        !cursor.isAfter(end);
+        cursor = cursor.add(const Duration(days: 1))) {
+      summaries.add(await db.dailySummaryForHomePicker(
+          babyId: babyId, calendarDay: cursor));
     }
 
     final avgFeed = _mean(summaries.map((e) => e.feedings.toDouble()));
     final avgSleepH = _mean(summaries.map((e) => e.sleepTotalSeconds / 3600.0));
     final avgDiaper = _mean(summaries.map((e) => e.diapers.toDouble()));
 
-    final wRows = await db.listGrowthRecords(babyId: babyId, kind: 'weight', limit: 400);
+    final wRows =
+        await db.listGrowthRecords(babyId: babyId, kind: 'weight', limit: 400);
     final weightsInPeriod = <Map<String, Object?>>[];
     for (final r in wRows) {
       final t = DateTime.tryParse(r['measured_at'] as String? ?? '');
@@ -234,7 +244,8 @@ abstract final class PediatricReportService {
       if (latestUpToEnd != null) {
         wEnd = (latestUpToEnd['value'] as num).toDouble();
       }
-      final latestBeforeStart = _latestGrowthRecordWhere(wRows, (t) => t.isBefore(start));
+      final latestBeforeStart =
+          _latestGrowthRecordWhere(wRows, (t) => t.isBefore(start));
       if (latestBeforeStart != null) {
         wStart = (latestBeforeStart['value'] as num).toDouble();
       }
@@ -245,21 +256,43 @@ abstract final class PediatricReportService {
       }
     }
 
-    double? heightCm;
-    final hRows = await db.listGrowthRecords(babyId: babyId, kind: 'height', limit: 400);
-    final heightInPeriod = _latestGrowthRecordWhere(
-      hRows,
-      (t) => !t.isBefore(start) && t.isBefore(periodEndExclusive),
-    );
-    if (heightInPeriod != null) {
-      heightCm = (heightInPeriod['value'] as num).toDouble();
+    final hRows =
+        await db.listGrowthRecords(babyId: babyId, kind: 'height', limit: 400);
+    final heightsInPeriod = <Map<String, Object?>>[];
+    for (final r in hRows) {
+      final t = DateTime.tryParse(r['measured_at'] as String? ?? '');
+      final v = (r['value'] as num?)?.toDouble();
+      if (t == null || v == null || v <= 0) continue;
+      if (t.isBefore(start) || !t.isBefore(periodEndExclusive)) continue;
+      heightsInPeriod.add(r);
+    }
+    heightsInPeriod.sort((a, b) {
+      final am = a['measured_at'] as String? ?? '';
+      final bm = b['measured_at'] as String? ?? '';
+      return am.compareTo(bm);
+    });
+    double? hStart;
+    double? hEnd;
+    double? hDelta;
+    if (heightsInPeriod.isNotEmpty) {
+      hStart = (heightsInPeriod.first['value'] as num).toDouble();
+      hEnd = (heightsInPeriod.last['value'] as num).toDouble();
+      hDelta = hEnd - hStart;
     } else {
-      final latestH = _latestGrowthRecordWhere(
+      final latestUpToEnd = _latestGrowthRecordWhere(
         hRows,
         (t) => t.isBefore(periodEndExclusive),
       );
-      if (latestH != null) {
-        heightCm = (latestH['value'] as num).toDouble();
+      if (latestUpToEnd != null) {
+        hEnd = (latestUpToEnd['value'] as num).toDouble();
+      }
+      final latestBeforeStart =
+          _latestGrowthRecordWhere(hRows, (t) => t.isBefore(start));
+      if (latestBeforeStart != null) {
+        hStart = (latestBeforeStart['value'] as num).toDouble();
+      }
+      if (hStart != null && hEnd != null) {
+        hDelta = hEnd - hStart;
       }
     }
 
@@ -273,11 +306,16 @@ abstract final class PediatricReportService {
     final sleepPat = _sleepPatternKey(awakenAvg, longestSec);
     final hasSleepPatternBasis = sleepPool.isNotEmpty;
 
-    final feedRows = await db.listFeedings(babyId: babyId, limit: 600, startedSince: start.subtract(const Duration(days: 1)));
+    final feedRows = await db.listFeedings(
+        babyId: babyId,
+        limit: 600,
+        startedSince: start.subtract(const Duration(days: 1)));
     final feedsPeriod = <Map<String, Object?>>[];
     for (final r in feedRows) {
       final endAt = _parse(r['ended_at'] as String?);
-      if (endAt == null || endAt.isBefore(start) || !endAt.isBefore(periodEndExclusive)) continue;
+      if (endAt == null ||
+          endAt.isBefore(start) ||
+          !endAt.isBefore(periodEndExclusive)) continue;
       feedsPeriod.add(r);
     }
 
@@ -289,7 +327,14 @@ abstract final class PediatricReportService {
       final kind = _feedingKind(r['type'] as String?);
       final dur = (r['duration_sec'] as num?)?.toInt() ?? 0;
       final note = (r['note'] as String?) ?? '';
-      if (_journalMentions(note, ['dipirona', 'paracetamol', 'ibuprofeno', 'medica', 'antibiótico', 'antibiotico'])) {
+      if (_journalMentions(note, [
+        'dipirona',
+        'paracetamol',
+        'ibuprofeno',
+        'medica',
+        'antibiótico',
+        'antibiotico'
+      ])) {
         medHints.add(note.trim());
       }
       switch (kind) {
@@ -318,7 +363,8 @@ abstract final class PediatricReportService {
       periodStart: start,
       periodEndInclusive: end,
     );
-    final symptomReportsInPeriod = symptomRows.map(SymptomReport.fromMap).toList();
+    final symptomReportsInPeriod =
+        symptomRows.map(SymptomReport.fromMap).toList();
 
     final byKind = <String, List<PediatricSymptomOccurrence>>{
       'reflux': [],
@@ -334,16 +380,21 @@ abstract final class PediatricReportService {
       final t = sr.occurredAt;
       if (sr.reflux) byKind['reflux']!.add(PediatricSymptomOccurrence(at: t));
       if (sr.colic) byKind['colic']!.add(PediatricSymptomOccurrence(at: t));
-      if (sr.unexplainedCrying) byKind['crying']!.add(PediatricSymptomOccurrence(at: t));
+      if (sr.unexplainedCrying)
+        byKind['crying']!.add(PediatricSymptomOccurrence(at: t));
       if (sr.pain) byKind['pain']!.add(PediatricSymptomOccurrence(at: t));
       if (sr.fever) {
-        final tempStr = sr.tempCelsius != null ? MeasurementFormat.temperature(sr.tempCelsius) : null;
-        byKind['fever']!.add(PediatricSymptomOccurrence(at: t, detail: tempStr));
+        final tempStr = sr.tempCelsius != null
+            ? MeasurementFormat.temperature(sr.tempCelsius)
+            : null;
+        byKind['fever']!
+            .add(PediatricSymptomOccurrence(at: t, detail: tempStr));
       }
       final medNote = sr.medicationNote?.trim();
       if (medNote != null && medNote.isNotEmpty) {
         medHints.add(medNote);
-        byKind['medication']!.add(PediatricSymptomOccurrence(at: t, detail: medNote));
+        byKind['medication']!
+            .add(PediatricSymptomOccurrence(at: t, detail: medNote));
       }
       final other = sr.otherNote?.trim();
       if (other != null && other.isNotEmpty) {
@@ -351,8 +402,11 @@ abstract final class PediatricReportService {
       }
     }
 
-    for (var cursor = start; !cursor.isAfter(end); cursor = cursor.add(const Duration(days: 1))) {
-      final j = await db.getDailyJournalText(babyId: babyId, calendarDay: cursor);
+    for (var cursor = start;
+        !cursor.isAfter(end);
+        cursor = cursor.add(const Duration(days: 1))) {
+      final j =
+          await db.getDailyJournalText(babyId: babyId, calendarDay: cursor);
       if (_journalMentions(j, ['reflux', 'refluxo', 'regurg']) &&
           !_hasStructuredSymptomOnCalendarDay(byKind['reflux']!, cursor)) {
         byKind['reflux']!.add(
@@ -379,7 +433,8 @@ abstract final class PediatricReportService {
     for (final v in vaccinesRaw) {
       final appliedInst = _appliedAtLocalFromRow(v['applied_at']);
       if (appliedInst == null) continue;
-      final appliedDay = DateTime(appliedInst.year, appliedInst.month, appliedInst.day);
+      final appliedDay =
+          DateTime(appliedInst.year, appliedInst.month, appliedInst.day);
       if (appliedDay.isBefore(start) || appliedDay.isAfter(end)) continue;
       final name = (v['name'] as String?)?.trim() ?? '';
       final dose = (v['dose'] as String?)?.trim() ?? '';
@@ -404,7 +459,10 @@ abstract final class PediatricReportService {
       weightStartKg: wStart,
       weightEndKg: wEnd,
       weightDeltaGrams: wDeltaG,
-      heightCm: heightCm,
+      heightStartCm: hStart,
+      heightEndCm: hEnd,
+      heightDeltaCm: hDelta,
+      heightCm: hEnd,
       sleepAwakeningsAvg: awakenAvg,
       longestSleepSec: longestSec,
       sleepPatternKey: sleepPat,

@@ -23,6 +23,9 @@ class PediatricReportPdfStrings {
     required this.labelWeightStart,
     required this.labelWeightEnd,
     required this.labelWeightGain,
+    required this.labelHeightStart,
+    required this.labelHeightEnd,
+    required this.labelHeightGain,
     required this.labelHeight,
     required this.labelAvgFeeds,
     required this.labelAvgSleep,
@@ -57,6 +60,9 @@ class PediatricReportPdfStrings {
   final String labelWeightStart;
   final String labelWeightEnd;
   final String labelWeightGain;
+  final String labelHeightStart;
+  final String labelHeightEnd;
+  final String labelHeightGain;
   final String labelHeight;
   final String labelAvgFeeds;
   final String labelAvgSleep;
@@ -87,6 +93,9 @@ Future<Uint8List> buildPediatricReportPdf({
   required String weightStartFmt,
   required String weightEndFmt,
   required String weightGainFmt,
+  required String heightStartFmt,
+  required String heightEndFmt,
+  required String heightGainFmt,
   required String heightFmt,
   required String sleepPatternText,
   required List<String> symptomDetailBlocks,
@@ -102,8 +111,15 @@ Future<Uint8List> buildPediatricReportPdf({
         child: pw.Row(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Expanded(flex: 5, child: pw.Text(k, style: pw.TextStyle(fontSize: 9.5, color: muted))),
-            pw.Expanded(flex: 5, child: pw.Text(v, style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold))),
+            pw.Expanded(
+                flex: 5,
+                child: pw.Text(k,
+                    style: pw.TextStyle(fontSize: 9.5, color: muted))),
+            pw.Expanded(
+                flex: 5,
+                child: pw.Text(v,
+                    style: pw.TextStyle(
+                        fontSize: 9.5, fontWeight: pw.FontWeight.bold))),
           ],
         ),
       );
@@ -114,10 +130,16 @@ Future<Uint8List> buildPediatricReportPdf({
   }
 
   final sleepInner = <pw.Widget>[
-    kv(str.labelSleepAvgDay, WeeklyReportService.formatHoursMinutes(snap.avgSleepHoursPerDay)),
-    kv(str.labelSleepAwakenings, snap.sleepAwakeningsAvg <= 0 ? str.na : snap.sleepAwakeningsAvg.toStringAsFixed(1)),
+    kv(str.labelSleepAvgDay,
+        WeeklyReportService.formatHoursMinutes(snap.avgSleepHoursPerDay)),
+    kv(
+        str.labelSleepAwakenings,
+        snap.sleepAwakeningsAvg <= 0
+            ? str.na
+            : snap.sleepAwakeningsAvg.toStringAsFixed(1)),
     if (snap.hasSleepPatternBasis) kv(str.labelSleepPattern, sleepPatternText),
-    kv(str.labelSleepLongest, WeeklyReportService.formatHoursMinutes(snap.longestSleepSec / 3600.0)),
+    kv(str.labelSleepLongest,
+        WeeklyReportService.formatHoursMinutes(snap.longestSleepSec / 3600.0)),
   ];
 
   doc.addPage(
@@ -125,9 +147,12 @@ Future<Uint8List> buildPediatricReportPdf({
       pageFormat: PdfPageFormat.a4,
       margin: const pw.EdgeInsets.all(36),
       build: (ctx) => [
-        pw.Text(str.title, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: accent)),
+        pw.Text(str.title,
+            style: pw.TextStyle(
+                fontSize: 16, fontWeight: pw.FontWeight.bold, color: accent)),
         pw.SizedBox(height: 4),
-        pw.Text('${str.periodLabel} $periodRangeFormatted', style: pw.TextStyle(fontSize: 9.5, color: muted)),
+        pw.Text('${str.periodLabel} $periodRangeFormatted',
+            style: pw.TextStyle(fontSize: 9.5, color: muted)),
         pw.SizedBox(height: 14),
         _boxed(
           softLine,
@@ -141,6 +166,9 @@ Future<Uint8List> buildPediatricReportPdf({
             kv(str.labelWeightEnd, weightEndFmt),
             kv(str.labelWeightGain, weightGainFmt),
             kv(str.labelHeight, heightFmt),
+            kv(str.labelHeightStart, heightStartFmt),
+            kv(str.labelHeightEnd, heightEndFmt),
+            kv(str.labelHeightGain, heightGainFmt),
           ],
         ),
         pw.SizedBox(height: 10),
@@ -150,11 +178,16 @@ Future<Uint8List> buildPediatricReportPdf({
           accent,
           [
             kv(str.labelAvgFeeds, snap.avgFeedingsPerDay.toStringAsFixed(1)),
-            kv(str.labelAvgSleep, WeeklyReportService.formatHoursMinutes(snap.avgSleepHoursPerDay)),
+            kv(
+                str.labelAvgSleep,
+                WeeklyReportService.formatHoursMinutes(
+                    snap.avgSleepHoursPerDay)),
             kv(str.labelAvgDiapers, snap.avgDiapersPerDay.toStringAsFixed(1)),
             kv(
               str.labelVaccines,
-              snap.vaccinesInPeriodLines.isEmpty ? str.noneRegistered : snap.vaccinesInPeriodLines.join('; '),
+              snap.vaccinesInPeriodLines.isEmpty
+                  ? str.noneRegistered
+                  : snap.vaccinesInPeriodLines.join('; '),
             ),
           ],
         ),
@@ -196,7 +229,10 @@ Future<Uint8List> buildPediatricReportPdf({
                 padding: const pw.EdgeInsets.only(top: 2),
                 child: pw.Text(
                   str.symptomDetailsEmpty,
-                  style: pw.TextStyle(fontSize: 9, color: muted, fontStyle: pw.FontStyle.italic),
+                  style: pw.TextStyle(
+                      fontSize: 9,
+                      color: muted,
+                      fontStyle: pw.FontStyle.italic),
                 ),
               )
             else
@@ -224,7 +260,9 @@ Future<Uint8List> buildPediatricReportPdf({
           ],
         ),
         pw.SizedBox(height: 14),
-        pw.Text(str.footerDisclaimer, style: pw.TextStyle(fontSize: 8, color: muted, fontStyle: pw.FontStyle.italic)),
+        pw.Text(str.footerDisclaimer,
+            style: pw.TextStyle(
+                fontSize: 8, color: muted, fontStyle: pw.FontStyle.italic)),
       ],
     ),
   );
@@ -247,7 +285,9 @@ pw.Widget _boxed(
     child: pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Text(title, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: accent)),
+        pw.Text(title,
+            style: pw.TextStyle(
+                fontSize: 11, fontWeight: pw.FontWeight.bold, color: accent)),
         pw.SizedBox(height: 7),
         ...children,
       ],

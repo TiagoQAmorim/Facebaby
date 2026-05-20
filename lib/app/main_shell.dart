@@ -15,9 +15,11 @@ import '../pages/settings_page.dart';
 import '../pages/memories/memories_page.dart' as new_memories;
 import '../services/mock_baby_service.dart';
 import '../utils/pick_image_b64.dart';
+import '../utils/portal_page_route.dart';
 import '../utils/portal_time_of_day.dart';
 import '../services/app_database.dart';
 import '../services/home_prefs.dart';
+import '../services/portal_layout_prefs.dart';
 import '../services/local_notifications_service.dart';
 import '../services/reminder_monitor.dart';
 import '../services/scheduled_local_reminders.dart';
@@ -46,6 +48,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   final CurrentBabyController currentBaby = CurrentBabyController.instance;
   int selectedIndex = 0;
   final ValueNotifier<int> _homeRouteDepth = ValueNotifier<int>(0);
+  final ScrollController _homeScrollController = ScrollController();
   late final List<_ShellTabRouteObserver> _tabRouteObservers;
   late final VoidCallback _aiMicListener;
   late final VoidCallback _onBabyChangedPopNavigators;
@@ -60,6 +63,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
 
   void _schedulePortalBackgroundRefresh() {
     _portalBgTimer?.cancel();
+    if (PortalLayoutPrefs.instance.mode != PortalLayoutMode.automatic) return;
     _portalBgTimer = Timer(
       PortalTimeOfDay.delayUntilNextTransition(DateTime.now()),
       () {
@@ -70,11 +74,17 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     );
   }
 
+  void _onPortalLayoutPrefsChanged() {
+    _schedulePortalBackgroundRefresh();
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _schedulePortalBackgroundRefresh();
+    PortalLayoutPrefs.instance.addListener(_onPortalLayoutPrefsChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       LocalNotificationsService.instance.requestPermissionOnceOnFirstLaunch();
     });
@@ -160,6 +170,11 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     } catch (e, st) {
       debugPrint('MainShell: HomePrefs.init failed: $e\n$st');
     }
+    try {
+      await PortalLayoutPrefs.init();
+    } catch (e, st) {
+      debugPrint('MainShell: PortalLayoutPrefs.init failed: $e\n$st');
+    }
     if (!mounted) return;
     ReminderMonitor.instance.start();
   }
@@ -180,10 +195,12 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   @override
   void dispose() {
     _portalBgTimer?.cancel();
+    PortalLayoutPrefs.instance.removeListener(_onPortalLayoutPrefsChanged);
     WidgetsBinding.instance.removeObserver(this);
     ShellNestedNav.selectTab = null;
     HomePrefs.aiMicEnabled.removeListener(_aiMicListener);
     currentBaby.removeListener(_onBabyChangedPopNavigators);
+    _homeScrollController.dispose();
     _homeRouteDepth.dispose();
     aiController.dispose();
     ReminderMonitor.instance.stop();
@@ -210,6 +227,18 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     // a ser Amamentação / outro ecrã empilhado — parece que o botão Início “abre” outro sítio.
     _popTabToRoot(index);
     setState(() => selectedIndex = index);
+    if (index == 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollHomeToTop());
+    }
+  }
+
+  void _scrollHomeToTop() {
+    if (!_homeScrollController.hasClients) return;
+    _homeScrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 360),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   /// Voltar nativo Android: primeiro desempilha o [Navigator] do separador atual;
@@ -243,7 +272,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     final atNight = PortalTimeOfDay.isNight(DateTime.now());
     final bgAsset = PortalTimeOfDay.backgroundAsset(DateTime.now());
     final fallback =
-        atNight ? const Color(0xFF152238) : const Color(0xFFFFEEF7);
+        atNight ? const Color(0xFF152238) : const Color(0xFFB8D9EE);
     final veil =
         atNight ? Colors.white.withAlpha(55) : Colors.white.withAlpha(105);
 
@@ -253,6 +282,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           aiController,
           currentBaby,
           kAppLanguage,
+          PortalLayoutPrefs.instance,
           HomePrefs.aiMicEnabled,
           MeasurementUnitsPrefs.length,
           MeasurementUnitsPrefs.weight,
@@ -276,6 +306,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
             HomePage(
               baby: baby,
               babyService: babyService,
+              scrollController: _homeScrollController,
               onOpenQuickRegister: openQuickRegister,
               motherName: (motherName == null || motherName.isEmpty)
                   ? null
@@ -363,22 +394,25 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           ];
           Widget tabNavigator(int i) {
             final key = ShellNestedNav.tabNavigatorKeys[i];
-            return Navigator(
-              key: key,
-              observers: [
-                LoadingNavigatorObserver(key),
-                _tabRouteObservers[i],
-              ],
-              initialRoute: '/',
-              onGenerateRoute: (RouteSettings settings) {
-                if (settings.name == '/') {
-                  return MaterialPageRoute<void>(
-                    settings: settings,
-                    builder: (_) => tabRoots[i],
-                  );
-                }
-                return null;
-              },
+            return Theme(
+              data: portalShellTheme(context),
+              child: Navigator(
+                key: key,
+                observers: [
+                  LoadingNavigatorObserver(key, maskTransitions: false),
+                  _tabRouteObservers[i],
+                ],
+                initialRoute: '/',
+                onGenerateRoute: (RouteSettings settings) {
+                  if (settings.name == '/') {
+                    return MaterialPageRoute<void>(
+                      settings: settings,
+                      builder: (_) => tabRoots[i],
+                    );
+                  }
+                  return null;
+                },
+              ),
             );
           }
 

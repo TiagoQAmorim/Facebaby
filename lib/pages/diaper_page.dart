@@ -8,6 +8,7 @@ import '../services/firebase/firestore_service.dart';
 import '../services/home_prefs.dart';
 import '../services/scheduled_local_reminders.dart';
 import '../theme/app_theme.dart';
+import '../utils/portal_night_ui.dart';
 import '../widgets/card_box.dart';
 
 /// Registo de fraldas + histórico editável.
@@ -19,10 +20,15 @@ class DiaperPage extends StatefulWidget {
 }
 
 class _DiaperPageState extends State<DiaperPage> {
+  static const int _historyPageSize = 10;
+
   final _currentBaby = CurrentBabyController.instance;
+  final _scrollController = ScrollController();
   bool _saving = false;
   Future<List<Map<String, Object?>>>? _rowsFuture;
   Future<({DateTime? lastPee, DateTime? lastPoo})>? _peePooDashFuture;
+  bool _historyExpanded = false;
+  int _historyVisible = _historyPageSize;
 
   @override
   void initState() {
@@ -34,6 +40,7 @@ class _DiaperPageState extends State<DiaperPage> {
   @override
   void dispose() {
     _currentBaby.removeListener(_onBaby);
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -42,7 +49,11 @@ class _DiaperPageState extends State<DiaperPage> {
   void _reload() {
     final bid = _currentBaby.currentBabyId;
     setState(() {
-      _rowsFuture = bid == null ? null : AppDatabase.instance.listDiapers(babyId: bid, limit: 80);
+      _historyVisible = _historyPageSize;
+      _historyExpanded = false;
+      _rowsFuture = bid == null
+          ? null
+          : AppDatabase.instance.listDiapers(babyId: bid, limit: 500);
       _peePooDashFuture = bid == null
           ? null
           : Future.wait([
@@ -86,7 +97,8 @@ class _DiaperPageState extends State<DiaperPage> {
       DiaperCloudSync.pushLocalSoon(localBabyId: babyId, localDiaperId: newId);
       await _syncLocalReminders(babyId);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.diaperSavedOk)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(s.diaperSavedOk)));
       _reload();
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -108,7 +120,11 @@ class _DiaperPageState extends State<DiaperPage> {
         children: [
           Text(
             s.diaperDashTitle,
-            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Colors.black.withAlpha(160), letterSpacing: 0.2),
+            style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 13,
+                color: Colors.black.withAlpha(160),
+                letterSpacing: 0.2),
           ),
           const SizedBox(height: 10),
           Row(
@@ -154,9 +170,11 @@ class _DiaperPageState extends State<DiaperPage> {
     final id = (row['id'] as num?)?.toInt();
     if (bid == null || id == null) return;
 
-    var changed = DateTime.tryParse(row['changed_at'] as String? ?? '') ?? DateTime.now();
+    var changed =
+        DateTime.tryParse(row['changed_at'] as String? ?? '') ?? DateTime.now();
     var kind = (row['kind'] as String?) ?? 'pee';
-    final noteCtrl = TextEditingController(text: (row['note'] as String?) ?? '');
+    final noteCtrl =
+        TextEditingController(text: (row['note'] as String?) ?? '');
 
     await showModalBottomSheet<void>(
       context: context,
@@ -175,7 +193,11 @@ class _DiaperPageState extends State<DiaperPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(s.edit, style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+                  Text(s.edit,
+                      style: Theme.of(ctx)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w900)),
                   const SizedBox(height: 14),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -200,7 +222,8 @@ class _DiaperPageState extends State<DiaperPage> {
                       );
                       if (t == null) return;
                       setSheet(() {
-                        changed = DateTime(d.year, d.month, d.day, t.hour, t.minute);
+                        changed =
+                            DateTime(d.year, d.month, d.day, t.hour, t.minute);
                       });
                     },
                   ),
@@ -209,12 +232,16 @@ class _DiaperPageState extends State<DiaperPage> {
                     value: kind,
                     decoration: InputDecoration(
                       labelText: s.diaperKindLabel,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14)),
                     ),
                     items: [
-                      DropdownMenuItem(value: 'pee', child: Text(s.diaperKindPee)),
-                      DropdownMenuItem(value: 'poo', child: Text(s.diaperKindPoo)),
-                      DropdownMenuItem(value: 'both', child: Text(s.diaperKindBoth)),
+                      DropdownMenuItem(
+                          value: 'pee', child: Text(s.diaperKindPee)),
+                      DropdownMenuItem(
+                          value: 'poo', child: Text(s.diaperKindPoo)),
+                      DropdownMenuItem(
+                          value: 'both', child: Text(s.diaperKindBoth)),
                     ],
                     onChanged: (v) => setSheet(() => kind = v ?? kind),
                   ),
@@ -224,7 +251,8 @@ class _DiaperPageState extends State<DiaperPage> {
                     maxLines: 2,
                     decoration: InputDecoration(
                       labelText: s.diaperNoteOptional,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14)),
                     ),
                   ),
                   const SizedBox(height: 18),
@@ -236,20 +264,24 @@ class _DiaperPageState extends State<DiaperPage> {
                           babyId: bid,
                           changedAt: changed,
                           kind: kind,
-                          note: noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim(),
+                          note: noteCtrl.text.trim().isEmpty
+                              ? null
+                              : noteCtrl.text.trim(),
                         );
                         await _syncLocalReminders(bid);
                         if (ctx.mounted) Navigator.pop(ctx);
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.diaperUpdatedOk)));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(s.diaperUpdatedOk)));
                         _reload();
                       } catch (e) {
                         if (ctx.mounted) {
-                          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('$e')));
+                          ScaffoldMessenger.of(ctx)
+                              .showSnackBar(SnackBar(content: Text('$e')));
                         }
                       }
                     },
-                    child: Text(s.saveRecord),
+                    child: Text(s.commonSave),
                   ),
                 ],
               ),
@@ -273,7 +305,9 @@ class _DiaperPageState extends State<DiaperPage> {
         title: Text(s.delete),
         content: Text(s.confirmDelete),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.cancel)),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(s.cancel)),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
@@ -293,11 +327,14 @@ class _DiaperPageState extends State<DiaperPage> {
             await FirestoreService.instance.deleteEvent(cloudId);
           } catch (_) {}
         }
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.deletedOk)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(s.deletedOk)));
         _reload();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
     }
   }
 
@@ -306,11 +343,14 @@ class _DiaperPageState extends State<DiaperPage> {
     final s = S.of(context);
     final babyId = _currentBaby.currentBabyId;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(s.shortcutDiaper)),
-      body: SafeArea(
+    return PortalNightUi.listen((context, night) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: PortalNightUi.appBar(s.shortcutDiaper, night: night),
+        body: SafeArea(
         top: false,
         child: SingleChildScrollView(
+          controller: _scrollController,
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
           child: Center(
             child: ConstrainedBox(
@@ -322,13 +362,18 @@ class _DiaperPageState extends State<DiaperPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.baby_changing_station_rounded, color: AppTheme.green, size: 40),
+                        Icon(Icons.baby_changing_station_rounded,
+                            color: AppTheme.green, size: 40),
                         const SizedBox(height: 14),
-                        Text(s.shortcutDiaper, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.textPrimary)),
+                        Text(
+                          s.shortcutDiaper,
+                          style: PortalNightUi.cardTitleStyle(fontSize: 22),
+                        ),
                         const SizedBox(height: 10),
                         Text(
                           s.diaperIntro,
-                          style: TextStyle(height: 1.45, fontWeight: FontWeight.w600, color: Colors.black.withAlpha(150)),
+                          style: PortalNightUi.cardSubtitleStyle(fontSize: 14)
+                              .copyWith(height: 1.45),
                         ),
                         const SizedBox(height: 14),
                         if (babyId != null)
@@ -337,19 +382,34 @@ class _DiaperPageState extends State<DiaperPage> {
                             builder: (context, enabled, _) {
                               return SwitchListTile.adaptive(
                                 contentPadding: EdgeInsets.zero,
-                                secondary: Icon(Icons.notifications_active_outlined, color: AppTheme.green.withAlpha(230)),
-                                title: Text(s.diaperToggleAlerts, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                                subtitle: Text(s.diaperToggleAlertsSubtitle, style: TextStyle(fontSize: 12, color: Colors.black.withAlpha(130))),
+                                secondary: const Icon(
+                                  Icons.notifications_active_outlined,
+                                  color: AppTheme.green,
+                                ),
+                                title: Text(
+                                  s.diaperToggleAlerts,
+                                  style: PortalNightUi.cardTitleStyle(
+                                      fontSize: 15),
+                                ),
+                                subtitle: Text(
+                                  s.diaperToggleAlertsSubtitle,
+                                  style: PortalNightUi.cardSubtitleStyle(
+                                      fontSize: 12),
+                                ),
                                 value: enabled,
                                 activeThumbColor: AppTheme.green,
-                                onChanged: (v) => HomePrefs.setDiaperAlertsEnabled(v),
+                                onChanged: (v) =>
+                                    HomePrefs.setDiaperAlertsEnabled(v),
                               );
                             },
                           ),
                         if (babyId != null) const SizedBox(height: 8),
                         const SizedBox(height: 16),
                         if (babyId == null)
-                          Text(s.feedingNoBabyHint, style: TextStyle(color: Colors.black.withAlpha(140), fontWeight: FontWeight.w700))
+                          Text(s.feedingNoBabyHint,
+                              style: TextStyle(
+                                  color: Colors.black.withAlpha(140),
+                                  fontWeight: FontWeight.w700))
                         else
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -358,15 +418,22 @@ class _DiaperPageState extends State<DiaperPage> {
                                 children: [
                                   Expanded(
                                     child: FilledButton.icon(
-                                      onPressed: _saving ? null : () => _quickSaveDiaper(s, babyId, 'pee'),
-                                      icon: const Icon(Icons.water_drop_rounded),
+                                      onPressed: _saving
+                                          ? null
+                                          : () => _quickSaveDiaper(
+                                              s, babyId, 'pee'),
+                                      icon:
+                                          const Icon(Icons.water_drop_rounded),
                                       label: Text(s.diaperKindPee),
                                     ),
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: FilledButton.icon(
-                                      onPressed: _saving ? null : () => _quickSaveDiaper(s, babyId, 'poo'),
+                                      onPressed: _saving
+                                          ? null
+                                          : () => _quickSaveDiaper(
+                                              s, babyId, 'poo'),
                                       icon: const Icon(Icons.spa_rounded),
                                       label: Text(s.diaperKindPoo),
                                     ),
@@ -377,33 +444,43 @@ class _DiaperPageState extends State<DiaperPage> {
                               FilledButton.icon(
                                 style: FilledButton.styleFrom(
                                   visualDensity: VisualDensity.standard,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 14),
                                 ),
-                                onPressed: _saving ? null : () => _quickSaveDiaper(s, babyId, 'both'),
-                                icon: Icon(Icons.layers_rounded, color: Colors.white.withAlpha(250)),
+                                onPressed: _saving
+                                    ? null
+                                    : () => _quickSaveDiaper(s, babyId, 'both'),
+                                icon: Icon(Icons.layers_rounded,
+                                    color: Colors.white.withAlpha(250)),
                                 label: Text(s.diaperKindBoth),
                               ),
                               const SizedBox(height: 14),
-                              FutureBuilder<({DateTime? lastPee, DateTime? lastPoo})>(
+                              FutureBuilder<
+                                  ({DateTime? lastPee, DateTime? lastPoo})>(
                                 future: _peePooDashFuture,
                                 builder: (context, dashSnap) {
-                                  if (_peePooDashFuture == null) return const SizedBox.shrink();
-                                  if (dashSnap.connectionState == ConnectionState.waiting) {
+                                  if (_peePooDashFuture == null)
+                                    return const SizedBox.shrink();
+                                  if (dashSnap.connectionState ==
+                                      ConnectionState.waiting) {
                                     return Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 10),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 10),
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(99),
                                         child: LinearProgressIndicator(
                                           minHeight: 6,
                                           color: AppTheme.green,
-                                          backgroundColor: AppTheme.green.withAlpha(40),
+                                          backgroundColor:
+                                              AppTheme.green.withAlpha(40),
                                         ),
                                       ),
                                     );
                                   }
                                   final d = dashSnap.data;
                                   if (d == null) return const SizedBox.shrink();
-                                  return _diaperDashboard(s, d.lastPee, d.lastPoo);
+                                  return _diaperDashboard(
+                                      s, d.lastPee, d.lastPoo);
                                 },
                               ),
                             ],
@@ -413,63 +490,112 @@ class _DiaperPageState extends State<DiaperPage> {
                   ),
                   if (babyId != null) ...[
                     const SizedBox(height: 22),
-                    Text(s.diaperHistoryTitle, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.black.withAlpha(180))),
+                    Text(s.diaperHistoryTitle,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                            color: Colors.black.withAlpha(180))),
                     const SizedBox(height: 10),
-                    FutureBuilder<List<Map<String, Object?>>>(
-                      future: _rowsFuture,
-                      builder: (context, snap) {
-                        if (snap.connectionState == ConnectionState.waiting) {
-                          return const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()));
-                        }
-                        final rows = snap.data ?? const [];
-                        if (rows.isEmpty) {
-                          return Text(s.diaperHistoryEmpty, style: TextStyle(color: Colors.black.withAlpha(130)));
-                        }
-                        return Column(
-                          children: rows.map((row) {
-                            final id = (row['id'] as num?)?.toInt();
-                            final dt = DateTime.tryParse(row['changed_at'] as String? ?? '');
-                            final kind = (row['kind'] as String?) ?? 'pee';
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              elevation: 0,
-                              color: const Color(0xFFF5F6F8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                side: BorderSide(color: Colors.black.withAlpha(14)),
-                              ),
-                              child: ListTile(
-                                title: Text(_kindLabel(s, kind), style: const TextStyle(fontWeight: FontWeight.w800)),
-                                subtitle: Text(
-                                  dt == null
-                                      ? '—'
-                                      : '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')} '
-                                          '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}',
-                                  style: TextStyle(color: Colors.black.withAlpha(130), fontWeight: FontWeight.w600),
-                                ),
-                                trailing: id == null
-                                    ? null
-                                    : Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          IconButton(
-                                            tooltip: s.edit,
-                                            onPressed: () => _editDiaper(s, row),
-                                            icon: Icon(Icons.edit_outlined, color: AppTheme.green.withAlpha(220)),
-                                          ),
-                                          IconButton(
-                                            tooltip: s.delete,
-                                            onPressed: () => _confirmDelete(s, row),
-                                            icon: Icon(Icons.delete_outline, color: Colors.red.withAlpha(200)),
-                                          ),
-                                        ],
-                                      ),
-                              ),
-                            );
-                          }).toList(),
-                        );
-                      },
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => setState(() {
+                          _historyExpanded = !_historyExpanded;
+                          _historyVisible = _historyPageSize;
+                        }),
+                        icon: Icon(_historyExpanded
+                            ? Icons.expand_less_rounded
+                            : Icons.history_rounded),
+                        label: Text(_historyExpanded
+                            ? s.historyHideButton
+                            : s.historyShowButton),
+                      ),
                     ),
+                    if (_historyExpanded) ...[
+                      const SizedBox(height: 10),
+                      FutureBuilder<List<Map<String, Object?>>>(
+                        future: _rowsFuture,
+                        builder: (context, snap) {
+                          if (snap.connectionState == ConnectionState.waiting) {
+                            return const Padding(
+                                padding: EdgeInsets.all(24),
+                                child:
+                                    Center(child: CircularProgressIndicator()));
+                          }
+                          final rows = snap.data ?? const [];
+                          if (rows.isEmpty) {
+                            return Text(s.diaperHistoryEmpty,
+                                style: TextStyle(
+                                    color: Colors.black.withAlpha(130)));
+                          }
+                          final visibleRows = rows.take(_historyVisible);
+                          return Column(
+                            children: [
+                              ...visibleRows.map((row) {
+                                final id = (row['id'] as num?)?.toInt();
+                                final dt = DateTime.tryParse(
+                                    row['changed_at'] as String? ?? '');
+                                final kind = (row['kind'] as String?) ?? 'pee';
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  elevation: 0,
+                                  color: const Color(0xFFF5F6F8),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    side: BorderSide(
+                                        color: Colors.black.withAlpha(14)),
+                                  ),
+                                  child: ListTile(
+                                    title: Text(_kindLabel(s, kind),
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w800)),
+                                    subtitle: Text(
+                                      dt == null
+                                          ? '—'
+                                          : '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')} '
+                                              '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}',
+                                      style: TextStyle(
+                                          color: Colors.black.withAlpha(130),
+                                          fontWeight: FontWeight.w600),
+                                    ),
+                                    trailing: id == null
+                                        ? null
+                                        : Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              IconButton(
+                                                tooltip: s.edit,
+                                                onPressed: () =>
+                                                    _editDiaper(s, row),
+                                                icon: Icon(Icons.edit_outlined,
+                                                    color: AppTheme.green
+                                                        .withAlpha(220)),
+                                              ),
+                                              IconButton(
+                                                tooltip: s.delete,
+                                                onPressed: () =>
+                                                    _confirmDelete(s, row),
+                                                icon: Icon(Icons.delete_outline,
+                                                    color: Colors.red
+                                                        .withAlpha(200)),
+                                              ),
+                                            ],
+                                          ),
+                                  ),
+                                );
+                              }),
+                              if (_historyVisible < rows.length)
+                                TextButton.icon(
+                                  onPressed: () => setState(() =>
+                                      _historyVisible += _historyPageSize),
+                                  icon: const Icon(Icons.expand_more_rounded),
+                                  label: Text(s.historyViewMoreButton),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
                   ],
                 ],
               ),
@@ -478,6 +604,7 @@ class _DiaperPageState extends State<DiaperPage> {
         ),
       ),
     );
+    });
   }
 }
 
@@ -516,7 +643,11 @@ class _DiaperDashCell extends StatelessWidget {
                     title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: Colors.black.withAlpha(200), height: 1.15),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 12,
+                        color: Colors.black.withAlpha(200),
+                        height: 1.15),
                   ),
                 ),
               ],
@@ -524,7 +655,11 @@ class _DiaperDashCell extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               subtitle,
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.textPrimary, height: 1.2),
+              style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: AppTheme.textPrimary,
+                  height: 1.2),
             ),
           ],
         ),

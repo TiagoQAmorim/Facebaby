@@ -10,6 +10,7 @@ import '../../theme/app_theme.dart';
 import '../../utils/portal_layout.dart';
 import '../../widgets/photo_avatar.dart';
 import '../development_leaps_page.dart';
+import 'report_page_shell.dart';
 
 /// Relatório de desenvolvimento — marcos por idade, score suave e tom acolhedor.
 class DevelopmentReportPage extends StatefulWidget {
@@ -97,10 +98,14 @@ class _DevelopmentReportPageState extends State<DevelopmentReportPage> with Sing
     final refDay = DateTime(widget.anchorDay.year, widget.anchorDay.month, widget.anchorDay.day);
     final ageTitle = birth != null ? s.babyAgeLabel(birth, refDay) : '—';
 
+    final reportBg = reportScaffoldBackground();
+    final bg = reportBg ?? _bg;
+
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: bg,
       appBar: AppBar(
-        backgroundColor: _bg,
+        backgroundColor: bg,
+        surfaceTintColor: bg,
         elevation: 0,
         title: Text(s.reportDevScreenTitle, style: const TextStyle(fontWeight: FontWeight.w900, color: _purple)),
       ),

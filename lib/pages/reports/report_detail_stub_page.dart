@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../i18n/app_i18n.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/portal_layout.dart';
+import 'report_page_shell.dart';
 
 /// Ecrã temporário até cada relatório ter UI e dados definidos.
 class ReportDetailStubPage extends StatelessWidget {
@@ -37,8 +38,15 @@ class ReportDetailStubPage extends StatelessWidget {
     final s = S.of(context);
     final dayStr = formatDay(anchorDay);
 
+    final reportBg = reportScaffoldBackground();
+
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      backgroundColor: reportBg,
+      appBar: AppBar(
+        backgroundColor: reportBg,
+        surfaceTintColor: reportBg,
+        title: Text(title),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(AppTheme.pageHPadding, 20, AppTheme.pageHPadding, 32),

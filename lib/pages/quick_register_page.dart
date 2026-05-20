@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../controllers/current_baby_controller.dart';
 import '../i18n/app_i18n.dart';
 import '../theme/app_theme.dart';
+import '../utils/portal_night_ui.dart';
+import '../utils/portal_page_route.dart';
 import '../utils/portal_time_of_day.dart';
 import 'diaper_page.dart';
 import 'feeding_hub_page.dart';
@@ -45,70 +47,79 @@ class _QuickRegisterPageState extends State<QuickRegisterPage> with AutomaticKee
     super.build(context);
     final s = S.of(context);
     final babyId = _currentBaby.currentBabyId;
-    final nightTitleColor = PortalTimeOfDay.isNight(DateTime.now())
-        ? PortalTimeOfDay.nightTextColor
-        : null;
 
-    return SingleChildScrollView(
+    return PortalNightUi.listen((context, night) {
+      return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(AppTheme.pageHPadding, 24, AppTheme.pageHPadding, 110),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             s.quickRecordsTitle,
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
-              color: nightTitleColor,
-            ),
+            style: PortalNightUi.titleStyle(night, fontSize: 28),
           ),
           const SizedBox(height: 8),
           Text(
             s.quickRecordsSubtitle,
-            style: TextStyle(color: nightTitleColor),
+            style: PortalNightUi.bodyStyle(night, fontSize: 14).copyWith(
+              fontWeight: FontWeight.w600,
+              color: night ? PortalTimeOfDay.nightTextColor : null,
+              shadows: night ? PortalTimeOfDay.nightTextOutlineShadows : null,
+            ),
           ),
           const SizedBox(height: 22),
           if (babyId == null)
             Text(
               s.feedingNoBabyHint,
-              style: TextStyle(color: Colors.black.withAlpha(140), fontWeight: FontWeight.w700),
+              style: PortalNightUi.bodyStyle(night).copyWith(
+                fontWeight: FontWeight.w700,
+                color: night
+                    ? PortalTimeOfDay.nightOutlinedTextColor.withAlpha(220)
+                    : Colors.black.withAlpha(140),
+              ),
             )
           else ...[
             _RegisterRow(
               icon: Icons.monitor_weight_outlined,
               title: s.growth,
               color: AppTheme.secondary,
-              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const GrowthRegisterPage())),
+              onTap: () => pushPortalPage<void>(
+                    context, const GrowthRegisterPage()),
             ),
             const SizedBox(height: 10),
             _RegisterRow(
               icon: Icons.restaurant_outlined,
               title: s.shortcutFeedingSession,
               color: const Color(0xFFE08A3E),
-              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                    builder: (_) => FeedingHubPage(appBarTitle: s.shortcutFeedingSession),
-                  )),
+              onTap: () => pushPortalPage<void>(
+                    context,
+                    FeedingHubPage(
+                        appBarTitle: s.shortcutFeedingSession),
+                  ),
             ),
             const SizedBox(height: 10),
             _RegisterRow(
               icon: Icons.favorite_outline,
               title: s.shortcutHealth,
               color: AppTheme.green,
-              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const HealthHubPage())),
+              onTap: () =>
+                  pushPortalPage<void>(context, const HealthHubPage()),
             ),
             const SizedBox(height: 10),
             _RegisterRow(
               icon: Icons.baby_changing_station_rounded,
               title: s.shortcutDiaper,
               color: AppTheme.mint,
-              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const DiaperPage())),
+              onTap: () =>
+                  pushPortalPage<void>(context, const DiaperPage()),
             ),
             const SizedBox(height: 10),
             _RegisterRow(
               icon: Icons.nightlight_round,
               title: s.shortcutSleep,
               color: AppTheme.primary,
-              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SleepPage())),
+              onTap: () =>
+                  pushPortalPage<void>(context, const SleepPage()),
             ),
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 14),
@@ -118,12 +129,14 @@ class _QuickRegisterPageState extends State<QuickRegisterPage> with AutomaticKee
               icon: Icons.insert_chart_outlined,
               title: s.reportsTitle,
               color: AppTheme.textPrimary,
-              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ReportsHubPage())),
+              onTap: () =>
+                  pushPortalPage<void>(context, const ReportsHubPage()),
             ),
           ],
         ],
       ),
     );
+    });
   }
 }
 
@@ -172,10 +185,13 @@ class _RegisterRow extends StatelessWidget {
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, height: 1.15),
+                    style: PortalNightUi.cardTitleStyle(fontSize: 17),
                   ),
                 ),
-                Icon(Icons.chevron_right_rounded, color: Colors.black.withAlpha(90)),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: PortalNightUi.cardChevronColor(),
+                ),
               ],
             ),
           ),

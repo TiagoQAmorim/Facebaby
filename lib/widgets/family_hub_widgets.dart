@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../utils/family_zodiac_art.dart';
 import '../utils/zodiac_element.dart';
 import '../utils/zodiac_keys.dart';
+import 'premium_locked_content_card.dart';
 
 const Color _kHubPink = Color(0xFFE84D7A);
 const Color _kHubInk = Color(0xFF2B2233);
@@ -30,6 +31,7 @@ class FamilyRelationshipSelector extends StatelessWidget {
     required this.babyAvatar,
     required this.babySelected,
     required this.onBaby,
+    this.accent = _kHubPink,
     this.fatherLabel,
     this.fatherAvatar,
     this.fatherSelected = false,
@@ -45,6 +47,7 @@ class FamilyRelationshipSelector extends StatelessWidget {
   final Widget babyAvatar;
   final bool babySelected;
   final VoidCallback onBaby;
+  final Color accent;
 
   final String? fatherLabel;
   final Widget? fatherAvatar;
@@ -77,7 +80,7 @@ class FamilyRelationshipSelector extends StatelessWidget {
               color: Colors.white.withAlpha(selected ? 252 : 235),
               shape: BoxShape.circle,
               border: Border.all(
-                color: selected ? _kHubPink.withAlpha(210) : Colors.white,
+                color: selected ? accent.withAlpha(210) : Colors.white,
                 width: selected ? 3 : 1,
               ),
               boxShadow: [
@@ -118,12 +121,12 @@ class FamilyRelationshipSelector extends StatelessWidget {
                     shape: BoxShape.circle,
                     color: Colors.white.withAlpha(248),
                     border: Border.all(
-                      color: babySelected ? _kHubPink : Colors.white,
+                      color: babySelected ? accent : Colors.white,
                       width: babySelected ? 3 : 2,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: _kHubPink.withAlpha(babySelected ? 90 : 38),
+                        color: accent.withAlpha(babySelected ? 90 : 38),
                         blurRadius: babySelected ? 26 : 12,
                         offset: const Offset(0, 10),
                       ),
@@ -169,9 +172,9 @@ class FamilyRelationshipSelector extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
                 gradient: LinearGradient(
                   colors: [
-                    _kHubPink.withAlpha(0),
-                    _kHubPink.withAlpha(110),
-                    _kHubPink.withAlpha(0),
+                    accent.withAlpha(0),
+                    accent.withAlpha(110),
+                    accent.withAlpha(0),
                   ],
                 ),
               ),
@@ -217,6 +220,7 @@ class FamilyHubAvatarRibbon extends FamilyRelationshipSelector {
     required super.babyAvatar,
     required super.babySelected,
     required super.onBaby,
+    super.accent,
     super.fatherLabel,
     super.fatherAvatar,
     super.fatherSelected,
@@ -236,12 +240,16 @@ class FamilyHubBabyHeroCard extends StatelessWidget {
     required this.heightStr,
     required this.signDisplayName,
     required this.showZodiac,
+    this.accent = _kHubPink,
     required this.babyAvatar,
     this.signId,
     this.heightEstimateTitle,
     this.heightEstimateBody,
     this.heightEstimateDescription,
     this.heightEstimateAsset,
+    this.heightEstimateLocked = false,
+    this.onPremiumTap,
+    this.onPhotoTap,
     this.onTap,
   });
 
@@ -253,12 +261,16 @@ class FamilyHubBabyHeroCard extends StatelessWidget {
   final String heightStr;
   final String signDisplayName;
   final bool showZodiac;
+  final Color accent;
   final Widget babyAvatar;
   final ZodiacId? signId;
   final String? heightEstimateTitle;
   final String? heightEstimateBody;
   final String? heightEstimateDescription;
   final String? heightEstimateAsset;
+  final bool heightEstimateLocked;
+  final VoidCallback? onPremiumTap;
+  final VoidCallback? onPhotoTap;
   final VoidCallback? onTap;
 
   @override
@@ -293,17 +305,17 @@ class FamilyHubBabyHeroCard extends StatelessWidget {
         final hasHeightEstimate =
             heightEstimateTitle != null && heightEstimateBody != null;
         final cardHeight = hasHeightEstimate
-            ? (compact ? 248.0 : 266.0)
+            ? (compact ? 268.0 : 288.0)
             : (compact ? 165.0 : 180.0);
         final avatarSize =
-            showZodiac ? (compact ? 76.0 : 82.0) : (compact ? 92.0 : 100.0);
+            showZodiac ? (compact ? 76.0 : 82.0) : (compact ? 88.0 : 96.0);
         const nameSize = 23.0;
         const itemSize = 14.0;
 
         Widget infoLine(IconData icon, String text) {
           return Row(
             children: [
-              Icon(icon, size: 17, color: _kHubPink.withAlpha(220)),
+              Icon(icon, size: 17, color: accent.withAlpha(220)),
               const SizedBox(width: 5),
               Expanded(
                 child: Text(
@@ -324,8 +336,8 @@ class FamilyHubBabyHeroCard extends StatelessWidget {
 
         Widget photo() {
           return SizedBox(
-            width: avatarSize + 10,
-            height: avatarSize + 16,
+            width: avatarSize + 18,
+            height: avatarSize + 20,
             child: Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.center,
@@ -337,32 +349,35 @@ class FamilyHubBabyHeroCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border:
-                          Border.all(color: _kHubPink.withAlpha(170), width: 2),
+                          Border.all(color: accent.withAlpha(170), width: 2),
                     ),
-                    child: Container(
-                      width: avatarSize,
-                      height: avatarSize,
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withAlpha(28),
-                            blurRadius: 12,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
+                    child: GestureDetector(
+                      onTap: onPhotoTap,
+                      child: Container(
+                        width: avatarSize,
+                        height: avatarSize,
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withAlpha(28),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: FittedBox(fit: BoxFit.cover, child: babyAvatar),
                       ),
-                      clipBehavior: Clip.antiAlias,
-                      child: FittedBox(fit: BoxFit.cover, child: babyAvatar),
                     ),
                   ),
                 ),
                 Positioned(
-                  top: 0,
-                  left: 2,
+                  top: showZodiac ? 0 : 3,
+                  left: showZodiac ? 2 : 7,
                   child: Image.asset(
                     'assets/weekly_photo/crown.png',
                     width: compact ? 24 : 26,
@@ -394,10 +409,10 @@ class FamilyHubBabyHeroCard extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w900,
-                  color: _kHubPink,
+                  color: accent,
                   height: 1.05,
                 ),
               ),
@@ -434,7 +449,7 @@ class FamilyHubBabyHeroCard extends StatelessWidget {
                       color: Colors.white.withAlpha(_kFamilyBannerBorderAlpha)),
                   boxShadow: [
                     BoxShadow(
-                      color: _kHubPink.withAlpha(35),
+                      color: accent.withAlpha(35),
                       blurRadius: 22,
                       offset: const Offset(0, 10),
                     ),
@@ -457,10 +472,10 @@ class FamilyHubBabyHeroCard extends StatelessWidget {
                                   babyName,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: nameSize,
                                     fontWeight: FontWeight.w900,
-                                    color: _kHubPink,
+                                    color: accent,
                                     height: 1.05,
                                   ),
                                 ),
@@ -469,7 +484,7 @@ class FamilyHubBabyHeroCard extends StatelessWidget {
                                   ageLabel,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
                                     color: _kHubInk,
@@ -493,11 +508,8 @@ class FamilyHubBabyHeroCard extends StatelessWidget {
                             Expanded(
                               flex: 58,
                               child: Align(
-                                alignment: Alignment.centerRight,
-                                child: Transform.translate(
-                                  offset: const Offset(8, 0),
-                                  child: photo(),
-                                ),
+                                alignment: Alignment.center,
+                                child: photo(),
                               ),
                             ),
                         ],
@@ -506,71 +518,85 @@ class FamilyHubBabyHeroCard extends StatelessWidget {
                     if (hasHeightEstimate) ...[
                       const SizedBox(height: 10),
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           if (heightEstimateAsset != null)
-                            Transform.translate(
-                              offset: const Offset(0, 18),
-                              child: SizedBox(
-                                width: compact ? 108 : 128,
-                                height: compact ? 132 : 152,
-                                child: Image.asset(
-                                  heightEstimateAsset!,
-                                  fit: BoxFit.contain,
-                                  gaplessPlayback: true,
-                                  errorBuilder: (_, __, ___) => Icon(
-                                    Icons.height_rounded,
-                                    size: compact ? 72 : 84,
-                                    color: _kHubPink.withAlpha(230),
-                                  ),
+                            SizedBox(
+                              width: compact ? 100 : 118,
+                              height: compact ? 118 : 138,
+                              child: Image.asset(
+                                heightEstimateAsset!,
+                                fit: BoxFit.contain,
+                                gaplessPlayback: true,
+                                alignment: Alignment.center,
+                                errorBuilder: (_, __, ___) => Icon(
+                                  Icons.height_rounded,
+                                  size: compact ? 72 : 84,
+                                  color: accent.withAlpha(230),
                                 ),
                               ),
                             )
                           else
                             Icon(Icons.height_rounded,
-                                size: 68, color: _kHubPink.withAlpha(230)),
+                                size: 68, color: accent.withAlpha(230)),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+                            child: Transform.translate(
+                              offset: Offset(0, compact ? 10 : 12),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                                 Text(
                                   heightEstimateTitle!,
-                                  maxLines: 1,
+                                  maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 12.5,
+                                  style: TextStyle(
+                                    fontSize: 13.5,
                                     fontWeight: FontWeight.w900,
                                     color: _kHubInk,
                                     height: 1.1,
                                   ),
                                 ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  heightEstimateBody!,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w900,
-                                    color: _kHubPink,
-                                    height: 1.12,
-                                  ),
-                                ),
-                                if (heightEstimateDescription != null) ...[
-                                  const SizedBox(height: 3),
+                                const SizedBox(height: 6),
+                                if (heightEstimateLocked)
+                                  PremiumLockedContentCard(
+                                    title: s.familyPremiumBannerTitle,
+                                    subtitle: heightEstimateBody!,
+                                    ctaLabel: s.familyPremiumUnlockCta,
+                                    onTap: onPremiumTap,
+                                    compact: true,
+                                    accent: accent,
+                                  )
+                                else ...[
                                   Text(
-                                    heightEstimateDescription!,
+                                    heightEstimateBody!,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: _kHubMuted.withAlpha(245),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w900,
+                                      color: accent,
                                       height: 1.12,
                                     ),
                                   ),
+                                  if (heightEstimateDescription != null) ...[
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      heightEstimateDescription!,
+                                      maxLines: 5,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 11.8,
+                                        fontWeight: FontWeight.w700,
+                                        color: _kHubMuted.withAlpha(245),
+                                        height: 1.18,
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ],
+                            ),
                             ),
                           ),
                         ],
@@ -601,6 +627,7 @@ class FamilyHubAdultHeroCard extends StatelessWidget {
     required this.avatar,
     required this.accent,
     this.signId,
+    this.onPhotoTap,
     this.onTap,
   });
 
@@ -615,6 +642,7 @@ class FamilyHubAdultHeroCard extends StatelessWidget {
   final Widget avatar;
   final Color accent;
   final ZodiacId? signId;
+  final VoidCallback? onPhotoTap;
   final VoidCallback? onTap;
 
   @override
@@ -680,22 +708,25 @@ class FamilyHubAdultHeroCard extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 82,
-                    height: 82,
-                    padding: const EdgeInsets.all(3),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: accent.withAlpha(34),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                  GestureDetector(
+                    onTap: onPhotoTap,
+                    child: Container(
+                      width: 82,
+                      height: 82,
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: accent.withAlpha(34),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: FittedBox(fit: BoxFit.cover, child: avatar),
                     ),
-                    child: FittedBox(fit: BoxFit.cover, child: avatar),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -717,7 +748,7 @@ class FamilyHubAdultHeroCard extends StatelessWidget {
                         const SizedBox(height: 3),
                         Text(
                           showZodiac
-                              ? '$signDisplayName · $roleLabel'
+                              ? '$roleLabel de $signDisplayName'
                               : roleLabel,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -767,7 +798,9 @@ class FamilyHubContentCards extends StatelessWidget {
     required this.showHoroscope,
     required this.showChristian,
     required this.contentUnlocked,
+    this.accent = _kHubPink,
     this.signId,
+    this.onPremiumTap,
   });
 
   final S s;
@@ -779,7 +812,9 @@ class FamilyHubContentCards extends StatelessWidget {
   final bool showHoroscope;
   final bool showChristian;
   final bool contentUnlocked;
+  final Color accent;
   final ZodiacId? signId;
+  final VoidCallback? onPremiumTap;
 
   @override
   Widget build(BuildContext context) {
@@ -787,8 +822,6 @@ class FamilyHubContentCards extends StatelessWidget {
 
     final reference = _cleanReference(bibleReference);
     final verse = _cleanVerseBody(bibleBody, reference);
-    final lockedBody = s.familyPremiumFeatureLockedBody;
-
     Widget emotionalCard({
       required IconData icon,
       required Color accent,
@@ -796,6 +829,7 @@ class FamilyHubContentCards extends StatelessWidget {
       required String body,
       String? assetIcon,
       String? reference,
+      bool locked = false,
     }) {
       final cleanBody =
           body.trim().isEmpty ? s.familyEntertainmentNote : body.trim();
@@ -855,16 +889,28 @@ class FamilyHubContentCards extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 9),
-            Text(
-              cleanBody,
-              style: TextStyle(
-                fontSize: 14.5,
-                height: 1.32,
-                fontWeight: FontWeight.w500,
-                color: _kHubInk.withAlpha(224),
+            if (locked)
+              PremiumLockedContentCard(
+                title: s.familyPremiumBannerTitle,
+                subtitle: cleanBody,
+                ctaLabel: s.familyPremiumUnlockCta,
+                onTap: onPremiumTap,
+                compact: true,
+                accent: accent,
+              )
+            else
+              Text(
+                cleanBody,
+                style: TextStyle(
+                  fontSize: 14.5,
+                  height: 1.32,
+                  fontWeight: FontWeight.w500,
+                  color: _kHubInk.withAlpha(224),
+                ),
               ),
-            ),
-            if (reference != null && reference.trim().isNotEmpty) ...[
+            if (!locked &&
+                reference != null &&
+                reference.trim().isNotEmpty) ...[
               const SizedBox(height: 7),
               Text(
                 reference.trim(),
@@ -888,11 +934,12 @@ class FamilyHubContentCards extends StatelessWidget {
           if (showChristian)
             emotionalCard(
               icon: Icons.menu_book_rounded,
-              accent: _kHubPink,
+              accent: accent,
               assetIcon: familyChristianCrossAsset,
               title: bibleTitle,
-              body: contentUnlocked ? verse : lockedBody,
+              body: contentUnlocked ? verse : s.familyPremiumFeatureLockedBody,
               reference: contentUnlocked ? reference : null,
+              locked: !contentUnlocked,
             ),
           if (showHoroscope)
             emotionalCard(
@@ -902,6 +949,7 @@ class FamilyHubContentCards extends StatelessWidget {
               title: horoscopeTitle,
               body:
                   contentUnlocked ? horoscopeBody : s.familyPremiumZodiacLocked,
+              locked: !contentUnlocked,
             ),
         ];
 
@@ -968,6 +1016,7 @@ class FamilyHubDailySummaryStrip extends StatelessWidget {
     this.lastFeed,
     this.lastDiaper,
     this.lastSleep,
+    this.accent = _kHubPink,
   });
 
   final S s;
@@ -979,6 +1028,7 @@ class FamilyHubDailySummaryStrip extends StatelessWidget {
   final DateTime? lastFeed;
   final DateTime? lastDiaper;
   final DateTime? lastSleep;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
@@ -1053,7 +1103,7 @@ class FamilyHubDailySummaryStrip extends StatelessWidget {
               icon: Icon(
                 Icons.calendar_month_rounded,
                 size: 21,
-                color: AppTheme.primaryPurple.withAlpha(220),
+                color: accent.withAlpha(220),
               ),
             ),
           ],
@@ -1082,7 +1132,7 @@ class FamilyHubDailySummaryStrip extends StatelessWidget {
 
             final cards = <Widget>[
               card(
-                color: AppTheme.primaryPink,
+                color: accent,
                 softBg: Colors.white.withAlpha(_kFamilyBannerAlpha),
                 icon: Icons.local_drink_rounded,
                 title: s.familySummaryFeeding,
@@ -1224,125 +1274,12 @@ class FamilyHubPremiumBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(22),
-      child: InkWell(
-        onTap: onPremiumTap,
-        borderRadius: BorderRadius.circular(22),
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
-            color: Colors.white.withAlpha(_kFamilyBannerAlpha),
-            border: Border.all(
-                color: Colors.white.withAlpha(_kFamilyBannerBorderAlpha)),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.primaryPurple.withAlpha(40),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: LayoutBuilder(
-              builder: (context, c) {
-                final compact = c.maxWidth < 360;
-                final icon = Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Image.asset(
-                    'assets/weekly_photo/crown.png',
-                    width: 32,
-                    height: 32,
-                    errorBuilder: (_, __, ___) => Icon(
-                      Icons.workspace_premium_rounded,
-                      color: Colors.amber.shade700,
-                    ),
-                  ),
-                );
-                final copy = Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      s.familyPremiumBannerTitle,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.primaryPurple,
-                        height: 1.15,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      s.familyPremiumBannerBody,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: _kHubMuted.withAlpha(245),
-                        height: 1.25,
-                      ),
-                    ),
-                  ],
-                );
-                final button = FilledButton(
-                  onPressed: onPremiumTap,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppTheme.primaryPurple,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: Text(
-                    s.familyPremiumViewPlans,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 13,
-                    ),
-                  ),
-                );
-
-                if (compact) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          icon,
-                          const SizedBox(width: 12),
-                          Expanded(child: copy),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Align(alignment: Alignment.centerRight, child: button),
-                    ],
-                  );
-                }
-
-                return Row(
-                  children: [
-                    icon,
-                    const SizedBox(width: 12),
-                    Expanded(child: copy),
-                    const SizedBox(width: 12),
-                    button,
-                  ],
-                );
-              },
-            ),
-          ),
-        ),
-      ),
+    return PremiumLockedContentCard(
+      title: s.familyPremiumBannerTitle,
+      subtitle: s.familyPremiumBannerBody,
+      ctaLabel: s.familyPremiumViewPlans,
+      onTap: onPremiumTap,
+      accent: AppTheme.primaryPurple,
     );
   }
 }

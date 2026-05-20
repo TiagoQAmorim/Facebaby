@@ -2,6 +2,45 @@ import 'package:flutter/material.dart';
 import '../../models/memory_badge.dart';
 
 class MemoryBadgesCatalog {
+  static const otherBadgeId = '__other__';
+  static const customBadgePrefix = 'custom_';
+
+  static const otherBadge = MemoryBadge(
+    id: otherBadgeId,
+    title: 'Outra',
+    category: 'custom',
+    iconName: 'special_free',
+    icon: Icons.add_rounded,
+    defaultColor: Color(0xFFE5D4FF),
+    sortOrder: -1,
+    isCustom: true,
+  );
+
+  static MemoryBadge customFromMemory({
+    required String id,
+    required String title,
+  }) {
+    return MemoryBadge(
+      id: id,
+      title: title,
+      category: 'custom',
+      iconName: 'special_free',
+      icon: Icons.auto_awesome_rounded,
+      defaultColor: pastelFor(id, 0),
+      sortOrder: 9999,
+      isCustom: true,
+    );
+  }
+
+  static bool isCustomBadgeId(String id) => id.startsWith(customBadgePrefix);
+
+  /// Selos do catálogo fixo (sem «Outra» nem custom_*).
+  static int get standardBadgeCount => all().length;
+
+  /// Badges «Outra» já criadas (cada uma soma +1 ao total do contador).
+  static int countCustomBadges(Iterable<String> badgeIds) =>
+      badgeIds.where(isCustomBadgeId).length;
+
   /// Pastéis com matizes bem separados (vermelho, laranja, azul…), rotacionando na grelha.
   static const _pastels = <Color>[
     Color(0xFFFFD6D6), // vermelho
@@ -54,8 +93,10 @@ class MemoryBadgesCatalog {
 
     // BADGES DE MOMENTOS IMPORTANTES (50)
     addMoment('arrived_home', 'Cheguei em casa', Icons.home_rounded);
-    addMoment('first_smile', 'Primeiro sorriso', Icons.sentiment_satisfied_alt_rounded);
-    addMoment('first_feeding', 'Primeira Amamentação', Icons.local_drink_rounded);
+    addMoment('first_smile', 'Primeiro sorriso',
+        Icons.sentiment_satisfied_alt_rounded);
+    addMoment(
+        'first_feeding', 'Primeira Amamentação', Icons.local_drink_rounded);
     addMoment('sleeping', 'Dormindo', Icons.nightlight_round);
     addMoment('bath_time', 'Hora do banho', Icons.bathtub_rounded);
     addMoment('going_out', 'Indo passear', Icons.directions_walk_rounded);
@@ -67,42 +108,58 @@ class MemoryBadgesCatalog {
     addMoment('first_foods', 'Primeiros alimentos', Icons.restaurant_rounded);
     addMoment('first_bath', 'Primeiro banho', Icons.shower_rounded);
     addMoment('crib_sleep', 'Primeiro soninho no berço', Icons.crib_rounded);
-    addMoment('first_diaper_change', 'Primeira troca de fralda', Icons.baby_changing_station_rounded);
+    addMoment('first_diaper_change', 'Primeira troca de fralda',
+        Icons.baby_changing_station_rounded);
     addMoment('first_burp', 'Primeiro arroto', Icons.air_rounded);
-    addMoment('first_mom_cuddle', 'Primeiro colo da mamãe', Icons.woman_rounded);
+    addMoment(
+        'first_mom_cuddle', 'Primeiro colo da mamãe', Icons.woman_rounded);
     addMoment('first_dad_cuddle', 'Primeiro colo do papai', Icons.man_rounded);
-    addMoment('first_pediatrician', 'Primeira visita ao pediatra', Icons.medical_services_rounded);
+    addMoment('first_pediatrician', 'Primeira visita ao pediatra',
+        Icons.medical_services_rounded);
     addMoment('first_vaccine', 'Primeira vacina', Icons.vaccines_rounded);
-    addMoment('first_car_ride', 'Primeiro passeio de carro', Icons.directions_car_rounded);
-    addMoment('first_stroller_ride', 'Primeiro passeio de carrinho', Icons.stroller_rounded);
-    addMoment('favorite_toy', 'Primeiro brinquedo favorito', Icons.toys_rounded);
+    addMoment('first_car_ride', 'Primeiro passeio de carro',
+        Icons.directions_car_rounded);
+    addMoment('first_stroller_ride', 'Primeiro passeio de carrinho',
+        Icons.stroller_rounded);
+    addMoment(
+        'favorite_toy', 'Primeiro brinquedo favorito', Icons.toys_rounded);
     addMoment('first_night_home', 'Primeira noite em casa', Icons.bed_rounded);
-    addMoment('first_giggle', 'Primeira gargalhada', Icons.emoji_emotions_rounded);
+    addMoment(
+        'first_giggle', 'Primeira gargalhada', Icons.emoji_emotions_rounded);
     addMoment('sun_bath', 'Primeiro banho de sol', Icons.wb_sunny_rounded);
     addMoment('first_christmas', 'Primeiro Natal', Icons.celebration_rounded);
-    addMoment('first_new_year', 'Primeiro Ano Novo', Icons.auto_awesome_rounded);
-    addMoment('first_mothers_day', 'Primeiro Dia das Mães', Icons.favorite_border_rounded);
-    addMoment('first_fathers_day', 'Primeiro Dia dos Pais', Icons.family_restroom_rounded);
-    addMoment('first_tooth', 'Primeiro dente', Icons.medical_information_rounded);
+    addMoment(
+        'first_new_year', 'Primeiro Ano Novo', Icons.auto_awesome_rounded);
+    addMoment('first_mothers_day', 'Primeiro Dia das Mães',
+        Icons.favorite_border_rounded);
+    addMoment('first_fathers_day', 'Primeiro Dia dos Pais',
+        Icons.family_restroom_rounded);
+    addMoment(
+        'first_tooth', 'Primeiro dente', Icons.medical_information_rounded);
     addMoment('first_puree', 'Primeira papinha', Icons.soup_kitchen_rounded);
-    addMoment('sat_alone', 'Sentou sozinha', Icons.airline_seat_recline_normal_rounded);
+    addMoment('sat_alone', 'Sentou sozinha',
+        Icons.airline_seat_recline_normal_rounded);
     addMoment('crawled', 'Engatinhou', Icons.child_friendly_rounded);
     addMoment('stood_up', 'Ficou em pé', Icons.accessibility_new_rounded);
     addMoment('first_steps', 'Primeiros passos', Icons.directions_walk_rounded);
     addMoment('first_word', 'Primeira palavra', Icons.chat_bubble_rounded);
-    addMoment('favorite_song', 'Primeira música favorita', Icons.music_note_rounded);
+    addMoment(
+        'favorite_song', 'Primeira música favorita', Icons.music_note_rounded);
     addMoment('first_trip', 'Primeira viagem', Icons.luggage_rounded);
-    addMoment('family_birthday', 'Primeiro aniversário em família', Icons.cake_rounded);
+    addMoment('family_birthday', 'Primeiro aniversário em família',
+        Icons.cake_rounded);
     addMoment('first_beach', 'Primeira praia', Icons.beach_access_rounded);
     addMoment('first_pool', 'Primeira piscina', Icons.pool_rounded);
-    addMoment('first_haircut', 'Primeiro corte de cabelo', Icons.content_cut_rounded);
+    addMoment(
+        'first_haircut', 'Primeiro corte de cabelo', Icons.content_cut_rounded);
     addMoment('first_shoes', 'Primeiro sapatinho', Icons.hiking_rounded);
     addMoment('special_outfit', 'Roupinha especial', Icons.checkroom_rounded);
     addMoment('first_friend', 'Primeiro amigo', Icons.diversity_1_rounded);
     addMoment('first_party', 'Primeira festa', Icons.celebration_rounded);
     addMoment('first_cartoon', 'Primeiro desenho', Icons.smart_display_rounded);
     addMoment('first_book', 'Primeiro livro', Icons.menu_book_rounded);
-    addMoment('special_free', 'Momento especial livre', Icons.auto_awesome_rounded);
+    addMoment(
+        'special_free', 'Momento especial livre', Icons.auto_awesome_rounded);
 
     // MESVERSÁRIOS (1..23)
     for (var m = 1; m <= 23; m++) {
@@ -142,4 +199,3 @@ class MemoryBadgesCatalog {
     return out;
   }
 }
-

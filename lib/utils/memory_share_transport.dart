@@ -7,3 +7,5 @@ Future<void> shareTempBytes(Uint8List data, String fileName, String mimeType) =>
     tp.shareTempBytes(data, fileName, mimeType);
 
 Future<String> savePdfBytes(Uint8List data, String fileName) => tp.savePdfBytes(data, fileName);
+
+Future<void> sharePdfFile(String filePath) => tp.sharePdfFile(filePath);

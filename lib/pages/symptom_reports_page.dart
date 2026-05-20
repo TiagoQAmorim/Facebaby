@@ -9,6 +9,9 @@ import '../services/measurement_units_prefs.dart';
 import '../theme/app_theme.dart';
 import '../utils/measurement_format.dart';
 import '../utils/portal_layout.dart';
+import '../utils/portal_night_ui.dart';
+import '../utils/portal_page_route.dart';
+import '../utils/portal_time_of_day.dart';
 import '../utils/symptom_report_format.dart';
 import '../widgets/card_box.dart';
 
@@ -61,10 +64,9 @@ class _SymptomReportsPageState extends State<SymptomReportsPage> {
   Future<void> _openEditor({SymptomReport? edit}) async {
     final babyId = _babyCtrl.currentBabyId;
     if (babyId == null) return;
-    final saved = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => SymptomReportEditorPage(babyId: babyId, edit: edit),
-      ),
+    final saved = await pushPortalPage<bool>(
+      context,
+      SymptomReportEditorPage(babyId: babyId, edit: edit),
     );
     if (saved == true) await _load();
   }
@@ -106,81 +108,113 @@ class _SymptomReportsPageState extends State<SymptomReportsPage> {
     final loc = Localizations.localeOf(context).toString();
     final bid = _babyCtrl.currentBabyId;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(s.symptomReportTitle)),
-      floatingActionButton: bid == null
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: () => _openEditor(),
-              icon: const Icon(Icons.add_rounded),
-              label: Text(s.symptomReportNew),
-            ),
-      body: SafeArea(
-        child: bid == null
-            ? Center(child: Text(s.feedingNoBabyHint))
-            : _error != null
-                ? Center(child: SelectableText('$_error'))
-                : RefreshIndicator(
-                    onRefresh: _load,
-                    child: _items.isEmpty
-                        ? ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
-                            children: [
-                              Text(
-                                s.symptomReportEmpty,
-                                style: TextStyle(
-                                  color: Colors.black.withAlpha(140),
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.35,
-                                ),
-                              ),
-                            ],
-                          )
-                        : ListView.separated(
-                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
-                            itemCount: _items.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 10),
-                            itemBuilder: (context, i) {
-                              final r = _items[i];
-                              final line = SymptomReportFormat.summaryLine(s, r, loc);
-                              return CardBox(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                child: InkWell(
-                                  onTap: () => _openEditor(edit: r),
-                                  borderRadius: BorderRadius.circular(20),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              line,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: portalSp(context, 14),
-                                                height: 1.35,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      IconButton(
-                                        tooltip: s.delete,
-                                        icon: Icon(Icons.delete_outline_rounded, color: Colors.red.withAlpha(200)),
-                                        onPressed: () => _confirmDelete(r),
-                                      ),
-                                    ],
+    return PortalNightUi.listen((context, night) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: PortalNightUi.appBar(s.symptomReportTitle, night: night),
+        floatingActionButton: bid == null
+            ? null
+            : FloatingActionButton.extended(
+                onPressed: () => _openEditor(),
+                backgroundColor: AppTheme.card,
+                foregroundColor: Colors.black87,
+                icon: const Icon(Icons.add_rounded, color: AppTheme.primary),
+                label: Text(
+                  s.symptomReportNew,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black.withAlpha(220),
+                  ),
+                ),
+              ),
+        body: SafeArea(
+          child: bid == null
+              ? Center(
+                  child: Text(
+                    s.feedingNoBabyHint,
+                    style: PortalNightUi.bodyStyle(night),
+                  ),
+                )
+              : _error != null
+                  ? Center(
+                      child: SelectableText(
+                        '$_error',
+                        style: PortalNightUi.bodyStyle(night),
+                      ),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      child: _items.isEmpty
+                          ? ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding:
+                                  const EdgeInsets.fromLTRB(20, 24, 20, 120),
+                              children: [
+                                Text(
+                                  s.symptomReportEmpty,
+                                  style: PortalNightUi.bodyStyle(night)
+                                      .copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.35,
+                                    color: night
+                                        ? PortalTimeOfDay
+                                            .nightOutlinedTextColor
+                                        : Colors.black.withAlpha(140),
                                   ),
                                 ),
-                              );
-                            },
-                          ),
-                  ),
-      ),
-    );
+                              ],
+                            )
+                          : ListView.separated(
+                              padding:
+                                  const EdgeInsets.fromLTRB(20, 12, 20, 120),
+                              itemCount: _items.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 10),
+                              itemBuilder: (context, i) {
+                                final r = _items[i];
+                                final line =
+                                    SymptomReportFormat.summaryLine(s, r, loc);
+                                return CardBox(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 12),
+                                  child: InkWell(
+                                    onTap: () => _openEditor(edit: r),
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            line,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: portalSp(context, 14),
+                                              height: 1.35,
+                                              color: Colors.black.withAlpha(210),
+                                            ),
+                                          ),
+                                        ),
+                                        IconButton(
+                                          tooltip: s.delete,
+                                          icon: Icon(
+                                            Icons.delete_outline_rounded,
+                                            color: night
+                                                ? Colors.red.shade200
+                                                : Colors.red.withAlpha(200),
+                                          ),
+                                          onPressed: () => _confirmDelete(r),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+        ),
+      );
+    });
   }
 }
 
@@ -319,35 +353,31 @@ class _SymptomReportEditorPageState extends State<SymptomReportEditorPage> {
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.edit == null ? s.symptomReportNew : s.edit),
-        actions: [
-          TextButton(
-            onPressed: _saving ? null : () => _save(s),
-            child: _saving
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                  )
-                : Text(s.symptomReportSave, style: const TextStyle(fontWeight: FontWeight.w800)),
-          ),
-        ],
-      ),
-      body: ListView(
+    return PortalNightUi.listen((context, night) {
+      const iconColor = AppTheme.primary;
+
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: PortalNightUi.appBar(
+          widget.edit == null ? s.symptomReportNew : s.edit,
+          night: night,
+        ),
+        body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         children: [
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.event_rounded, color: AppTheme.primary),
-            title: Text(s.symptomReportOccurredAt),
+            leading: Icon(Icons.event_rounded, color: iconColor),
+            title: Text(
+              s.symptomReportOccurredAt,
+              style: PortalNightUi.cardTitleStyle(fontSize: 15),
+            ),
             subtitle: Text(
               '${MaterialLocalizations.of(context).formatMediumDate(_occurredAt)} · '
               '${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(_occurredAt))}',
-              style: const TextStyle(fontWeight: FontWeight.w700),
+              style: PortalNightUi.cardSubtitleStyle(fontSize: 14),
             ),
-            trailing: const Icon(Icons.edit_calendar_outlined),
+            trailing: Icon(Icons.edit_calendar_outlined, color: iconColor),
             onTap: () => _pickDateTime(s),
           ),
           const SizedBox(height: 8),
@@ -356,14 +386,17 @@ class _SymptomReportEditorPageState extends State<SymptomReportEditorPage> {
             decoration: InputDecoration(
               labelText: s.symptomReportMedication,
               hintText: s.symptomReportMedicationHint,
-              prefixIcon: const Icon(Icons.medication_outlined),
+              prefixIcon: Icon(Icons.medication_outlined, color: iconColor),
             ),
             textCapitalization: TextCapitalization.sentences,
           ),
           const SizedBox(height: 8),
           SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,
-            title: Text(s.symptomReportFever),
+            title: Text(
+              s.symptomReportFever,
+              style: PortalNightUi.cardTitleStyle(fontSize: 15),
+            ),
             value: _fever,
             activeThumbColor: AppTheme.green,
             onChanged: (v) => setState(() => _fever = v),
@@ -379,7 +412,7 @@ class _SymptomReportEditorPageState extends State<SymptomReportEditorPage> {
                     labelText: s.symptomReportTemp,
                     hintText: s.symptomReportTempHint,
                     suffixText: unit == TemperatureUnit.c ? 'ºC' : 'ºF',
-                    prefixIcon: const Icon(Icons.thermostat_outlined),
+                    prefixIcon: Icon(Icons.thermostat_outlined, color: iconColor),
                   ),
                 );
               },
@@ -388,28 +421,40 @@ class _SymptomReportEditorPageState extends State<SymptomReportEditorPage> {
           ],
           SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,
-            title: Text(s.symptomReportCrying),
+            title: Text(
+              s.symptomReportCrying,
+              style: PortalNightUi.cardTitleStyle(fontSize: 15),
+            ),
             value: _crying,
             activeThumbColor: AppTheme.green,
             onChanged: (v) => setState(() => _crying = v),
           ),
           SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,
-            title: Text(s.symptomReportPain),
+            title: Text(
+              s.symptomReportPain,
+              style: PortalNightUi.cardTitleStyle(fontSize: 15),
+            ),
             value: _pain,
             activeThumbColor: AppTheme.green,
             onChanged: (v) => setState(() => _pain = v),
           ),
           SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,
-            title: Text(s.symptomReportColic),
+            title: Text(
+              s.symptomReportColic,
+              style: PortalNightUi.cardTitleStyle(fontSize: 15),
+            ),
             value: _colic,
             activeThumbColor: AppTheme.green,
             onChanged: (v) => setState(() => _colic = v),
           ),
           SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,
-            title: Text(s.symptomReportReflux),
+            title: Text(
+              s.symptomReportReflux,
+              style: PortalNightUi.cardTitleStyle(fontSize: 15),
+            ),
             value: _reflux,
             activeThumbColor: AppTheme.green,
             onChanged: (v) => setState(() => _reflux = v),
@@ -423,7 +468,7 @@ class _SymptomReportEditorPageState extends State<SymptomReportEditorPage> {
               labelText: s.symptomReportOther,
               hintText: s.symptomReportOtherHint,
               alignLabelWithHint: true,
-              prefixIcon: const Icon(Icons.notes_outlined),
+              prefixIcon: Icon(Icons.notes_outlined, color: iconColor),
             ),
             textCapitalization: TextCapitalization.sentences,
           ),
@@ -434,10 +479,17 @@ class _SymptomReportEditorPageState extends State<SymptomReportEditorPage> {
               padding: const EdgeInsets.symmetric(vertical: 14),
               backgroundColor: AppTheme.primary,
             ),
-            child: Text(s.symptomReportSave),
+            child: Text(
+              s.commonSave,
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
           ),
         ],
       ),
     );
+    });
   }
 }

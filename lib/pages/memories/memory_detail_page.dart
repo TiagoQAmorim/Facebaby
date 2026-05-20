@@ -18,6 +18,8 @@ import '../../utils/memory_share_transport.dart';
 import '../../utils/memory_moment_localizations.dart';
 import '../../utils/photo_b64.dart';
 import '../../utils/portal_layout.dart';
+import '../../utils/portal_night_ui.dart';
+import '../../utils/portal_page_route.dart';
 import '../../utils/weekly_photo_schedule.dart';
 import '../../utils/measurement_format.dart';
 import '../../widgets/memories/cached_memory_photo.dart';
@@ -122,8 +124,11 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
         final file = await memoryPhotoCacheManager.getSingleFile(url);
         out = await file.readAsBytes();
       } catch (_) {
-        final resp = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
-        if (resp.statusCode >= 200 && resp.statusCode < 300 && resp.bodyBytes.isNotEmpty) {
+        final resp =
+            await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
+        if (resp.statusCode >= 200 &&
+            resp.statusCode < 300 &&
+            resp.bodyBytes.isNotEmpty) {
           out = resp.bodyBytes;
         }
       }
@@ -146,9 +151,15 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
     return MeasurementFormat.length(h, decimalsCm: 1);
   }
 
-  String _moodStr() => (_memory.moodAtMoment == null || _memory.moodAtMoment!.trim().isEmpty) ? '—' : _memory.moodAtMoment!.trim();
+  String _moodStr() =>
+      (_memory.moodAtMoment == null || _memory.moodAtMoment!.trim().isEmpty)
+          ? '—'
+          : _memory.moodAtMoment!.trim();
 
-  String _ageStr() => (_memory.babyAgeAtMoment == null || _memory.babyAgeAtMoment!.trim().isEmpty) ? '—' : _memory.babyAgeAtMoment!.trim();
+  String _ageStr() => (_memory.babyAgeAtMoment == null ||
+          _memory.babyAgeAtMoment!.trim().isEmpty)
+      ? '—'
+      : _memory.babyAgeAtMoment!.trim();
 
   String _tipText() => S.of(context).memoryTipForBadgeId(widget.badge.id);
 
@@ -183,7 +194,8 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
                 top: pad.top + 8,
                 right: 12,
                 child: IconButton(
-                  style: IconButton.styleFrom(backgroundColor: Colors.black.withAlpha(140)),
+                  style: IconButton.styleFrom(
+                      backgroundColor: Colors.black.withAlpha(140)),
                   icon: const Icon(Icons.close, color: Colors.white, size: 28),
                   onPressed: () => Navigator.of(ctx).pop(),
                 ),
@@ -227,7 +239,8 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
                 top: pad.top + 8,
                 right: 12,
                 child: IconButton(
-                  style: IconButton.styleFrom(backgroundColor: Colors.black.withAlpha(140)),
+                  style: IconButton.styleFrom(
+                      backgroundColor: Colors.black.withAlpha(140)),
                   icon: const Icon(Icons.close, color: Colors.white, size: 28),
                   onPressed: () => Navigator.of(ctx).pop(),
                 ),
@@ -266,7 +279,8 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
     final hasPhoto = bytes != null || url.isNotEmpty;
     final s = S.of(context);
     if (!hasPhoto) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.weeklyPhotoPublicNeedPhoto)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(s.weeklyPhotoPublicNeedPhoto)));
       return;
     }
     final prefs = await SharedPreferences.getInstance();
@@ -280,8 +294,12 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
           title: Text(s.weeklyPhotoConfirmTitle),
           content: Text(s.weeklyPhotoConfirmBody),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.weeklyPhotoConfirmCancel)),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(s.weeklyPhotoConfirmOk)),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(s.weeklyPhotoConfirmCancel)),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(s.weeklyPhotoConfirmOk)),
           ],
         ),
       );
@@ -314,7 +332,7 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
 
   Future<void> _openEditor() async {
     final ok = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
+      portalPageRoute<bool>(
         builder: (_) => AddMemoryPage(
           babyId: _memory.babyId,
           badge: widget.badge,
@@ -345,7 +363,8 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
 
     if (!FeatureAccess.canExportBadges) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.plusSnackLockedFeature)));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(strings.plusSnackLockedFeature)));
       await openPremiumPaywall(context);
       return;
     }
@@ -408,24 +427,28 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
       await Future<void>.delayed(const Duration(milliseconds: 96));
       await _maybePrecacheResolvedSharePhotoForCapture();
 
-      final png = await repaintBoundaryToPngBytes(_shareCaptureKey, pixelRatio: 3);
+      final png =
+          await repaintBoundaryToPngBytes(_shareCaptureKey, pixelRatio: 3);
       final jpg = encodePngBytesToJpg(png, quality: 88);
       final stamp = DateTime.now().millisecondsSinceEpoch;
 
       switch (kind) {
         case _ShareExportKind.jpeg:
-          await shareTempBytes(jpg, 'facebaby_memoria_$stamp.jpg', 'image/jpeg');
+          await shareTempBytes(
+              jpg, 'facebaby_memoria_$stamp.jpg', 'image/jpeg');
           break;
         case _ShareExportKind.pdf:
           final pdfBin = await buildSinglePagePdfWithImage(jpg);
-          await shareTempBytes(pdfBin, 'facebaby_memoria_$stamp.pdf', 'application/pdf');
+          await shareTempBytes(
+              pdfBin, 'facebaby_memoria_$stamp.pdf', 'application/pdf');
           break;
       }
     } on UnsupportedError catch (e) {
       if (mounted) {
         final s = S.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message ?? s.memorySharePlatformUnavailable)),
+          SnackBar(
+              content: Text(e.message ?? s.memorySharePlatformUnavailable)),
         );
       }
     } catch (e, st) {
@@ -444,7 +467,8 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
   }
 
   Future<void> _maybePrecacheResolvedSharePhotoForCapture() async {
-    Uint8List? resolved = decodePhotoB64(_memory.photoB64) ?? _sharePhotoResolved;
+    Uint8List? resolved =
+        decodePhotoB64(_memory.photoB64) ?? _sharePhotoResolved;
     final url = (_memory.photoUrl ?? '').trim();
     if (resolved == null && url.isNotEmpty) {
       await _downloadSharePhotoForExport(url);
@@ -509,443 +533,487 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
         ),
       );
       if (bytes != null) {
-        inner = GestureDetector(onTap: () => _openFullPhoto(context, bytes), child: inner);
+        inner = GestureDetector(
+            onTap: () => _openFullPhoto(context, bytes), child: inner);
       } else if (url.isNotEmpty) {
-        inner = GestureDetector(onTap: () => _openFullPhotoFromNetworkUrl(context, url), child: inner);
+        inner = GestureDetector(
+            onTap: () => _openFullPhotoFromNetworkUrl(context, url),
+            child: inner);
       }
       return inner;
     }
 
-    return Stack(
-      alignment: Alignment.topLeft,
-      clipBehavior: Clip.none,
-      children: [
-        Scaffold(
-          appBar: AppBar(
-            title: const SizedBox.shrink(),
-            actions: [
-              IconButton(onPressed: _openEditor, icon: const Icon(Icons.edit_outlined)),
-              IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert)),
-            ],
-          ),
+    return PortalNightUi.listen((context, night) {
+      final pageBg = PortalNightUi.detailPageBackground(night);
+      return Stack(
+        alignment: Alignment.topLeft,
+        clipBehavior: Clip.none,
+        children: [
+          Scaffold(
+            backgroundColor: pageBg,
+            appBar: AppBar(
+              backgroundColor: night ? AppTheme.background : null,
+              surfaceTintColor: Colors.transparent,
+              foregroundColor: AppTheme.textPrimary,
+              iconTheme: const IconThemeData(color: AppTheme.textPrimary),
+              actionsIconTheme:
+                  const IconThemeData(color: AppTheme.textPrimary),
+              title: const SizedBox.shrink(),
+              actions: [
+                IconButton(
+                    onPressed: _openEditor,
+                    icon: const Icon(Icons.edit_outlined)),
+                IconButton(
+                    onPressed: () {}, icon: const Icon(Icons.more_vert)),
+              ],
+            ),
           body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 900),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 900),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    MemoryBadgeIcon(
-                      badge: widget.badge,
-                      muted: bytes == null && url.isEmpty,
-                      size: 42,
-                      shape: MemoryBadgeIconShape.original,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        MemoryBadgeIcon(
+                          badge: widget.badge,
+                          muted: bytes == null && url.isEmpty,
+                          size: 42,
+                          shape: MemoryBadgeIconShape.original,
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                s.memoryBadgeTitle(widget.badge),
+                                style: TextStyle(
+                                  fontSize: portalSp(context, 22),
+                                  fontWeight: FontWeight.w900,
+                                  color: AppTheme.textPrimary,
+                                  height: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                formatMemoryMomentDateTime(
+                                    context, _memory.memoryDate),
+                                style: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: portalSp(context, 14),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
+                    const SizedBox(height: 20),
+                    LayoutBuilder(
+                      builder: (context, c) {
+                        final veryNarrow = c.maxWidth < 340;
+                        final side = veryNarrow
+                            ? (c.maxWidth * 0.42).clamp(140.0, 190.0)
+                            : (c.maxWidth * 0.40).clamp(180.0, 300.0);
+                        const radius = 22.0;
+                        final textStyle = TextStyle(
+                          color: AppTheme.textPrimary.withAlpha(200),
+                          height: 1.45,
+                          fontWeight: FontWeight.w600,
+                          fontSize: portalSp(context, 16),
+                        );
+
+                        if (desc.isEmpty) {
+                          final muted = Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              s.memoryNoDescription,
+                              style:
+                                  textStyle.copyWith(color: AppTheme.textMuted),
+                            ),
+                          );
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              photoSquare(side, radius),
+                              const SizedBox(width: 18),
+                              Expanded(child: muted),
+                            ],
+                          );
+                        }
+
+                        final remainingW =
+                            (c.maxWidth - side - 18).clamp(90.0, 10000.0);
+                        if (remainingW < 120) {
+                          // Muito estreito: não força layout “revista” para não esmagar o texto.
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: photoSquare(side, radius)),
+                              const SizedBox(height: 14),
+                              Text(desc, style: textStyle),
+                            ],
+                          );
+                        }
+                        final tp = TextPainter(
+                          text: TextSpan(text: desc, style: textStyle),
+                          textDirection: Directionality.of(context),
+                          textScaler: MediaQuery.textScalerOf(context),
+                        )..layout(maxWidth: remainingW);
+
+                        final cutPos =
+                            tp.getPositionForOffset(Offset(remainingW, side));
+                        final cut = cutPos.offset.clamp(0, desc.length);
+                        final lead = desc.substring(0, cut).trimRight();
+                        final tail = desc.substring(cut).trimLeft();
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                photoSquare(side, radius),
+                                const SizedBox(width: 18),
+                                Expanded(
+                                  child: Text(
+                                    lead.isEmpty ? desc : lead,
+                                    style: textStyle,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (tail.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              Text(tail, style: textStyle),
+                            ],
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 22),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(10, 12, 10, 11),
+                      decoration: BoxDecoration(
+                        color: _purpleCardBg,
+                        borderRadius: BorderRadius.circular(22),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            s.memoryBadgeTitle(widget.badge),
+                            s.memoryMomentInfoTitle,
                             style: TextStyle(
-                              fontSize: portalSp(context, 22),
+                              color: _purpleTitle,
                               fontWeight: FontWeight.w900,
-                              color: AppTheme.textPrimary,
+                              fontSize: portalSp(context, 14),
                               height: 1.2,
                             ),
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: _MomentStatChip(
+                                  bg: _chipAgeBg,
+                                  iconBg: const Color(0xFFD9CCFF),
+                                  icon: Icons.calendar_month_rounded,
+                                  iconColor: AppTheme.primaryPurple,
+                                  label: s.memoryStatAgeLabel,
+                                  value: _ageStr(),
+                                ),
+                              ),
+                              const SizedBox(width: 3),
+                              Expanded(
+                                child: _MomentStatChip(
+                                  bg: _chipWeightBg,
+                                  iconBg: const Color(0xFFFFD0EA),
+                                  icon: Icons.monitor_weight_rounded,
+                                  iconColor: AppTheme.primaryPink,
+                                  label: s.memoryStatWeightLabel,
+                                  value: _weightStr(),
+                                ),
+                              ),
+                              const SizedBox(width: 3),
+                              Expanded(
+                                child: _MomentStatChip(
+                                  bg: _chipHeightBg,
+                                  iconBg: const Color(0xFFCCE6FF),
+                                  icon: Icons.straighten_rounded,
+                                  iconColor: AppTheme.babyBlue,
+                                  label: s.memoryStatHeightLabel,
+                                  value: _heightStr(),
+                                ),
+                              ),
+                              const SizedBox(width: 3),
+                              Expanded(
+                                child: _MomentStatChip(
+                                  bg: _chipMoodBg,
+                                  iconBg: const Color(0xFFFFEDC4),
+                                  icon: Icons.sentiment_satisfied_alt_rounded,
+                                  iconColor: AppTheme.yellow,
+                                  label: s.memoryStatMoodLabel,
+                                  value: _moodStr(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    if ((_memory.motherNotes ?? '').trim().isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.note_alt_rounded,
+                              color: AppTheme.yellow.withAlpha(220), size: 22),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  s.memoryMotherNotesLabel,
+                                  style: TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: portalSp(context, 14),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  _memory.motherNotes!.trim(),
+                                  style: TextStyle(
+                                    color: AppTheme.textPrimary.withAlpha(210),
+                                    height: 1.4,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: portalSp(context, 14.5),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 22),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: _purpleCardBg,
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.auto_awesome_rounded,
+                                  color: _purpleTitle, size: 22),
+                              const SizedBox(width: 10),
+                              Text(
+                                s.memoryTipForYouTitle,
+                                style: TextStyle(
+                                  color: _purpleTitle,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: portalSp(context, 15),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
                           Text(
-                            formatMemoryMomentDateTime(context, _memory.memoryDate),
+                            _tipText(),
                             style: TextStyle(
-                              color: AppTheme.textSecondary,
-                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary.withAlpha(200),
+                              height: 1.45,
+                              fontWeight: FontWeight.w600,
                               fontSize: portalSp(context, 14),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                LayoutBuilder(
-                  builder: (context, c) {
-                    final veryNarrow = c.maxWidth < 340;
-                    final side = veryNarrow ? (c.maxWidth * 0.42).clamp(140.0, 190.0) : (c.maxWidth * 0.40).clamp(180.0, 300.0);
-                    const radius = 22.0;
-                    final textStyle = TextStyle(
-                      color: AppTheme.textPrimary.withAlpha(200),
-                      height: 1.45,
-                      fontWeight: FontWeight.w600,
-                      fontSize: portalSp(context, 16),
-                    );
-
-                    if (desc.isEmpty) {
-                      final muted = Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          s.memoryNoDescription,
-                          style: textStyle.copyWith(color: AppTheme.textMuted),
+                    const SizedBox(height: 24),
+                    if (WeeklyPhotoSchedule.showParticipatingBadge(
+                      isPublic: _memory.isPublic,
+                      hasPhoto: bytes != null || url.isNotEmpty,
+                      publicEnabledAt: _memory.publicEnabledAt,
+                      now: DateTime.now(),
+                    )) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.softPurple.withAlpha(160),
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                      );
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          photoSquare(side, radius),
-                          const SizedBox(width: 18),
-                          Expanded(child: muted),
-                        ],
-                      );
-                    }
-
-                    final remainingW = (c.maxWidth - side - 18).clamp(90.0, 10000.0);
-                    if (remainingW < 120) {
-                      // Muito estreito: não força layout “revista” para não esmagar o texto.
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Align(alignment: Alignment.centerLeft, child: photoSquare(side, radius)),
-                          const SizedBox(height: 14),
-                          Text(desc, style: textStyle),
-                        ],
-                      );
-                    }
-                    final tp = TextPainter(
-                      text: TextSpan(text: desc, style: textStyle),
-                      textDirection: Directionality.of(context),
-                      textScaler: MediaQuery.textScalerOf(context),
-                    )..layout(maxWidth: remainingW);
-
-                    final cutPos = tp.getPositionForOffset(Offset(remainingW, side));
-                    final cut = cutPos.offset.clamp(0, desc.length);
-                    final lead = desc.substring(0, cut).trimRight();
-                    final tail = desc.substring(cut).trimLeft();
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
                           children: [
-                            photoSquare(side, radius),
-                            const SizedBox(width: 18),
+                            WeeklyPhotoCrownIcon(size: portalSp(context, 22)),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                lead.isEmpty ? desc : lead,
-                                style: textStyle,
+                                s.weeklyPhotoParticipatingBadge,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800, height: 1.25),
                               ),
                             ),
                           ],
                         ),
-                        if (tail.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          Text(tail, style: textStyle),
-                        ],
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 22),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(10, 12, 10, 11),
-                  decoration: BoxDecoration(
-                    color: _purpleCardBg,
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        s.memoryMomentInfoTitle,
-                        style: TextStyle(
-                          color: _purpleTitle,
-                          fontWeight: FontWeight.w900,
-                          fontSize: portalSp(context, 14),
-                          height: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _MomentStatChip(
-                              bg: _chipAgeBg,
-                              iconBg: const Color(0xFFD9CCFF),
-                              icon: Icons.calendar_month_rounded,
-                              iconColor: AppTheme.primaryPurple,
-                              label: s.memoryStatAgeLabel,
-                              value: _ageStr(),
-                            ),
-                          ),
-                          const SizedBox(width: 3),
-                          Expanded(
-                            child: _MomentStatChip(
-                              bg: _chipWeightBg,
-                              iconBg: const Color(0xFFFFD0EA),
-                              icon: Icons.monitor_weight_rounded,
-                              iconColor: AppTheme.primaryPink,
-                              label: s.memoryStatWeightLabel,
-                              value: _weightStr(),
-                            ),
-                          ),
-                          const SizedBox(width: 3),
-                          Expanded(
-                            child: _MomentStatChip(
-                              bg: _chipHeightBg,
-                              iconBg: const Color(0xFFCCE6FF),
-                              icon: Icons.straighten_rounded,
-                              iconColor: AppTheme.babyBlue,
-                              label: s.memoryStatHeightLabel,
-                              value: _heightStr(),
-                            ),
-                          ),
-                          const SizedBox(width: 3),
-                          Expanded(
-                            child: _MomentStatChip(
-                              bg: _chipMoodBg,
-                              iconBg: const Color(0xFFFFEDC4),
-                              icon: Icons.sentiment_satisfied_alt_rounded,
-                              iconColor: AppTheme.yellow,
-                              label: s.memoryStatMoodLabel,
-                              value: _moodStr(),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                if ((_memory.motherNotes ?? '').trim().isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.note_alt_rounded, color: AppTheme.yellow.withAlpha(220), size: 22),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              s.memoryMotherNotesLabel,
-                              style: TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontWeight: FontWeight.w900,
-                                fontSize: portalSp(context, 14),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _memory.motherNotes!.trim(),
-                              style: TextStyle(
-                                color: AppTheme.textPrimary.withAlpha(210),
-                                height: 1.4,
-                                fontWeight: FontWeight.w600,
-                                fontSize: portalSp(context, 14.5),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 22),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: _purpleCardBg,
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.auto_awesome_rounded, color: _purpleTitle, size: 22),
-                          const SizedBox(width: 10),
-                          Text(
-                            s.memoryTipForYouTitle,
-                            style: TextStyle(
-                              color: _purpleTitle,
-                              fontWeight: FontWeight.w900,
-                              fontSize: portalSp(context, 15),
-                            ),
-                          ),
-                        ],
                       ),
                       const SizedBox(height: 12),
-                      Text(
-                        _tipText(),
-                        style: TextStyle(
-                          color: AppTheme.textPrimary.withAlpha(200),
-                          height: 1.45,
-                          fontWeight: FontWeight.w600,
-                          fontSize: portalSp(context, 14),
+                    ],
+                    if (_memory.weeklyPhotoWinner) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryPink.withAlpha(55),
+                          borderRadius: BorderRadius.circular(16),
                         ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.celebration_rounded,
+                                color: AppTheme.primaryPink, size: 22),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                s.weeklyPhotoWinnerBadge,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800, height: 1.25),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _shareBusy ? null : _promptShare,
+                        icon: Icon(Icons.ios_share_rounded,
+                            color: AppTheme.primaryPurple),
+                        label: Text(
+                          s.memoryShareButton,
+                          style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: AppTheme.primaryPurple),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(
+                              color: AppTheme.primaryPurple.withAlpha(180)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(22)),
+                          backgroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                s.weeklyPhotoPublicOff,
+                                textAlign: TextAlign.end,
+                                style: TextStyle(
+                                  fontWeight: !_memory.isPublic
+                                      ? FontWeight.w900
+                                      : FontWeight.w600,
+                                  fontSize: portalSp(context, 15),
+                                  color: !_memory.isPublic
+                                      ? AppTheme.textPrimary
+                                      : AppTheme.textMuted,
+                                ),
+                              ),
+                            ),
+                            Switch(
+                              value: _memory.isPublic,
+                              onChanged: _savingPublic
+                                  ? null
+                                  : (v) {
+                                      unawaited(_onPublicToggleChanged(v));
+                                    },
+                            ),
+                            Expanded(
+                              child: Text(
+                                s.weeklyPhotoPublicOn,
+                                textAlign: TextAlign.start,
+                                style: TextStyle(
+                                  fontWeight: _memory.isPublic
+                                      ? FontWeight.w900
+                                      : FontWeight.w600,
+                                  fontSize: portalSp(context, 15),
+                                  color: _memory.isPublic
+                                      ? AppTheme.textPrimary
+                                      : AppTheme.textMuted,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          s.weeklyPhotoPublicExplainer,
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            height: 1.45,
+                            fontWeight: FontWeight.w600,
+                            fontSize: portalSp(context, 13.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_memory.isPublic) ...[
+                      const SizedBox(height: 4),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(s.weeklyPhotoShowBabyFirstName,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w700)),
+                        value: _memory.showBabyFirstNameWhenPublic,
+                        onChanged: _savingPublic
+                            ? null
+                            : (v) {
+                                unawaited(_setShowBabyFirstName(v));
+                              },
                       ),
                     ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                if (WeeklyPhotoSchedule.showParticipatingBadge(
-                  isPublic: _memory.isPublic,
-                  hasPhoto: bytes != null || url.isNotEmpty,
-                  publicEnabledAt: _memory.publicEnabledAt,
-                  now: DateTime.now(),
-                )) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.softPurple.withAlpha(160),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        WeeklyPhotoCrownIcon(size: portalSp(context, 22)),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            s.weeklyPhotoParticipatingBadge,
-                            style: const TextStyle(fontWeight: FontWeight.w800, height: 1.25),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                if (_memory.weeklyPhotoWinner) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryPink.withAlpha(55),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.celebration_rounded, color: AppTheme.primaryPink, size: 22),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            s.weeklyPhotoWinnerBadge,
-                            style: const TextStyle(fontWeight: FontWeight.w800, height: 1.25),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _shareBusy ? null : _promptShare,
-                    icon: Icon(Icons.ios_share_rounded, color: AppTheme.primaryPurple),
-                    label: Text(
-                      s.memoryShareButton,
-                      style: TextStyle(fontWeight: FontWeight.w900, color: AppTheme.primaryPurple),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: BorderSide(color: AppTheme.primaryPurple.withAlpha(180)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-                      backgroundColor: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            s.weeklyPhotoPublicOff,
-                            textAlign: TextAlign.end,
-                            style: TextStyle(
-                              fontWeight: !_memory.isPublic ? FontWeight.w900 : FontWeight.w600,
-                              fontSize: portalSp(context, 15),
-                              color: !_memory.isPublic ? AppTheme.textPrimary : AppTheme.textMuted,
-                            ),
-                          ),
-                        ),
-                        Switch(
-                          value: _memory.isPublic,
-                          onChanged: _savingPublic
-                              ? null
-                              : (v) {
-                                  unawaited(_onPublicToggleChanged(v));
-                                },
-                        ),
-                        Expanded(
-                          child: Text(
-                            s.weeklyPhotoPublicOn,
-                            textAlign: TextAlign.start,
-                            style: TextStyle(
-                              fontWeight: _memory.isPublic ? FontWeight.w900 : FontWeight.w600,
-                              fontSize: portalSp(context, 15),
-                              color: _memory.isPublic ? AppTheme.textPrimary : AppTheme.textMuted,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                     const SizedBox(height: 10),
                     Text(
-                      s.weeklyPhotoPublicExplainer,
+                      s.weeklyPhotoDisclaimerFooter,
                       style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        height: 1.45,
+                        fontSize: portalSp(context, 11.5),
+                        color: AppTheme.textMuted,
+                        height: 1.35,
                         fontWeight: FontWeight.w600,
-                        fontSize: portalSp(context, 13.5),
                       ),
                     ),
+                    SizedBox(height: MediaQuery.paddingOf(context).bottom + 12),
                   ],
                 ),
-                if (_memory.isPublic) ...[
-                  const SizedBox(height: 4),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(s.weeklyPhotoShowBabyFirstName, style: const TextStyle(fontWeight: FontWeight.w700)),
-                    value: _memory.showBabyFirstNameWhenPublic,
-                    onChanged: _savingPublic
-                        ? null
-                        : (v) {
-                            unawaited(_setShowBabyFirstName(v));
-                          },
-                  ),
-                ],
-                const SizedBox(height: 10),
-                Text(
-                  s.weeklyPhotoDisclaimerFooter,
-                  style: TextStyle(
-                    fontSize: portalSp(context, 11.5),
-                    color: AppTheme.textMuted,
-                    height: 1.35,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: MediaQuery.paddingOf(context).bottom + 12),
-              ],
+              ),
             ),
           ),
         ),
-      ),
-    ),
-
         Positioned(
           left: -8000,
           top: 0,
@@ -955,12 +1023,14 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
               badge: widget.badge,
               memory: _memory,
               tipText: _tipText(),
-              photoBytesOverride: decodePhotoB64(_memory.photoB64) ?? _sharePhotoResolved,
+              photoBytesOverride:
+                  decodePhotoB64(_memory.photoB64) ?? _sharePhotoResolved,
             ),
           ),
         ),
-      ],
-    );
+        ],
+      );
+    });
   }
 }
 
@@ -988,7 +1058,8 @@ class _MomentStatChip extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, c) {
         final raw = ((c.maxWidth - 8) / _nominalChipWidth).clamp(0.52, 1.15);
-        final textScale = MediaQuery.textScalerOf(context).scale(1.0).clamp(0.85, 1.5);
+        final textScale =
+            MediaQuery.textScalerOf(context).scale(1.0).clamp(0.85, 1.5);
         final s = (raw / textScale).clamp(0.48, 1.12);
         final padH = (3 * s).clamp(2.0, 6.0);
         final padV = (5 * s).clamp(3.0, 9.0);
@@ -1012,7 +1083,8 @@ class _MomentStatChip extends StatelessWidget {
         );
         final r = BorderRadius.circular((11 * s).clamp(9.0, 16));
         return Container(
-          constraints: BoxConstraints(minWidth: c.maxWidth, maxWidth: c.maxWidth),
+          constraints:
+              BoxConstraints(minWidth: c.maxWidth, maxWidth: c.maxWidth),
           padding: EdgeInsets.fromLTRB(padH, padV, padH, padV),
           decoration: BoxDecoration(color: bg, borderRadius: r),
           child: Column(
@@ -1021,7 +1093,8 @@ class _MomentStatChip extends StatelessWidget {
               Container(
                 width: iconD,
                 height: iconD,
-                decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+                decoration:
+                    BoxDecoration(color: iconBg, shape: BoxShape.circle),
                 alignment: Alignment.center,
                 child: Icon(icon, size: iconIx, color: iconColor),
               ),

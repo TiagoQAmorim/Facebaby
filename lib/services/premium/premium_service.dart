@@ -51,8 +51,12 @@ class PremiumService extends ChangeNotifier {
   bool _entitlement = false;
   String? _entitlementUid;
 
-  /// QA (debug): `SharedPreferences` `facebaby_plus_debug_force` = true força Premium.
+  /// QA: `SharedPreferences` `facebaby_plus_debug_force` = true força Premium (debug / FACEBABY_QA_TOOLS).
   bool _debugPremium = false;
+
+  static bool get qaToolsEnabled =>
+      kDebugMode ||
+      bool.fromEnvironment('FACEBABY_QA_TOOLS', defaultValue: false);
 
   String _entitlementPrefKey(String uid) => '${_prefEntitlement}_$uid';
 
@@ -115,9 +119,11 @@ class PremiumService extends ChangeNotifier {
 
   /// Premium efetivo (loja + prefs + Firestore já fundidos em [_entitlement]).
   bool get isPremium {
-    if (kDebugMode && _debugPremium) return true;
+    if (qaToolsEnabled && _debugPremium) return true;
     return _entitlement;
   }
+
+  bool get isDebugPremiumForced => qaToolsEnabled && _debugPremium;
 
   /// Compatível com código legado “Plus”.
   bool get isPlus => isPremium;
@@ -159,10 +165,9 @@ class PremiumService extends ChangeNotifier {
 
     final prefs = await SharedPreferences.getInstance();
     await _loadEntitlementForUser(FirebaseAuth.instance.currentUser?.uid);
-    assert(() {
+    if (qaToolsEnabled) {
       _debugPremium = prefs.getBool(_prefDebugPremium) ?? false;
-      return true;
-    }());
+    }
 
     _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
       unawaited(_onAuthUserChanged(user));
@@ -475,9 +480,28 @@ class PremiumService extends ChangeNotifier {
     }
   }
 
+  /// QA: força Premium neste dispositivo (sem compra na loja).
+  Future<void> setDebugPremiumForced(bool value) async {
+    if (!qaToolsEnabled) return;
+    _debugPremium = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefDebugPremium, value);
+    notifyListeners();
+  }
+
+  /// QA: marca `premiumLifetime` na nuvem + cache local do utilizador actual.
+  Future<void> grantLifetimePremiumForCurrentUser() async {
+    if (!qaToolsEnabled) return;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) {
+      throw StateError('QA_PREMIUM_NO_USER');
+    }
+    await _persistEntitlement(true, pushRemote: true);
+  }
+
   /// Testes: revoga entitlement local (não remove compra na loja).
   Future<void> debugClearEntitlement() async {
-    assert(kDebugMode);
+    assert(qaToolsEnabled);
     final uid = FirebaseAuth.instance.currentUser?.uid;
     _entitlement = false;
     final prefs = await SharedPreferences.getInstance();

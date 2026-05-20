@@ -8,11 +8,12 @@ import '../../i18n/app_i18n.dart';
 import '../../services/premium/premium_constants.dart';
 import '../../services/premium/premium_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/portal_page_route.dart';
 
 /// Abre o ecrã moderno de Premium (compra única).
 Future<void> openPremiumPaywall(BuildContext context) {
   return Navigator.of(context).push<void>(
-    MaterialPageRoute<void>(
+    portalPageRoute<void>(
       builder: (_) => const PremiumPaywallScreen(),
     ),
   );
@@ -182,30 +183,12 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen>
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Center(
-                              child: Container(
-                                padding:
-                                    const EdgeInsets.fromLTRB(18, 10, 18, 10),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withAlpha(150),
-                                  borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(
-                                    color: Colors.white.withAlpha(170),
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: purple.withAlpha(40),
-                                      blurRadius: 28,
-                                      offset: const Offset(0, 10),
-                                    ),
-                                  ],
-                                ),
-                                child: Image.asset(
-                                  'assets/onboarding/logo.png',
-                                  width: 188,
-                                  height: 66,
-                                  fit: BoxFit.contain,
-                                  filterQuality: FilterQuality.medium,
-                                ),
+                              child: Image.asset(
+                                'assets/onboarding/logo.png',
+                                width: 210,
+                                height: 74,
+                                fit: BoxFit.contain,
+                                filterQuality: FilterQuality.medium,
                               ),
                             ),
                             const SizedBox(height: 18),
@@ -221,7 +204,7 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen>
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              'Cada plano foi pensado para\napoiar você em cada fase.',
+                              s.plusPaywallHeadline,
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 19,
@@ -242,8 +225,8 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen>
                             const SizedBox(height: 14),
                             Text(
                               premium
-                                  ? 'Seu Premium está ativo. Você pode conferir os planos a qualquer momento.'
-                                  : 'Compra 100% segura. Você pode cancelar quando quiser.',
+                                  ? s.plusPaywallActiveNote
+                                  : s.plusPaywallSecureNote,
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                   fontSize: 12,
@@ -332,37 +315,33 @@ class _PlansComparison extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final premiumPink =
         Color.lerp(AppTheme.primaryPink, AppTheme.primaryPurple, 0.18)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _FreePlanStrip(),
+        _FreePlanStrip(isCurrentPlan: !premiumActive),
         const SizedBox(height: 12),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: _PlanCard(
-                title: 'Premium',
-                subtitle: 'Tudo para cuidar e\nacompanhar do melhor jeito',
+                title: s.plusPlanPremiumTitle,
+                subtitle: s.plusPlanPremiumSubtitle,
                 icon: Icons.workspace_premium_rounded,
                 accent: premiumPink,
                 highlighted: true,
-                badge: 'Mais escolhido',
-                features: const [
-                  'Tudo do plano Gratuito',
-                  'Relatórios completos do bebê',
-                  'Relatório para o pediatra (Útil para compartilhar com seu Pediatra)',
-                  'Descrição dos Signos',
-                  'Mensagens bíblicas diárias',
-                  'Análises e insights do desenvolvimento',
-                  'Conteúdos e dicas exclusivas',
-                  'Suporte prioritário',
-                ],
+                badge: s.plusPlanPremiumBadge,
+                features: s.plusPlanPremiumFeatures,
                 price: price,
-                priceSub: premiumActive ? 'ativo agora' : 'compra segura',
-                buttonLabel: premiumActive ? 'Plano atual' : 'Quero Premium',
+                priceSub: premiumActive
+                    ? s.plusPlanPremiumPriceSubActive
+                    : s.plusPlanPremiumPriceSubSecure,
+                buttonLabel: premiumActive
+                    ? s.plusPlanPremiumButtonActive
+                    : s.plusPlanPremiumButton,
                 outlinedButton: premiumActive,
                 busy: busy,
                 onPressed: premiumActive || busy ? null : onPurchase,
@@ -371,23 +350,15 @@ class _PlansComparison extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: _PlanCard(
-                title: 'IA Babá',
-                subtitle: 'Assistente inteligente\npara o dia a dia',
+                title: s.plusPlanAiTitle,
+                subtitle: s.plusPlanAiSubtitle,
                 icon: Icons.smart_toy_rounded,
                 accent: AppTheme.primaryPurple,
-                badge: 'Em breve',
-                features: const [
-                  'Tudo do plano Premium',
-                  'IA Babá 24h com você',
-                  'Respostas inteligentes',
-                  'Orientações personalizadas',
-                  'Alertas preditivos',
-                  'Rotinas personalizadas',
-                  'Conteúdos gerados pela IA',
-                ],
-                price: 'Em breve',
-                priceSub: 'Fique ligada!',
-                buttonLabel: 'Quero ser avisado',
+                badge: s.plusPlanAiBadge,
+                features: s.plusPlanAiFeatures,
+                price: s.plusPlanAiPrice,
+                priceSub: s.plusPlanAiPriceSub,
+                buttonLabel: s.plusPlanAiButton,
                 outlinedButton: true,
               ),
             ),
@@ -399,17 +370,15 @@ class _PlansComparison extends StatelessWidget {
 }
 
 class _FreePlanStrip extends StatelessWidget {
-  const _FreePlanStrip();
+  const _FreePlanStrip({required this.isCurrentPlan});
+
+  final bool isCurrentPlan;
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final accent = AppTheme.primaryPurple;
-    final features = const [
-      'Cadastros básicos',
-      'Registro diário',
-      'Agendas e lembretes',
-      'Peso e altura',
-    ];
+    final features = s.plusPlanFreeFeatures;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
@@ -433,7 +402,7 @@ class _FreePlanStrip extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Gratuito',
+                  s.plusPlanFreeTitle,
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w900,
@@ -442,7 +411,7 @@ class _FreePlanStrip extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'Comece sua jornada com o essencial',
+                  s.plusPlanFreeSubtitle,
                   style: TextStyle(
                     fontSize: 12,
                     height: 1.2,
@@ -467,22 +436,24 @@ class _FreePlanStrip extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                'R\$ 0,00',
+                s.plusPlanFreePrice,
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
                   color: accent,
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                'Plano atual',
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.textMuted,
+              if (isCurrentPlan) ...[
+                const SizedBox(height: 2),
+                Text(
+                  s.plusPlanCurrent,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textMuted,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ],
@@ -719,11 +690,12 @@ class _TrustStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = const [
-      (Icons.verified_user_rounded, 'Seus dados\nsempre seguros'),
-      (Icons.family_restroom_rounded, 'Feito com amor\npara famílias'),
-      (Icons.star_rounded, 'Conteúdos confiáveis\ne atualizados'),
-      (Icons.favorite_rounded, 'Apoio em cada\nmomento'),
+    final trustItems = S.of(context).plusTrustStripItems;
+    final items = [
+      (Icons.verified_user_rounded, trustItems[0]),
+      (Icons.family_restroom_rounded, trustItems[1]),
+      (Icons.star_rounded, trustItems[2]),
+      (Icons.favorite_rounded, trustItems[3]),
     ];
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),

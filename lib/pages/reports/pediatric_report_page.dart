@@ -20,6 +20,7 @@ import '../../utils/pediatric_report_pdf.dart';
 import '../../utils/pediatric_report_symptom_lines.dart';
 import '../../utils/portal_layout.dart';
 import '../premium/premium_paywall_screen.dart';
+import 'report_page_shell.dart';
 
 DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
@@ -49,7 +50,6 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
   static const _clinicalPurple = Color(0xFF4A3F6B);
   static const _cardBorder = Color(0xFFE8E4F5);
   static const _btnFill = Color(0xFFD9D3F0);
-  static const _bg = Color(0xFFF9F9FB);
 
   @override
   void initState() {
@@ -172,6 +172,15 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
     return '$g g';
   }
 
+  String _heightGainLabel(PediatricReportSnapshot snap) {
+    final cm = snap.heightDeltaCm;
+    if (cm == null) return '—';
+    final text = MeasurementFormat.length(cm.abs(), decimalsCm: 1);
+    if (cm > 0) return '+$text';
+    if (cm < 0) return '-$text';
+    return text;
+  }
+
   PediatricReportPdfStrings _pdfStrings(S s) {
     return PediatricReportPdfStrings(
       title: s.reportPediatricPdfTitle,
@@ -188,6 +197,9 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
       labelWeightStart: s.reportPediatricWeightStart,
       labelWeightEnd: s.reportPediatricWeightEnd,
       labelWeightGain: s.reportPediatricWeightGain,
+      labelHeightStart: s.reportPediatricHeightStart,
+      labelHeightEnd: s.reportPediatricHeightEnd,
+      labelHeightGain: s.reportPediatricHeightGain,
       labelHeight: s.reportPediatricLabelHeight,
       labelAvgFeeds: s.reportPediatricAvgFeeds,
       labelAvgSleep: s.reportPediatricAvgSleep,
@@ -224,8 +236,8 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
     final periodLine =
         _periodRangeLabel(context, snap.periodStart, snap.periodEndInclusive);
 
-    final symptomBlocks =
-        PediatricReportSymptomLines.buildBlocks(s, snap.symptomOccurrencesByKind, loc);
+    final symptomBlocks = PediatricReportSymptomLines.buildBlocks(
+        s, snap.symptomOccurrencesByKind, loc);
 
     return buildPediatricReportPdf(
       snap: snap,
@@ -237,6 +249,9 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
       weightStartFmt: MeasurementFormat.weight(snap.weightStartKg),
       weightEndFmt: MeasurementFormat.weight(snap.weightEndKg),
       weightGainFmt: _weightGainLabel(snap),
+      heightStartFmt: MeasurementFormat.length(snap.heightStartCm),
+      heightEndFmt: MeasurementFormat.length(snap.heightEndCm),
+      heightGainFmt: _heightGainLabel(snap),
       heightFmt: MeasurementFormat.length(snap.heightCm),
       sleepPatternText: _sleepPattern(s, snap),
       symptomDetailBlocks: symptomBlocks,
@@ -247,7 +262,8 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
   Future<void> _sharePdf(S s) async {
     if (!FeatureAccess.canExportPdf) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.plusSnackLockedFeature)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(s.plusSnackLockedFeature)));
       await openPremiumPaywall(context);
       return;
     }
@@ -269,7 +285,8 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
   Future<void> _printPdf(S s) async {
     if (!FeatureAccess.canExportPdf) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.plusSnackLockedFeature)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(s.plusSnackLockedFeature)));
       await openPremiumPaywall(context);
       return;
     }
@@ -288,7 +305,8 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
   Future<void> _emailSummary(S s) async {
     if (!FeatureAccess.canExportPdf) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.plusSnackLockedFeature)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(s.plusSnackLockedFeature)));
       await openPremiumPaywall(context);
       return;
     }
@@ -447,7 +465,8 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Icon(Icons.edit_calendar_outlined, color: _clinicalPurple, size: 24),
+                Icon(Icons.edit_calendar_outlined,
+                    color: _clinicalPurple, size: 24),
               ],
             ),
           ),
@@ -474,10 +493,13 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
     final ageRefEnd = snap == null ? _rangeEnd : snap.periodEndInclusive;
     final ageLine = birth == null ? '—' : s.babyAgeLabel(birth, ageRefEnd);
 
+    final reportBg = reportScaffoldBackground();
+
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: reportBg,
       appBar: AppBar(
-        backgroundColor: _bg,
+        backgroundColor: reportBg,
+        surfaceTintColor: reportBg,
         elevation: 0,
         foregroundColor: _clinicalPurple,
         title: Text(s.reportPediatricScreenTitle,
@@ -545,6 +567,14 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
                                 MeasurementFormat.weight(snap.weightEndKg), s),
                             _row(s.reportPediatricWeightGain,
                                 _weightGainLabel(snap), s),
+                            _row(
+                                s.reportPediatricHeightStart,
+                                MeasurementFormat.length(snap.heightStartCm),
+                                s),
+                            _row(s.reportPediatricHeightEnd,
+                                MeasurementFormat.length(snap.heightEndCm), s),
+                            _row(s.reportPediatricHeightGain,
+                                _heightGainLabel(snap), s),
                             _row(s.reportPediatricAvgFeeds,
                                 snap.avgFeedingsPerDay.toStringAsFixed(1), s),
                             _row(

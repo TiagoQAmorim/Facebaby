@@ -11,6 +11,9 @@ class PediatricReportSnapshot {
     required this.weightStartKg,
     required this.weightEndKg,
     required this.weightDeltaGrams,
+    required this.heightStartCm,
+    required this.heightEndCm,
+    required this.heightDeltaCm,
     required this.heightCm,
     required this.sleepAwakeningsAvg,
     required this.longestSleepSec,
@@ -42,6 +45,12 @@ class PediatricReportSnapshot {
 
   /// Diferença entre primeiro e último peso no período (gramas); com fallback de peso fora do intervalo.
   final int? weightDeltaGrams;
+
+  final double? heightStartCm;
+  final double? heightEndCm;
+
+  /// Diferença entre primeira e última altura no período (cm); com fallback de altura fora do intervalo.
+  final double? heightDeltaCm;
 
   /// Altura: última medição no período, ou última conhecida até ao fim do período se não houver no intervalo.
   final double? heightCm;
