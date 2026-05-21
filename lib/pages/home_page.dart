@@ -569,21 +569,18 @@ class _HomePageState extends State<HomePage> {
       bannerSleepEndedAtDisplay = snap.lastSleepAt;
     }
     lastFeedHint = switch (_summaryHintFeedEnd) {
-      null => s.feedingNoRecords,
+      null => s.homeSummaryNoRecords,
       final d => s.summaryLastFeed(_fmtHm(d)),
     };
     final summaryDiaper = _summaryHintDiaperAt;
     lastDiaperHint = summaryDiaper == null
-        ? s.diaperHistoryEmpty
+        ? s.homeSummaryNoRecords
         : s.summaryLastFeed(_fmtHm(summaryDiaper));
     final summarySleep = _summaryHintSleepEnd;
     lastSleepHint = summarySleep == null
-        ? s.summarySleepNotYet
+        ? s.homeSummaryNoRecords
         : s.summaryLastSleep(_fmtHm(summarySleep));
-    final weightCompact = _summary.weight.replaceAll(' ', '');
-    final weightHint = weightCompact.contains('—')
-        ? s.summaryWeightNotYet
-        : s.homeSummaryExtraHint;
+    final weightHint = s.homeSummaryTotalDay;
 
     _syncHomeDailyTipLayoutDay();
     final pickBabyButton = widget.onPickBaby == null
@@ -1105,11 +1102,11 @@ class _HomePageState extends State<HomePage> {
                             color: AppTheme.textSecondary.withAlpha(240),
                           );
                           final bottomStyle = TextStyle(
-                            fontSize: portalSp(context, 13.5),
+                            fontSize: portalSp(context, 14.5),
                             fontWeight: FontWeight.w800,
                             height: 1.05,
                             letterSpacing: -0.15,
-                            color: AppTheme.textMuted.withAlpha(230),
+                            color: AppTheme.textSecondary.withAlpha(240),
                           );
 
                           return ConstrainedBox(
@@ -3163,9 +3160,9 @@ class _TodaySummaryCard extends StatelessWidget {
       letterSpacing: 0.35,
     );
     final hintStyle = TextStyle(
-      color: AppTheme.textMuted,
-      fontWeight: FontWeight.w600,
-      fontSize: portalSp(context, 10.8),
+      color: AppTheme.textSecondary.withAlpha(235),
+      fontWeight: FontWeight.w700,
+      fontSize: portalSp(context, 12.5),
       height: 1.05,
     );
     return Container(
