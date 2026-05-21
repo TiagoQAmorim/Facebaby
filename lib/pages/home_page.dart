@@ -32,8 +32,7 @@ import '../widgets/consultation_detail_sheet.dart';
 import '../widgets/language_picker.dart';
 import '../widgets/photo_avatar.dart';
 import '../widgets/section_title.dart';
-import '../widgets/home_recent_memories_section.dart';
-import '../widgets/weekly_photo_home_section.dart';
+import '../widgets/home_memories_weekly_panel.dart';
 import '../utils/portal_layout.dart';
 import '../utils/portal_time_of_day.dart';
 import 'diaper_page.dart';
@@ -1228,8 +1227,7 @@ class _HomePageState extends State<HomePage> {
                       consultations: _dayConsultations,
                       fmtHm: _fmtHm,
                     ),
-                    const HomeRecentMemoriesSection(),
-                    const WeeklyPhotoHomeSection(),
+                    const HomeMemoriesWeeklyPanel(),
                   ],
                 ),
               ),
