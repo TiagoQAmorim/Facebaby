@@ -330,6 +330,38 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
     await _persistPublic(_memory.copyWith(showBabyFirstNameWhenPublic: v));
   }
 
+  Future<void> _confirmDeleteMemory(S s) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.memoryDeleteBadgeTitle),
+        content: Text(s.memoryDeleteBadgeBody),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(s.cancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(s.delete, style: const TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await widget.controller.deleteByBadge(widget.badge.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(s.deletedOk)));
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
+
   Future<void> _openEditor() async {
     final ok = await Navigator.of(context).push<bool>(
       portalPageRoute<bool>(
@@ -563,8 +595,21 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
                 IconButton(
                     onPressed: _openEditor,
                     icon: const Icon(Icons.edit_outlined)),
-                IconButton(
-                    onPressed: () {}, icon: const Icon(Icons.more_vert)),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (action) {
+                    if (action == 'delete') _confirmDeleteMemory(s);
+                  },
+                  itemBuilder: (ctx) => [
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Text(
+                        s.delete,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           body: SingleChildScrollView(

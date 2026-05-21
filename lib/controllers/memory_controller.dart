@@ -44,4 +44,11 @@ class MemoryController extends ChangeNotifier {
     await service.upsert(memory);
     await loadForBaby(bid);
   }
+
+  Future<void> deleteByBadge(String badgeId) async {
+    final bid = _babyId;
+    if (bid == null) return;
+    await service.deleteByBadge(babyId: bid, badgeId: badgeId);
+    await loadForBaby(bid);
+  }
 }

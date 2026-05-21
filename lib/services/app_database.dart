@@ -5592,4 +5592,32 @@ WHERE baby_id = ?
       'created_at': created,
     });
   }
+
+  /// Remove memória de um selo; o badge volta a ficar livre na grelha.
+  Future<int> deleteBabyMemoryByBadge({
+    required int babyId,
+    required String badgeId,
+  }) async {
+    if (kIsWeb) {
+      return _webSerialized(() async {
+        final prefs = await _webPrefs();
+        final memories = _webReadList(prefs, 'memories');
+        final before = memories.length;
+        memories.removeWhere((m) =>
+            (m['baby_id'] as num?)?.toInt() == babyId &&
+            (m['badge_id'] as String?) == badgeId);
+        if (memories.length < before) {
+          await _webWriteList(prefs, 'memories', memories);
+          return before - memories.length;
+        }
+        return 0;
+      });
+    }
+    final db = await database;
+    return db.delete(
+      'memories',
+      where: 'baby_id = ? AND badge_id = ?',
+      whereArgs: [babyId, badgeId],
+    );
+  }
 }

@@ -137,7 +137,7 @@ class MemoryBadgesCatalog {
     addMoment(
         'first_tooth', 'Primeiro dente', Icons.medical_information_rounded);
     addMoment('first_puree', 'Primeira papinha', Icons.soup_kitchen_rounded);
-    addMoment('sat_alone', 'Sentou sozinha',
+    addMoment('sat_alone', 'Sentou sem apoio',
         Icons.airline_seat_recline_normal_rounded);
     addMoment('crawled', 'Engatinhou', Icons.child_friendly_rounded);
     addMoment('stood_up', 'Ficou em pé', Icons.accessibility_new_rounded);

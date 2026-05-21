@@ -161,5 +161,33 @@ class MemoryCloudSync {
       rethrow;
     }
   }
+
+  static Future<void> deleteBadgeMemory({
+    required int localBabyId,
+    required String badgeId,
+  }) async {
+    if (!_authed || kIsWeb) return;
+    try {
+      final baby = await AppDatabase.instance.getBabyById(localBabyId);
+      final babyCloud = (baby?['cloud_id'] as String?)?.trim();
+      if (babyCloud == null || babyCloud.isEmpty) return;
+
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        await FirestoreService.instance.deletePublicMemoryDoc(
+          WeeklyPhotoPublicSync.publicDocId(
+            ownerUid: uid,
+            babyCloudId: babyCloud,
+            badgeId: badgeId,
+          ),
+        );
+      }
+
+      await FirestoreService.instance
+          .deleteEvent('badge_${babyCloud}_$badgeId');
+    } catch (e, st) {
+      debugPrint('MemoryCloudSync.deleteBadgeMemory failed: $e\n$st');
+    }
+  }
 }
 

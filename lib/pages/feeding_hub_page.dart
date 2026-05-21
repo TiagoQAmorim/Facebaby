@@ -532,6 +532,14 @@ class _FeedingHubPageState extends State<FeedingHubPage>
                           FeedingCloudSync.pushLocalSoon(
                               localBabyId: bid, localFeedingId: r.id);
                         } else if (type == 'solidos') {
+                          final solidNote = noteText.trim();
+                          if (solidNote.isEmpty) {
+                            if (ctx.mounted) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                                  content: Text(s.feedingHubSolidRequired)));
+                            }
+                            return;
+                          }
                           await AppDatabase.instance.updateFeeding(
                             id: r.id,
                             babyId: bid,
@@ -541,9 +549,7 @@ class _FeedingHubPageState extends State<FeedingHubPage>
                             side: null,
                             type: 'solidos',
                             quantityMl: null,
-                            note: noteText.trim().isEmpty
-                                ? null
-                                : noteText.trim(),
+                            note: solidNote,
                           );
                           FeedingCloudSync.pushLocalSoon(
                               localBabyId: bid, localFeedingId: r.id);
@@ -617,6 +623,11 @@ class _FeedingHubPageState extends State<FeedingHubPage>
     final id = _babyId;
     if (id == null) return;
     final note = _solidNoteCtrl.text.trim();
+    if (note.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.feedingHubSolidRequired)));
+      return;
+    }
     final now = DateTime.now();
     try {
       final newId = await AppDatabase.instance.insertFeeding(
@@ -627,7 +638,7 @@ class _FeedingHubPageState extends State<FeedingHubPage>
         side: null,
         type: 'solidos',
         quantityMl: null,
-        note: note.isEmpty ? null : note,
+        note: note,
       );
       FeedingCloudSync.pushLocalSoon(localBabyId: id, localFeedingId: newId);
       await _syncLocalReminders(id);

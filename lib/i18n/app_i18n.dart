@@ -1907,8 +1907,11 @@ class S {
   String get feedingHubSaveBottle => _t('feedingHubSaveBottle');
   String get feedingHubSaveSolid => _t('feedingHubSaveSolid');
   String get feedingHubSolidDescribe => _t('feedingHubSolidDescribe');
+  String get feedingHubSolidRequired => _t('feedingHubSolidRequired');
   String get feedingHubOverviewEmpty => _t('feedingHubOverviewEmpty');
   String get feedingHubMlRequired => _t('feedingHubMlRequired');
+  String get memoryDeleteBadgeTitle => _t('memoryDeleteBadgeTitle');
+  String get memoryDeleteBadgeBody => _t('memoryDeleteBadgeBody');
   String get feedingHubTimerTooShort => _t('feedingHubTimerTooShort');
   String get feedingHubBreastPieTitle => _t('feedingHubBreastPieTitle');
   String get feedingHubBreastPieEmpty => _t('feedingHubBreastPieEmpty');
@@ -2622,7 +2625,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'badge_first_fathers_day': 'Primeiro Dia dos Pais',
     'badge_first_tooth': 'Primeiro dente',
     'badge_first_puree': 'Primeira papinha',
-    'badge_sat_alone': 'Sentou sozinha',
+    'badge_sat_alone': 'Sentou sem apoio',
     'badge_crawled': 'Engatinhou',
     'badge_stood_up': 'Ficou em pé',
     'badge_first_steps': 'Primeiros passos',
@@ -3644,9 +3647,13 @@ const Map<AppLang, Map<String, String>> _strings = {
     'feedingHubManualInvalid': 'Informe uma duração maior que zero.',
     'feedingHubSaveBottle': 'Registrar mamadeira',
     'feedingHubSaveSolid': 'Registrar refeição',
-    'feedingHubSolidDescribe': 'O que foi oferecido? (opcional)',
+    'feedingHubSolidDescribe': 'O que foi oferecido?',
+    'feedingHubSolidRequired': 'Descreva o que foi oferecido antes de salvar.',
     'feedingHubOverviewEmpty': 'Nenhum registro nesta faixa.',
     'feedingHubMlRequired': 'Informe a quantidade em ml.',
+    'memoryDeleteBadgeTitle': 'Excluir memória',
+    'memoryDeleteBadgeBody':
+        'Esta badge voltará a ficar disponível para um novo registro. Deseja excluir?',
     'feedingHubTimerTooShort':
         'Espere pelo menos alguns segundos antes de salvar esta amamentação.',
     'feedingHubBreastPieTitle': 'Qual lado está sendo mais usado?',
@@ -4709,7 +4716,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'badge_first_fathers_day': "First Father's Day",
     'badge_first_tooth': 'First tooth',
     'badge_first_puree': 'First puree',
-    'badge_sat_alone': 'Sat alone',
+    'badge_sat_alone': 'Sat without support',
     'badge_crawled': 'Crawling',
     'badge_stood_up': 'Stood up',
     'badge_first_steps': 'First steps',
@@ -5714,9 +5721,13 @@ const Map<AppLang, Map<String, String>> _strings = {
     'feedingHubManualInvalid': 'Enter a duration greater than zero.',
     'feedingHubSaveBottle': 'Log bottle',
     'feedingHubSaveSolid': 'Log meal',
-    'feedingHubSolidDescribe': 'What was offered? (optional)',
+    'feedingHubSolidDescribe': 'What was offered?',
+    'feedingHubSolidRequired': 'Describe what was offered before saving.',
     'feedingHubOverviewEmpty': 'No entries in this list yet.',
     'feedingHubMlRequired': 'Enter amount in ml.',
+    'memoryDeleteBadgeTitle': 'Delete memory',
+    'memoryDeleteBadgeBody':
+        'This badge will be available again for a new entry. Delete?',
     'feedingHubTimerTooShort':
         'Keep the timer running a few seconds before saving this feeding.',
     'feedingHubBreastPieTitle': 'Which side is used more?',
@@ -6600,7 +6611,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'badge_first_fathers_day': 'Primer Día del Padre',
     'badge_first_tooth': 'Primer diente',
     'badge_first_puree': 'Primer puré',
-    'badge_sat_alone': 'Se sentó solo/a',
+    'badge_sat_alone': 'Se sentó sin apoyo',
     'badge_crawled': 'Gateó',
     'badge_stood_up': 'Se puso de pie',
     'badge_first_steps': 'Primeros pasos',
@@ -7927,7 +7938,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'badge_first_fathers_day': 'Première fête des Pères',
     'badge_first_tooth': 'Première dent',
     'badge_first_puree': 'Première purée',
-    'badge_sat_alone': 'Assis seul',
+    'badge_sat_alone': 'Assis sans appui',
     'badge_crawled': 'A quatre pattes',
     'badge_stood_up': 'Debout',
     'badge_first_steps': 'Premiers pas',
@@ -9242,7 +9253,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'badge_first_fathers_day': 'Erster Vatertag',
     'badge_first_tooth': 'Erster Zahn',
     'badge_first_puree': 'Erster Brei',
-    'badge_sat_alone': 'Allein gesessen',
+    'badge_sat_alone': 'Saß ohne Stütze',
     'badge_crawled': 'Gekrabbelt',
     'badge_stood_up': 'Aufgestanden',
     'badge_first_steps': 'Erste Schritte',
@@ -10343,7 +10354,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'badge_first_fathers_day': 'Prima Festa del papà',
     'badge_first_tooth': 'Primo dentino',
     'badge_first_puree': 'Prima pappa',
-    'badge_sat_alone': 'Seduto da solo',
+    'badge_sat_alone': 'Seduto senza appoggio',
     'badge_crawled': 'Ha gattonato',
     'badge_stood_up': 'Si è alzato in piedi',
     'badge_first_steps': 'Primi passi',
