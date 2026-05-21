@@ -1275,6 +1275,8 @@ class S {
           : _t('summarySleepSessionsMany'))
       .replaceAll('{s}', '$sessions');
   String get homeSummaryExtraHint => _t('homeSummaryExtraHint');
+  String get homeSummaryNoRecords => _t('homeSummaryNoRecords');
+  String get homeSummaryTotalDay => _t('homeSummaryTotalDay');
   String get homeTipTitle => _t('homeTipTitle');
   String get homeStatusOk => _t('homeStatusOk');
   String get homeStatusWarn => _t('homeStatusWarn');
@@ -3240,6 +3242,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'summarySleepSessionsMany': '{s} sonecas',
     'summaryWeight': 'PESO',
     'homeSummaryExtraHint': 'Totais do dia selecionado',
+    'homeSummaryNoRecords': 'Sem Registros',
+    'homeSummaryTotalDay': 'Total no dia',
     'add': 'Adicionar',
     'labelWeight': 'Peso',
     'labelHeight': 'Altura',
@@ -5315,6 +5319,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'summarySleepSessionsMany': '{s} naps',
     'summaryWeight': 'WEIGHT',
     'homeSummaryExtraHint': 'Totals for the selected day',
+    'homeSummaryNoRecords': 'No records',
+    'homeSummaryTotalDay': 'Total for the day',
     'add': 'Add',
     'labelWeight': 'Weight',
     'labelHeight': 'Height',
