@@ -12,6 +12,7 @@ import '../services/firebase/weekly_photo_spotlight_http.dart';
 import '../theme/app_theme.dart';
 import '../utils/memory_moment_localizations.dart';
 import '../utils/portal_layout.dart';
+import '../utils/portal_night_ui.dart';
 import '../utils/portal_time_of_day.dart';
 import '../utils/weekly_photo_spotlight_visibility.dart';
 import '../widgets/memories/cached_memory_photo.dart';
@@ -27,7 +28,10 @@ const int _kHomeBannerBorderAlpha = 92;
 /// Stream Firestore + pedido HTTP a [WeeklyPhotoSpotlightHttp] (vários URLs) em paralelo e nova
 /// tentativa aos 2s se ainda não houver dados mostráveis — contorna regras e deploy Gen2 (`*.run.app`).
 class WeeklyPhotoHomeSection extends StatefulWidget {
-  const WeeklyPhotoHomeSection({super.key});
+  const WeeklyPhotoHomeSection({super.key, this.inSharedPanel = false});
+
+  /// Dentro de [HomeMemoriesWeeklyPanel] (sem padding externo; cartão interno integrado).
+  final bool inSharedPanel;
 
   @override
   State<WeeklyPhotoHomeSection> createState() => _WeeklyPhotoHomeSectionState();
@@ -142,7 +146,6 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
     BuildContext context, {
     required String text,
     required Color fillColor,
-    required bool night,
   }) {
     final style = TextStyle(
       fontSize: portalSp(context, 19),
@@ -150,25 +153,7 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
       height: 1.15,
       letterSpacing: 0.35,
     );
-    if (!night) {
-      return Text(text, style: style.copyWith(color: fillColor));
-    }
-    const strokeWidth = 2.25;
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Text(
-          text,
-          style: style.copyWith(
-            foreground: Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = strokeWidth
-              ..color = Colors.white,
-          ),
-        ),
-        Text(text, style: style.copyWith(color: fillColor)),
-      ],
-    );
+    return Text(text, style: style.copyWith(color: fillColor));
   }
 
   String? _normalisedSpotlightBabySex(Map<String, dynamic> data) {
@@ -249,9 +234,8 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
     final heroTitle = s.weeklyPhotoHomeHeroTitle(spotlightSex);
     final night = PortalTimeOfDay.isNight(DateTime.now());
     final heroColor = _heroTitleColor(spotlightSex);
-    final nightTextColor =
-        night ? PortalTimeOfDay.nightOutlinedTextColor : null;
-    final nightShadows = night ? PortalTimeOfDay.nightTextOutlineShadows : null;
+    final nightDetailBlue =
+        night ? PortalNightUi.homeFrostedDetailBlue : null;
 
     final catalogBadge = (badgeId != null && badgeId.isNotEmpty)
         ? MemoryBadgesCatalog.findBadgeById(badgeId)
@@ -273,7 +257,9 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
     final hasDesc = desc != null && desc.isNotEmpty;
 
     return Padding(
-      padding: const EdgeInsets.only(top: 20),
+      padding: widget.inSharedPanel
+          ? EdgeInsets.zero
+          : const EdgeInsets.only(top: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -287,7 +273,6 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
                   context,
                   text: heroTitle,
                   fillColor: heroColor,
-                  night: night,
                 ),
               ),
             ],
@@ -297,11 +282,15 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
             color: Colors.transparent,
             child: Card(
               elevation: 0,
-              color: Colors.white.withAlpha(_kHomeBannerAlpha),
+              color: widget.inSharedPanel
+                  ? Colors.transparent
+                  : Colors.white.withAlpha(_kHomeBannerAlpha),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(22),
                 side: BorderSide(
-                  color: Colors.white.withAlpha(_kHomeBannerBorderAlpha),
+                  color: widget.inSharedPanel
+                      ? Colors.black.withAlpha(22)
+                      : Colors.white.withAlpha(_kHomeBannerBorderAlpha),
                 ),
               ),
               clipBehavior: Clip.antiAlias,
@@ -433,9 +422,8 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
                                     style: TextStyle(
                                       fontSize: portalSp(context, 12.5),
                                       fontWeight: FontWeight.w700,
-                                      color: nightTextColor ??
+                                      color: nightDetailBlue ??
                                           AppTheme.textSecondary,
-                                      shadows: nightShadows,
                                       height: 1.3,
                                     ),
                                   ),
@@ -450,10 +438,10 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
                               Text(
                                 babyLine,
                                 style: TextStyle(
-                                  color: nightTextColor ?? AppTheme.textPrimary,
+                                  color: nightDetailBlue ??
+                                      AppTheme.textPrimary,
                                   fontWeight: FontWeight.w800,
                                   fontSize: portalSp(context, 14),
-                                  shadows: nightShadows,
                                 ),
                               ),
                             if (hasDesc) ...[

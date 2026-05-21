@@ -132,6 +132,12 @@ abstract final class PortalNightUi {
 
   static Color cardChevronColor() => Colors.black.withAlpha(90);
 
+  /// Títulos no painel semitransparente da Home («Últimas memórias», «Ver todos»).
+  static const homeFrostedHeadingGray = Color(0xFF5B6B8C);
+
+  /// Likes, nome e idade na Foto da Semana (Home, modo noturno).
+  static const homeFrostedDetailBlue = Color(0xFF1A5278);
+
   /// Fundo claro em telas de detalhe (ex.: memória/badge) quando o portal está noturno.
   static Color detailPageBackground(bool night) =>
       night ? AppTheme.background : Colors.transparent;

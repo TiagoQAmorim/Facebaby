@@ -5,16 +5,18 @@ import '../i18n/app_i18n.dart';
 import '../models/baby_memory.dart';
 import '../services/app_database.dart';
 import '../services/memory_service.dart';
-import '../theme/app_theme.dart';
 import '../utils/photo_b64.dart';
 import '../utils/portal_layout.dart';
-import '../utils/portal_time_of_day.dart';
+import '../utils/portal_night_ui.dart';
 import '../app/shell_nested_nav.dart';
 import '../widgets/memories/cached_memory_photo.dart';
 
 /// Faixa horizontal «Últimas memórias» na Home — últimas 4 fotos da mãe no bebé atual.
 class HomeRecentMemoriesSection extends StatefulWidget {
-  const HomeRecentMemoriesSection({super.key});
+  const HomeRecentMemoriesSection({super.key, this.inSharedPanel = false});
+
+  /// Dentro de [HomeMemoriesWeeklyPanel] (sem padding/margem externos).
+  final bool inSharedPanel;
 
   @override
   State<HomeRecentMemoriesSection> createState() =>
@@ -91,16 +93,13 @@ class _HomeRecentMemoriesSectionState extends State<HomeRecentMemoriesSection> {
     final s = S.of(context);
     final thumbSize = portalSp(context, 92).clamp(80.0, 104.0);
     final radius = portalSp(context, 20).clamp(16.0, 24.0);
-    final night = PortalTimeOfDay.isNight(DateTime.now());
-    final headingColor =
-        night ? PortalTimeOfDay.nightOutlinedTextColor : AppTheme.textSecondary;
-    final seeAllColor = night
-        ? PortalTimeOfDay.nightOutlinedTextColor
-        : const Color(0xFF5B6B8C);
-    final nightShadows = night ? PortalTimeOfDay.nightTextOutlineShadows : null;
+    const headingColor = PortalNightUi.homeFrostedHeadingGray;
+    const seeAllColor = PortalNightUi.homeFrostedHeadingGray;
 
     return Padding(
-      padding: const EdgeInsets.only(top: 20),
+      padding: widget.inSharedPanel
+          ? EdgeInsets.zero
+          : const EdgeInsets.only(top: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -113,7 +112,6 @@ class _HomeRecentMemoriesSectionState extends State<HomeRecentMemoriesSection> {
                     fontWeight: FontWeight.w900,
                     fontSize: portalSp(context, 18),
                     color: headingColor,
-                    shadows: nightShadows,
                     height: 1.2,
                   ),
                 ),
@@ -131,7 +129,6 @@ class _HomeRecentMemoriesSectionState extends State<HomeRecentMemoriesSection> {
                   style: TextStyle(
                     fontWeight: FontWeight.w900,
                     fontSize: portalSp(context, 14),
-                    shadows: nightShadows,
                   ),
                 ),
               ),
@@ -162,6 +159,7 @@ class _HomeRecentMemoriesSectionState extends State<HomeRecentMemoriesSection> {
                 },
               ),
             ),
+          if (widget.inSharedPanel) const SizedBox(height: 14),
         ],
       ),
     );

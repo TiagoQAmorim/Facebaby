@@ -4,6 +4,7 @@ import '../i18n/app_i18n.dart';
 import '../services/firebase/weekly_photo_like_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/portal_layout.dart';
+import '../utils/portal_night_ui.dart';
 import '../utils/portal_time_of_day.dart';
 
 Future<void> _handleWeeklyPhotoLikeTap(BuildContext context, String id) async {
@@ -172,9 +173,8 @@ class _ProminentLikeBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final night = PortalTimeOfDay.isNight(DateTime.now());
-    final nightTextColor =
-        night ? PortalTimeOfDay.nightOutlinedTextColor : null;
-    final nightShadows = night ? PortalTimeOfDay.nightTextOutlineShadows : null;
+    final nightCountColor =
+        night ? PortalNightUi.homeFrostedDetailBlue : null;
     return Row(
       children: [
         if (readOnly)
@@ -192,8 +192,7 @@ class _ProminentLikeBar extends StatelessWidget {
                 style: TextStyle(
                   fontSize: portalSp(context, 14),
                   fontWeight: FontWeight.w800,
-                  color: nightTextColor ?? AppTheme.textPrimary,
-                  shadows: nightShadows,
+                  color: nightCountColor ?? AppTheme.textPrimary,
                 ),
               ),
             ],
@@ -233,8 +232,7 @@ class _ProminentLikeBar extends StatelessWidget {
             style: TextStyle(
               fontSize: portalSp(context, 14),
               fontWeight: FontWeight.w800,
-              color: nightTextColor ?? AppTheme.textSecondary,
-              shadows: nightShadows,
+              color: nightCountColor ?? AppTheme.textSecondary,
             ),
           ),
         ],
