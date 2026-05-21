@@ -48,4 +48,13 @@ class MemoryService {
     await MemoryCloudSync.pushBadgeMemory(localBabyId: m.babyId, badgeId: m.badgeId);
     return id;
   }
+
+  Future<void> deleteByBadge({
+    required int babyId,
+    required String badgeId,
+  }) async {
+    await db.deleteBabyMemoryByBadge(babyId: babyId, badgeId: badgeId);
+    await MemoryCloudSync.deleteBadgeMemory(
+        localBabyId: babyId, badgeId: badgeId);
+  }
 }
