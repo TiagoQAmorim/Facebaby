@@ -140,7 +140,6 @@ class ReportsHubPage extends StatelessWidget {
                     title: s.reportListMonthly,
                     subtitle: s.reportListMonthlySub,
                     locked: !FeatureAccess.canOpenAdvancedReports,
-                    lockHint: s.plusReportsLockedHint,
                     onTap: () => _openMonthly(context),
                   ),
                   const SizedBox(height: 10),
@@ -150,7 +149,6 @@ class ReportsHubPage extends StatelessWidget {
                     title: s.reportListSleepAdv,
                     subtitle: s.reportListSleepAdvSub,
                     locked: !FeatureAccess.canOpenAdvancedReports,
-                    lockHint: s.plusReportsLockedHint,
                     onTap: () => _openSleepAdv(context),
                   ),
                   const SizedBox(height: 10),
@@ -160,7 +158,6 @@ class ReportsHubPage extends StatelessWidget {
                     title: s.reportListPediatric,
                     subtitle: s.reportListPediatricSub,
                     locked: !FeatureAccess.canOpenAdvancedReports,
-                    lockHint: s.plusReportsLockedHint,
                     onTap: () => _openPediatric(context),
                   ),
                 ],
@@ -181,7 +178,6 @@ class _ReportTile extends StatelessWidget {
     required this.subtitle,
     required this.onTap,
     this.locked = false,
-    this.lockHint,
   });
 
   final IconData icon;
@@ -190,23 +186,20 @@ class _ReportTile extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
   final bool locked;
-  final String? lockHint;
 
   @override
   Widget build(BuildContext context) {
     if (locked) {
       final s = S.of(context);
-      final trimmedHint = lockHint?.trim();
-      final lockedSubtitle = trimmedHint == null || trimmedHint.isEmpty
-          ? subtitle
-          : '$trimmedHint. $subtitle';
       return PremiumLockedContentCard(
         title: title,
-        subtitle: lockedSubtitle,
-        ctaLabel: s.familyPremiumUnlockCta,
+        tagline: s.plusReportsPremiumTagline,
+        subtitle: subtitle,
+        ctaLabel: s.plusReportsPremiumCta,
         onTap: onTap,
         compact: true,
         accent: color,
+        vibrant: true,
       );
     }
 
@@ -302,20 +295,6 @@ class _ReportTile extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      if (locked &&
-                          lockHint != null &&
-                          lockHint!.trim().isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          lockHint!.trim(),
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            height: 1.2,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF7C6BA8),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),

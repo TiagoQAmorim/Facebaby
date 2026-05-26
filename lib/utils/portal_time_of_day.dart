@@ -6,11 +6,14 @@ import '../services/portal_layout_prefs.dart';
 abstract final class PortalTimeOfDay {
   PortalTimeOfDay._();
 
-  /// Dia no portal: mesmo céu/nuvens do cadastro inicial (sem sol).
-  static const backgroundDay =
-      'assets/onboarding/registration_background.png';
+  /// Céu/nuvens — login deslogado e cadastro inicial.
+  static const backgroundCloudSky =
+      'assets/onboarding/cloud_sky_background.png';
+  /// Dia no portal (logado): mesmo fundo do cadastro.
+  static const backgroundDay = backgroundCloudSky;
   static const backgroundNight = 'assets/onboarding/background_night.png';
   static const backgroundLoading = 'assets/onboarding/background_loading.png';
+  /// Céu com balão — telas de login (app e onboarding).
   static const backgroundLogin =
       'assets/onboarding/login_balloon_background.png';
   static const nightTextColor = Color(0xFFDDF3FF);

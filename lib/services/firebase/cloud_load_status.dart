@@ -4,6 +4,7 @@ enum CloudLoadStatus {
   newUser,
   missingBaby,
   loaded,
+  suspended,
   permissionDenied,
   networkError,
   unknownError,

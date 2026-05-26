@@ -6,7 +6,9 @@ import '../../services/firebase/auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/login_platform.dart';
 import '../../utils/portal_time_of_day.dart';
+import '../../widgets/auth_screen_background.dart';
 import '../../widgets/language_picker.dart';
+
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -201,7 +203,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final s = S.of(context);
     final theme = Theme.of(context);
-    const bgAsset = 'assets/onboarding/login_balloon_background.png';
+    final bgAsset = PortalTimeOfDay.backgroundLogin;
     const googleLogoAsset = 'assets/google_g_logo.png';
     InputDecoration fieldDeco(String label) => InputDecoration(
           labelText: label,
@@ -222,7 +224,7 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       extendBodyBehindAppBar: true,
-      backgroundColor: Colors.white,
+      backgroundColor: kAuthScreenSkyFallback,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
@@ -235,13 +237,9 @@ class _LoginPageState extends State<LoginPage> {
         fit: StackFit.expand,
         children: [
           Positioned.fill(
-            child: Image.asset(
-              bgAsset,
-              fit: BoxFit.cover,
-              alignment: Alignment.topCenter,
-              gaplessPlayback: true,
-              errorBuilder: (_, __, ___) =>
-                  const ColoredBox(color: AppTheme.background),
+            child: AuthScreenBackground(
+              asset: bgAsset,
+              alignment: Alignment.bottomCenter,
             ),
           ),
           SafeArea(
@@ -249,9 +247,8 @@ class _LoginPageState extends State<LoginPage> {
               builder: (context, constraints) {
                 final kb = MediaQuery.viewInsetsOf(context).bottom;
                 final h = MediaQuery.sizeOf(context).height;
-                // Espaço até o formulário: logo abaixo do balão no fundo, sem empurrar tanto
-                // que force scroll em ecrãs médios.
-                final topGap = (h * 0.14).clamp(72.0, 148.0);
+                // Formulário na zona clara do céu (nuvens ficam em baixo no artwork).
+                final topGap = (h * 0.08).clamp(48.0, 120.0);
 
                 return Padding(
                   padding: EdgeInsets.fromLTRB(20, 0, 20, 18 + kb),

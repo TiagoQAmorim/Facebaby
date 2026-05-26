@@ -3,12 +3,12 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:photo_view/photo_view.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../utils/app_date_picker.dart';
 import '../../app/app_locale.dart';
 import '../../controllers/memory_controller.dart';
 import '../../i18n/app_i18n.dart';
 import '../../services/premium/feature_access.dart';
-import '../../services/premium/premium_constants.dart';
 import '../premium/premium_paywall_screen.dart';
 import '../../models/baby_memory.dart';
 import '../../models/memory_badge.dart';
@@ -22,6 +22,7 @@ import '../../widgets/card_box.dart';
 import '../../widgets/memories/cached_memory_photo.dart';
 import '../../widgets/memories/memory_badge_icon.dart';
 import '../../widgets/face_baby_loading.dart';
+import '../../widgets/weekly_photo_public_confirm_dialog.dart';
 import 'memory_badges_catalog.dart';
 
 class AddMemoryPage extends StatefulWidget {
@@ -319,7 +320,7 @@ class _AddMemoryPageState extends State<AddMemoryPage> {
   }
 
   Future<void> _pickDateTime() async {
-    final d = await showDatePicker(
+    final d = await showAppDatePicker(
       context: context,
       initialDate: _memoryDate,
       firstDate: DateTime(2015),
@@ -361,31 +362,8 @@ class _AddMemoryPageState extends State<AddMemoryPage> {
           .showSnackBar(SnackBar(content: Text(s.weeklyPhotoPublicNeedPhoto)));
       return;
     }
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    final badgeKey = _selectedBadge?.id ?? 'new';
-    final key = 'fb_weekly_photo_confirm_${widget.babyId}_$badgeKey';
-    final seen = prefs.getBool(key) ?? false;
-    if (!seen) {
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(s.weeklyPhotoConfirmTitle),
-          content: Text(s.weeklyPhotoConfirmBody),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(s.weeklyPhotoConfirmCancel)),
-            FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(s.weeklyPhotoConfirmOk)),
-          ],
-        ),
-      );
-      if (ok != true) return;
-      await prefs.setBool(key, true);
-    }
-    if (!mounted) return;
+    final accepted = await showWeeklyPhotoPublicConfirmDialog(context);
+    if (!accepted || !mounted) return;
     setState(() => _isPublic = true);
   }
 
@@ -420,19 +398,12 @@ class _AddMemoryPageState extends State<AddMemoryPage> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       return;
     }
-    final s = S.of(context);
     if (!FeatureAccess.canSaveNewMemoryMoment(
       controller: widget.controller,
       badgeId: selectedBadge.id,
       isEditing: _isEditing,
     )) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(s.plusMemoryLimitSnack
-              .replaceAll('{max}', '${PremiumConstants.freeMemoryMomentsMax}')),
-        ),
-      );
-      await openPremiumPaywall(context);
+      await showMemoryPremiumLimitDialog(context);
       return;
     }
     setState(() => _saving = true);

@@ -1,3 +1,7 @@
+import 'dart:async' show unawaited;
+
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -17,6 +21,18 @@ class FirestoreUserRepository {
   CollectionReference<Map<String, dynamic>> babiesCol(String uid) => userDoc(uid).collection('babies');
 
   CollectionReference<Map<String, dynamic>> eventsCol(String uid) => userDoc(uid).collection('events');
+
+  CollectionReference<Map<String, dynamic>> memoryDeletionsCol(String uid) =>
+      userDoc(uid).collection('memory_deletions');
+
+  /// ID estável para `users/{uid}/memory_deletions/{id}`.
+  static String memoryDeletionDocId(String babyCloudId, String badgeId) {
+    final b = babyCloudId.trim();
+    final g = badgeId.trim();
+    final raw = '${b}__${g}'.replaceAll('/', '_');
+    if (raw.length <= 1200) return raw;
+    return raw.substring(0, 1200);
+  }
 
   void _log(String op, String uid, String path, [Object? extra]) {
     final msg = 'Firestore op=$op uid=$uid path=$path';
@@ -66,6 +82,55 @@ class FirestoreUserRepository {
       SetOptions(merge: true),
     );
     return ref.id;
+  }
+
+  /// Regista na nuvem que um selo foi apagado (sobrevive a logout/login noutro dispositivo).
+  Future<void> setMemoryBadgeDeletion({
+    required String babyCloudId,
+    required String badgeId,
+  }) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final bCloud = babyCloudId.trim();
+    final bid = badgeId.trim();
+    if (bCloud.isEmpty || bid.isEmpty) return;
+    final docId = memoryDeletionDocId(bCloud, bid);
+    _log('set', uid, 'users/$uid/memory_deletions/$docId');
+    await memoryDeletionsCol(uid).doc(docId).set({
+      'baby_id': bCloud,
+      'badge_id': bid,
+      'deleted_at': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> clearMemoryBadgeDeletion({
+    required String babyCloudId,
+    required String badgeId,
+  }) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final bCloud = babyCloudId.trim();
+    final bid = badgeId.trim();
+    if (bCloud.isEmpty || bid.isEmpty) return;
+    final docId = memoryDeletionDocId(bCloud, bid);
+    _log('delete', uid, 'users/$uid/memory_deletions/$docId');
+    await memoryDeletionsCol(uid).doc(docId).delete();
+  }
+
+  Future<List<String>> listDeletedBadgeIdsForBaby(String babyCloudId) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return const [];
+    final bCloud = babyCloudId.trim();
+    if (bCloud.isEmpty) return const [];
+    _log('query', uid, 'users/$uid/memory_deletions', {'baby_id': bCloud});
+    final snap =
+        await memoryDeletionsCol(uid).where('baby_id', isEqualTo: bCloud).get();
+    final out = <String>[];
+    for (final d in snap.docs) {
+      final bid = (d.data()['badge_id'] as String?)?.trim() ?? '';
+      if (bid.isNotEmpty) out.add(bid);
+    }
+    return out;
   }
 
   Future<void> setSelectedBabyId(String uid, String babyId) async {
@@ -170,6 +235,13 @@ class FirestoreUserRepository {
         return CloudLoadResult(status: CloudLoadStatus.newUser, uid: uid);
       }
 
+      final status = (profile['status'] as String?)?.trim().toLowerCase();
+      if (status == 'suspended') {
+        return CloudLoadResult(status: CloudLoadStatus.suspended, uid: uid);
+      }
+
+      unawaited(_touchLastLogin(uid));
+
       final selectedId = (profile['selectedBabyId'] as String?)?.trim();
       if (selectedId == null || selectedId.isEmpty) {
         // If profile exists but selectedBabyId is missing, try to recover from cloud babies collection
@@ -249,6 +321,21 @@ class FirestoreUserRepository {
     } catch (e) {
       debugPrint('Legacy migration skipped: $e');
       return false;
+    }
+  }
+
+  Future<void> _touchLastLogin(String uid) async {
+    try {
+      final locale = PlatformDispatcher.instance.locale;
+      final country = locale.countryCode?.trim().toUpperCase();
+      await userDoc(uid).set({
+        'lastLoginAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        if (country != null && country.length == 2) 'countryCode': country,
+        'localeCountry': locale.toLanguageTag(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('lastLoginAt update skipped: $e');
     }
   }
 }

@@ -5,6 +5,8 @@ import 'package:crop_your_image/crop_your_image.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 
+import '../utils/strip_image_metadata.dart';
+
 /// Ajuste de foto em tela cheia: pinça/arrastar; recorte quadrado centralizado.
 class PhotoAdjustPage extends StatefulWidget {
   final Uint8List imageBytes;
@@ -49,7 +51,7 @@ class _PhotoAdjustPageState extends State<PhotoAdjustPage> {
     setState(() => _busy = false);
     switch (result) {
       case CropSuccess(:final croppedImage):
-        Navigator.of(context).pop(croppedImage);
+        Navigator.of(context).pop(stripImageMetadata(croppedImage));
       case CropFailure(:final cause):
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Não foi possível aplicar o recorte: $cause')),

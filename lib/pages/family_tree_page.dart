@@ -1,6 +1,8 @@
 import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 
+import '../utils/app_date_picker.dart';
+
 import '../controllers/current_baby_controller.dart';
 import '../i18n/app_i18n.dart';
 import '../models/daily_summary.dart';
@@ -8,13 +10,18 @@ import '../models/family_message_prefs.dart';
 import '../services/app_database.dart';
 import '../services/family_christian_content_service.dart'
     show FamilyChristianContentService;
+import '../services/family_phrase_content_service.dart';
 import '../services/family_zodiac_content_service.dart'
     show FamilyZodiacContentService;
+import '../services/ai/family_horoscope_service.dart';
+import '../services/family_horoscope_read_prefs.dart';
 import '../services/premium/feature_access.dart';
 import '../services/premium/premium_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/portal_page_route.dart';
 import '../utils/portal_time_of_day.dart';
+import '../widgets/family_ai_baby_history_panel.dart';
+import '../widgets/family_horoscope_panel.dart';
 import '../widgets/family_tree_stage.dart';
 import 'mother_profile_page.dart';
 import 'premium/premium_paywall_screen.dart';
@@ -27,12 +34,16 @@ class FamilyTreePage extends StatefulWidget {
   State<FamilyTreePage> createState() => _FamilyTreePageState();
 }
 
-class _FamilyTreePageState extends State<FamilyTreePage> {
+class _FamilyTreePageState extends State<FamilyTreePage>
+    with SingleTickerProviderStateMixin {
   final _current = CurrentBabyController.instance;
+  late TabController _tabController;
   DateTime _selectedSummaryDay = _dateOnly(DateTime.now());
   Map<int, double> _heightByBabyId = {};
   bool _zodiacContentReady = false;
   bool _christianContentReady = false;
+  bool _spiritistContentReady = false;
+  bool _jewishContentReady = false;
   FamilyMessagePrefs _messagePrefs = FamilyMessagePrefs.horoscopeOnly;
   List<Map<String, Object?>> _babies = [];
   DailySummary? _todaySummary;
@@ -40,20 +51,75 @@ class _FamilyTreePageState extends State<FamilyTreePage> {
   DateTime? _lastDiaperChangedAt;
   DateTime? _lastSleepEndedAt;
 
+  int get _tabCount => _messagePrefs.showHoroscope ? 3 : 2;
+
   @override
   void initState() {
     super.initState();
+    _messagePrefs = FamilyMessagePrefs.fromMother(_current.currentMotherRow);
+    _tabController = TabController(length: _tabCount, vsync: this);
+    _tabController.addListener(_onHoroscopeTabOpened);
     _current.addListener(_onDataChanged);
     PremiumService.instance.addListener(_onPremiumChanged);
-    _syncMessagePrefs();
     unawaited(_loadBabyHeightsForFamily());
     unawaited(_loadFamilyMetrics());
     _loadZodiacContentIfPremium();
     _loadChristianContentIfNeeded();
+    _loadSpiritistContentIfNeeded();
+    _loadJewishContentIfNeeded();
+    unawaited(_bootstrapFamilyHoroscopeIfEnabled());
+    unawaited(FamilyHoroscopeUnreadBadge.refresh());
+  }
+
+  void _onHoroscopeTabOpened() {
+    if (!_messagePrefs.showHoroscope) return;
+    if (_tabController.index != 1 || _tabController.indexIsChanging) return;
+    unawaited(FamilyHoroscopeReadPrefs.markTodayRead());
+  }
+
+  int _mapTabIndexAfterCountChange(int oldIndex, int oldLen, int newLen) {
+    if (oldLen == newLen) return oldIndex;
+    if (oldLen == 3 && newLen == 2) {
+      if (oldIndex <= 0) return 0;
+      if (oldIndex == 1) return 0;
+      return 1;
+    }
+    if (oldIndex == 0) return 0;
+    return 2;
+  }
+
+  void _recreateTabControllerIfNeeded() {
+    final want = _tabCount;
+    if (_tabController.length == want) return;
+    final oldLen = _tabController.length;
+    final oldIdx = _tabController.index;
+    _tabController.removeListener(_onHoroscopeTabOpened);
+    _tabController.dispose();
+    final nextIdx =
+        _mapTabIndexAfterCountChange(oldIdx, oldLen, want).clamp(0, want - 1);
+    _tabController = TabController(
+      length: want,
+      vsync: this,
+      initialIndex: nextIdx,
+    );
+    _tabController.addListener(_onHoroscopeTabOpened);
+    if (!_messagePrefs.showHoroscope) {
+      FamilyHoroscopeUnreadBadge.show.value = false;
+    }
+  }
+
+  Future<void> _bootstrapFamilyHoroscopeIfEnabled() async {
+    if (!_messagePrefs.showHoroscope) return;
+    await PremiumService.instance.syncPremiumFromFirestore();
+    if (!FeatureAccess.canUseAiFamilyHoroscope) return;
+    await FamilyHoroscopeBootstrap.ensureToday();
+    await FamilyHoroscopeUnreadBadge.refresh();
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onHoroscopeTabOpened);
+    _tabController.dispose();
     _current.removeListener(_onDataChanged);
     PremiumService.instance.removeListener(_onPremiumChanged);
     super.dispose();
@@ -61,11 +127,13 @@ class _FamilyTreePageState extends State<FamilyTreePage> {
 
   void _onPremiumChanged() {
     _loadZodiacContentIfPremium();
+    unawaited(_bootstrapFamilyHoroscopeIfEnabled());
     if (mounted) setState(() {});
   }
 
   void _syncMessagePrefs() {
     _messagePrefs = FamilyMessagePrefs.fromMother(_current.currentMotherRow);
+    _recreateTabControllerIfNeeded();
   }
 
   void _loadZodiacContentIfPremium() {
@@ -82,13 +150,30 @@ class _FamilyTreePageState extends State<FamilyTreePage> {
     });
   }
 
+  void _loadSpiritistContentIfNeeded() {
+    if (!_messagePrefs.showSpiritist) return;
+    FamilyPhraseContentService.spiritist.ensureLoaded().then((_) {
+      if (mounted) setState(() => _spiritistContentReady = true);
+    });
+  }
+
+  void _loadJewishContentIfNeeded() {
+    if (!_messagePrefs.showJewish) return;
+    FamilyPhraseContentService.jewish.ensureLoaded().then((_) {
+      if (mounted) setState(() => _jewishContentReady = true);
+    });
+  }
+
   void _onDataChanged() {
     if (mounted) {
       _syncMessagePrefs();
+      unawaited(_bootstrapFamilyHoroscopeIfEnabled());
       setState(() {});
       unawaited(_loadBabyHeightsForFamily());
       unawaited(_loadFamilyMetrics());
       _loadChristianContentIfNeeded();
+      _loadSpiritistContentIfNeeded();
+      _loadJewishContentIfNeeded();
     }
   }
 
@@ -140,7 +225,7 @@ class _FamilyTreePageState extends State<FamilyTreePage> {
 
   Future<void> _pickSummaryDay() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
+    final picked = await showAppDatePicker(
       context: context,
       initialDate: _selectedSummaryDay.isAfter(_dateOnly(now))
           ? _dateOnly(now)
@@ -203,6 +288,9 @@ class _FamilyTreePageState extends State<FamilyTreePage> {
   Future<void> _refresh() async {
     await _current.refresh();
     _syncMessagePrefs();
+    if (_messagePrefs.showHoroscope) {
+      unawaited(_bootstrapFamilyHoroscopeIfEnabled());
+    }
     await _loadBabyHeightsForFamily();
     await _loadFamilyMetrics();
     _loadChristianContentIfNeeded();
@@ -239,7 +327,9 @@ class _FamilyTreePageState extends State<FamilyTreePage> {
         mother != null && motherProfileFatherRegistered(mother);
     final zodiacUnlocked = FeatureAccess.canViewFamilyZodiac;
 
-    final bottomPadding = MediaQuery.of(context).padding.bottom + 140;
+    // Espaço extra: botão central IA Babá sobrepõe o conteúdo da barra inferior.
+    final tabScrollBottom =
+        48.0 + MediaQuery.paddingOf(context).bottom + 20.0;
     final atNight = PortalTimeOfDay.isNight(DateTime.now());
     final fallback =
         atNight ? const Color(0xFF152238) : const Color(0xFFB8D9EE);
@@ -256,84 +346,174 @@ class _FamilyTreePageState extends State<FamilyTreePage> {
             child: ListenableBuilder(
               listenable: PremiumService.instance,
               builder: (context, _) {
-                return RefreshIndicator(
-                  onRefresh: _refresh,
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.fromLTRB(20, 10, 20, bottomPadding),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _FamilyPageHeader(
-                          title: s.familyScreenTitle,
-                          settingsTooltip: s.settingsTitle,
-                          onBack: () => Navigator.maybePop(context),
-                          onSettings: motherId == null
-                              ? null
-                              : () => _openMyProfile(
-                                    MotherProfileInitialTab.preferences,
-                                  ),
-                        ),
-                        const SizedBox(height: 8),
-                        if (mother == null)
-                          Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Text(
-                              s.motherProfileNoData,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          )
-                        else
-                          FamilyTreeStage(
-                            s: s,
-                            zodiacUnlocked: zodiacUnlocked,
-                            zodiacReady: _zodiacContentReady,
-                            showChristianMessages: _messagePrefs.showChristian,
-                            showHoroscopeMessages: _messagePrefs.showHoroscope,
-                            christianReady: _christianContentReady,
-                            mother: mother,
-                            babies: _babies,
-                            heightCmByBabyId: _heightByBabyId,
-                            fatherRegistered: fatherRegistered,
-                            activeBabyId: babyId,
-                            initialTabIndex: _initialTabIndex(
-                              fatherRegistered: fatherRegistered,
-                              currentBabyId: babyId,
-                            ),
-                            verticalMemberTabs: false,
-                            onEditMother: () =>
-                                _openMyProfile(MotherProfileInitialTab.mother),
-                            onEditFather: () =>
-                                _openMyProfile(MotherProfileInitialTab.father),
-                            onEditBaby: (id) async {
-                              await _current.setCurrentBabyId(id);
-                              if (!mounted) return;
-                              await _openMyProfile(
-                                MotherProfileInitialTab.babies,
-                              );
-                            },
-                            premiumZodiacLockedMessage:
-                                s.familyPremiumZodiacLocked,
-                            premiumUnlockCta: s.familyPremiumUnlockCta,
-                            onPremiumTap: () => openPremiumPaywall(context),
-                            todaySummary: _todaySummary,
-                            summaryDay: _selectedSummaryDay,
-                            summaryDayLabel:
-                                _fmtCalendarDate(_selectedSummaryDay),
-                            isTodaySummaryDay: _isTodaySummaryDay,
-                            onPickSummaryDay: _pickSummaryDay,
-                            onTodaySummaryDay: _goToTodaySummary,
-                            lastFeedEndedAt: _lastFeedEndedAt,
-                            lastDiaperChangedAt: _lastDiaperChangedAt,
-                            lastSleepEndedAt: _lastSleepEndedAt,
-                          ),
-                      ],
+                final tabPadding =
+                    EdgeInsets.fromLTRB(20, 0, 20, tabScrollBottom);
+
+                Widget tabScroll({required Widget child}) {
+                  return RefreshIndicator(
+                    onRefresh: _refresh,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: ClampingScrollPhysics(),
+                      ),
+                      padding: tabPadding,
+                      child: child,
                     ),
-                  ),
+                  );
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _FamilyPageHeader(
+                            title: s.familyScreenTitle,
+                            settingsTooltip: s.settingsTitle,
+                            onBack: () => Navigator.maybePop(context),
+                            onSettings: motherId == null
+                                ? null
+                                : () => _openMyProfile(
+                                      MotherProfileInitialTab.preferences,
+                                    ),
+                          ),
+                          const SizedBox(height: 8),
+                          TabBar(
+                            controller: _tabController,
+                            isScrollable: true,
+                            tabAlignment: TabAlignment.start,
+                            labelColor: const Color(0xFF6A1B9A),
+                            unselectedLabelColor: Colors.black.withAlpha(120),
+                            indicatorColor: AppTheme.primaryPink,
+                            labelStyle: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                            ),
+                            tabs: [
+                              Tab(text: s.familyTabTree),
+                              if (_messagePrefs.showHoroscope)
+                                ValueListenableBuilder<bool>(
+                                  valueListenable:
+                                      FamilyHoroscopeUnreadBadge.show,
+                                  builder: (context, unread, _) => Tab(
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(s.familyTabHoroscope),
+                                        if (unread) ...[
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '!',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 14,
+                                              color: Colors.red.shade700,
+                                              height: 1,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              Tab(text: s.familyTabAiHistory),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: mother == null
+                          ? Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Text(
+                                s.motherProfileNoData,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            )
+                          : TabBarView(
+                              controller: _tabController,
+                              children: [
+                                tabScroll(
+                                  child: FamilyTreeStage(
+                                    s: s,
+                                    zodiacUnlocked: zodiacUnlocked,
+                                    zodiacReady: _zodiacContentReady,
+                                    showChristianMessages:
+                                        _messagePrefs.showChristian,
+                                    showHoroscopeMessages:
+                                        _messagePrefs.showHoroscope,
+                                    showSpiritistMessages:
+                                        _messagePrefs.showSpiritist,
+                                    showJewishMessages:
+                                        _messagePrefs.showJewish,
+                                    christianReady: _christianContentReady,
+                                    spiritistReady: _spiritistContentReady,
+                                    jewishReady: _jewishContentReady,
+                                    mother: mother,
+                                    babies: _babies,
+                                    heightCmByBabyId: _heightByBabyId,
+                                    fatherRegistered: fatherRegistered,
+                                    activeBabyId: babyId,
+                                    initialTabIndex: _initialTabIndex(
+                                      fatherRegistered: fatherRegistered,
+                                      currentBabyId: babyId,
+                                    ),
+                                    verticalMemberTabs: false,
+                                    onEditMother: () => _openMyProfile(
+                                      MotherProfileInitialTab.mother,
+                                    ),
+                                    onEditFather: () => _openMyProfile(
+                                      MotherProfileInitialTab.father,
+                                    ),
+                                    onEditBaby: (id) async {
+                                      await _current.setCurrentBabyId(id);
+                                      if (!mounted) return;
+                                      await _openMyProfile(
+                                        MotherProfileInitialTab.babies,
+                                      );
+                                    },
+                                    premiumZodiacLockedMessage:
+                                        s.familyPremiumZodiacLocked,
+                                    premiumUnlockCta: s.familyPremiumUnlockCta,
+                                    onPremiumTap: () =>
+                                        openPremiumPaywall(context),
+                                    todaySummary: _todaySummary,
+                                    summaryDay: _selectedSummaryDay,
+                                    summaryDayLabel:
+                                        _fmtCalendarDate(_selectedSummaryDay),
+                                    isTodaySummaryDay: _isTodaySummaryDay,
+                                    onPickSummaryDay: _pickSummaryDay,
+                                    onTodaySummaryDay: _goToTodaySummary,
+                                    lastFeedEndedAt: _lastFeedEndedAt,
+                                    lastDiaperChangedAt: _lastDiaperChangedAt,
+                                    lastSleepEndedAt: _lastSleepEndedAt,
+                                  ),
+                                ),
+                                if (_messagePrefs.showHoroscope)
+                                  tabScroll(
+                                    child: FamilyHoroscopePanel(
+                                      fatherRegistered: fatherRegistered,
+                                      onRegisterFather: () => _openMyProfile(
+                                        MotherProfileInitialTab.father,
+                                      ),
+                                    ),
+                                  ),
+                                tabScroll(
+                                  child: const FamilyAiBabyHistoryPanel(),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ],
                 );
               },
             ),

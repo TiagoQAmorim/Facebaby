@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../utils/app_date_picker.dart';
 import '../controllers/current_baby_controller.dart';
 import '../i18n/app_i18n.dart';
 import '../services/app_database.dart';
@@ -16,6 +17,10 @@ import '../services/portal_layout_prefs.dart';
 import '../utils/measurement_format.dart';
 import '../utils/portal_night_ui.dart';
 import '../utils/portal_time_of_day.dart';
+import '../data/growth_curves.dart';
+import '../services/growth_insights_service.dart';
+import '../utils/growth_measurements_builder.dart';
+import '../widgets/growth_chart_widget.dart';
 import '../widgets/growth_ruler_picker.dart';
 
 /// Converte kg → valor mostrado na régua conforme preferência de peso.
@@ -857,9 +862,16 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage>
       xLabels.add(dt);
     }
 
+    // Sempre ancorar no valor de cadastro (ao nascer = 0 no eixo Y).
     if (deltaMode) {
-      final hasOrigin = spots.any((p) => p.x <= 1e-3 && p.y.abs() <= 1e-6);
-      if (!hasOrigin && spots.isNotEmpty && spots.first.x >= 0.9) {
+      final hasBirthAnchor = spots.isNotEmpty &&
+          spots.first.x <= 1e-3 &&
+          spots.first.y.abs() <= 1e-6 &&
+          _dateOnlyLocal(xLabels.first) == anchor;
+      if (!hasBirthAnchor) {
+        for (var i = 0; i < spots.length; i++) {
+          spots[i] = FlSpot(spots[i].x + 1, spots[i].y);
+        }
         spots.insert(0, const FlSpot(0, 0));
         xLabels.insert(0, anchor);
       }
@@ -1028,6 +1040,97 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage>
     );
   }
 
+  Widget _growthCurveSection(S s, GrowthChartMetric metric) {
+    final baby = _currentBaby.currentBabyRow;
+    final birthRaw = baby?['birth_date'] as String?;
+    final birth = DateTime.tryParse(birthRaw ?? '');
+    final sexRaw = baby?['sex'] as String?;
+    final sx = sexRaw?.trim().toUpperCase();
+    final sex = GrowthCurves.sexFromProfile(sexRaw);
+    final showSexHint = sx != 'M' && sx != 'F';
+    final birthH = (baby?['height_cm'] as num?)?.toDouble();
+    final birthW = (baby?['weight_kg'] as num?)?.toDouble();
+    final name = _displayBabyName(baby, s);
+    final forWeight = metric == GrowthChartMetric.weight;
+    final points = forWeight
+        ? GrowthMeasurementsBuilder.weightFromRows(
+            birthDate: birth,
+            weightRows: _weight,
+            birthWeightKg: birthW,
+          )
+        : GrowthMeasurementsBuilder.heightFromRows(
+            birthDate: birth,
+            heightRows: _height,
+            birthHeightCm: birthH,
+          );
+    final insightsService = GrowthInsightsService();
+    final insights = forWeight
+        ? insightsService.buildWeightInsights(
+            strings: s,
+            babyName: name,
+            sex: sex,
+            measurements: points,
+          )
+        : insightsService.buildHeightInsights(
+            strings: s,
+            babyName: name,
+            sex: sex,
+            measurements: points,
+          );
+
+    return Material(
+      color: Colors.white.withAlpha(168),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: Colors.black.withAlpha(22)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              forWeight
+                  ? s.growthCurveSectionTitleWeight
+                  : s.growthCurveSectionTitle,
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 16,
+                letterSpacing: -0.2,
+              ),
+            ),
+            const SizedBox(height: 12),
+            GrowthChartWidget(
+              sex: sex,
+              measurements: points,
+              strings: s,
+              metric: metric,
+              showSexHint: showSexHint,
+            ),
+            if (insights.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              ...insights.map(
+                (line) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    line,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      height: 1.4,
+                      color: Colors.black.withAlpha(200),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _metricScroll(String kind, List<Map<String, Object?>> rows, S s) {
     final name = _displayBabyName(_currentBaby.currentBabyRow, s);
     final metric = _metricShortLabel(s, kind);
@@ -1039,7 +1142,16 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _cardsRow(kind, rows, s),
-          const SizedBox(height: 18),
+          if (kind == 'height' || kind == 'weight') ...[
+            const SizedBox(height: 18),
+            _growthCurveSection(
+              s,
+              kind == 'weight'
+                  ? GrowthChartMetric.weight
+                  : GrowthChartMetric.height,
+            ),
+          ],
+          const SizedBox(height: 22),
           Text(s.growthChartCaption(name, metric),
               style: TextStyle(
                   color: Colors.black.withAlpha(130),
@@ -1068,7 +1180,9 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage>
               style: const TextStyle(fontWeight: FontWeight.w900)),
           const SizedBox(height: 10),
           _cardsRow('weight', _weight, s),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
+          _growthCurveSection(s, GrowthChartMetric.weight),
+          const SizedBox(height: 22),
           Text(s.growthChartCaption(name, s.labelWeight),
               style:
                   TextStyle(color: Colors.black.withAlpha(120), fontSize: 13)),
@@ -1079,7 +1193,9 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage>
               style: const TextStyle(fontWeight: FontWeight.w900)),
           const SizedBox(height: 10),
           _cardsRow('height', _height, s),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
+          _growthCurveSection(s, GrowthChartMetric.height),
+          const SizedBox(height: 22),
           Text(s.growthChartCaption(name, s.labelHeight),
               style:
                   TextStyle(color: Colors.black.withAlpha(120), fontSize: 13)),
@@ -1271,7 +1387,7 @@ class _EditGrowthSheetBodyState extends State<_EditGrowthSheetBody> {
   }
 
   Future<void> _pickDate() async {
-    final d = await showDatePicker(
+    final d = await showAppDatePicker(
       context: context,
       initialDate: DateTime(_picked.year, _picked.month, _picked.day),
       firstDate: DateTime(_picked.year - 6),

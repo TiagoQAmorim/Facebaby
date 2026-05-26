@@ -11,6 +11,7 @@ import 'measurement_units_prefs.dart';
 class HomePrefs {
   static const _feedingEarlyKey = 'facebaby_feeding_session_before_7m';
   static const _aiMicEnabledKey = 'facebaby_ai_mic_enabled';
+  static const _aiNannyAutoReadKey = 'facebaby_ai_nanny_auto_read';
   static const _feedingAlertsEnabledKey = 'facebaby_feeding_alerts_enabled';
   static const _feedingAlertIntervalMinKey = 'facebaby_feeding_alert_interval_min';
   static const _sleepAlertsEnabledKey = 'facebaby_sleep_alerts_enabled';
@@ -30,6 +31,8 @@ class HomePrefs {
 
   /// Live value so screens can react immediately to changes.
   static final ValueNotifier<bool> aiMicEnabled = ValueNotifier<bool>(false);
+  /// Lê em voz alta cada resposta nova da IA Babá (voz neural quando disponível).
+  static final ValueNotifier<bool> aiNannyAutoReadEnabled = ValueNotifier<bool>(true);
   /// Notificações locais de intervalo entre amamentações (peito/mamadeira).
   static final ValueNotifier<bool> feedingAlertsEnabled = ValueNotifier<bool>(true);
   /// Minutos após o último registro ao peito ou mamadeira para disparar o aviso.
@@ -49,6 +52,7 @@ class HomePrefs {
     await MeasurementUnitsPrefs.init();
     final enabled = await getAiMicEnabled();
     aiMicEnabled.value = enabled;
+    aiNannyAutoReadEnabled.value = await getAiNannyAutoReadEnabled();
     feedingAlertsEnabled.value = await getFeedingAlertsEnabled();
     feedingAlertIntervalMinutes.value = await getFeedingAlertIntervalMinutes();
     sleepAlertsEnabled.value = await getSleepAlertsEnabled();
@@ -99,6 +103,17 @@ class HomePrefs {
     final p = await SharedPreferences.getInstance();
     await p.setBool(_aiMicEnabledKey, value);
     aiMicEnabled.value = value;
+  }
+
+  static Future<bool> getAiNannyAutoReadEnabled() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getBool(_aiNannyAutoReadKey) ?? true;
+  }
+
+  static Future<void> setAiNannyAutoReadEnabled(bool value) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setBool(_aiNannyAutoReadKey, value);
+    aiNannyAutoReadEnabled.value = value;
   }
 
   static Future<bool> getFeedingAlertsEnabled() async {

@@ -23,10 +23,13 @@ class OnboardingDraft {
   final bool? firstBaby;
   final List<String> concerns;
   final List<String> goals;
-  /// `christian` | `horoscope` | `both`
+  /// `christian` | `horoscope` | `spiritist` | `jewish`
+  final List<String> familyMessageKinds;
+  /// Legado — migrado para [familyMessageKinds] em [fromJson].
   final String? familyMessageChoice;
   final int? localMotherId;
   final int? localBabyId;
+  final String aiHistory;
 
   const OnboardingDraft({
     this.stage = 'welcome',
@@ -49,9 +52,11 @@ class OnboardingDraft {
     this.firstBaby,
     this.concerns = const [],
     this.goals = const [],
+    this.familyMessageKinds = const [],
     this.familyMessageChoice,
     this.localMotherId,
     this.localBabyId,
+    this.aiHistory = '',
   });
 
   OnboardingDraft copyWith({
@@ -87,10 +92,12 @@ class OnboardingDraft {
     bool clearFirstBaby = false,
     List<String>? concerns,
     List<String>? goals,
+    List<String>? familyMessageKinds,
     String? familyMessageChoice,
     bool clearFamilyMessageChoice = false,
     int? localMotherId,
     int? localBabyId,
+    String? aiHistory,
   }) {
     return OnboardingDraft(
       stage: stage ?? this.stage,
@@ -124,11 +131,13 @@ class OnboardingDraft {
       firstBaby: clearFirstBaby ? null : (firstBaby ?? this.firstBaby),
       concerns: concerns ?? this.concerns,
       goals: goals ?? this.goals,
+      familyMessageKinds: familyMessageKinds ?? this.familyMessageKinds,
       familyMessageChoice: clearFamilyMessageChoice
           ? null
           : (familyMessageChoice ?? this.familyMessageChoice),
       localMotherId: localMotherId ?? this.localMotherId,
       localBabyId: localBabyId ?? this.localBabyId,
+      aiHistory: aiHistory ?? this.aiHistory,
     );
   }
 
@@ -153,9 +162,11 @@ class OnboardingDraft {
         'firstBaby': firstBaby,
         'concerns': concerns,
         'goals': goals,
+        'familyMessageKinds': familyMessageKinds,
         'familyMessageChoice': familyMessageChoice,
         'localMotherId': localMotherId,
         'localBabyId': localBabyId,
+        'aiHistory': aiHistory,
         'draftFormat': 2,
       };
 
@@ -164,7 +175,7 @@ class OnboardingDraft {
     if (oldStep < 5) return oldStep;
     var s = oldStep + 1;
     if (s >= 10) s += 1;
-    return s.clamp(0, 18);
+    return s.clamp(0, 19);
   }
 
   static OnboardingDraft fromJson(Map<String, Object?> json) {
@@ -203,11 +214,30 @@ class OnboardingDraft {
       firstBaby: json['firstBaby'] as bool?,
       concerns: stringList(json['concerns']),
       goals: stringList(json['goals']),
+      familyMessageKinds: _parseFamilyMessageKinds(json),
       familyMessageChoice: (json['familyMessageChoice'] as String?)?.trim(),
       localMotherId: (json['localMotherId'] as num?)?.toInt(),
       localBabyId: (json['localBabyId'] as num?)?.toInt(),
+      aiHistory: (json['aiHistory'] as String?) ?? '',
     );
   }
+}
+
+List<String> _parseFamilyMessageKinds(Map<String, Object?> json) {
+  final raw = json['familyMessageKinds'];
+  if (raw is List && raw.isNotEmpty) {
+    return raw.map((e) => '$e'.trim().toLowerCase()).where((e) => e.isNotEmpty).toList();
+  }
+  final legacy = (json['familyMessageChoice'] as String?)?.trim();
+  if (legacy == null || legacy.isEmpty) return const [];
+  return switch (legacy.toLowerCase()) {
+    'christian' => const ['christian'],
+    'horoscope' => const ['horoscope'],
+    'both' => const ['christian', 'horoscope'],
+    'all' => const ['christian', 'horoscope', 'spiritist', 'jewish'],
+    'none' => const [],
+    _ => const ['horoscope'],
+  };
 }
 
 abstract final class OnboardingDraftStore {

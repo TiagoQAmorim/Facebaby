@@ -1,11 +1,15 @@
 import 'dart:math' as math;
 
+import '../data/growth_curves.dart';
+import '../i18n/app_i18n.dart';
 import '../models/daily_summary.dart';
 import '../models/pediatric_report_snapshot.dart';
 import '../models/pediatric_symptom_occurrence.dart';
 import '../models/symptom_report.dart';
+import '../utils/growth_measurements_builder.dart';
 import '../utils/measurement_format.dart';
 import 'app_database.dart';
+import 'growth_insights_service.dart';
 
 /// Agrega dados locais para o relatório pediátrico num intervalo de dias civis
 /// [[periodStart], [periodEndInclusive]].
@@ -182,6 +186,7 @@ abstract final class PediatricReportService {
     required int babyId,
     required DateTime periodStart,
     required DateTime periodEndInclusive,
+    AppLang lang = AppLang.pt,
   }) async {
     var start = _dateOnly(periodStart);
     var end = _dateOnly(periodEndInclusive);
@@ -450,6 +455,47 @@ abstract final class PediatricReportService {
       }
     }
 
+    final babyRow = await db.getBabyById(babyId);
+    final birthRaw = babyRow?['birth_date'] as String?;
+    final birthDt = DateTime.tryParse(birthRaw ?? '');
+    final babyName = (babyRow?['name'] as String?)?.trim();
+    final sex = GrowthCurves.sexFromProfile(babyRow?['sex'] as String?);
+    final birthH = (babyRow?['height_cm'] as num?)?.toDouble();
+    final birthW = (babyRow?['weight_kg'] as num?)?.toDouble();
+    final heightPoints = GrowthMeasurementsBuilder.heightFromRows(
+      birthDate: birthDt,
+      heightRows: hRows,
+      birthHeightCm: birthH,
+    );
+    final weightPoints = GrowthMeasurementsBuilder.weightFromRows(
+      birthDate: birthDt,
+      weightRows: wRows,
+      birthWeightKg: birthW,
+    );
+    final insightsService = GrowthInsightsService();
+    final reportName = (babyName == null || babyName.isEmpty)
+        ? 'Bebê'
+        : babyName;
+    final lookback = spanDays.clamp(7, 90);
+    final growthInsights = <String>[
+      if (heightPoints.isNotEmpty)
+        ...insightsService.buildHeightInsights(
+          strings: S(lang),
+          babyName: reportName,
+          sex: sex,
+          measurements: heightPoints,
+          lookbackDays: lookback,
+        ),
+      if (weightPoints.isNotEmpty)
+        ...insightsService.buildWeightInsights(
+          strings: S(lang),
+          babyName: reportName,
+          sex: sex,
+          measurements: weightPoints,
+          lookbackDays: lookback,
+        ),
+    ];
+
     return PediatricReportSnapshot(
       periodStart: start,
       periodEndInclusive: end,
@@ -476,6 +522,7 @@ abstract final class PediatricReportService {
       vaccinesInPeriodLines: vaccineLines,
       customMedicationHints: medHints.take(6).toList(),
       symptomOccurrencesByKind: byKind,
+      growthInsightLines: growthInsights,
     );
   }
 }

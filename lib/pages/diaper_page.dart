@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../utils/app_date_picker.dart';
 import '../controllers/current_baby_controller.dart';
 import '../i18n/app_i18n.dart';
 import '../services/app_database.dart';
+import '../services/diaper_events.dart';
 import '../services/firebase/diaper_cloud_sync.dart';
 import '../services/firebase/firestore_service.dart';
 import '../services/home_prefs.dart';
@@ -10,6 +12,7 @@ import '../services/scheduled_local_reminders.dart';
 import '../theme/app_theme.dart';
 import '../utils/portal_night_ui.dart';
 import '../widgets/card_box.dart';
+import '../widgets/card_option_picker_field.dart';
 
 /// Registo de fraldas + histórico editável.
 class DiaperPage extends StatefulWidget {
@@ -34,12 +37,16 @@ class _DiaperPageState extends State<DiaperPage> {
   void initState() {
     super.initState();
     _currentBaby.addListener(_onBaby);
+    DiaperEvents.revision.addListener(_onDiapersRevision);
     _reload();
   }
+
+  void _onDiapersRevision() => _reload();
 
   @override
   void dispose() {
     _currentBaby.removeListener(_onBaby);
+    DiaperEvents.revision.removeListener(_onDiapersRevision);
     _scrollController.dispose();
     super.dispose();
   }
@@ -179,8 +186,14 @@ class _DiaperPageState extends State<DiaperPage> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: AppTheme.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
       builder: (ctx) {
-        return StatefulBuilder(
+        return Theme(
+          data: PortalNightUi.cardFormTheme(ctx),
+          child: StatefulBuilder(
           builder: (ctx, setSheet) {
             return Padding(
               padding: EdgeInsets.only(
@@ -208,7 +221,7 @@ class _DiaperPageState extends State<DiaperPage> {
                       '${changed.hour.toString().padLeft(2, '0')}:${changed.minute.toString().padLeft(2, '0')}',
                     ),
                     onTap: () async {
-                      final d = await showDatePicker(
+                      final d = await showAppDatePicker(
                         context: ctx,
                         initialDate: changed,
                         firstDate: DateTime(changed.year - 2),
@@ -228,22 +241,16 @@ class _DiaperPageState extends State<DiaperPage> {
                     },
                   ),
                   const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
+                  CardOptionPickerField<String>(
+                    label: s.diaperKindLabel,
+                    sheetTitle: s.diaperKindLabel,
                     value: kind,
-                    decoration: InputDecoration(
-                      labelText: s.diaperKindLabel,
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14)),
-                    ),
-                    items: [
-                      DropdownMenuItem(
-                          value: 'pee', child: Text(s.diaperKindPee)),
-                      DropdownMenuItem(
-                          value: 'poo', child: Text(s.diaperKindPoo)),
-                      DropdownMenuItem(
-                          value: 'both', child: Text(s.diaperKindBoth)),
+                    options: [
+                      CardOption(value: 'pee', label: s.diaperKindPee),
+                      CardOption(value: 'poo', label: s.diaperKindPoo),
+                      CardOption(value: 'both', label: s.diaperKindBoth),
                     ],
-                    onChanged: (v) => setSheet(() => kind = v ?? kind),
+                    onChanged: (v) => setSheet(() => kind = v),
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -287,6 +294,7 @@ class _DiaperPageState extends State<DiaperPage> {
               ),
             );
           },
+        ),
         );
       },
     );

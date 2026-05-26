@@ -8,14 +8,29 @@
  * runtime do Node), para o sorteio de domingo 23:58 coincidir com o calendário brasileiro.
  */
 const { onSchedule } = require('firebase-functions/v2/scheduler');
-const { onRequest } = require('firebase-functions/v2/https');
-const { onDocumentWritten } = require('firebase-functions/v2/firestore');
+const { onRequest, onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onDocumentWritten, onDocumentDeleted } = require('firebase-functions/v2/firestore');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const { DateTime } = require('luxon');
 
 /** Secret para [forceWeeklyPhotoDraw] — `firebase functions:secrets:set FORCE_WEEKLY_DRAW_SECRET` */
 const forceWeeklyDrawSecret = defineSecret('FORCE_WEEKLY_DRAW_SECRET');
+
+/** OpenAI — `firebase functions:secrets:set OPENAI_API_KEY` */
+const openAiApiKey = defineSecret('OPENAI_API_KEY');
+
+const { askAiNanny } = require('./src/ai/askAiNanny');
+const {
+  createAdminBroadcastHandlers,
+} = require('./src/admin/adminBroadcast');
+const { synthesizeAiNannySpeech } = require('./src/ai/synthesizeAiNannySpeech');
+const { processVoiceRecord } = require('./src/ai/processVoiceRecord');
+const { processTextRecord } = require('./src/ai/processTextRecord');
+const { parseAiNannyMessage } = require('./src/ai/parseAiNannyMessage');
+const { manageAiNannyChat } = require('./src/ai/manageAiNannyChat');
+const { createGenerateDailyFamilyHoroscope } = require('./src/ai/generateDailyFamilyHoroscope');
+const { ensureAiInsight } = require('./src/ai/ensureAiInsight');
 
 const SP = 'America/Sao_Paulo';
 
@@ -86,6 +101,104 @@ function memoryPhotoUrl(row) {
 function rowUserId(row) {
   if (!row) return '';
   return `${row.userId || row.owner_uid || row.user_id || ''}`.trim();
+}
+
+/** Apaga `public_memories` (e curtidas) de uma utilizadora — backup quando o doc `users/{uid}` some. */
+async function purgePublicMemoriesForUid(uid) {
+  const id = `${uid || ''}`.trim();
+  if (!id) return;
+
+  const col = db.collection('public_memories');
+  const idField = admin.firestore.FieldPath.documentId();
+  const prefix = `${id}_`;
+  const seen = new Set();
+
+  async function deleteDocTree(ref) {
+    if (!ref || seen.has(ref.id)) return;
+    seen.add(ref.id);
+    while (true) {
+      const likes = await ref.collection('likes').limit(200).get();
+      if (likes.empty) break;
+      const batch = db.batch();
+      for (const d of likes.docs) batch.delete(d.ref);
+      await batch.commit();
+    }
+    await ref.delete();
+  }
+
+  for (const field of ['userId', 'owner_uid', 'ownerUid']) {
+    while (true) {
+      const snap = await col.where(field, '==', id).limit(100).get();
+      if (snap.empty) break;
+      for (const doc of snap.docs) await deleteDocTree(doc.ref);
+      if (snap.size < 100) break;
+    }
+  }
+
+  let lastDoc = null;
+  while (true) {
+    let q = col.orderBy(idField).startAt(prefix).endAt(`${prefix}\uf8ff`).limit(100);
+    if (lastDoc) {
+      q = col.orderBy(idField).startAfter(lastDoc).endAt(`${prefix}\uf8ff`).limit(100);
+    }
+    const snap = await q.get();
+    if (snap.empty) break;
+    for (const doc of snap.docs) await deleteDocTree(doc.ref);
+    if (snap.size < 100) break;
+    lastDoc = snap.docs[snap.docs.length - 1];
+  }
+
+  const spotRef = db.collection('weekly_photo_contests').doc('spotlight_current');
+  const spot = await spotRef.get();
+  if (spot.exists) {
+    const s = spot.data() || {};
+    const winnerUid = `${s.winner_user_id || s.winnerUserId || ''}`.trim();
+    const memId = `${s.winner_public_memory_id || s.winnerPublicMemoryId || ''}`.trim();
+    if (winnerUid === id || (memId && memId.startsWith(`${id}_`))) {
+      await spotRef.delete();
+    }
+  }
+
+  const contests = await db.collection('weekly_photo_contests').where('winner_user_id', '==', id).get();
+  const batch = db.batch();
+  for (const doc of contests.docs) batch.delete(doc.ref);
+  if (!contests.empty) await batch.commit();
+}
+
+/** Preferir `babyDisplayName` / `babySex` da memória pública ligada ao vencedor (dados frescos). */
+async function enrichSpotlightWithPublicMemory(raw) {
+  const memId = `${raw.winner_public_memory_id || ''}`.trim();
+  if (!memId) return raw;
+  const mem = await db.collection('public_memories').doc(memId).get();
+  if (!mem.exists) return raw;
+  const m = mem.data() || {};
+  const out = { ...raw };
+  const liveName = `${m.babyDisplayName || ''}`.trim();
+  if (liveName) out.winner_baby_display_name = liveName;
+  const liveSex = `${m.babySex || ''}`.trim().toUpperCase();
+  if (liveSex === 'M' || liveSex === 'F') out.winner_baby_sex = liveSex;
+  const babyId = `${m.babyId || ''}`.trim();
+  if (babyId) out.winner_baby_id = babyId;
+  return out;
+}
+
+/** Se `spotlight_current` aponta para esta memória pública, actualiza nome/sexo do bebé. */
+async function syncSpotlightWinnerBabyFieldsFromPublicMemory(memId, row) {
+  const spotRef = db.collection('weekly_photo_contests').doc('spotlight_current');
+  const spot = await spotRef.get();
+  if (!spot.exists) return;
+  const s = spot.data() || {};
+  const winnerId = `${s.winner_public_memory_id || ''}`.trim();
+  if (!winnerId || winnerId !== memId) return;
+
+  const displayName = `${row.babyDisplayName || row.baby_display_name || ''}`.trim();
+  const sexRaw = `${row.babySex || row.baby_sex || ''}`.trim().toUpperCase();
+  const patch = { updated_at: admin.firestore.FieldValue.serverTimestamp() };
+  if (displayName) patch.winner_baby_display_name = displayName;
+  if (sexRaw === 'M' || sexRaw === 'F') patch.winner_baby_sex = sexRaw;
+  const babyId = `${row.babyId || row.baby_id || ''}`.trim();
+  if (babyId) patch.winner_baby_id = babyId;
+  await spotRef.set(patch, { merge: true });
 }
 
 /** Campos do vencedor para `spotlight_current` e histórico `weekly_photo_contests/{weekKey}`. */
@@ -671,7 +784,7 @@ exports.inspectSpotlight = onRequest(
         res.status(200).json({ exists: false });
         return;
       }
-      const raw = snap.data() || {};
+      const raw = await enrichSpotlightWithPublicMemory(snap.data() || {});
       // Converter Timestamps para ISO para inspecionar fácil.
       const normalised = Object.fromEntries(
         Object.entries(raw).map(([k, v]) => [k, v && v.toDate ? v.toDate().toISOString() : v]),
@@ -947,6 +1060,199 @@ exports.clearSpotlight = onRequest(
  * Mantém `likeCount` em `public_memories` e `like_count` / `winner_like_count` no histórico
  * semanal e em `spotlight_current` quando a memória vencedora recebe ou perde curtidas.
  */
+/** Caminho do objeto no bucket a partir de URL HTTPS do Firebase Storage. */
+function storageObjectPathFromHttpsUrl(url) {
+  try {
+    const u = new URL(url);
+    const idx = u.pathname.indexOf('/o/');
+    if (idx < 0) return '';
+    return decodeURIComponent(u.pathname.slice(idx + 3));
+  } catch (e) {
+    return '';
+  }
+}
+
+const PANEL_ADMIN_ROLES = new Set(['owner', 'admin']);
+
+function normalizeAdminEmail(raw) {
+  return `${raw || ''}`.trim().toLowerCase();
+}
+
+function parsePanelRole(raw) {
+  const role = `${raw || ''}`.trim().toLowerCase();
+  return PANEL_ADMIN_ROLES.has(role) ? role : null;
+}
+
+/** Resolve admin role from allowlist, legacy admins/{uid}, or ADMIN_BOOTSTRAP_EMAILS. */
+async function resolveAdminRoleForEmail(emailKey) {
+  if (!emailKey) return null;
+
+  const listed = await db.collection('admins_by_email').doc(emailKey).get();
+  if (listed.exists) {
+    const d = listed.data() || {};
+    const role = parsePanelRole(d.role);
+    if (d.active === true && role) {
+      return { role, source: 'allowlist' };
+    }
+  }
+
+  const legacy = await db.collection('admins').where('email', '==', emailKey).limit(10).get();
+  for (const doc of legacy.docs) {
+    const d = doc.data() || {};
+    const role = parsePanelRole(d.role);
+    if (d.active === true && role) {
+      return { role, source: 'legacy', legacyUid: doc.id };
+    }
+  }
+
+  const bootstrapRaw = `${process.env.ADMIN_BOOTSTRAP_EMAILS || ''}`;
+  const bootstrap = bootstrapRaw
+    .split(',')
+    .map((s) => normalizeAdminEmail(s))
+    .filter(Boolean);
+  if (bootstrap.includes(emailKey)) {
+    return { role: 'owner', source: 'bootstrap' };
+  }
+
+  return null;
+}
+
+async function linkAdminPanelSession(uid, emailKey, role) {
+  const batch = db.batch();
+  batch.set(
+    db.collection('admins_by_email').doc(emailKey),
+    {
+      email: emailKey,
+      role,
+      active: true,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+  batch.set(
+    db.collection('admins').doc(uid),
+    {
+      email: emailKey,
+      role,
+      active: true,
+      linkedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+  await batch.commit();
+}
+
+async function assertPanelAdmin(uid) {
+  const doc = await db.collection('admins').doc(uid).get();
+  if (!doc.exists) throw new HttpsError('permission-denied', 'Not an admin');
+  const d = doc.data() || {};
+  if (d.active !== true) throw new HttpsError('permission-denied', 'Admin inactive');
+  const role = parsePanelRole(d.role);
+  if (!role) {
+    throw new HttpsError('permission-denied', 'Insufficient role');
+  }
+}
+
+/**
+ * Callable — liga admins/{uid} ao e-mail allowlisted (ou legacy/bootstrap).
+ * Usado pelo painel após apagar/recriar conta do app (novo Firebase Auth UID).
+ */
+exports.ensureAdminPanelAccess = onCall(
+  { region: 'southamerica-east1' },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'Sign in required');
+    }
+    const emailKey = normalizeAdminEmail(request.auth.token.email);
+    if (!emailKey) {
+      throw new HttpsError('failed-precondition', 'Sign in with an account that has an email');
+    }
+
+    const resolved = await resolveAdminRoleForEmail(emailKey);
+    if (!resolved) {
+      throw new HttpsError('permission-denied', 'Not an admin');
+    }
+
+    await linkAdminPanelSession(request.auth.uid, emailKey, resolved.role);
+    return {
+      ok: true,
+      email: emailKey,
+      role: resolved.role,
+      source: resolved.source,
+    };
+  },
+);
+
+/**
+ * Callable — devolve foto em base64 para o painel admin (Storage SDK no browser falha
+ * por regras/CORS). Requer login Firebase + documento `admins/{uid}` owner/admin ativo.
+ */
+exports.adminGetPhotoBytes = onCall(
+  { region: 'southamerica-east1' },
+  async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in required');
+    await assertPanelAdmin(request.auth.uid);
+
+    const url = `${request.data?.url || ''}`.trim();
+    const storagePath = `${request.data?.storagePath || ''}`.trim();
+    const bucket = admin.storage().bucket();
+    let buffer;
+
+    if (storagePath) {
+      const [buf] = await bucket.file(storagePath).download();
+      buffer = buf;
+    } else if (url.toLowerCase().startsWith('https://')) {
+      const objectPath = storageObjectPathFromHttpsUrl(url);
+      if (objectPath) {
+        try {
+          const [buf] = await bucket.file(objectPath).download();
+          buffer = buf;
+        } catch (e) {
+          console.warn('adminGetPhotoBytes bucket.download failed, trying fetch', objectPath, e);
+          const res = await fetch(url);
+          if (!res.ok) throw new HttpsError('not-found', `Photo not found (${res.status})`);
+          buffer = Buffer.from(await res.arrayBuffer());
+        }
+      } else {
+        const res = await fetch(url);
+        if (!res.ok) throw new HttpsError('not-found', `Photo not found (${res.status})`);
+        buffer = Buffer.from(await res.arrayBuffer());
+      }
+    } else {
+      throw new HttpsError('invalid-argument', 'url or storagePath required');
+    }
+
+    const maxBytes = 12 * 1024 * 1024;
+    if (buffer.length > maxBytes) {
+      throw new HttpsError('resource-exhausted', 'Photo too large');
+    }
+
+    return {
+      bytes: buffer.toString('base64'),
+      contentType: 'image/jpeg',
+    };
+  },
+);
+
+/** Quando o perfil `users/{uid}` é apagado, remove candidatos órfãos no Admin / Weekly Photo. */
+exports.onUserProfileDeleted = onDocumentDeleted(
+  {
+    document: 'users/{uid}',
+    region: 'southamerica-east1',
+  },
+  async (event) => {
+    const uid = `${event.params.uid || ''}`.trim();
+    if (!uid) return;
+    try {
+      await purgePublicMemoriesForUid(uid);
+      console.log('onUserProfileDeleted: purged public_memories for', uid);
+    } catch (e) {
+      console.error('onUserProfileDeleted', uid, e);
+      throw e;
+    }
+  },
+);
+
 exports.onPublicMemoryLikeWritten = onDocumentWritten(
   {
     document: 'public_memories/{memoryId}/likes/{likeUid}',
@@ -966,3 +1272,56 @@ exports.onPublicMemoryLikeWritten = onDocumentWritten(
     }
   },
 );
+
+/** Quando a mãe actualiza nome/sexo, `public_memories` é regravado e o destaque segue em sync. */
+exports.onPublicMemoryWritten = onDocumentWritten(
+  {
+    document: 'public_memories/{memoryId}',
+    region: 'southamerica-east1',
+  },
+  async (event) => {
+    if (!event.data.after.exists) return;
+    const memId = event.params.memoryId;
+    const after = event.data.after.data() || {};
+    try {
+      await syncSpotlightWinnerBabyFieldsFromPublicMemory(memId, after);
+    } catch (e) {
+      console.error('onPublicMemoryWritten', e);
+    }
+  },
+);
+
+const adminBroadcast = createAdminBroadcastHandlers({
+  onCall,
+  db,
+  admin,
+});
+exports.previewAdminBroadcastAudience = adminBroadcast.previewAdminBroadcastAudience;
+exports.publishAdminBroadcast = adminBroadcast.publishAdminBroadcast;
+
+/** IA Babá — chat (Premium + limite diário no servidor). */
+exports.askAiNanny = askAiNanny;
+
+/** IA Babá — apagar conversa / mensagem; poda automática do histórico. */
+exports.manageAiNannyChat = manageAiNannyChat;
+
+/** IA Babá — voz neural OpenAI (TTS HD) para ouvir respostas. */
+exports.synthesizeAiNannySpeech = synthesizeAiNannySpeech;
+
+/** Registro por voz — transcrição + interpretação (sem salvar; confirmação no app). */
+exports.processVoiceRecord = processVoiceRecord;
+exports.processTextRecord = processTextRecord;
+
+/** IA Babá — extrai registros estruturados (gpt-4o-mini, sem histórico de chat). */
+exports.parseAiNannyMessage = parseAiNannyMessage;
+
+/** Insight IA Babá (resumo diário/semanal — cache em `ai_insights`). */
+exports.ensureAiInsight = ensureAiInsight;
+
+/** Horóscopo familiar diário (cache por dia em `family_horoscopes`). */
+exports.generateDailyFamilyHoroscope = createGenerateDailyFamilyHoroscope({
+  onCall,
+  HttpsError,
+  db,
+  openAiApiKey,
+});

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../app_database.dart';
 import 'firestore_service.dart';
 import 'storage_service.dart';
+import 'weekly_photo_public_sync.dart';
 
 /// Espelha perfis de mãe/bebê no Firestore + fotos no Storage (conta autenticada).
 /// A BD local mantém-se para eventos e FKs; a cópia na nuvem é a cópia partilhada entre dispositivos.
@@ -93,6 +94,9 @@ class ProfileCloudSync {
         'show_family_christian': (r['show_family_christian'] as num?)?.toInt() == 1,
         'show_family_horoscope':
             (r['show_family_horoscope'] as num?)?.toInt() != 0,
+        'show_family_spiritist':
+            (r['show_family_spiritist'] as num?)?.toInt() == 1,
+        'show_family_jewish': (r['show_family_jewish'] as num?)?.toInt() == 1,
         if (photoUrl != null) 'photo_url': photoUrl,
         if (fatherPhotoUrl != null) 'father_photo_url': fatherPhotoUrl,
       });
@@ -184,6 +188,9 @@ class ProfileCloudSync {
         await AppDatabase.instance
             .persistBabyPhotoUrl(babyId: localBabyId, photoUrl: photoUrl);
       }
+      await WeeklyPhotoPublicSync.syncAllPublicMemoriesForBaby(
+        localBabyId: localBabyId,
+      );
     } catch (e, st) {
       debugPrint('ProfileCloudSync.pushBaby failed: $e\n$st');
       rethrow;

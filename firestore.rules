@@ -2,56 +2,244 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Mural / Foto da Semana — cliente grava `owner_uid` (FirestoreService) e `userId` (WeeklyPhotoPublicSync).
-    match /public_memories/{memoryId} {
-      allow read: if true;
-
-      allow create: if request.auth != null
-        && (
-          request.resource.data.owner_uid == request.auth.uid
-          || request.resource.data.userId == request.auth.uid
-        );
-
-      // Exige que o documento existente já pertença ao utilizador e que o resultado continue a indicá-lo.
-      allow update: if request.auth != null
-        && (resource.data.owner_uid == request.auth.uid
-            || resource.data.userId == request.auth.uid)
-        && (
-          request.resource.data.owner_uid == request.auth.uid
-          || request.resource.data.userId == request.auth.uid
-        );
-
-      // Em delete não existe request.resource — usar apenas resource.
-      allow delete: if request.auth != null
-        && (
-          resource.data.owner_uid == request.auth.uid
-          || resource.data.userId == request.auth.uid
-        );
-
-      // Curtidas na Foto da Semana — leitura pública; cada utilizador gere só o seu like.
-      // `set()` num documento já existente conta como *update* — create e update com a mesma condição.
-      match /likes/{likeUid} {
-        allow read: if true;
-        allow create, update: if request.auth != null
-          && request.auth.uid == likeUid
-          && request.resource.data.keys().hasOnly(['createdAt']);
-        allow delete: if request.auth != null
-          && request.auth.uid == likeUid;
-      }
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Sorteio / destaque — escrita só Admin SDK / Cloud Functions.
-    match /weekly_photo_contests/{docId} {
-      allow read: if true;
+    function panelAdminDoc() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function normalizedAuthEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    // Allowlist por e-mail — independente do UID do app (conta apagada/recriada).
+    function adminEmailAllowlistDoc() {
+      return get(/databases/$(database)/documents/admins_by_email/$(normalizedAuthEmail()));
+    }
+
+    function isEmailAllowlistedAdmin() {
+      return isSignedIn()
+        && request.auth.token.email != null
+        && exists(/databases/$(database)/documents/admins_by_email/$(normalizedAuthEmail()))
+        && adminEmailAllowlistDoc().data.active == true
+        && adminEmailAllowlistDoc().data.role in ['owner', 'admin'];
+    }
+
+    // Active owner or admin (panel login).
+    function hasPanelAccess() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && panelAdminDoc().data.active == true
+        && panelAdminDoc().data.role in ['owner', 'admin'];
+    }
+
+    // Owner or admin — manage users, plans, weekly photo, suspensions, moderation.
+    function canManageUsers() {
+      return hasPanelAccess()
+        && panelAdminDoc().data.role in ['owner', 'admin'];
+    }
+
+    // Sessão do painel: admins/{uid} liga o UID actual do Firebase Auth ao perfil admin.
+    match /admins/{adminUid} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == adminUid
+        || (resource.data.email is string
+            && resource.data.email.lower() == normalizedAuthEmail())
+      );
+      allow create, update: if isSignedIn()
+        && request.auth.uid == adminUid
+        && isEmailAllowlistedAdmin()
+        && request.resource.data.email.lower() == normalizedAuthEmail()
+        && request.resource.data.active == true
+        && request.resource.data.role in ['owner', 'admin'];
+      allow delete: if false;
+    }
+
+    // Allowlist estável por e-mail (só Console / backend — não apaga com conta do app).
+    match /admins_by_email/{emailKey} {
+      allow read: if isSignedIn()
+        && request.auth.token.email != null
+        && request.auth.token.email.lower() == emailKey.lower();
       allow write: if false;
     }
 
-    // Dados privados da mãe (perfil, bebês, eventos, memórias em `events`, etc.).
+    match /admin_broadcasts/{campaignId} {
+      allow read: if hasPanelAccess();
+      allow write: if false;
+    }
+
+    match /users/{userId}/inbox_broadcasts/{messageId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dismissedAt']);
+      allow create, delete: if false;
+    }
+
+    match /floating_messages/{messageId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    match /floating_message_reads/{userId}/messages/{messageId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create, update: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    match /admin_logs/{logId} {
+      allow read: if hasPanelAccess();
+      allow create: if canManageUsers()
+        && request.resource.data.adminUid == request.auth.uid
+        && request.resource.data.adminEmail is string
+        && request.resource.data.action is string
+        && request.resource.data.targetUserUid is string
+        && request.resource.data.targetUserEmail is string
+        && request.resource.data.details is string
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    match /public_memories/{memoryId} {
+      allow read: if true;
+
+      allow create: if isSignedIn()
+        && (
+          request.resource.data.owner_uid == request.auth.uid
+          || request.resource.data.userId == request.auth.uid
+        );
+
+      allow update: if isSignedIn()
+        && (
+          canManageUsers()
+          || (
+            (resource.data.owner_uid == request.auth.uid
+              || resource.data.userId == request.auth.uid)
+            && (
+              request.resource.data.owner_uid == request.auth.uid
+              || request.resource.data.userId == request.auth.uid
+            )
+          )
+        );
+
+      allow delete: if isSignedIn()
+        && (
+          canManageUsers()
+          || resource.data.owner_uid == request.auth.uid
+          || resource.data.userId == request.auth.uid
+        );
+
+      match /likes/{likeUid} {
+        allow read: if true;
+        allow create, update: if isSignedIn()
+          && request.auth.uid == likeUid
+          && request.resource.data.keys().hasOnly(['createdAt']);
+        allow delete: if isSignedIn() && request.auth.uid == likeUid;
+      }
+    }
+
+    match /weekly_photo_contests/{docId} {
+      allow read: if true;
+      allow write: if canManageUsers();
+    }
+
+    match /weekly_photo_reports/{reportId} {
+      allow read: if hasPanelAccess();
+      allow create: if isSignedIn()
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.publicMemoryId is string
+        && request.resource.data.publicMemoryId.size() > 0
+        && request.resource.data.message is string
+        && request.resource.data.message.size() >= 5
+        && request.resource.data.message.size() <= 1000
+        && (
+          !('reportMessage' in request.resource.data)
+          || (
+            request.resource.data.reportMessage is string
+            && request.resource.data.reportMessage == request.resource.data.message
+          )
+        )
+        && request.resource.data.status == 'open'
+        && request.resource.data.createdAt is timestamp;
+      allow update: if canManageUsers();
+      allow delete: if false;
+    }
+
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read: if hasPanelAccess();
+      allow update: if canManageUsers();
 
       match /{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+        allow read: if hasPanelAccess();
+        allow update: if canManageUsers();
+      }
+    }
+
+    match /ai_chats/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      match /messages/{messageId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+
+    match /ai_usage/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if false;
+      match /daily/{dateKey} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow write: if false;
+      }
+    }
+
+    match /ai_profiles/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create, update: if isSignedIn()
+        && request.auth.uid == userId
+        && (
+          !('aiHistory' in request.resource.data)
+          || (
+            request.resource.data.aiHistory is string
+            && request.resource.data.aiHistory.size() <= 1500
+          )
+        );
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /family_horoscopes/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if false;
+      match /daily/{dateKey} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow write: if false;
+      }
+    }
+
+    match /ai_insights/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if false;
+      match /daily/{dateKey} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create, update: if isSignedIn()
+          && request.auth.uid == userId
+          && request.resource.data.source == 'local'
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 320;
+        allow delete: if false;
+      }
+      match /weekly/{weekKey} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create, update: if isSignedIn()
+          && request.auth.uid == userId
+          && request.resource.data.source == 'local'
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 320;
+        allow delete: if false;
       }
     }
   }

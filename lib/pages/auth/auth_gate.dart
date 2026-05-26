@@ -3,6 +3,7 @@ import 'dart:async' show StreamSubscription, unawaited;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../services/firebase/auth_service.dart';
 import '../../widgets/face_baby_loading.dart';
 import '../../widgets/loading_scope.dart';
 import 'onboarding_page.dart';
@@ -67,6 +68,14 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
     if (!mounted) return;
     if (u != null) {
       _setSignedIn(u);
+      return;
+    }
+    if (AuthService.instance.consumeTrustAuthNullImmediately() ||
+        FirebaseAuth.instance.currentUser == null) {
+      setState(() {
+        _user = null;
+        _ready = true;
+      });
       return;
     }
     unawaited(_verifyStreamNullAgainstPersistence());

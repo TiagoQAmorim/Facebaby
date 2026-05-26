@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../utils/app_date_picker.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../controllers/current_baby_controller.dart';
@@ -119,7 +121,7 @@ class _ConsultationEditorSheetState extends State<_ConsultationEditorSheet> {
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () async {
-                      final picked = await showDatePicker(
+                      final picked = await showAppDatePicker(
                         context: context,
                         initialDate: _occurredAt,
                         firstDate: DateTime(2000),

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../app_database.dart';
 import 'firestore_service.dart';
 import 'firestore_user_repository.dart';
+import 'memory_cloud_sync.dart';
 
 /// Baixa dados do Firestore e re-hidrata o SQLite local (cache).
 ///
@@ -68,6 +69,10 @@ class CloudBootstrapSync {
           profile?['show_family_christian'] ?? profile?['showFamilyChristian'],
       'show_family_horoscope':
           profile?['show_family_horoscope'] ?? profile?['showFamilyHoroscope'],
+      'show_family_spiritist':
+          profile?['show_family_spiritist'] ?? profile?['showFamilySpiritist'],
+      'show_family_jewish':
+          profile?['show_family_jewish'] ?? profile?['showFamilyJewish'],
       'photo_url': profile?['photo_url'] ?? profile?['photoUrl'],
       'father_photo_url':
           profile?['father_photo_url'] ?? profile?['fatherPhotoUrl'],
@@ -197,9 +202,40 @@ class CloudBootstrapSync {
         await AppDatabase.instance.upsertVaccineFromCloud(localBabyId: localBabyId, data: v);
       }
 
+      final deletedBadgeIds =
+          await FirestoreUserRepository.instance.listDeletedBadgeIdsForBaby(
+        babyCloud,
+      );
+      if (deletedBadgeIds.isNotEmpty) {
+        await AppDatabase.instance.applyCloudMemoryDeletions(
+          localBabyId: localBabyId,
+          babyCloudId: babyCloud,
+          badgeIds: deletedBadgeIds,
+        );
+      }
+
       final mRows = await FirestoreService.instance.listMemoriesByBadge(babyCloud);
       for (final m in mRows) {
-        await AppDatabase.instance.upsertBabyMemoryFromCloud(localBabyId: localBabyId, data: m);
+        await AppDatabase.instance.upsertBabyMemoryFromCloud(
+            localBabyId: localBabyId, data: m);
+      }
+      // Remove da BD local selos que o utilizador apagou mas a nuvem ainda devolveu (corrige estado antigo).
+      final memories = await AppDatabase.instance.listBabyMemories(
+          babyId: localBabyId);
+      for (final row in memories) {
+        final bid = (row['badge_id'] as String?)?.trim() ?? '';
+        if (bid.isEmpty) continue;
+        if (await AppDatabase.instance.isBabyMemoryBadgeTombstoned(
+            babyId: localBabyId, badgeId: bid)) {
+          await AppDatabase.instance.deleteBabyMemoryByBadge(
+            babyId: localBabyId,
+            badgeId: bid,
+          );
+          unawaited(MemoryCloudSync.deleteBadgeMemory(
+            localBabyId: localBabyId,
+            badgeId: bid,
+          ));
+        }
       }
 
       final feedRows = await FirestoreService.instance.listFeedings(babyCloud);

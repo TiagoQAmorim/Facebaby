@@ -3,17 +3,23 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
+import 'package:image_picker_android/image_picker_android.dart';
+import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
 
 import '../widgets/photo_adjust_page.dart';
 import 'file_picker_bytes.dart';
 import 'photo_b64.dart';
+import 'strip_image_metadata.dart';
 
 img.Image _resizeToMaxSide(img.Image src, int side) {
   if (src.width <= side && src.height <= side) return src;
-  return src.width >= src.height ? img.copyResize(src, width: side) : img.copyResize(src, height: side);
+  return src.width >= src.height
+      ? img.copyResize(src, width: side)
+      : img.copyResize(src, height: side);
 }
 
 Uint8List _compressToFit(Uint8List raw, int maxBytes) {
+  raw = stripImageMetadata(raw);
   if (raw.lengthInBytes <= maxBytes) return raw;
   final decoded = img.decodeImage(raw);
   if (decoded == null) return raw;
@@ -28,9 +34,18 @@ Uint8List _compressToFit(Uint8List raw, int maxBytes) {
   return Uint8List.fromList(img.encodeJpg(tiny, quality: 38));
 }
 
+void _preferAndroidGalleryPicker() {
+  if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+  final platform = ImagePickerPlatform.instance;
+  if (platform is ImagePickerAndroid) {
+    platform.useAndroidPhotoPicker = true;
+  }
+}
+
 Future<Uint8List?> _pickFromFilePicker() async {
   final res = await FilePicker.platform.pickFiles(
     type: FileType.image,
+    allowMultiple: false,
     withData: true,
   );
   if (res == null || res.files.isEmpty) return null;
@@ -41,17 +56,24 @@ Future<Uint8List?> _pickFromFilePicker() async {
 }
 
 Future<Uint8List?> _pickFromImagePicker(ImageSource source) async {
+  if (source == ImageSource.gallery) {
+    _preferAndroidGalleryPicker();
+  }
   final picker = ImagePicker();
-  final x = await picker.pickImage(source: source);
+  final x = await picker.pickImage(
+    source: source,
+    requestFullMetadata: false,
+  );
   if (x == null) return null;
   final bytes = await x.readAsBytes();
   if (bytes.isEmpty) return null;
   return Uint8List.fromList(bytes);
 }
 
-Future<ImageSource?> _askSource(BuildContext context) async {
+Future<ImageSource?> _askCameraOrGallery(BuildContext context) async {
   if (kIsWeb) return ImageSource.gallery;
-  final isMobile = defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS;
+  final isMobile = defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS;
   if (!isMobile) return ImageSource.gallery;
 
   return showModalBottomSheet<ImageSource>(
@@ -81,18 +103,29 @@ Future<ImageSource?> _askSource(BuildContext context) async {
   );
 }
 
-/// Picks an image, then opens the adjust/crop screen (pan, zoom, recorte quadrado).
-/// Set [allowAdjust] to `false` only for rare cases (tests); default is on for the whole app.
+/// Escolhe imagem da galeria (ajuste/recorte opcional), devolve base64.
+///
+/// Por padrão abre **só a galeria** do sistema — no Android usa o Photo Picker
+/// (sem menu “Google Fotos / Arquivos / …”). Passe [allowCameraChoice] para
+/// mostrar câmera + galeria no mobile.
 Future<String?> pickImageAsB64({
   required BuildContext context,
   int? maxBytes,
   bool allowAdjust = true,
+  bool galleryOnly = true,
+  bool allowCameraChoice = false,
 }) async {
-  Uint8List? raw;
-  final source = await _askSource(context);
+  final ImageSource? source;
+  if (galleryOnly && !allowCameraChoice) {
+    source = ImageSource.gallery;
+  } else {
+    source = await _askCameraOrGallery(context);
+  }
   if (source == null) return null;
 
-  final isMobile = defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS;
+  final isMobile = defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS;
+  Uint8List? raw;
   if (!kIsWeb && isMobile) {
     raw = await _pickFromImagePicker(source);
   } else {

@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:photo_view/photo_view.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../controllers/memory_controller.dart';
 import '../../i18n/app_i18n.dart';
@@ -26,6 +25,7 @@ import '../../widgets/memories/cached_memory_photo.dart';
 import '../../widgets/memories/memory_badge_icon.dart';
 import '../../widgets/memories/memory_share_card.dart';
 import '../../widgets/weekly_photo_crown_icon.dart';
+import '../../widgets/weekly_photo_public_confirm_dialog.dart';
 import 'add_memory_page.dart';
 
 enum _ShareExportKind { jpeg, pdf }
@@ -283,30 +283,8 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
           .showSnackBar(SnackBar(content: Text(s.weeklyPhotoPublicNeedPhoto)));
       return;
     }
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    final key = 'fb_weekly_photo_confirm_${_memory.babyId}_${_memory.badgeId}';
-    final seen = prefs.getBool(key) ?? false;
-    if (!seen) {
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(s.weeklyPhotoConfirmTitle),
-          content: Text(s.weeklyPhotoConfirmBody),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(s.weeklyPhotoConfirmCancel)),
-            FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(s.weeklyPhotoConfirmOk)),
-          ],
-        ),
-      );
-      if (ok != true) return;
-      await prefs.setBool(key, true);
-    }
-    if (!mounted) return;
+    final accepted = await showWeeklyPhotoPublicConfirmDialog(context);
+    if (!accepted || !mounted) return;
     final now = DateTime.now();
     await _persistPublic(
       _memory.copyWith(

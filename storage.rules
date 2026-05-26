@@ -1,0 +1,29 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function adminDoc() {
+      return firestore.get(/databases/(default)/documents/admins/$(request.auth.uid));
+    }
+
+    function hasPanelAccess() {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid))
+        && adminDoc().data.active == true
+        && adminDoc().data.role in ['owner', 'admin'];
+    }
+
+    match /users/{userId}/{allPaths=**} {
+      allow read: if signedIn() && (request.auth.uid == userId || hasPanelAccess());
+      allow write: if signedIn() && request.auth.uid == userId;
+    }
+
+    match /admin_broadcasts/{fileName} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

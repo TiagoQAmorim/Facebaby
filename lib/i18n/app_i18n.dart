@@ -8,6 +8,7 @@ import '../models/memory_badge.dart';
 import '../services/firebase/auth_registration_exception.dart';
 import '../utils/zodiac_element.dart';
 import '../utils/zodiac_keys.dart';
+import 'ai_family_growth_locale_extras.dart';
 import 'development_leaps_translated.dart';
 
 // Common languages across Play Store / App Store audiences.
@@ -233,7 +234,13 @@ class S {
   String get plusRestoreEmptySnack => _t('plusRestoreEmptySnack');
   String get plusSnackLockedFeature => _t('plusSnackLockedFeature');
   String get plusMemoryLimitSnack => _t('plusMemoryLimitSnack');
+  String get plusMemoryLimitDialogTitle => _t('plusMemoryLimitDialogTitle');
+  String get plusMemoryLimitDialogBody => _t('plusMemoryLimitDialogBody');
+  String get plusMemoryLimitDialogSubscribe =>
+      _t('plusMemoryLimitDialogSubscribe');
   String get plusReportsLockedHint => _t('plusReportsLockedHint');
+  String get plusReportsPremiumTagline => _t('plusReportsPremiumTagline');
+  String get plusReportsPremiumCta => _t('plusReportsPremiumCta');
   String get plusExportLockedHint => _t('plusExportLockedHint');
   String get settingsPlusCardTitle => _t('settingsPlusCardTitle');
   String get settingsPlusCardBodyFree => _t('settingsPlusCardBodyFree');
@@ -253,25 +260,57 @@ class S {
   String get plusDoneClose => _t('plusDoneClose');
   String get plusPaywallHeadline => _t('plusPaywallHeadline');
   String get plusPaywallActiveNote => _t('plusPaywallActiveNote');
-  String get plusPaywallSecureNote => _t('plusPaywallSecureNote');
-  String get plusPlanPremiumTitle => _t('plusPlanPremiumTitle');
-  String get plusPlanPremiumSubtitle => _t('plusPlanPremiumSubtitle');
-  String get plusPlanPremiumBadge => _t('plusPlanPremiumBadge');
+  String get plusPaywallSecureNote => _t('plusPaywallRenewalNote');
+  String get plusPaywallRenewalNote => _t('plusPaywallRenewalNote');
+  String get plusPlanPremiumTitle => _t('plusPlanMonthlyCardTitle');
+  String get plusPlanPremiumSubtitle => _t('plusPlanMonthlySubtitle');
+  String get plusEarlyAdopterOffer => _t('plusEarlyAdopterOffer');
+  String get plusPopularBadge => _t('plusPopularBadge');
+  String get plusPlanAnnualTitle => _t('plusPlanAnnualCardTitle');
+  String get plusPlanMonthlyTitle => _t('plusPlanMonthlyCardTitle');
+  String get plusPlanMonthlyCardTitle => _t('plusPlanMonthlyCardTitle');
+  String get plusPlanAnnualCardTitle => _t('plusPlanAnnualCardTitle');
+  String get plusPlanMonthlySubtitle => _t('plusPlanMonthlySubtitle');
+  String get plusPlanAnnualSubtitle => _t('plusPlanAnnualSubtitle');
+  String get plusPlanPremiumBadge => _t('plusPopularBadge');
   String get plusPlanPremiumPriceSubActive =>
-      _t('plusPlanPremiumPriceSubActive');
-  String get plusPlanPremiumPriceSubSecure =>
-      _t('plusPlanPremiumPriceSubSecure');
+      _t('plusPlanPremiumButtonActive');
+  String get plusPlanPremiumPriceSubSecure => _t('plusPaywallRenewalNote');
   String get plusPlanPremiumButtonActive => _t('plusPlanPremiumButtonActive');
-  String get plusPlanPremiumButton => _t('plusPlanPremiumButton');
-  List<String> get plusPlanPremiumFeatures => [
-        _t('plusPlanPremiumFeature1'),
-        _t('plusPlanPremiumFeature2'),
-        _t('plusPlanPremiumFeature3'),
-        _t('plusPlanPremiumFeature4'),
-        _t('plusPlanPremiumFeature5'),
-        _t('plusPlanPremiumFeature6'),
-        _t('plusPlanPremiumFeature7'),
-        _t('plusPlanPremiumFeature8'),
+  String get plusPlanPremiumButton => _t('plusCtaSubscribeMonthly');
+  String plusAnnualSavings({int? percent, String? amount}) =>
+      plusAnnualSavingsAmountLine(amount ?? '');
+  String plusAnnualSavingsAmountLine(String amount) =>
+      _t('plusAnnualSavingsAmountLine').replaceAll('{amount}', amount);
+  String get plusAnnualPerMonthHint => _t('plusAnnualPerMonthHint');
+  String get plusCtaSubscribePlus => _t('plusCtaSubscribeMonthly');
+  String get plusCtaSubscribeMonthly => _t('plusCtaSubscribeMonthly');
+  String get plusCtaSubscribeAnnual => _t('plusCtaSubscribeAnnual');
+  List<String> get plusPlanPremiumFeatures => plusPlanMonthlyFeatures;
+  List<String> get plusPlanMonthlyFeatures => [
+        _t('plusPlanMonthlyFeature1'),
+        _t('plusPlanMonthlyFeature2'),
+        _t('plusPlanMonthlyFeature3'),
+        _t('plusPlanMonthlyFeature4'),
+        _t('plusPlanMonthlyFeature5'),
+        _t('plusPlanMonthlyFeature6'),
+        _t('plusPlanMonthlyFeature7'),
+        _t('plusPlanMonthlyFeature8'),
+        _t('plusPlanMonthlyFeature9'),
+        _t('plusPlanMonthlyFeature10'),
+        _t('plusPlanMonthlyFeature11'),
+        _t('plusPlanMonthlyFeature12'),
+        _t('plusPlanMonthlyFeature13'),
+        _t('plusPlanMonthlyFeature14'),
+        _t('plusPlanMonthlyFeature15'),
+        _t('plusPlanMonthlyFeature16'),
+        _t('plusPlanMonthlyFeature17'),
+        _t('plusPlanMonthlyFeature18'),
+      ];
+  List<String> get plusPlanAnnualFeatures => [
+        _t('plusPlanAnnualFeature1'),
+        _t('plusPlanAnnualFeature2'),
+        _t('plusPlanAnnualFeature3'),
       ];
   String get plusPlanAiTitle => _t('plusPlanAiTitle');
   String get plusPlanAiSubtitle => _t('plusPlanAiSubtitle');
@@ -297,6 +336,8 @@ class S {
         _t('plusPlanFreeFeature2'),
         _t('plusPlanFreeFeature3'),
         _t('plusPlanFreeFeature4'),
+        _t('plusPlanFreeFeature5'),
+        _t('plusPlanFreeFeature6'),
       ];
   List<String> get plusTrustStripItems => [
         _t('plusTrustData'),
@@ -658,8 +699,7 @@ class S {
           .replaceAll('{filled}', '$filled')
           .replaceAll('{total}', '$total');
   String memoriesProgressStandardBadges(int count) =>
-      _t('memoriesProgressStandardBadges')
-          .replaceAll('{count}', '$count');
+      _t('memoriesProgressStandardBadges').replaceAll('{count}', '$count');
   String get memoriesCheerEmpty => _t('memoriesCheerEmpty');
   String get memoriesAlbumPromoTitle => _t('memoriesAlbumPromoTitle');
   String get memoriesAlbumPromoSubtitle => _t('memoriesAlbumPromoSubtitle');
@@ -679,15 +719,21 @@ class S {
   String get memoriesAlbumBackCoverBody => _t('memoriesAlbumBackCoverBody');
   String get memoriesAlbumBackCoverFinale => _t('memoriesAlbumBackCoverFinale');
   String get memoriesAlbumQualityTitle => _t('memoriesAlbumQualityTitle');
-  String get memoriesAlbumQualityShareTitle => _t('memoriesAlbumQualityShareTitle');
-  String get memoriesAlbumQualityShareDesc => _t('memoriesAlbumQualityShareDesc');
-  String get memoriesAlbumQualityPrintTitle => _t('memoriesAlbumQualityPrintTitle');
-  String get memoriesAlbumQualityPrintDesc => _t('memoriesAlbumQualityPrintDesc');
+  String get memoriesAlbumQualityShareTitle =>
+      _t('memoriesAlbumQualityShareTitle');
+  String get memoriesAlbumQualityShareDesc =>
+      _t('memoriesAlbumQualityShareDesc');
+  String get memoriesAlbumQualityPrintTitle =>
+      _t('memoriesAlbumQualityPrintTitle');
+  String get memoriesAlbumQualityPrintDesc =>
+      _t('memoriesAlbumQualityPrintDesc');
   String get memoriesAlbumExportTitle => _t('memoriesAlbumExportTitle');
-  String get memoriesAlbumProgressPreparing => _t('memoriesAlbumProgressPreparing');
-  String memoriesAlbumProgressImages(int current, int total) => _t('memoriesAlbumProgressImages')
-      .replaceAll('{current}', '$current')
-      .replaceAll('{total}', '$total');
+  String get memoriesAlbumProgressPreparing =>
+      _t('memoriesAlbumProgressPreparing');
+  String memoriesAlbumProgressImages(int current, int total) =>
+      _t('memoriesAlbumProgressImages')
+          .replaceAll('{current}', '$current')
+          .replaceAll('{total}', '$total');
   String memoriesAlbumProgressBuilding(int current, int total) =>
       _t('memoriesAlbumProgressBuilding')
           .replaceAll('{current}', '$current')
@@ -697,8 +743,8 @@ class S {
   String get memoriesAlbumCanceled => _t('memoriesAlbumCanceled');
   String get memoriesAlbumErrorNetwork => _t('memoriesAlbumErrorNetwork');
   String get memoriesAlbumErrorStorage => _t('memoriesAlbumErrorStorage');
-  String memoriesAlbumSkippedImages(int count) => _t('memoriesAlbumSkippedImages')
-      .replaceAll('{count}', '$count');
+  String memoriesAlbumSkippedImages(int count) =>
+      _t('memoriesAlbumSkippedImages').replaceAll('{count}', '$count');
   String get addMemory => _t('addMemory');
   String get memoryAddBadgeCta => _t('memoryAddBadgeCta');
   String get memoryChooseBadgeTitle => _t('memoryChooseBadgeTitle');
@@ -940,6 +986,8 @@ class S {
   String get familyZodiacSolar => _t('familyZodiacSolar');
   String get familyEntertainmentNote => _t('familyEntertainmentNote');
   String get familyChristianCardTitle => _t('familyChristianCardTitle');
+  String get familySpiritistCardTitle => _t('familySpiritistCardTitle');
+  String get familyJewishCardTitle => _t('familyJewishCardTitle');
   String familyChristianLine(String reference) =>
       _t('familyChristianLine').replaceAll('{ref}', reference);
   String familyBornOn(String date) =>
@@ -1069,8 +1117,19 @@ class S {
   String get deleteAccountSuccess => _t('deleteAccountSuccess');
   String get deleteAccountReauthTitle => _t('deleteAccountReauthTitle');
   String get deleteAccountReauthBody => _t('deleteAccountReauthBody');
+  String get deleteAccountReauthGoogleSection =>
+      _t('deleteAccountReauthGoogleSection');
+  String deleteAccountReauthGoogleAccountHint(String email) =>
+      _t('deleteAccountReauthGoogleAccountHint').replaceAll('{email}', email);
+  String get deleteAccountReauthPasswordSection =>
+      _t('deleteAccountReauthPasswordSection');
+  String get deleteAccountReauthOrDivider => _t('deleteAccountReauthOrDivider');
+  String get deleteAccountReauthEmailLabel =>
+      _t('deleteAccountReauthEmailLabel');
   String get deleteAccountReauthPasswordHint =>
       _t('deleteAccountReauthPasswordHint');
+  String get deleteAccountReauthPasswordRequired =>
+      _t('deleteAccountReauthPasswordRequired');
   String get deleteAccountReauthGoogle => _t('deleteAccountReauthGoogle');
   String get deleteAccountReauthContinue => _t('deleteAccountReauthContinue');
   String get deleteAccountReauthCantPassword =>
@@ -1129,13 +1188,26 @@ class S {
   String get weeklyPhotoPublicNeedPhoto => _t('weeklyPhotoPublicNeedPhoto');
   String get weeklyPhotoConfirmTitle => _t('weeklyPhotoConfirmTitle');
   String get weeklyPhotoConfirmBody => _t('weeklyPhotoConfirmBody');
-  String get weeklyPhotoConfirmCancel => _t('weeklyPhotoConfirmCancel');
-  String get weeklyPhotoConfirmOk => _t('weeklyPhotoConfirmOk');
+  String get weeklyPhotoConfirmNo => _t('weeklyPhotoConfirmNo');
+  String get weeklyPhotoConfirmYes => _t('weeklyPhotoConfirmYes');
   String get weeklyPhotoParticipatingBadge =>
       _t('weeklyPhotoParticipatingBadge');
   String get weeklyPhotoWinnerBadge => _t('weeklyPhotoWinnerBadge');
   String get weeklyPhotoShowBabyFirstName => _t('weeklyPhotoShowBabyFirstName');
   String get weeklyPhotoDisclaimerFooter => _t('weeklyPhotoDisclaimerFooter');
+  String get weeklyPhotoReportLink => _t('weeklyPhotoReportLink');
+  String get weeklyPhotoReportTitle => _t('weeklyPhotoReportTitle');
+  String get weeklyPhotoReportHint => _t('weeklyPhotoReportHint');
+  String get weeklyPhotoReportMessageLabel =>
+      _t('weeklyPhotoReportMessageLabel');
+  String get weeklyPhotoReportSubmit => _t('weeklyPhotoReportSubmit');
+  String get weeklyPhotoReportSuccess => _t('weeklyPhotoReportSuccess');
+  String get weeklyPhotoReportNeedLogin => _t('weeklyPhotoReportNeedLogin');
+  String get weeklyPhotoReportMessageTooShort =>
+      _t('weeklyPhotoReportMessageTooShort');
+  String get weeklyPhotoReportMessageTooLong =>
+      _t('weeklyPhotoReportMessageTooLong');
+  String get weeklyPhotoReportFailed => _t('weeklyPhotoReportFailed');
   String get weeklyPhotoSectionTitle => _t('weeklyPhotoSectionTitleFemale');
   String get weeklyPhotoSectionTitleMale => _t('weeklyPhotoSectionTitleMale');
   String get weeklyPhotoSectionTitleFemale =>
@@ -1329,6 +1401,142 @@ class S {
       _t('summaryLastSleep').replaceAll('{time}', time);
   String homeTipBody(String name) =>
       _t('homeTipBody').replaceAll('{name}', name);
+  String get homeYesterdayBabaTitle => _t('homeYesterdayBabaTitle');
+  String homeYesterdayBabaFallback(String name) =>
+      _t('homeYesterdayBabaFallback').replaceAll('{name}', name);
+  String get homeYesterdayBabaRoutineQuiet => _t('homeYesterdayBabaRoutineQuiet');
+  String homeYesterdayBabaRoutine({
+    required int feeds,
+    required String sleep,
+    required int diapers,
+  }) =>
+      _t('homeYesterdayBabaRoutine')
+          .replaceAll('{feeds}', '$feeds')
+          .replaceAll('{sleep}', sleep)
+          .replaceAll('{diapers}', '$diapers');
+  String get homeYesterdayBabaGrowthBothWithin =>
+      _t('homeYesterdayBabaGrowthBothWithin');
+  String get homeYesterdayBabaGrowthNoData => _t('homeYesterdayBabaGrowthNoData');
+  String homeYesterdayBabaGrowthCombo({
+    required String weight,
+    required String height,
+  }) =>
+      _t('homeYesterdayBabaGrowthCombo')
+          .replaceAll('{weight}', weight)
+          .replaceAll('{height}', height);
+  String get homeYesterdayBabaGrowthBelow => _t('homeYesterdayBabaGrowthBelow');
+  String get homeYesterdayBabaGrowthAbove => _t('homeYesterdayBabaGrowthAbove');
+  String homeYesterdayBabaRoutineLowSleep({
+    required int feeds,
+    required String sleep,
+    required int diapers,
+  }) =>
+      _t('homeYesterdayBabaRoutineLowSleep')
+          .replaceAll('{feeds}', '$feeds')
+          .replaceAll('{sleep}', sleep)
+          .replaceAll('{diapers}', '$diapers');
+  String get homeYesterdayBabaBandWithin => _t('homeYesterdayBabaBandWithin');
+  String get homeYesterdayBabaBandBelow => _t('homeYesterdayBabaBandBelow');
+  String get homeYesterdayBabaBandAbove => _t('homeYesterdayBabaBandAbove');
+  String get homeYesterdayBabaBandUnknown => _t('homeYesterdayBabaBandUnknown');
+  String get homeAiInsightDailyTitle => _t('homeAiInsightDailyTitle');
+  String get homeAiInsightWeeklyTitle => _t('homeAiInsightWeeklyTitle');
+  String get aiBubbleDragToClose => _t('aiBubbleDragToClose');
+  String get aiBubbleCloseZone => _t('aiBubbleCloseZone');
+  String get floatingMessageDropToClose => _t('floatingMessageDropToClose');
+  String get floatingMessageLinkOpenFailed =>
+      _t('floatingMessageLinkOpenFailed');
+  String get aiBubbleOpenLink => _t('aiBubbleOpenLink');
+  String get aiBubblePromoKnowMore => _t('aiBubblePromoKnowMore');
+  String homeAiInsightDailySleepBetter(String name) =>
+      _t('homeAiInsightDailySleepBetter').replaceAll('{name}', name);
+  String homeAiInsightDailySleepLess(String name) =>
+      _t('homeAiInsightDailySleepLess').replaceAll('{name}', name);
+  String homeAiInsightDailyFeedingBetter(String name) =>
+      _t('homeAiInsightDailyFeedingBetter').replaceAll('{name}', name);
+  String homeAiInsightDailyPeaceful(String name) =>
+      _t('homeAiInsightDailyPeaceful').replaceAll('{name}', name);
+  String homeAiInsightDailyQuiet(String name) =>
+      _t('homeAiInsightDailyQuiet').replaceAll('{name}', name);
+  String homeAiInsightDailyDefault(String name) =>
+      _t('homeAiInsightDailyDefault').replaceAll('{name}', name);
+  String homeAiInsightDailyWithGrowth(String name, String growth) =>
+      _t('homeAiInsightDailyWithGrowth')
+          .replaceAll('{name}', name)
+          .replaceAll('{growth}', growth);
+  String homeAiInsightWeeklySleepImproved(String name) =>
+      _t('homeAiInsightWeeklySleepImproved').replaceAll('{name}', name);
+  String homeAiInsightWeeklyFeedingImproved(String name) =>
+      _t('homeAiInsightWeeklyFeedingImproved').replaceAll('{name}', name);
+  String homeAiInsightWeeklyStable(String name) =>
+      _t('homeAiInsightWeeklyStable').replaceAll('{name}', name);
+  String homeAiInsightWeeklyFewData(String name) =>
+      _t('homeAiInsightWeeklyFewData').replaceAll('{name}', name);
+  String get homeAiInsightGrowthShortHealthy => _t('homeAiInsightGrowthShortHealthy');
+  String get homeAiInsightGrowthShortWatch => _t('homeAiInsightGrowthShortWatch');
+  String aiBubbleFeverAcute(String name) =>
+      _t('aiBubbleFeverAcute').replaceAll('{name}', name);
+  String aiBubbleFeverAcuteWithTemp(String name, double temp) =>
+      _t('aiBubbleFeverAcuteWithTemp')
+          .replaceAll('{name}', name)
+          .replaceAll('{temp}', temp.toStringAsFixed(1));
+  String aiBubbleFeverAcuteHigh(String name, double temp) =>
+      _t('aiBubbleFeverAcuteHigh')
+          .replaceAll('{name}', name)
+          .replaceAll('{temp}', temp.toStringAsFixed(1));
+  String aiBubbleFeverFollowUp(String name) =>
+      _t('aiBubbleFeverFollowUp').replaceAll('{name}', name);
+  String aiBubbleFeverFollowUpWithTemp(String name, double temp) =>
+      _t('aiBubbleFeverFollowUpWithTemp')
+          .replaceAll('{name}', name)
+          .replaceAll('{temp}', temp.toStringAsFixed(1));
+  String aiBubbleFeverRecoveryCheck(String name, int days) =>
+      _t('aiBubbleFeverRecoveryCheck')
+          .replaceAll('{name}', name)
+          .replaceAll('{days}', '$days');
+  String aiBubbleConsultToday(String name, String title, String when) =>
+      _t('aiBubbleConsultToday')
+          .replaceAll('{name}', name)
+          .replaceAll('{title}', title)
+          .replaceAll('{when}', when);
+  String aiBubbleVaccineToday(String name, String vaccine) =>
+      _t('aiBubbleVaccineToday')
+          .replaceAll('{name}', name)
+          .replaceAll('{vaccine}', vaccine);
+  String aiBubbleVaccinesToday(String name, int count) =>
+      _t('aiBubbleVaccinesToday')
+          .replaceAll('{name}', name)
+          .replaceAll('{count}', '$count');
+  String aiBubbleSleepWakeLong(String name, int hours) =>
+      _t('aiBubbleSleepWakeLong')
+          .replaceAll('{name}', name)
+          .replaceAll('{hours}', '$hours');
+  String aiBubbleSleepTracking(String name, int hours) =>
+      _t('aiBubbleSleepTracking')
+          .replaceAll('{name}', name)
+          .replaceAll('{hours}', '$hours');
+  String aiBubbleFeedingCritical(String name) =>
+      _t('aiBubbleFeedingCritical').replaceAll('{name}', name);
+  String aiBubbleSleepCritical(String name) =>
+      _t('aiBubbleSleepCritical').replaceAll('{name}', name);
+  String aiBubbleSleepApproach(String name) =>
+      _t('aiBubbleSleepApproach').replaceAll('{name}', name);
+  String aiBubbleDiaperCritical(String name) =>
+      _t('aiBubbleDiaperCritical').replaceAll('{name}', name);
+  String aiBubbleWeightDown(String name) =>
+      _t('aiBubbleWeightDown').replaceAll('{name}', name);
+  String aiBubbleGrowthStale(String name, int days) =>
+      _t('aiBubbleGrowthStale')
+          .replaceAll('{name}', name)
+          .replaceAll('{days}', '$days');
+  String aiBubbleGrowthNone(String name) =>
+      _t('aiBubbleGrowthNone').replaceAll('{name}', name);
+  String aiBubbleGrowthWatch(String name, String hint) =>
+      _t('aiBubbleGrowthWatch')
+          .replaceAll('{name}', name)
+          .replaceAll('{hint}', hint);
+  String aiBubbleTodayEmpty(String name) =>
+      _t('aiBubbleTodayEmpty').replaceAll('{name}', name);
   String get homeGreetingSubtitle => _t('homeGreetingSubtitle');
   String get homeMotivationBanner => _t('homeMotivationBanner');
   String get homeMotivationBannerOpenMemories =>
@@ -1453,6 +1661,270 @@ class S {
           .replaceAll('{name}', name)
           .replaceAll('{metric}', metric);
   String get growthChartDeltaHint => _t('growthChartDeltaHint');
+  String get growthCurveSectionTitle => _t('growthCurveSectionTitle');
+  String get growthCurveSectionTitleWeight =>
+      _t('growthCurveSectionTitleWeight');
+  String get growthCurveDisclaimer => _t('growthCurveDisclaimer');
+  String get growthCurveLegendMin => _t('growthCurveLegendMin');
+  String get growthCurveLegendAvg => _t('growthCurveLegendAvg');
+  String get growthCurveLegendMax => _t('growthCurveLegendMax');
+  String get growthCurveLegendBaby => _t('growthCurveLegendBaby');
+  String get growthCurveAxisMonths => _t('growthCurveAxisMonths');
+  String get growthCurveReferenceGirls => _t('growthCurveReferenceGirls');
+  String get growthCurveReferenceBoys => _t('growthCurveReferenceBoys');
+  String get growthCurveSexHint => _t('growthCurveSexHint');
+  String growthInsightPeriodHeight({
+    required String babyName,
+    required int days,
+    required double deltaCm,
+  }) =>
+      _t('growthInsightPeriodHeight')
+          .replaceAll('{name}', babyName)
+          .replaceAll('{days}', '$days')
+          .replaceAll('{delta}', deltaCm.toStringAsFixed(1));
+  String growthInsightPeriodWeight({
+    required String babyName,
+    required int days,
+    required double deltaGrams,
+  }) {
+    final absG = deltaGrams.abs();
+    final deltaStr = absG >= 1000
+        ? '${(absG / 1000).toStringAsFixed(2)} kg'
+        : '${absG.round()} g';
+    final sign = deltaGrams >= 0 ? '+' : '−';
+    return _t('growthInsightPeriodWeight')
+        .replaceAll('{name}', babyName)
+        .replaceAll('{days}', '$days')
+        .replaceAll('{delta}', '$sign$deltaStr');
+  }
+
+  String growthInsightWeightBandMessage({
+    required String babyName,
+    required bool isBoy,
+    required int ageMonths,
+    required String bandKey,
+  }) {
+    final tpl = switch (bandKey) {
+      'within' => _t('growthInsightWeightBandWithin'),
+      'above' => _t('growthInsightWeightBandAbove'),
+      'below' => _t('growthInsightWeightBandBelow'),
+      _ => _t('growthInsightWeightBandUnknown'),
+    };
+    final sexWord = isBoy
+        ? _t('growthInsightSexWordBoy')
+        : _t('growthInsightSexWordGirl');
+    return tpl
+        .replaceAll('{name}', babyName)
+        .replaceAll('{months}', '$ageMonths')
+        .replaceAll('{sexWord}', sexWord);
+  }
+
+  String get growthInsightCurveConsistent => _t('growthInsightCurveConsistent');
+  String growthInsightBandMessage({
+    required String babyName,
+    required bool isBoy,
+    required int ageMonths,
+    required String bandKey,
+  }) {
+    final tpl = switch (bandKey) {
+      'within' => _t('growthInsightBandWithin'),
+      'above' => _t('growthInsightBandAbove'),
+      'below' => _t('growthInsightBandBelow'),
+      _ => _t('growthInsightBandUnknown'),
+    };
+    final sexWord = isBoy
+        ? _t('growthInsightSexWordBoy')
+        : _t('growthInsightSexWordGirl');
+    return tpl
+        .replaceAll('{name}', babyName)
+        .replaceAll('{months}', '$ageMonths')
+        .replaceAll('{sexWord}', sexWord);
+  }
+
+  String growthInsightVelocityMessage({required String trendKey}) =>
+      _t(switch (trendKey) {
+        'healthy' => 'growthInsightVelocityHealthy',
+        'slowdown' => 'growthInsightVelocitySlowdown',
+        'acceleration' => 'growthInsightVelocityAcceleration',
+        'stable' => 'growthInsightVelocityStable',
+        'gentle' => 'growthInsightVelocityGentle',
+        _ => 'growthInsightVelocityUnknown',
+      });
+  String get reportPediatricGrowthInsights => _t('reportPediatricGrowthInsights');
+  String get aiNannyNavLabel => _t('aiNannyNavLabel');
+  String get aiNannyPhase1Hint => _t('aiNannyPhase1Hint');
+  String get aiNannyTitle => _t('aiNannyTitle');
+  String get aiNannySubtitle => _t('aiNannySubtitle');
+  String get aiNannyWelcomeMessage => _t('aiNannyWelcomeMessage');
+  String get aiNannyMockReply => _t('aiNannyMockReply');
+  String get aiNannyInputHint => _t('aiNannyInputHint');
+  String get aiNannyThinking => _t('aiNannyThinking');
+  String get aiNannyDisclaimer => _t('aiNannyDisclaimer');
+  String get aiNannyPremiumTitle => _t('aiNannyPremiumTitle');
+  String get aiNannyPremiumBody => _t('aiNannyPremiumBody');
+  String get aiNannyPremiumCta => _t('aiNannyPremiumCta');
+  String get aiNannyBenefitSmart => _t('aiNannyBenefitSmart');
+  String get aiNannyBenefitPersonal => _t('aiNannyBenefitPersonal');
+  String get aiNannyBenefitAlerts => _t('aiNannyBenefitAlerts');
+  String get aiNannyBenefitRoutines => _t('aiNannyBenefitRoutines');
+  String get aiNannyBenefitContent => _t('aiNannyBenefitContent');
+  String get aiNannyBenefitAudioSoon => _t('aiNannyBenefitAudioSoon');
+  String get aiNannyAskBelow => _t('aiNannyAskBelow');
+  String get aiNannyNoBaby => _t('aiNannyNoBaby');
+  String aiNannyRemainingToday(int n) =>
+      _t('aiNannyRemainingToday').replaceAll('{n}', '$n');
+  String get aiNannyDailyLimitMessage => _t('aiNannyDailyLimitMessage');
+  String get aiNannyCallFailed => _t('aiNannyCallFailed');
+  String get aiNannyProfileButton => _t('aiNannyProfileButton');
+  String get aiNannyClearChat => _t('aiNannyClearChat');
+  String get aiNannyClearChatConfirmTitle => _t('aiNannyClearChatConfirmTitle');
+  String get aiNannyClearChatConfirmBody => _t('aiNannyClearChatConfirmBody');
+  String get aiNannyClearChatDone => _t('aiNannyClearChatDone');
+  String get aiNannyDeleteExchange => _t('aiNannyDeleteExchange');
+  String get aiNannyDeleteExchangeConfirm => _t('aiNannyDeleteExchangeConfirm');
+  String get aiNannySignInRequired => _t('aiNannySignInRequired');
+  String aiVoiceRecording(int seconds) =>
+      _t('aiVoiceRecording').replaceAll('{s}', '$seconds');
+  String get aiVoiceProcessing => _t('aiVoiceProcessing');
+  String aiVoiceUnderstood(String text) =>
+      _t('aiVoiceUnderstood').replaceAll('{text}', text);
+  String get aiVoiceConfirmTitle => _t('aiVoiceConfirmTitle');
+  String get aiVoiceConfirm => _t('aiVoiceConfirm');
+  String get aiVoiceMicDenied => _t('aiVoiceMicDenied');
+  String get aiVoiceMicWebUnavailable => _t('aiVoiceMicWebUnavailable');
+  String get aiVoiceSavedOk => _t('aiVoiceSavedOk');
+  String get aiVoiceSavedFeedingAndDiaper => _t('aiVoiceSavedFeedingAndDiaper');
+  String get aiVoiceSavedSymptom => _t('aiVoiceSavedSymptom');
+  String get aiVoiceNeedClarification => _t('aiVoiceNeedClarification');
+  String get aiClarifyBreastSide => _t('aiClarifyBreastSide');
+  String get aiClarifyFeedingDuration => _t('aiClarifyFeedingDuration');
+  String get aiClarifyRegisterNeeded => _t('aiClarifyRegisterNeeded');
+  String get aiNannyRecordsFoundTitle => _t('aiNannyRecordsFoundTitle');
+  String get aiNannyConfirmCompleteRecords => _t('aiNannyConfirmCompleteRecords');
+  String get aiNannyCompleteMissingData => _t('aiNannyCompleteMissingData');
+  String get aiNannySaveAllPossible => _t('aiNannySaveAllPossible');
+  String get aiNannyCancelRecords => _t('aiNannyCancelRecords');
+  String get aiGrowthNeedBaselineWeight => _t('aiGrowthNeedBaselineWeight');
+  String get aiGrowthNeedBaselineHeight => _t('aiGrowthNeedBaselineHeight');
+  String aiGrowthWeightDeltaPreview(double prevKg, double nextKg) =>
+      _t('aiGrowthWeightDeltaPreview')
+          .replaceAll('{prev}', prevKg.toStringAsFixed(3))
+          .replaceAll('{next}', nextKg.toStringAsFixed(3));
+  String aiGrowthHeightDeltaPreview(double prevCm, double nextCm) =>
+      _t('aiGrowthHeightDeltaPreview')
+          .replaceAll('{prev}', prevCm.toStringAsFixed(1))
+          .replaceAll('{next}', nextCm.toStringAsFixed(1));
+  String get aiClarifyFeedingType => _t('aiClarifyFeedingType');
+  String get aiClarifyDiaperKind => _t('aiClarifyDiaperKind');
+  String get aiClarifyDiaperChangeNow => _t('aiClarifyDiaperChangeNow');
+  String get aiRecordSaveFailed => _t('aiRecordSaveFailed');
+  String get aiRecordLineDiaperPee => _t('aiRecordLineDiaperPee');
+  String get aiRecordLineDiaperPoo => _t('aiRecordLineDiaperPoo');
+  String get aiRecordLineDiaperBoth => _t('aiRecordLineDiaperBoth');
+  String get aiRecordLineDiaperGeneric => _t('aiRecordLineDiaperGeneric');
+  String get aiRecordLineFeeding => _t('aiRecordLineFeeding');
+  String get aiRecordLineSleepStart => _t('aiRecordLineSleepStart');
+  String get aiRecordLineSleepEnd => _t('aiRecordLineSleepEnd');
+  String get aiRecordLineSleep => _t('aiRecordLineSleep');
+  String get aiRecordLineWeight => _t('aiRecordLineWeight');
+  String get aiRecordLineHeight => _t('aiRecordLineHeight');
+  String get aiRecordLineSymptom => _t('aiRecordLineSymptom');
+  String get aiRecordLineGeneric => _t('aiRecordLineGeneric');
+  String aiRecordConfirmedPrefix(String name, String line, String time) =>
+      _t('aiRecordConfirmedPrefix')
+          .replaceAll('{name}', name)
+          .replaceAll('{line}', line)
+          .replaceAll('{time}', time);
+  String get aiClarifyFeedingPrefix => _t('aiClarifyFeedingPrefix');
+  String get aiClarifyDiaperPrefix => _t('aiClarifyDiaperPrefix');
+  String get aiRoutineRegisterSkipped => _t('aiRoutineRegisterSkipped');
+  String get aiVoiceSavedFeeding => _t('aiVoiceSavedFeeding');
+  String get aiVoiceSleepStarted => _t('aiVoiceSleepStarted');
+  String get aiChatSleepStartedConfirm => _t('aiChatSleepStartedConfirm');
+  String get aiChatSleepEndedConfirm => _t('aiChatSleepEndedConfirm');
+  String get aiChatRegisterSavedConfirm => _t('aiChatRegisterSavedConfirm');
+  String get aiVoiceSleepEnded => _t('aiVoiceSleepEnded');
+  String get aiVoiceRecordFailed => _t('aiVoiceRecordFailed');
+  String get aiVoiceNotARegisterTitle => _t('aiVoiceNotARegisterTitle');
+  String get aiVoiceRegisterHint => _t('aiVoiceRegisterHint');
+  String get aiVoiceHoldMicHint => _t('aiVoiceHoldMicHint');
+  String get aiVoiceReleaseHint => _t('aiVoiceReleaseHint');
+  String get aiVoiceTapMicHint => _t('aiVoiceTapMicHint');
+  String get aiVoiceTapStopHint => _t('aiVoiceTapStopHint');
+  String get aiVoiceRecordingHint => _t('aiVoiceRecordingHint');
+  String get aiVoiceListenReply => _t('aiVoiceListenReply');
+  String get aiTtsPreparing => _t('aiTtsPreparing');
+  String get aiTtsPause => _t('aiTtsPause');
+  String get aiTtsResume => _t('aiTtsResume');
+  String get aiTtsRetry => _t('aiTtsRetry');
+  String get aiNannyAutoReadLabel => _t('aiNannyAutoReadLabel');
+  String get aiNannyDeviceVoiceHint => _t('aiNannyDeviceVoiceHint');
+  String get aiNannyTtsFailed => _t('aiNannyTtsFailed');
+  String get aiVoiceAskAiInstead => _t('aiVoiceAskAiInstead');
+  String get aiVoiceHealthFieldsHint => _t('aiVoiceHealthFieldsHint');
+  String get aiVoiceHealthTempLabel => _t('aiVoiceHealthTempLabel');
+  String get aiVoiceHealthVaccineNameLabel => _t('aiVoiceHealthVaccineNameLabel');
+  String get aiVoiceHealthVaccineDoseLabel => _t('aiVoiceHealthVaccineDoseLabel');
+  String get aiVoiceHealthVaccineNameRequired =>
+      _t('aiVoiceHealthVaccineNameRequired');
+  String get aiBabyHistoryTitle => _t('aiBabyHistoryTitle');
+  String get aiBabyHistorySubtitle => _t('aiBabyHistorySubtitle');
+  String get aiBabyHistoryFieldLabel => _t('aiBabyHistoryFieldLabel');
+  String get aiBabyHistoryPlaceholder => _t('aiBabyHistoryPlaceholder');
+  String get aiBabyHistoryDisclaimer => _t('aiBabyHistoryDisclaimer');
+  String get aiBabyHistorySave => _t('aiBabyHistorySave');
+  String get aiBabyHistoryClear => _t('aiBabyHistoryClear');
+  String get aiBabyHistorySaved => _t('aiBabyHistorySaved');
+  String get aiBabyHistoryCleared => _t('aiBabyHistoryCleared');
+  String get aiBabyHistoryClearConfirmTitle => _t('aiBabyHistoryClearConfirmTitle');
+  String get aiBabyHistoryClearConfirmBody => _t('aiBabyHistoryClearConfirmBody');
+  String get aiBabyHistoryLinkSubtitle => _t('aiBabyHistoryLinkSubtitle');
+  String get settingsAiBabyHistory => _t('settingsAiBabyHistory');
+  String aiBabyHistoryCharCount(int current, int max) => _t('aiBabyHistoryCharCount')
+      .replaceAll('{current}', '$current')
+      .replaceAll('{max}', '$max');
+  String get familyTabTree => _t('familyTabTree');
+  String get familyTabHoroscope => _t('familyTabHoroscope');
+  String get familyTabAiHistory => _t('familyTabAiHistory');
+  String familyHoroscopeDate(String date) =>
+      _t('familyHoroscopeDate').replaceAll('{date}', date);
+  String get familyHoroscopeGenerateToday => _t('familyHoroscopeGenerateToday');
+  String get familyHoroscopeRefresh => _t('familyHoroscopeRefresh');
+  String get familyHoroscopeMother => _t('familyHoroscopeMother');
+  String get familyHoroscopeFather => _t('familyHoroscopeFather');
+  String get familyHoroscopeBaby => _t('familyHoroscopeBaby');
+  String get familyHoroscopeFamilyEnergy => _t('familyHoroscopeFamilyEnergy');
+  String get familyHoroscopeDailyAdvice => _t('familyHoroscopeDailyAdvice');
+  String get familyHoroscopeDisclaimer => _t('familyHoroscopeDisclaimer');
+  String get familyHoroscopeRegisterFather => _t('familyHoroscopeRegisterFather');
+  String get familyHoroscopePremiumTitle => _t('familyHoroscopePremiumTitle');
+  String get familyHoroscopePremiumBody => _t('familyHoroscopePremiumBody');
+
+  String familyHoroscopeError(String code, {String? serverMessage}) {
+    final sm = serverMessage?.trim();
+    switch (code) {
+      case 'not-found':
+        return _t('familyHoroscopeErrorNotFound');
+      case 'unauthenticated':
+        return _t('familyHoroscopeErrorUnauthenticated');
+      case 'permission-denied':
+        return _t('familyHoroscopeErrorPermission');
+      case 'failed-precondition':
+        if (sm != null && sm.isNotEmpty) return sm;
+        return _t('familyHoroscopeErrorPrecondition');
+      case 'resource-exhausted':
+        return _t('familyHoroscopeErrorExhausted');
+      default:
+        if (sm != null && sm.isNotEmpty) return sm;
+        return _t('familyHoroscopeErrorGeneric');
+    }
+  }
+  String get appUpdateAvailableMessage => _t('appUpdateAvailableMessage');
+  String get appUpdateDownloading => _t('appUpdateDownloading');
+  String get appUpdateReadyToRestart => _t('appUpdateReadyToRestart');
+  String get appUpdateActionUpdate => _t('appUpdateActionUpdate');
+  String get appUpdateActionLater => _t('appUpdateActionLater');
+  String get appUpdateRestart => _t('appUpdateRestart');
   String feedingAgoMinutes(int m) =>
       _t('feedingAgoMinutes').replaceAll('{m}', '$m');
   String feedingAgoHours(int h, String mPadded) =>
@@ -1600,6 +2072,12 @@ class S {
   String get settingsMotherProfile => _t('settingsMotherProfile');
   String get profileEditMother => _t('profileEditMother');
   String get profileEditFather => _t('profileEditFather');
+  String get profileAddFather => _t('profileAddFather');
+  String get profileFatherNotRegisteredTitle =>
+      _t('profileFatherNotRegisteredTitle');
+  String get profileFatherNotRegisteredSubtitle =>
+      _t('profileFatherNotRegisteredSubtitle');
+  String get profileFatherAddCta => _t('profileFatherAddCta');
   String get profileEditBaby => _t('profileEditBaby');
   String get profileDataSaved => _t('profileDataSaved');
   String get profileEditData => _t('profileEditData');
@@ -1640,6 +2118,8 @@ class S {
   String get profileFamilyMessagesTitle => _t('profileFamilyMessagesTitle');
   String get profileShowChristian => _t('profileShowChristian');
   String get profileShowHoroscope => _t('profileShowHoroscope');
+  String get profileShowSpiritist => _t('profileShowSpiritist');
+  String get profileShowJewish => _t('profileShowJewish');
   String get motherProfileAddBaby => _t('motherProfileAddBaby');
   String get motherProfileNoBabies => _t('motherProfileNoBabies');
   String motherProfileBabyBornAt(String date) =>
@@ -2041,6 +2521,9 @@ class S {
   String get valWeightRange => _t('valWeightRange');
   String get valBabyHeightRange => _t('valBabyHeightRange');
   String get placeholderBabyName => _t('placeholderBabyName');
+  String get valBirthDateInvalid => _t('valBirthDateInvalid');
+  String get brDateHint => _t('brDateHint');
+  String get brDateOpenCalendar => _t('brDateOpenCalendar');
 
   String _t(String key) {
     final map = _strings[lang] ?? _strings[AppLang.pt]!;
@@ -2048,6 +2531,9 @@ class S {
     final pt = _strings[AppLang.pt]!;
     final primary = map[key];
     if (primary != null) return primary;
+
+    final extra = aiFamilyGrowthLocaleExtra(lang.name, key);
+    if (extra != null) return extra;
 
     if (key.startsWith('devLeap_') || key.startsWith('devLeaps')) {
       final leap = kDevelopmentLeapsTranslated[lang.name]?[key];
@@ -2115,66 +2601,91 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportListPediatricSub': 'PDF e dados para consulta médica',
     'reportListDevelopment': 'Relatório de desenvolvimento',
     'reportListDevelopmentSub': 'Marcos e saltos do desenvolvimento',
-    'plusBrandTitle': 'FaceBaby Premium',
+    'plusBrandTitle': 'FaceBaby Plus',
+    'plusEarlyAdopterOffer': 'Preço especial para os primeiros usuários.',
+    'plusPopularBadge': 'Mais Popular ❤️',
+    'plusPlanAnnualCardTitle': 'FaceBaby Plus Anual',
+    'plusPlanMonthlyCardTitle': 'FaceBaby Plus Mensal',
+    'plusPlanAnnualSubtitle': 'Economize assinando o plano anual.',
+    'plusPlanMonthlySubtitle':
+        'Tudo que você precisa para acompanhar seu bebê com carinho e inteligência.',
+    'plusAnnualSavingsAmountLine': 'Economize R\$ {amount} por ano',
+    'plusAnnualPerMonthHint': 'Equivale a cerca de R\$ 12,49/mês',
+    'plusCtaSubscribeMonthly': 'Assinar plano mensal',
+    'plusCtaSubscribeAnnual': 'Assinar plano anual',
+    'plusCtaSubscribePlus': 'Assinar FaceBaby Plus',
+    'plusPaywallRenewalNote':
+        'A assinatura é renovada automaticamente pela Google Play. Você pode cancelar quando quiser nas configurações da Play Store.',
     'plusSheetHero':
-        'Um único gesto para sempre: PDFs lindos, o livro de recordações, mais fotos na mural, backup na nuvem e aquele acompanhamento que faz o dia da mamãe mais leve.',
-    'plusSheetPriceLabel': 'Pagamento único',
+        'FaceBaby Plus: IA Babá 24h, fotos à vontade, backup completo, relatórios premium, livro do bebê e muito mais — a partir de R\$ 14,90/mês.',
+    'plusSheetPriceLabel': 'Planos mensal e anual',
     'plusSheetBullets':
-        '• Relatórios em PDF (sono, rotina, crescimento)\n• Livro de recordações em PDF\n• Exportar badges (PNG / PDF)\n• Backup em nuvem entre telemóveis\n• Mais memórias e fotos\n• Insights inteligentes nos relatórios\n• Relatório para o pediatra\n• Estatísticas avançadas\n• Temas premium do livro',
-    'plusCtaSubscribe': 'Desbloquear para sempre',
+        '• IA Babá 24h\n• Upload de fotos à vontade\n• Backup completo na nuvem\n• Relatórios premium e livro do bebê\n• Crescimento avançado e horóscopo familiar IA\n• Conteúdos gerados por IA\n• Em breve: respostas por voz',
+    'plusCtaSubscribe': 'Assinar FaceBaby Plus',
     'plusCtaRestore': 'Restaurar compras',
     'plusCtaLater': 'Agora não',
     'plusSheetFootnote':
-        'Compra única processada pela Google Play ou pela App Store. Nas definições da conta pode restaurar noutro telemóvel.',
+        'Assinatura processada pela Google Play ou App Store. Cancele quando quiser nas definições da loja.',
     'plusWelcomeSnack':
-        'Obrigada por confiar no FaceBaby Premium — as memórias do bebê ficam ainda mais seguras.',
+        'Obrigada por assinar o FaceBaby Plus — as memórias do bebê ficam ainda mais seguras.',
     'plusPurchaseUnavailableSnack':
         'Não foi possível iniciar a compra. Confirme o produto nas lojas ou tente mais tarde.',
     'plusPurchaseSkuNotFoundSnack':
-        'A Google Play não devolveu o produto "{id}". No Play Console crie um produto in-app gerido activo com este ID exacto (Monetizar → Produtos in-app), ou use --dart-define=FACEBABY_PREMIUM_SKU=… no build para igualar ao ID da loja.',
+        'A Google Play não devolveu a assinatura "{id}". No Play Console crie uma assinatura mensal activa com este ID (Monetizar → Assinaturas), ou use --dart-define=FACEBABY_PREMIUM_SKU=… no build.',
     'plusPurchaseBillingLaunchFailedSnack':
         'Não foi possível abrir o pagamento na Google Play. Confirme ligação à Internet, que a app veio da Play e que está com uma conta Google válida. Em testes internos/fechados, use conta licenciada. Se a mensagem da Play disser que o produto já foi comprado, use «Restaurar compras» abaixo.',
     'plusPurchaseAlreadyInPlayAccountSnack':
         'Se a Play disser que o produto já é seu, toque em «Restaurar compras» abaixo para ligar o Premium a esta conta FaceBaby. Se não funcionar, confira se está na mesma conta Google da compra.',
     'plusPaywallSkuMissingHint':
-        'Ainda sem preço da loja para "{id}". Confirme o produto activo na Play Console ou aguarde sincronização (pode demorar algumas horas).',
+        'Ainda sem preço da loja para a assinatura "{id}". Confirme o plano mensal activo na Play Console ou aguarde sincronização.',
     'plusRestoreOkSnack': 'Compras restauradas com sucesso.',
     'plusRestoreEmptySnack': 'Não encontrámos uma compra anterior nesta conta.',
-    'plusSnackLockedFeature': 'Incluído no FaceBaby Premium.',
+    'plusSnackLockedFeature': 'Incluído no FaceBaby Plus.',
     'plusMemoryLimitSnack':
-        'No plano gratuito pode guardar até {max} momentos com foto ou texto. O Premium abre espaço para muito mais memórias.',
+        'No plano gratuito pode guardar até {max} fotos em selos. O Premium libera fotos à vontade.',
+    'plusMemoryLimitDialogTitle': 'Liberte mais memórias',
+    'plusMemoryLimitDialogBody':
+        'No plano gratuito você pode guardar até {max} fotos nos selos.\n\nAssine o FaceBaby Plus para fotos à vontade, IA Babá, backup completo e todas as funções premium.',
+    'plusMemoryLimitDialogSubscribe': 'Assinar Premium',
     'plusReportsLockedHint': 'Relatório FaceBaby Premium',
+    'plusReportsPremiumTagline':
+        'Relatórios premium, IA Babá e backup — FaceBaby Plus a partir de R\$ 14,90/mês.',
+    'plusReportsPremiumCta': 'Ver FaceBaby Premium',
     'plusExportLockedHint': 'Exportação FaceBaby Premium',
-    'plusLifetimePaymentBadge': 'Pagamento único',
-    'plusNoMonthlyBadge': 'Sem mensalidade',
+    'plusLifetimePaymentBadge': 'Plano mensal',
+    'plusNoMonthlyBadge': 'Melhor custo-benefício',
     'plusPremiumActiveTitle': 'Obrigada pelo Premium',
     'plusPremiumActiveBody':
-        'Tens todas as funções premium ativas para sempre neste dispositivo. Restaura compras noutro telemóvel quando precisares.',
+        'Suas funções premium estão ativas. Gerencie ou cancele a assinatura na Google Play ou App Store.',
     'plusPurchaseErrorSnack':
         'Algo correu mal. Tenta de novo ou usa Restaurar compras.',
     'plusDoneClose': 'Fechar',
     'plusPaywallHeadline':
-        'Cada plano foi pensado para\napoiar você em cada fase.',
+        'Escolha o plano ideal para\nacompanhar seu bebê com o FaceBaby Plus.',
     'plusPaywallActiveNote':
-        'Seu Premium está ativo. Você pode conferir os planos a qualquer momento.',
-    'plusPaywallSecureNote':
-        'Compra 100% segura. Você pode cancelar quando quiser.',
-    'plusPlanPremiumTitle': 'Premium',
-    'plusPlanPremiumSubtitle': 'Tudo para cuidar e\nacompanhar do melhor jeito',
-    'plusPlanPremiumBadge': 'Mais escolhido',
-    'plusPlanPremiumPriceSubActive': 'ativo agora',
-    'plusPlanPremiumPriceSubSecure': 'compra segura',
+        'Seu FaceBaby Plus está ativo. Gerencie a assinatura na Play Store.',
     'plusPlanPremiumButtonActive': 'Plano atual',
-    'plusPlanPremiumButton': 'Quero Premium',
-    'plusPlanPremiumFeature1': 'Tudo do plano Gratuito',
-    'plusPlanPremiumFeature2': 'Relatórios completos do bebê',
-    'plusPlanPremiumFeature3':
-        'Relatório para o pediatra (útil para compartilhar com seu Pediatra)',
-    'plusPlanPremiumFeature4': 'Descrição dos Signos',
-    'plusPlanPremiumFeature5': 'Mensagens bíblicas diárias',
-    'plusPlanPremiumFeature6': 'Análises e insights do desenvolvimento',
-    'plusPlanPremiumFeature7': 'Conteúdos e dicas exclusivas',
-    'plusPlanPremiumFeature8': 'Suporte prioritário',
+    'plusPlanMonthlyFeature1': 'Tudo do plano Gratuito',
+    'plusPlanMonthlyFeature2': 'IA Babá 24h com você',
+    'plusPlanMonthlyFeature3': 'Respostas inteligentes',
+    'plusPlanMonthlyFeature4': 'Orientações personalizadas',
+    'plusPlanMonthlyFeature5': 'Alertas preditivos',
+    'plusPlanMonthlyFeature6': 'Rotinas personalizadas',
+    'plusPlanMonthlyFeature7': 'Conteúdos gerados por IA',
+    'plusPlanMonthlyFeature8': 'Upload de fotos',
+    'plusPlanMonthlyFeature9': 'Backup completo',
+    'plusPlanMonthlyFeature10': 'Relatórios premium',
+    'plusPlanMonthlyFeature11': 'Relatório para o pediatra',
+    'plusPlanMonthlyFeature12': 'Livro do bebê em PDF',
+    'plusPlanMonthlyFeature13': 'Crescimento avançado',
+    'plusPlanMonthlyFeature14': 'Horóscopo familiar com IA',
+    'plusPlanMonthlyFeature15': 'Mensagens bíblicas diárias',
+    'plusPlanMonthlyFeature16': 'Descrição dos signos',
+    'plusPlanMonthlyFeature17': 'Suporte prioritário',
+    'plusPlanMonthlyFeature18': 'Em breve: respostas por voz',
+    'plusPlanAnnualFeature1': 'Tudo do Plus Mensal',
+    'plusPlanAnnualFeature2': 'Economia em relação ao mensal',
+    'plusPlanAnnualFeature3': 'Melhor custo-benefício',
     'plusPlanAiTitle': 'IA Babá',
     'plusPlanAiSubtitle': 'Assistente inteligente\npara o dia a dia',
     'plusPlanAiBadge': 'Em breve',
@@ -2189,25 +2700,27 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusPlanAiPriceSub': 'Fique ligada!',
     'plusPlanAiButton': 'Quero ser avisado',
     'plusPlanFreeTitle': 'Gratuito',
-    'plusPlanFreeSubtitle': 'Comece sua jornada com o essencial',
+    'plusPlanFreeSubtitle': 'Comece sua jornada com o essencial.',
     'plusPlanFreePrice': 'R\$ 0,00',
     'plusPlanCurrent': 'Plano atual',
     'plusPlanFreeFeature1': 'Cadastros básicos',
     'plusPlanFreeFeature2': 'Registro diário',
     'plusPlanFreeFeature3': 'Agendas e lembretes',
     'plusPlanFreeFeature4': 'Peso e altura',
+    'plusPlanFreeFeature5': 'Algumas memórias',
+    'plusPlanFreeFeature6': 'Recursos limitados',
     'plusTrustData': 'Seus dados\nsempre seguros',
     'plusTrustFamily': 'Feito com amor\npara famílias',
     'plusTrustContent': 'Conteúdos confiáveis\ne atualizados',
     'plusTrustSupport': 'Apoio em cada\nmomento',
-    'settingsPlusCardTitle': 'FaceBaby Premium',
+    'settingsPlusCardTitle': 'FaceBaby Plus',
     'settingsPlusCardBodyFree':
-        'PDFs, livro de recordações, mais fotos, backup na nuvem, relatório ao pediatra e estatísticas avançadas — um único pagamento.',
+        'IA Babá, fotos ilimitadas, backup completo, relatórios premium e livro do bebê — mensal R\$ 14,90 ou anual R\$ 149,90.',
     'settingsPlusCardBodyActive':
-        'Tem o FaceBaby Premium ativo — obrigada por apoiar o projeto.',
-    'settingsPlusUpgradeCta': 'Desbloquear Premium',
-    'settingsPlusManageCta': 'Ver Premium',
-    'plusMemoryCounterFree': '{n} de {max} momentos no plano gratuito',
+        'Seu FaceBaby Plus está ativo — obrigada por apoiar o projeto.',
+    'settingsPlusUpgradeCta': 'Conhecer FaceBaby Plus',
+    'settingsPlusManageCta': 'Gerenciar Plus',
+    'plusMemoryCounterFree': '{n} de {max} fotos no plano gratuito',
     'reportDailyScreenTitle': 'Relatório Diário',
     'reportDayDetailsTitle': 'Detalhes do Dia',
     'reportDailyPickDayTooltip': 'Escolher dia',
@@ -2669,9 +3182,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'settingsTellFriend': 'Indique para um Amigo',
     'settingsInviteShareText':
         'Experimente o FaceBaby — o diário da rotina e memórias do bebê.\nhttps://play.google.com/store/apps/details?id=com.facebaby.app',
-    'settingsPremiumBenefitsTitle': 'Benefícios FaceBaby Premium',
+    'settingsPremiumBenefitsTitle': 'Benefícios FaceBaby Plus',
     'settingsPremiumBannerHint':
-        'Toque para ver o que está incluído no seu plano.',
+        'Toque para ver planos Plus, preços e o que está incluído.',
     'settingsRateCouldNotOpen':
         'Não foi possível abrir a loja. Tente mais tarde.',
     'unitsTitle': 'Unidades de medida',
@@ -2761,6 +3274,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'onbDadFallback': 'papai',
     'onbWelcomeTitle': 'Acompanhando e monitorando',
     'onbWelcomeSubtitle': 'o desenvolvimento com Amor.',
+    'onbPlusEarlyOffer':
+        'FaceBaby Plus: preço especial para os primeiros usuários — IA Babá, backup e relatórios premium.',
     'onbFeatureSleep': 'Sono',
     'onbFeatureFeeding': 'Alimentação',
     'onbFeatureGrowth': 'Crescimento',
@@ -2849,13 +3364,19 @@ const Map<AppLang, Map<String, String>> _strings = {
     'onbGoalMoments': 'Registrar momentos especiais',
     'onbGoalReports': 'Gerar relatórios',
     'onbGoalMemoryBook': 'Criar livro de memórias',
-    'onbMessagePrefTitle':
-        'Você prefere receber mensagens Cristãs, horóscopo ou ambas?',
-    'onbMessagePrefSubtitle': 'Você pode alterar isso depois em Meu Perfil.',
-    'onbMessagePrefChristian': 'Mensagens cristãs',
+    'onbMessagePrefTitle': 'Mamãe espiritualizada, bebê feliz.',
+    'onbMessagePrefSubtitle': 'Deseja receber mensagens diárias?',
+    'onbMessagePrefChristian': 'Cristãs',
     'onbMessagePrefHoroscope': 'Horóscopo',
+    'onbMessagePrefSpiritist': 'Espíritas',
+    'onbMessagePrefJewish': 'Judias',
+    'onbMessagePrefAll': 'Todas',
     'onbMessagePrefBoth': 'Ambas',
     'onbMessagePrefNone': 'Nenhuma das opções',
+    'onbAiHistoryTitle': 'Histórico do Bebê para a IA Babá',
+    'onbAiHistorySubtitle':
+        'Opcional — conte sobre rotina, saúde e preferências da família. Você pode editar depois em Família ou na IA Babá.',
+    'onbAiHistoryOptional': 'Pode pular e preencher depois',
     'onbDragToAdjust': 'Arraste para ajustar',
     'onbEmailSheetTitle': 'Criar conta com e-mail',
     'onbYourNameHint': 'Seu nome',
@@ -2890,6 +3411,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'familyEntertainmentNote':
         'Conteúdo leve e afetivo, para entretenimento — não substitui orientação profissional.',
     'familyChristianCardTitle': 'Mensagem para a família',
+    'familySpiritistCardTitle': 'Mensagem espírita',
+    'familyJewishCardTitle': 'Mensagem judaica',
     'familyChristianLine': '📖 {ref}',
     'familyBornOn': 'Nascimento: {date}',
     'familyAgeOneYear': '1 ano',
@@ -2959,7 +3482,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'familyPremiumUnlockCta': 'Desbloquear Premium',
     'familyScreenTitle': 'Família 💜',
     'familyPersonalInfoTitle': 'Informações pessoais',
-    'familyHoroscopeCardTitle': 'Horóscopo de {sign}',
+    'familyHoroscopeCardTitle': 'Astrologia de {sign}',
     'familyBibleVerseCardTitle': 'Versículo Bíblico de hoje.',
     'familyDailySummaryTitle': 'Resumo do dia',
     'familySummaryFeeding': 'Amamentação',
@@ -2982,9 +3505,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'familyPremiumShortBadge': 'Premium',
     'familyPremiumFeatureLockedBody':
         'Este conteúdo faz parte do FaceBaby Premium. Toque para ver planos.',
-    'familyPremiumBannerTitle': 'Desbloqueie conteúdos Premium',
+    'familyPremiumBannerTitle': 'Desbloqueie com FaceBaby Plus',
     'familyPremiumBannerBody':
-        'Horóscopos completos, frases bíblicas exclusivas e recomendações personalizadas.',
+        'Horóscopo familiar com IA, crescimento avançado e conteúdos exclusivos no FaceBaby Plus.',
     'familyPremiumViewPlans': 'Ver planos',
     'familyAddFatherCardTitle': 'Adicionar dados do papai',
     'familyElementFire': 'Fogo',
@@ -3012,17 +3535,23 @@ const Map<AppLang, Map<String, String>> _strings = {
     'deleteAccountConfirm': 'Apagar tudo',
     'deleteAccountDeleting': 'Apagando sua conta...',
     'deleteAccountSuccess': 'Conta apagada com sucesso.',
-    'deleteAccountReauthTitle': 'Confirmar identidade',
+    'deleteAccountReauthTitle': 'Confirmar senha ou Google',
     'deleteAccountReauthBody':
-        'Por segurança, precisamos confirmar que é mesmo você. Escolha o mesmo método de acesso habitual e concluiremos o apagar da conta.',
-    'deleteAccountReauthPasswordHint': 'Palavra-passe atual',
-    'deleteAccountReauthGoogle': 'Confirmar com Google',
-    'deleteAccountReauthContinue': 'Confirmar palavra-passe',
+        'Último passo antes de apagar: confirme o mesmo método com que entra no app (senha do e-mail ou conta Google/Gmail).',
+    'deleteAccountReauthGoogleSection': 'Entrou com Google / Gmail',
+    'deleteAccountReauthGoogleAccountHint': 'Conta Google: {email}',
+    'deleteAccountReauthPasswordSection': 'Entrou com e-mail e senha',
+    'deleteAccountReauthOrDivider': 'ou',
+    'deleteAccountReauthEmailLabel': 'E-mail da conta',
+    'deleteAccountReauthPasswordHint': 'Senha atual',
+    'deleteAccountReauthPasswordRequired': 'Digite a senha atual da conta.',
+    'deleteAccountReauthGoogle': 'Confirmar com Google (Gmail)',
+    'deleteAccountReauthContinue': 'Confirmar com senha',
     'deleteAccountReauthCantPassword':
-        'Use o botão com o mesmo método de login (ex.: Google) que usou ao criar a conta.',
+        'Use o botão do mesmo método de login (Google/Gmail ou e-mail e senha) que usou ao criar a conta.',
     'deleteAccountTypeWordTitle': 'Confirmação final',
     'deleteAccountTypeWordInstruction':
-        'Para apagar a conta de forma permanente, digite a palavra delete exatamente como mostrado, no campo abaixo.',
+        'Para apagar a conta de forma permanente, digite a palavra delete no campo abaixo. Na sequência, pediremos confirmação com senha ou com Google (Gmail).',
     'deleteAccountTypeWordFieldLabel': 'delete',
     'homeBabyBannerForecastSleep': 'Previsão de dormir',
     'homeBabyBannerForecastWake': 'Previsão de acordar',
@@ -3068,11 +3597,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'weeklyPhotoPublicOn': 'Público',
     'weeklyPhotoPublicNeedPhoto':
         'Adicione uma foto para marcar esta memória como pública.',
-    'weeklyPhotoConfirmTitle': 'Tornar esta memória pública?',
+    'weeklyPhotoConfirmTitle': 'Tornar esta foto pública?',
     'weeklyPhotoConfirmBody':
-        'Esta foto poderá ser escolhida como Foto da Semana e exibida para outras mães no app. Você pode remover essa opção quando quiser.',
-    'weeklyPhotoConfirmCancel': 'Cancelar',
-    'weeklyPhotoConfirmOk': 'Tornar pública',
+        'Você concorda em exibir essa foto para outros usuários caso você seja a sorteada da semana?',
+    'weeklyPhotoConfirmNo': 'Não',
+    'weeklyPhotoConfirmYes': 'Sim',
     'weeklyPhotoParticipatingBadge': 'Participando da Foto da Semana',
     'weeklyPhotoWinnerBadge':
         'Esta memória foi escolhida como Foto da Semana 💜',
@@ -3080,6 +3609,21 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Mostrar primeiro nome do bebê no mural público',
     'weeklyPhotoDisclaimerFooter':
         'Somente fotos marcadas como públicas participam. Você pode remover a opção a qualquer momento.',
+    'weeklyPhotoReportLink': 'Denunciar',
+    'weeklyPhotoReportTitle': 'Denunciar foto',
+    'weeklyPhotoReportHint':
+        'Descreva o motivo da denúncia. A equipe FaceBaby irá analisar.',
+    'weeklyPhotoReportMessageLabel': 'Motivo da denúncia',
+    'weeklyPhotoReportSubmit': 'Enviar denúncia',
+    'weeklyPhotoReportSuccess':
+        'Denúncia enviada. Obrigada por ajudar a manter a comunidade segura.',
+    'weeklyPhotoReportNeedLogin':
+        'Entre na sua conta para enviar uma denúncia.',
+    'weeklyPhotoReportMessageTooShort':
+        'Escreva pelo menos 5 caracteres no motivo da denúncia.',
+    'weeklyPhotoReportMessageTooLong': 'O texto da denúncia é muito longo.',
+    'weeklyPhotoReportFailed':
+        'Não foi possível enviar a denúncia. Tente novamente.',
     'weeklyPhotoSectionTitleMale': 'Príncipe da Semana',
     'weeklyPhotoSectionTitleFemale': 'Princesa da Semana',
     'weeklyPhotoHomeHeroMale': 'PRÍNCIPE DA SEMANA',
@@ -3205,6 +3749,99 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeTipTitle': 'Dica do dia',
     'homeTipBody':
         'Rotinas consistentes ajudam seu bebê a se sentir seguro e tranquilo.',
+    'homeYesterdayBabaTitle': 'IA Babá · ontem',
+    'homeYesterdayBabaFallback':
+        'Registre a rotina de {name} para leitura pediátrica.',
+    'homeYesterdayBabaRoutineQuiet':
+        'Poucos registros — rotina previsível ajuda a regulação emocional.',
+    'homeYesterdayBabaRoutine':
+        '{feeds} mamadas · sono {sleep} · {diapers} trocas.',
+    'homeYesterdayBabaRoutineLowSleep':
+        '{feeds} mamadas · sono {sleep} (reduzido) · {diapers} trocas.',
+    'homeYesterdayBabaGrowthBothWithin':
+        'Peso e estatura na curva de referência.',
+    'homeYesterdayBabaGrowthNoData': 'Atualize peso/altura na curva.',
+    'homeYesterdayBabaGrowthBelow':
+        'Antropometria abaixo da faixa — alinhe com o pediatra.',
+    'homeYesterdayBabaGrowthAbove':
+        'Antropometria acima da faixa — acompanhe na consulta.',
+    'homeYesterdayBabaGrowthCombo': 'Curva: peso {weight}, estatura {height}.',
+    'homeYesterdayBabaBandWithin': 'adequado',
+    'homeYesterdayBabaBandBelow': 'abaixo',
+    'homeYesterdayBabaBandAbove': 'acima',
+    'homeYesterdayBabaBandUnknown': '—',
+    'homeAiInsightDailyTitle': 'IA Babá · hoje',
+    'homeAiInsightWeeklyTitle': 'IA Babá · semana',
+    'aiBubbleDragToClose': 'Arraste até a área vermelha para fechar',
+    'aiBubbleCloseZone': 'Solte aqui para fechar',
+    'floatingMessageDropToClose': 'Solte aqui para fechar',
+    'floatingMessageLinkOpenFailed':
+        'Não foi possível abrir o link. Verifique a URL (https).',
+    'aiBubbleOpenLink': 'Abrir link',
+    'aiBubblePromoKnowMore': 'Saiba mais',
+    'homeAiInsightDailySleepBetter':
+        'Hoje {name} dormiu melhor que no dia anterior.',
+    'homeAiInsightDailySleepLess':
+        'O sono de {name} ficou um pouco mais curto ontem — observe com carinho.',
+    'homeAiInsightDailyFeedingBetter':
+        'Houve melhora no padrão de alimentação de {name}.',
+    'homeAiInsightDailyPeaceful':
+        'Hoje {name} teve uma rotina mais tranquila.',
+    'homeAiInsightDailyQuiet':
+        'Registre a rotina de {name} para insights mais precisos.',
+    'homeAiInsightDailyDefault':
+        'Estou acompanhando a rotina de {name} com carinho.',
+    'homeAiInsightDailyWithGrowth':
+        'Rotina de {name} estável · {growth}',
+    'homeAiInsightWeeklySleepImproved':
+        'Esta semana o sono de {name} melhorou em relação à anterior.',
+    'homeAiInsightWeeklyFeedingImproved':
+        'Esta semana houve melhora no padrão de alimentação de {name}.',
+    'homeAiInsightWeeklyStable':
+        'A rotina de {name} seguiu estável nesta semana.',
+    'homeAiInsightWeeklyFewData':
+        'Registre mais dias da rotina de {name} para o resumo semanal.',
+    'homeAiInsightGrowthShortHealthy': 'crescimento na curva esperada',
+    'homeAiInsightGrowthShortWatch': 'acompanhe peso/altura na curva',
+    'aiBubbleFeverAcute':
+        '{name} com sinais de febre agora — hidrate, ambiente fresco e observe a temperatura de hora em hora.',
+    'aiBubbleFeverAcuteWithTemp':
+        '{name} com {temp}°C — mantenha hidratação e observe de perto nas próximas horas.',
+    'aiBubbleFeverAcuteHigh':
+        '{name} com {temp}°C (alta). Acompanhe de perto; se não baixar ou piorar, fale com o pediatra.',
+    'aiBubbleFeverFollowUp':
+        'Como está {name} hoje? Se a febre continuar, vale medir de novo e registrar em Saúde.',
+    'aiBubbleFeverFollowUpWithTemp':
+        'Lembra da febre de {name} ({temp}°C). Como está a temperatura agora?',
+    'aiBubbleFeverRecoveryCheck':
+        'Faz {days} dia(s) que anotamos febre em {name}. Ela já melhorou?',
+    'aiBubbleConsultToday':
+        'Consulta hoje para {name}: {title} às {when}.',
+    'aiBubbleVaccineToday': 'Vacina hoje para {name}: {vaccine}.',
+    'aiBubbleVaccinesToday':
+        '{count} vacinas previstas hoje para {name}.',
+    'aiBubbleSleepWakeLong':
+        '{name} está dormindo há {hours}h — pode ser hora de acordar com calma.',
+    'aiBubbleSleepTracking':
+        'Sono de {name} em andamento há {hours}h. Toque para ver o cronômetro.',
+    'aiBubbleFeedingCritical':
+        'Pode ser hora de mamar: intervalo de alimentação de {name} já passou.',
+    'aiBubbleSleepCritical':
+        'Pode ser hora de dormir: a vigília de {name} passou da janela sugerida.',
+    'aiBubbleSleepApproach':
+        'Em breve pode ser hora do próximo sono de {name}.',
+    'aiBubbleDiaperCritical':
+        'Pode ser hora de trocar a fralda de {name}.',
+    'aiBubbleWeightDown':
+        'Último peso de {name} ficou abaixo do registro anterior — vale acompanhar.',
+    'aiBubbleGrowthStale':
+        'Há {days} dias sem medir peso ou altura de {name}.',
+    'aiBubbleGrowthNone':
+        'Ainda não há medições de crescimento de {name} — registre peso ou altura.',
+    'aiBubbleGrowthWatch':
+        'Curva de {name}: {hint}.',
+    'aiBubbleTodayEmpty':
+        'Poucos registros hoje para {name} — um minuto na rotina já ajuda muito.',
     'homeGreetingSubtitle': 'Que bom te ver aqui hoje!',
     'homeMotivationBanner':
         'Você está fazendo um ótimo trabalho! Pequenos registros, grandes lembranças.',
@@ -3262,6 +3899,237 @@ const Map<AppLang, Map<String, String>> _strings = {
     'growthChartCaption': '{name} — {metric}',
     'growthChartDeltaHint':
         'Eixo vertical: variação em relação ao valor ao nascer (0 = ao nascer).',
+    'growthCurveSectionTitle': 'Curva de crescimento (altura)',
+    'growthCurveSectionTitleWeight': 'Curva de crescimento (peso)',
+    'growthCurveDisclaimer':
+        'Os dados possuem caráter informativo e não substituem avaliação médica.',
+    'growthCurveLegendMin': 'Mínimo saudável',
+    'growthCurveLegendAvg': 'Média saudável',
+    'growthCurveLegendMax': 'Máximo saudável',
+    'growthCurveLegendBaby': 'Evolução do bebê',
+    'growthCurveAxisMonths': 'meses',
+    'growthCurveReferenceGirls': 'Referência — meninas (0–4 anos)',
+    'growthCurveReferenceBoys': 'Referência — meninos (0–4 anos)',
+    'growthCurveSexHint':
+        'Informe o sexo do bebê no cadastro para usar a curva de referência correta. Exibindo referência para meninas.',
+    'growthInsightBandWithin':
+        '{name} está na faixa de altura saudável para {sexWord} de {months} meses.',
+    'growthInsightBandAbove':
+        'A evolução está acima da média saudável para {sexWord} de {months} meses — acompanhamento informativo.',
+    'growthInsightBandBelow':
+        'A altura está abaixo da faixa mínima saudável para a idade — vale conversar com o pediatra no próximo encontro, sem alarme.',
+    'growthInsightBandUnknown':
+        'Registre mais medições de altura para acompanhar a curva com calma.',
+    'growthInsightSexWordGirl': 'meninas',
+    'growthInsightSexWordBoy': 'meninos',
+    'growthInsightPeriodHeight':
+        'Nos últimos {days} dias, {name} cresceu {delta} cm.',
+    'growthInsightPeriodWeight':
+        'Nos últimos {days} dias, {name} variou {delta} de peso.',
+    'growthInsightWeightBandWithin':
+        '{name} está na faixa de peso saudável para {sexWord} de {months} meses.',
+    'growthInsightWeightBandAbove':
+        'O peso está acima da média saudável para {sexWord} de {months} meses — acompanhamento informativo.',
+    'growthInsightWeightBandBelow':
+        'O peso está abaixo da faixa mínima saudável para a idade — vale conversar com o pediatra no próximo encontro, sem alarme.',
+    'growthInsightWeightBandUnknown':
+        'Registre mais medições de peso para acompanhar a curva com calma.',
+    'growthInsightCurveConsistent': 'A curva permanece consistente com as medições recentes.',
+    'growthInsightVelocityHealthy':
+        'A velocidade de crescimento está saudável para a idade.',
+    'growthInsightVelocitySlowdown':
+        'O crescimento desacelerou levemente, mas ainda pode estar dentro de um ritmo saudável.',
+    'growthInsightVelocityAcceleration':
+        'Houve uma fase de crescimento um pouco mais acelerada — comum em alguns períodos.',
+    'growthInsightVelocityStable':
+        'O ritmo de crescimento está estável entre as últimas medições.',
+    'growthInsightVelocityGentle':
+        'O ritmo entre medições ficou mais lento — acompanhe nas próximas semanas com tranquilidade.',
+    'growthInsightVelocityUnknown':
+        'Adicione pelo menos duas medições para estimar a velocidade de crescimento.',
+    'reportPediatricGrowthInsights': 'Tendências de crescimento (informativo)',
+    'aiNannyNavLabel': 'IA Babá',
+    'aiNannyPhase1Hint': 'O chat chega na próxima fase. Por agora, o atalho já está no menu.',
+    'aiNannyTitle': 'IA Babá 24h com você',
+    'aiNannySubtitle':
+        'Respostas inteligentes e orientações personalizadas para a rotina do seu bebê.',
+    'aiNannyWelcomeMessage':
+        'Olá! Sou a IA Babá do FaceBaby ❤️ Pergunte sobre rotina, sono ou alimentação — com carinho e sem alarmismo.',
+    'aiNannyMockReply':
+        'Entendi ❤️ Na próxima fase eu vou responder com base nos registros reais do bebê.',
+    'aiNannyInputHint': 'Digite sua pergunta…',
+    'aiNannyThinking': 'IA Babá está pensando com carinho…',
+    'aiNannyDisclaimer':
+        'Conteúdo informativo. Não substitui avaliação médica nem pediatra.',
+    'aiNannyPremiumTitle': 'IA Babá 24h com você',
+    'aiNannyPremiumBody':
+        'IA Babá 24h no FaceBaby Plus: orientações carinhosas com contexto do bebê.',
+    'aiNannyPremiumCta': 'Assinar FaceBaby Plus',
+    'aiNannyBenefitSmart': 'Respostas inteligentes',
+    'aiNannyBenefitPersonal': 'Orientações personalizadas',
+    'aiNannyBenefitAlerts': 'Alertas preditivos (em evolução)',
+    'aiNannyBenefitRoutines': 'Rotinas personalizadas',
+    'aiNannyBenefitContent': 'Conteúdos gerados por IA',
+    'aiNannyBenefitAudioSoon': 'Em breve: respostas por áudio',
+    'aiNannyAskBelow': 'Faça sua primeira pergunta no campo abaixo.',
+    'aiNannyNoBaby': 'Cadastre um bebê para personalizar as respostas.',
+    'aiNannyRemainingToday': 'Mensagens restantes hoje: {n}',
+    'aiNannyDailyLimitMessage':
+        'Você atingiu o limite diário da IA Babá. Volte amanhã.',
+    'aiNannyCallFailed':
+        'Não consegui responder agora. Tente novamente em alguns instantes.',
+    'aiNannyProfileButton': 'Perfil da IA',
+    'aiNannyClearChat': 'Apagar conversa',
+    'aiNannyClearChatConfirmTitle': 'Apagar toda a conversa?',
+    'aiNannyClearChatConfirmBody':
+        'Todas as mensagens com a IA Babá serão removidas deste aparelho e da nuvem. Esta ação não pode ser desfeita.',
+    'aiNannyClearChatDone': 'Conversa apagada.',
+    'aiNannyDeleteExchange': 'Apagar esta troca',
+    'aiNannyDeleteExchangeConfirm':
+        'Remover esta pergunta e a resposta da IA Babá?',
+    'aiNannySignInRequired': 'Faça login para usar a IA Babá.',
+    'aiVoiceRecording': 'Gravando… {s}s (máx. 20)',
+    'aiVoiceProcessing': 'Transcrevendo e interpretando…',
+    'aiVoiceUnderstood': 'Entendi: {text}',
+    'aiVoiceConfirmTitle': 'Quer registrar isso?',
+    'aiVoiceConfirm': 'Confirmar',
+    'aiVoiceMicDenied':
+        'Precisamos do microfone para o registro por voz. Ative nas configurações do aparelho.',
+    'aiVoiceMicWebUnavailable':
+        'Registro por voz está disponível no app Android e iOS.',
+    'aiVoiceSavedOk': 'Registro salvo com sucesso.',
+    'aiVoiceSavedFeedingAndDiaper': 'Mamada e troca de fralda registradas.',
+    'aiVoiceSavedSymptom': 'Sintomas registrados em Saúde.',
+    'aiVoiceNeedClarification':
+        'Ainda não registrei — responda no chat para eu completar.',
+    'aiClarifyFeedingPrefix': 'Sobre a mamada:',
+    'aiClarifyDiaperPrefix': 'Sobre a fralda:',
+    'aiClarifyBreastSide': 'foi peito esquerdo ou direito?',
+    'aiClarifyFeedingDuration': 'quantos minutos durou?',
+    'aiClarifyRegisterNeeded':
+        'Para registrar no app, preciso que você me diga:',
+    'aiNannyRecordsFoundTitle': '🤖 Encontrei estes registros',
+    'aiNannyConfirmCompleteRecords': 'Confirmar registros completos',
+    'aiNannyCompleteMissingData': 'Completar dados faltantes',
+    'aiNannySaveAllPossible': 'Salvar tudo possível',
+    'aiNannyCancelRecords': 'Cancelar',
+    'aiGrowthNeedBaselineWeight':
+        'Peso: falta um peso anterior para calcular o ganho.',
+    'aiGrowthNeedBaselineHeight':
+        'Altura: falta uma medição anterior para calcular o crescimento.',
+    'aiGrowthWeightDeltaPreview':
+        'Peso: último {prev} kg → novo {next} kg (confirmar)',
+    'aiGrowthHeightDeltaPreview':
+        'Altura: último {prev} cm → novo {next} cm (confirmar)',
+    'aiClarifyFeedingType': 'foi peito ou mamadeira?',
+    'aiClarifyDiaperKind': 'tinha xixi, cocô ou os dois?',
+    'aiClarifyDiaperChangeNow': 'foi na fralda — você trocou agora?',
+    'aiRecordSaveFailed':
+        '🤖 Não consegui salvar o registro agora. Tente novamente ou registre manualmente.',
+    'aiRecordConfirmedPrefix':
+        'Pronto, registrei {line} para {name} às {time}.',
+    'aiRecordLineDiaperPee': 'fralda com xixi',
+    'aiRecordLineDiaperPoo': 'fralda com cocô',
+    'aiRecordLineDiaperBoth': 'fralda com xixi e cocô',
+    'aiRecordLineDiaperGeneric': 'troca de fralda',
+    'aiRecordLineFeeding': 'mamada',
+    'aiRecordLineSleepStart': 'início de sono',
+    'aiRecordLineSleepEnd': 'fim de sono',
+    'aiRecordLineSleep': 'sono',
+    'aiRecordLineWeight': 'peso',
+    'aiRecordLineHeight': 'altura',
+    'aiRecordLineSymptom': 'sintoma em Saúde',
+    'aiRecordLineGeneric': 'registro',
+    'aiRoutineRegisterSkipped': 'Ok, não vou registrar esse evento.',
+    'aiVoiceSavedFeeding': 'Mamada registrada.',
+    'aiVoiceSleepStarted': 'Sono iniciado — use a tela Sono ou diga "acordou" quando acordar.',
+    'aiChatSleepStartedConfirm':
+        'Prontinho! Registrei que o bebê foi dormir agora. Na Home e em Sono você verá o sono em andamento.',
+    'aiChatSleepEndedConfirm':
+        'Sono encerrado e salvo no diário. Obrigada por avisar!',
+    'aiChatRegisterSavedConfirm':
+        'Registro salvo no app. Confira na Home ou em Registros.',
+    'aiVoiceSleepEnded': 'Sono registrado com sucesso.',
+    'aiVoiceRecordFailed': 'Não consegui processar o áudio. Tente novamente.',
+    'aiVoiceNotARegisterTitle': 'Isso parece uma pergunta, não um registro.',
+    'aiVoiceRegisterHint':
+        'Para registrar por voz, diga por exemplo: "coloquei pra dormir", "dormiu 1 hora", "pesou 3,5 kg", "altura 60 cm" ou "mamou 120 ml". Para dúvidas, fale normalmente — a IA Babá responde no chat.',
+    'aiVoiceHoldMicHint': 'Segure o microfone para falar com a IA Babá.',
+    'aiVoiceReleaseHint': 'Solte para enviar…',
+    'aiVoiceTapMicHint': 'Toque no microfone para gravar',
+    'aiVoiceTapStopHint': 'Toque de novo para enviar o áudio',
+    'aiVoiceRecordingHint': 'Gravando… toque no ■ para enviar',
+    'aiVoiceListenReply': 'Ouvir resposta',
+    'aiTtsPreparing': 'Preparando áudio...',
+    'aiTtsPause': 'Pausar',
+    'aiTtsResume': 'Continuar',
+    'aiTtsRetry': 'Tentar novamente',
+    'aiNannyAutoReadLabel': 'Ler respostas em voz alta',
+    'aiNannyDeviceVoiceHint':
+        'Voz natural indisponível — usando voz do telefone. Verifique internet e atualize o app.',
+    'aiNannyTtsFailed':
+        'Não consegui reproduzir a voz natural. Verifique volume, internet e login; tente «Ouvir resposta» de novo.',
+    'aiVoiceAskAiInstead': 'Perguntar à IA Babá',
+    'aiVoiceHealthFieldsHint':
+        'Complete os campos abaixo e toque em Confirmar para salvar em Saúde.',
+    'aiVoiceHealthTempLabel': 'Temperatura (°C)',
+    'aiVoiceHealthVaccineNameLabel': 'Nome da vacina',
+    'aiVoiceHealthVaccineDoseLabel': 'Dose (opcional)',
+    'aiVoiceHealthVaccineNameRequired': 'Informe o nome da vacina.',
+    'aiBabyHistoryTitle': 'Histórico do Bebê',
+    'aiBabyHistorySubtitle':
+        'Conte características importantes do bebê e da rotina para ajudar a IA Babá a responder de forma mais personalizada.',
+    'aiBabyHistoryFieldLabel': 'Histórico importante para a IA',
+    'aiBabyHistoryPlaceholder':
+        'Exemplo: meu bebê nasceu prematuro, tem refluxo, mama no peito, acorda muito à noite, usa fórmula, possui alergias ou segue alguma orientação do pediatra.',
+    'aiBabyHistoryDisclaimer':
+        'Essas informações ajudam a IA a responder melhor, mas não substituem orientação médica.',
+    'aiBabyHistorySave': 'Salvar histórico',
+    'aiBabyHistoryClear': 'Limpar histórico',
+    'aiBabyHistorySaved': 'Histórico salvo com sucesso',
+    'aiBabyHistoryCleared': 'Histórico removido',
+    'aiBabyHistoryClearConfirmTitle': 'Limpar histórico?',
+    'aiBabyHistoryClearConfirmBody':
+        'A IA Babá deixará de usar essas informações até você preencher de novo.',
+    'aiBabyHistoryLinkSubtitle': 'Personalize as respostas da IA Babá',
+    'aiBabyHistoryCharCount': '{current} / {max} caracteres',
+    'settingsAiBabyHistory': 'Histórico do Bebê para a IA Babá',
+    'familyTabTree': 'Família',
+    'familyTabHoroscope': 'Horóscopo',
+    'familyTabAiHistory': 'Histórico',
+    'familyHoroscopeDate': 'Horóscopo de {date}',
+    'familyHoroscopeGenerateToday': 'Gerar horóscopo de hoje',
+    'familyHoroscopeRefresh': 'Atualizar horóscopo',
+    'familyHoroscopeMother': 'Horóscopo da Mamãe',
+    'familyHoroscopeFather': 'Horóscopo do Papai',
+    'familyHoroscopeBaby': 'Horóscopo do Bebê',
+    'familyHoroscopeFamilyEnergy': 'Energia da Família Hoje',
+    'familyHoroscopeDailyAdvice': 'Conselho do Dia para a Família',
+    'familyHoroscopeDisclaimer':
+        'Conteúdo gerado por IA para entretenimento e reflexão familiar. Não substitui orientação profissional.',
+    'familyHoroscopeRegisterFather':
+        'Cadastre o papai para incluir o horóscopo dele na leitura familiar.',
+    'familyHoroscopePremiumTitle': 'Horóscopo familiar com IA',
+    'familyHoroscopePremiumBody':
+        'Desbloqueie leituras diárias afetivas para mamãe, papai e bebê com base nos signos.',
+    'familyHoroscopeErrorGeneric':
+        'Não foi possível gerar o horóscopo agora. Tente novamente.',
+    'familyHoroscopeErrorNotFound':
+        'Serviço de horóscopo indisponível. Atualize o app e tente novamente.',
+    'familyHoroscopeErrorUnauthenticated': 'Faça login para gerar o horóscopo.',
+    'familyHoroscopeErrorPermission':
+        'Horóscopo familiar completo disponível no plano Premium.',
+    'familyHoroscopeErrorPrecondition':
+        'Cadastre as datas de nascimento na Família para gerar o horóscopo.',
+    'familyHoroscopeErrorExhausted':
+        'Limite temporário atingido. Tente novamente mais tarde.',
+    'appUpdateAvailableMessage':
+        'Uma nova versão do FaceBaby está disponível ❤️',
+    'appUpdateDownloading': 'A atualização está a ser descarregada…',
+    'appUpdateReadyToRestart': 'Reinicie para concluir a atualização.',
+    'appUpdateActionUpdate': 'Atualizar',
+    'appUpdateActionLater': 'Depois',
+    'appUpdateRestart': 'Reiniciar',
     'growthHistoryTitle': '{label} (histórico)',
     'invalidGrowthValue': 'Informe um valor válido de {label}.',
     'growthSaved': '{label} registrado com sucesso.',
@@ -3374,6 +4242,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'settingsMotherProfile': 'Meu Perfil',
     'profileEditMother': 'Editar dados da mãe',
     'profileEditFather': 'Editar dados do pai',
+    'profileAddFather': 'Cadastrar pai',
+    'profileFatherNotRegisteredTitle': 'Pai ainda não cadastrado',
+    'profileFatherNotRegisteredSubtitle':
+        'Se você não incluiu o pai no primeiro cadastro, pode adicionar os dados dele aqui a qualquer momento.',
+    'profileFatherAddCta': 'Cadastrar pai agora',
     'profileEditBaby': 'Editar dados do bebê',
     'profileDataSaved': 'Dados atualizados.',
     'profileEditData': 'Editar dados',
@@ -3416,6 +4289,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'profileFamilyMessagesTitle': 'Mensagens na tela Família',
     'profileShowChristian': 'Mensagens cristãs',
     'profileShowHoroscope': 'Horóscopo',
+    'profileShowSpiritist': 'Mensagens espíritas',
+    'profileShowJewish': 'Mensagens judaicas',
     'motherProfileAddBaby': 'Adicionar outro bebê',
     'motherProfileNoBabies': 'Nenhum bebê encontrado para este perfil.',
     'motherProfileBabyBornAt': 'Nascimento: {date}',
@@ -4169,6 +5044,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'valWeightRange': 'Peso fora do esperado.',
     'valBabyHeightRange': 'Altura fora do esperado.',
     'placeholderBabyName': 'Bebê',
+    'valBirthDateInvalid': 'Data inválida. Use dd/mm/aaaa.',
+    'brDateHint': 'Data de nascimento',
+    'brDateOpenCalendar': 'Abrir calendário',
     'exampleCard': 'Exemplo de carteirinha:',
   },
   AppLang.en: {
@@ -4226,17 +5104,31 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportListPediatricSub': 'PDF and data for medical visits',
     'reportListDevelopment': 'Development report',
     'reportListDevelopmentSub': 'Milestones and leaps',
-    'plusBrandTitle': 'FaceBaby Premium',
+    'plusBrandTitle': 'FaceBaby Plus',
+    'plusEarlyAdopterOffer': 'Special pricing for early users.',
+    'plusPopularBadge': 'Most Popular ❤️',
+    'plusPlanAnnualCardTitle': 'FaceBaby Plus Annual',
+    'plusPlanMonthlyCardTitle': 'FaceBaby Plus Monthly',
+    'plusPlanAnnualSubtitle': 'Save with the annual plan.',
+    'plusPlanMonthlySubtitle':
+        'Everything you need to care for your baby with love and intelligence.',
+    'plusAnnualSavingsAmountLine': 'Save \${amount} per year',
+    'plusAnnualPerMonthHint': 'About \$12.49/month',
+    'plusCtaSubscribeMonthly': 'Subscribe monthly',
+    'plusCtaSubscribeAnnual': 'Subscribe annual',
+    'plusCtaSubscribePlus': 'Subscribe to FaceBaby Plus',
+    'plusPaywallRenewalNote':
+        'Subscription renews automatically through Google Play. You can cancel anytime in Play Store settings.',
     'plusSheetHero':
-        'One gentle unlock forever: beautiful PDFs, the keepsake book, more photos on your wall, cloud backup, and supportive insights for Mom.',
-    'plusSheetPriceLabel': 'One-time payment',
+        'FaceBaby Plus: 24h AI Nanny, unlimited photos, full backup, premium reports, baby book, and more — from \$19.90/month.',
+    'plusSheetPriceLabel': 'Monthly and annual plans',
     'plusSheetBullets':
         '• PDF reports (sleep, routine, growth)\n• Keepsake book PDF\n• Export badges (PNG / PDF)\n• Cloud backup across devices\n• More memories & photos\n• Smart insights in reports\n• Pediatrician report\n• Advanced statistics\n• Premium book themes',
-    'plusCtaSubscribe': 'Unlock forever',
+    'plusCtaSubscribe': 'Subscribe to FaceBaby Plus',
     'plusCtaRestore': 'Restore purchases',
     'plusCtaLater': 'Not now',
     'plusSheetFootnote':
-        'One-time purchase processed by Google Play or the App Store. Restore from account settings on a new phone.',
+        'Subscription processed by Google Play or the App Store. Cancel anytime in store settings.',
     'plusWelcomeSnack':
         'Welcome to FaceBaby Premium — thank you for cherishing these memories together.',
     'plusPurchaseUnavailableSnack':
@@ -4251,41 +5143,52 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Store price not loaded yet for "{id}". Confirm the product is active in Play Console or wait for sync (can take a few hours).',
     'plusRestoreOkSnack': 'Purchases restored.',
     'plusRestoreEmptySnack': 'No previous purchase found for this account.',
-    'plusSnackLockedFeature': 'Included in FaceBaby Premium.',
+    'plusSnackLockedFeature': 'Included in FaceBaby Plus.',
     'plusMemoryLimitSnack':
-        'On the free plan you can save up to {max} moments with a photo or note. Premium opens room for many more.',
+        'On the free plan you can save up to {max} badge photos. Premium unlocks unlimited photos.',
+    'plusMemoryLimitDialogTitle': 'Unlock more memories',
+    'plusMemoryLimitDialogBody':
+        'On the free plan you can save up to {max} photos on badges.\n\nGet FaceBaby Premium for about \$9/month for unlimited photos, reports, exports, and more portal features.',
+    'plusMemoryLimitDialogSubscribe': 'Get Premium',
     'plusReportsLockedHint': 'FaceBaby Premium report',
+    'plusReportsPremiumTagline':
+        'Monthly subscription from about \$9. Premium reports and more.',
+    'plusReportsPremiumCta': 'See FaceBaby Premium',
     'plusExportLockedHint': 'FaceBaby Premium export',
-    'plusLifetimePaymentBadge': 'One-time payment',
-    'plusNoMonthlyBadge': 'No subscription',
+    'plusLifetimePaymentBadge': 'Monthly subscription',
+    'plusNoMonthlyBadge': 'Cancel in store',
     'plusPremiumActiveTitle': 'Thank you for Premium',
     'plusPremiumActiveBody':
-        'All premium features are unlocked forever on this device. Restore purchases when you switch phones.',
+        'Your premium features are active. Manage or cancel your subscription in Google Play or the App Store.',
     'plusPurchaseErrorSnack':
         'Something went wrong. Try again or tap Restore purchases.',
     'plusDoneClose': 'Close',
     'plusPaywallHeadline':
-        'Each plan is designed to\nsupport you through every stage.',
+        'Choose the right plan to\nsupport your baby with FaceBaby Plus.',
     'plusPaywallActiveNote':
-        'Your Premium is active. You can review the plans at any time.',
-    'plusPaywallSecureNote':
-        '100% secure purchase. You can cancel whenever you want.',
-    'plusPlanPremiumTitle': 'Premium',
-    'plusPlanPremiumSubtitle': 'Everything to care for\nand follow up better',
-    'plusPlanPremiumBadge': 'Most chosen',
-    'plusPlanPremiumPriceSubActive': 'active now',
-    'plusPlanPremiumPriceSubSecure': 'secure purchase',
+        'Your FaceBaby Plus is active. Manage your subscription in the Play Store.',
     'plusPlanPremiumButtonActive': 'Current plan',
-    'plusPlanPremiumButton': 'I want Premium',
-    'plusPlanPremiumFeature1': 'Everything in the Free plan',
-    'plusPlanPremiumFeature2': 'Complete baby reports',
-    'plusPlanPremiumFeature3':
-        'Pediatrician report (useful to share with your doctor)',
-    'plusPlanPremiumFeature4': 'Zodiac sign descriptions',
-    'plusPlanPremiumFeature5': 'Daily Bible messages',
-    'plusPlanPremiumFeature6': 'Development analyses and insights',
-    'plusPlanPremiumFeature7': 'Exclusive content and tips',
-    'plusPlanPremiumFeature8': 'Priority support',
+    'plusPlanMonthlyFeature1': 'Everything in the Free plan',
+    'plusPlanMonthlyFeature2': '24h AI Nanny with you',
+    'plusPlanMonthlyFeature3': 'Smart answers',
+    'plusPlanMonthlyFeature4': 'Personalized guidance',
+    'plusPlanMonthlyFeature5': 'Predictive alerts',
+    'plusPlanMonthlyFeature6': 'Personalized routines',
+    'plusPlanMonthlyFeature7': 'AI-generated content',
+    'plusPlanMonthlyFeature8': 'Photo uploads',
+    'plusPlanMonthlyFeature9': 'Full backup',
+    'plusPlanMonthlyFeature10': 'Premium reports',
+    'plusPlanMonthlyFeature11': 'Pediatrician report',
+    'plusPlanMonthlyFeature12': 'Baby book PDF',
+    'plusPlanMonthlyFeature13': 'Advanced growth',
+    'plusPlanMonthlyFeature14': 'AI family horoscope',
+    'plusPlanMonthlyFeature15': 'Daily Bible messages',
+    'plusPlanMonthlyFeature16': 'Zodiac descriptions',
+    'plusPlanMonthlyFeature17': 'Priority support',
+    'plusPlanMonthlyFeature18': 'Coming soon: voice replies',
+    'plusPlanAnnualFeature1': 'Everything in Monthly Plus',
+    'plusPlanAnnualFeature2': 'Savings vs monthly billing',
+    'plusPlanAnnualFeature3': 'Best value',
     'plusPlanAiTitle': 'AI Nanny',
     'plusPlanAiSubtitle': 'Smart assistant\nfor everyday life',
     'plusPlanAiBadge': 'Coming soon',
@@ -4300,25 +5203,27 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusPlanAiPriceSub': 'Stay tuned!',
     'plusPlanAiButton': 'Notify me',
     'plusPlanFreeTitle': 'Free',
-    'plusPlanFreeSubtitle': 'Start your journey with the essentials',
+    'plusPlanFreeSubtitle': 'Start your journey with the essentials.',
     'plusPlanFreePrice': '\$0.00',
     'plusPlanCurrent': 'Current plan',
     'plusPlanFreeFeature1': 'Basic profiles',
     'plusPlanFreeFeature2': 'Daily logging',
     'plusPlanFreeFeature3': 'Schedules and reminders',
     'plusPlanFreeFeature4': 'Weight and height',
+    'plusPlanFreeFeature5': 'Some memories',
+    'plusPlanFreeFeature6': 'Limited features',
     'plusTrustData': 'Your data\nalways secure',
     'plusTrustFamily': 'Made with love\nfor families',
     'plusTrustContent': 'Reliable, updated\ncontent',
     'plusTrustSupport': 'Support at every\nmoment',
-    'settingsPlusCardTitle': 'FaceBaby Premium',
+    'settingsPlusCardTitle': 'FaceBaby Plus',
     'settingsPlusCardBodyFree':
-        'PDFs, keepsake book, more photos, cloud backup, pediatric report & advanced stats — single payment.',
+        'AI Nanny, unlimited photos, full backup, premium reports & baby book — \$19.90/mo or \$149.90/yr.',
     'settingsPlusCardBodyActive':
-        'FaceBaby Premium is active — thank you for your support.',
-    'settingsPlusUpgradeCta': 'Unlock Premium',
-    'settingsPlusManageCta': 'View Premium',
-    'plusMemoryCounterFree': '{n} of {max} moments on the free plan',
+        'Your FaceBaby Plus is active — thank you for your support.',
+    'settingsPlusUpgradeCta': 'Explore FaceBaby Plus',
+    'settingsPlusManageCta': 'Manage Plus',
+    'plusMemoryCounterFree': '{n} of {max} photos on the free plan',
     'reportDailyScreenTitle': 'Daily report',
     'reportDayDetailsTitle': 'Day details',
     'reportDailyPickDayTooltip': 'Choose day',
@@ -4671,7 +5576,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoriesAlbumCanceled': 'Generation canceled.',
     'memoriesAlbumErrorNetwork':
         'No internet connection. Check your network and try again.',
-    'memoriesAlbumErrorStorage': 'Not enough storage on device to save the PDF.',
+    'memoriesAlbumErrorStorage':
+        'Not enough storage on device to save the PDF.',
     'memoriesAlbumSkippedImages':
         '{count} photo(s) could not be included (network or invalid file).',
     'addMemory': 'Add memory',
@@ -4849,6 +5755,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'onbDadFallback': 'dad',
     'onbWelcomeTitle': 'Accompanying and monitoring',
     'onbWelcomeSubtitle': 'development with Love.',
+    'onbPlusEarlyOffer':
+        'FaceBaby Plus: special pricing for early users — AI Nanny, backup, and premium reports.',
     'onbFeatureSleep': 'Sleep',
     'onbFeatureFeeding': 'Feeding',
     'onbFeatureGrowth': 'Growth',
@@ -4935,13 +5843,19 @@ const Map<AppLang, Map<String, String>> _strings = {
     'onbGoalMoments': 'Log special moments',
     'onbGoalReports': 'Generate reports',
     'onbGoalMemoryBook': 'Create a memory book',
-    'onbMessagePrefTitle':
-        'Do you prefer Christian messages, horoscope, or both?',
-    'onbMessagePrefSubtitle': 'You can change this later in My Profile.',
-    'onbMessagePrefChristian': 'Christian messages',
+    'onbMessagePrefTitle': 'Spiritual mom, happy baby.',
+    'onbMessagePrefSubtitle': 'Would you like to receive daily messages?',
+    'onbMessagePrefChristian': 'Christian',
     'onbMessagePrefHoroscope': 'Horoscope',
+    'onbMessagePrefSpiritist': 'Spiritist',
+    'onbMessagePrefJewish': 'Jewish',
+    'onbMessagePrefAll': 'All',
     'onbMessagePrefBoth': 'Both',
     'onbMessagePrefNone': 'Neither',
+    'onbAiHistoryTitle': 'Baby history for AI Nanny',
+    'onbAiHistorySubtitle':
+        'Optional — share routine, health and family preferences. You can edit later in Family or AI Nanny.',
+    'onbAiHistoryOptional': 'You can skip and fill in later',
     'onbDragToAdjust': 'Drag to adjust',
     'onbEmailSheetTitle': 'Create account with email',
     'onbYourNameHint': 'Your name',
@@ -4976,6 +5890,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'familyEntertainmentNote':
         'Light, affectionate content for entertainment — not professional advice.',
     'familyChristianCardTitle': 'Message for the family',
+    'familySpiritistCardTitle': 'Spiritist message',
+    'familyJewishCardTitle': 'Jewish message',
     'familyChristianLine': '📖 {ref}',
     'familyBornOn': 'Born: {date}',
     'familyAgeOneYear': '1 year',
@@ -5096,17 +6012,24 @@ const Map<AppLang, Map<String, String>> _strings = {
     'deleteAccountConfirm': 'Delete everything',
     'deleteAccountDeleting': 'Deleting your account...',
     'deleteAccountSuccess': 'Account deleted successfully.',
-    'deleteAccountReauthTitle': 'Confirm identity',
+    'deleteAccountReauthTitle': 'Confirm password or Google',
     'deleteAccountReauthBody':
-        'For your security we need one more verification. Use the same sign-in method you normally use — then we\'ll finish deleting your account.',
+        'Last step before deletion: confirm how you sign in (email password or Google/Gmail account).',
+    'deleteAccountReauthGoogleSection': 'Signed in with Google / Gmail',
+    'deleteAccountReauthGoogleAccountHint': 'Google account: {email}',
+    'deleteAccountReauthPasswordSection': 'Signed in with email and password',
+    'deleteAccountReauthOrDivider': 'or',
+    'deleteAccountReauthEmailLabel': 'Account email',
     'deleteAccountReauthPasswordHint': 'Current password',
-    'deleteAccountReauthGoogle': 'Confirm with Google',
-    'deleteAccountReauthContinue': 'Confirm password',
+    'deleteAccountReauthPasswordRequired':
+        'Enter your account’s current password.',
+    'deleteAccountReauthGoogle': 'Confirm with Google (Gmail)',
+    'deleteAccountReauthContinue': 'Confirm with password',
     'deleteAccountReauthCantPassword':
-        'Use the button for the sign-in provider you originally used (e.g. Google).',
+        'Use the button for the same sign-in method (Google/Gmail or email and password) you used when creating the account.',
     'deleteAccountTypeWordTitle': 'Final confirmation',
     'deleteAccountTypeWordInstruction':
-        'To permanently delete your account, type the word delete exactly as shown in the field below.',
+        'To permanently delete your account, type delete in the field below. Next we will ask for password or Google (Gmail) confirmation.',
     'deleteAccountTypeWordFieldLabel': 'delete',
     'homeBabyBannerForecastSleep': 'Sleep forecast',
     'homeBabyBannerForecastWake': 'Wake-up forecast',
@@ -5151,17 +6074,30 @@ const Map<AppLang, Map<String, String>> _strings = {
     'weeklyPhotoPublicOn': 'Public',
     'weeklyPhotoPublicNeedPhoto':
         'Add a photo before marking this memory public.',
-    'weeklyPhotoConfirmTitle': 'Make this memory public?',
+    'weeklyPhotoConfirmTitle': 'Make this photo public?',
     'weeklyPhotoConfirmBody':
-        'This photo may be picked as Photo of the Week and shown to other moms in the app. You can turn this off anytime.',
-    'weeklyPhotoConfirmCancel': 'Cancel',
-    'weeklyPhotoConfirmOk': 'Make public',
+        'Do you agree to show this photo to other users if you are selected as the weekly winner?',
+    'weeklyPhotoConfirmNo': 'No',
+    'weeklyPhotoConfirmYes': 'Yes',
     'weeklyPhotoParticipatingBadge': 'Entered for Photo of the Week',
     'weeklyPhotoWinnerBadge': 'This memory was chosen as Photo of the Week 💜',
     'weeklyPhotoShowBabyFirstName':
         "Show baby's first name on the public gallery",
     'weeklyPhotoDisclaimerFooter':
         'Only photos marked public participate. You can remove this anytime.',
+    'weeklyPhotoReportLink': 'Report',
+    'weeklyPhotoReportTitle': 'Report photo',
+    'weeklyPhotoReportHint':
+        'Describe the reason for your report. The FaceBaby team will review it.',
+    'weeklyPhotoReportMessageLabel': 'Reason for report',
+    'weeklyPhotoReportSubmit': 'Send report',
+    'weeklyPhotoReportSuccess':
+        'Report sent. Thank you for helping keep the community safe.',
+    'weeklyPhotoReportNeedLogin': 'Sign in to your account to send a report.',
+    'weeklyPhotoReportMessageTooShort':
+        'Write at least 5 characters in the report reason.',
+    'weeklyPhotoReportMessageTooLong': 'The report text is too long.',
+    'weeklyPhotoReportFailed': 'Could not send the report. Please try again.',
     'weeklyPhotoSectionTitleMale': 'Prince of the Week',
     'weeklyPhotoSectionTitleFemale': 'Princess of the Week',
     'weeklyPhotoHomeHeroMale': 'PRINCE OF THE WEEK',
@@ -5282,6 +6218,98 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeSleepBarNeedLastSleep': 'Log the last sleep session to see the bar',
     'homeTipTitle': 'Tip of the day',
     'homeTipBody': 'Consistent routines help your baby feel safe and calm.',
+    'homeYesterdayBabaTitle': 'AI Nanny · yesterday',
+    'homeYesterdayBabaFallback':
+        'Log {name}\'s routine for a pediatric readout.',
+    'homeYesterdayBabaRoutineQuiet':
+        'Few logs — predictable routines support emotional regulation.',
+    'homeYesterdayBabaRoutine':
+        '{feeds} feeds · {sleep} sleep · {diapers} diaper changes.',
+    'homeYesterdayBabaRoutineLowSleep':
+        '{feeds} feeds · {sleep} sleep (low) · {diapers} diaper changes.',
+    'homeYesterdayBabaGrowthBothWithin':
+        'Weight and length on the reference curve.',
+    'homeYesterdayBabaGrowthNoData': 'Update weight/length on the curve.',
+    'homeYesterdayBabaGrowthBelow':
+        'Growth below reference — discuss with your pediatrician.',
+    'homeYesterdayBabaGrowthAbove':
+        'Growth above reference — review at the next visit.',
+    'homeYesterdayBabaGrowthCombo': 'Curve: weight {weight}, length {height}.',
+    'homeYesterdayBabaBandWithin': 'adequate',
+    'homeYesterdayBabaBandBelow': 'below',
+    'homeYesterdayBabaBandAbove': 'above',
+    'homeYesterdayBabaBandUnknown': '—',
+    'homeAiInsightDailyTitle': 'AI Nanny · today',
+    'homeAiInsightWeeklyTitle': 'AI Nanny · week',
+    'aiBubbleDragToClose': 'Drag to the red zone to close',
+    'aiBubbleCloseZone': 'Drop here to close',
+    'floatingMessageDropToClose': 'Drop here to close',
+    'floatingMessageLinkOpenFailed':
+        'Could not open the link. Check the URL (https).',
+    'aiBubbleOpenLink': 'Open link',
+    'aiBubblePromoKnowMore': 'Learn more',
+    'homeAiInsightDailySleepBetter':
+        'Today {name} slept better than the day before.',
+    'homeAiInsightDailySleepLess':
+        '{name}\'s sleep was a bit shorter yesterday — observe with care.',
+    'homeAiInsightDailyFeedingBetter':
+        '{name}\'s feeding pattern improved.',
+    'homeAiInsightDailyPeaceful':
+        'Today {name} had a calmer routine.',
+    'homeAiInsightDailyQuiet':
+        'Log {name}\'s routine for sharper insights.',
+    'homeAiInsightDailyDefault':
+        'I\'m following {name}\'s routine with care.',
+    'homeAiInsightDailyWithGrowth':
+        '{name}\'s routine is steady · {growth}',
+    'homeAiInsightWeeklySleepImproved':
+        'This week {name}\'s sleep improved vs last week.',
+    'homeAiInsightWeeklyFeedingImproved':
+        'This week {name}\'s feeding pattern improved.',
+    'homeAiInsightWeeklyStable':
+        '{name}\'s routine stayed steady this week.',
+    'homeAiInsightWeeklyFewData':
+        'Log more days for {name}\'s weekly summary.',
+    'homeAiInsightGrowthShortHealthy': 'growth on expected curve',
+    'homeAiInsightGrowthShortWatch': 'watch weight/height on the curve',
+    'aiBubbleFeverAcute':
+        '{name} may have a fever now — keep fluids up, a cool room, and check temperature hourly.',
+    'aiBubbleFeverAcuteWithTemp':
+        '{name} is at {temp}°C — stay hydrated and watch closely over the next few hours.',
+    'aiBubbleFeverAcuteHigh':
+        '{name} is at {temp}°C (high). Watch closely; call your pediatrician if it stays high or worsens.',
+    'aiBubbleFeverFollowUp':
+        'How is {name} today? If fever continues, measure again and log it under Health.',
+    'aiBubbleFeverFollowUpWithTemp':
+        'Remember {name}\'s fever ({temp}°C). How is temperature now?',
+    'aiBubbleFeverRecoveryCheck':
+        'It\'s been {days} day(s) since we noted fever for {name}. Is she feeling better?',
+    'aiBubbleConsultToday':
+        'Appointment today for {name}: {title} at {when}.',
+    'aiBubbleVaccineToday': 'Vaccine today for {name}: {vaccine}.',
+    'aiBubbleVaccinesToday': '{count} vaccines due today for {name}.',
+    'aiBubbleSleepWakeLong':
+        '{name} has been asleep for {hours}h — a gentle wake-up may help.',
+    'aiBubbleSleepTracking':
+        '{name}\'s sleep timer has been running for {hours}h.',
+    'aiBubbleFeedingCritical':
+        'Feeding time? {name}\'s feeding interval may have passed.',
+    'aiBubbleSleepCritical':
+        'Nap time? {name}\'s awake window may be overdue.',
+    'aiBubbleSleepApproach':
+        '{name}\'s next nap window may be coming up soon.',
+    'aiBubbleDiaperCritical':
+        'Diaper change? It\'s been a while since {name}\'s last change.',
+    'aiBubbleWeightDown':
+        '{name}\'s latest weight is below the previous entry — worth watching.',
+    'aiBubbleGrowthStale':
+        'No weight or height logged for {name} in {days} days.',
+    'aiBubbleGrowthNone':
+        'No growth measurements yet for {name} — log weight or height.',
+    'aiBubbleGrowthWatch':
+        '{name}\'s growth curve: {hint}.',
+    'aiBubbleTodayEmpty':
+        'Few logs today for {name} — a quick routine entry helps a lot.',
     'homeGreetingSubtitle': 'Good to see you here today!',
     'homeMotivationBanner':
         "You're doing a great job! Small logs, big memories.",
@@ -5339,6 +6367,234 @@ const Map<AppLang, Map<String, String>> _strings = {
     'growthChartCaption': '{name} — {metric}',
     'growthChartDeltaHint':
         'Vertical axis: change from the at-birth value (0 = at birth).',
+    'growthCurveSectionTitle': 'Growth curve (height)',
+    'growthCurveSectionTitleWeight': 'Growth curve (weight)',
+    'growthCurveDisclaimer':
+        'This information is for guidance only and does not replace a medical evaluation.',
+    'growthCurveLegendMin': 'Healthy minimum',
+    'growthCurveLegendAvg': 'Healthy average',
+    'growthCurveLegendMax': 'Healthy maximum',
+    'growthCurveLegendBaby': "Baby's progress",
+    'growthCurveAxisMonths': 'months',
+    'growthCurveReferenceGirls': 'Reference — girls (0–4 years)',
+    'growthCurveReferenceBoys': 'Reference — boys (0–4 years)',
+    'growthCurveSexHint':
+        "Add your baby's sex in their profile for the correct reference curve. Showing girls' reference.",
+    'growthInsightBandWithin':
+        '{name} is within the healthy height range for {sexWord} at {months} months.',
+    'growthInsightBandAbove':
+        'Growth is above the healthy average for {sexWord} at {months} months — for information only.',
+    'growthInsightBandBelow':
+        'Height is below the healthy minimum for age — consider mentioning it at your next pediatric visit, without worry.',
+    'growthInsightBandUnknown':
+        'Log more height measurements to follow the curve calmly.',
+    'growthInsightSexWordGirl': 'girls',
+    'growthInsightSexWordBoy': 'boys',
+    'growthInsightPeriodHeight':
+        'In the last {days} days, {name} grew {delta} cm.',
+    'growthInsightPeriodWeight':
+        'In the last {days} days, {name} changed weight by {delta}.',
+    'growthInsightWeightBandWithin':
+        '{name} is in the healthy weight range for {sexWord} at {months} months.',
+    'growthInsightWeightBandAbove':
+        'Weight is above the healthy average for {sexWord} at {months} months — for information only.',
+    'growthInsightWeightBandBelow':
+        'Weight is below the healthy minimum for this age — worth mentioning to your pediatrician at the next visit, without alarm.',
+    'growthInsightWeightBandUnknown':
+        'Log more weight measurements to follow the curve calmly.',
+    'growthInsightCurveConsistent':
+        'The curve stays consistent with recent measurements.',
+    'growthInsightVelocityHealthy':
+        'Growth velocity looks healthy for this age.',
+    'growthInsightVelocitySlowdown':
+        'Growth slowed slightly but may still be within a healthy pace.',
+    'growthInsightVelocityAcceleration':
+        'There was a slightly faster growth phase — common at some ages.',
+    'growthInsightVelocityStable':
+        'Growth pace is stable between recent measurements.',
+    'growthInsightVelocityGentle':
+        'Pace between measurements was slower — keep tracking calmly over the next weeks.',
+    'growthInsightVelocityUnknown':
+        'Add at least two measurements to estimate growth velocity.',
+    'reportPediatricGrowthInsights': 'Growth trends (informational)',
+    'aiNannyNavLabel': 'AI Nanny',
+    'aiNannyPhase1Hint': 'Chat arrives in the next phase. The shortcut is already in the menu.',
+    'aiNannyTitle': 'AI Nanny 24/7 with you',
+    'aiNannySubtitle':
+        'Smart answers and personalized guidance for your baby\'s routine.',
+    'aiNannyWelcomeMessage':
+        'Hi! I\'m FaceBaby\'s AI Nanny ❤️ Ask about routine, sleep or feeding — gently and without alarm.',
+    'aiNannyMockReply':
+        'Got it ❤️ In the next phase I\'ll answer using your baby\'s real records.',
+    'aiNannyInputHint': 'Type your question…',
+    'aiNannyThinking': 'AI Nanny is thinking…',
+    'aiNannyDisclaimer':
+        'Informational content only. Not a substitute for medical care.',
+    'aiNannyPremiumTitle': 'AI Nanny 24/7 with you',
+    'aiNannyPremiumBody':
+        'Premium feature: smart chat with baby context, up to 50 messages per day.',
+    'aiNannyPremiumCta': 'Unlock Premium',
+    'aiNannyBenefitSmart': 'Smart answers',
+    'aiNannyBenefitPersonal': 'Personalized guidance',
+    'aiNannyBenefitAlerts': 'Predictive alerts (coming soon)',
+    'aiNannyBenefitRoutines': 'Personalized routines',
+    'aiNannyBenefitContent': 'AI-generated content',
+    'aiNannyBenefitAudioSoon': 'Coming soon: voice replies',
+    'aiNannyAskBelow': 'Ask your first question below.',
+    'aiNannyNoBaby': 'Add a baby profile to personalize answers.',
+    'aiNannyRemainingToday': 'Messages left today: {n}',
+    'aiNannyDailyLimitMessage':
+        'You reached the daily AI Nanny limit. Come back tomorrow.',
+    'aiNannyCallFailed':
+        'I could not answer right now. Please try again in a few moments.',
+    'aiNannyProfileButton': 'AI profile',
+    'aiNannyClearChat': 'Delete conversation',
+    'aiNannyClearChatConfirmTitle': 'Delete entire conversation?',
+    'aiNannyClearChatConfirmBody':
+        'All AI Nanny messages will be removed from this device and the cloud. This cannot be undone.',
+    'aiNannyClearChatDone': 'Conversation deleted.',
+    'aiNannyDeleteExchange': 'Delete this exchange',
+    'aiNannyDeleteExchangeConfirm':
+        'Remove this question and the AI Nanny reply?',
+    'aiNannySignInRequired': 'Sign in to use AI Nanny.',
+    'aiVoiceRecording': 'Recording… {s}s (max 20)',
+    'aiVoiceProcessing': 'Transcribing and interpreting…',
+    'aiVoiceUnderstood': 'Got it: {text}',
+    'aiVoiceConfirmTitle': 'Register this?',
+    'aiVoiceConfirm': 'Confirm',
+    'aiVoiceMicDenied':
+        'Microphone access is needed for voice logging. Enable it in device settings.',
+    'aiVoiceMicWebUnavailable': 'Voice logging is available on Android and iOS apps.',
+    'aiVoiceSavedOk': 'Record saved successfully.',
+    'aiVoiceSavedFeedingAndDiaper': 'Feeding and diaper change saved.',
+    'aiVoiceSavedSymptom': 'Symptoms saved in Health.',
+    'aiVoiceNeedClarification':
+        'Not saved yet — reply in chat so I can complete the log.',
+    'aiClarifyFeedingPrefix': 'About feeding:',
+    'aiClarifyDiaperPrefix': 'About the diaper:',
+    'aiClarifyBreastSide': 'left or right breast?',
+    'aiClarifyFeedingDuration': 'how many minutes did it last?',
+    'aiClarifyRegisterNeeded': 'To save this in the app, I need to know:',
+    'aiNannyRecordsFoundTitle': '🤖 I found these records',
+    'aiNannyConfirmCompleteRecords': 'Confirm complete records',
+    'aiNannyCompleteMissingData': 'Complete missing data',
+    'aiNannySaveAllPossible': 'Save all possible',
+    'aiNannyCancelRecords': 'Cancel',
+    'aiGrowthNeedBaselineWeight':
+        'Weight: need a previous weight to calculate the gain.',
+    'aiGrowthNeedBaselineHeight':
+        'Height: need a previous measurement to calculate growth.',
+    'aiGrowthWeightDeltaPreview':
+        'Weight: last {prev} kg → new {next} kg (confirm)',
+    'aiGrowthHeightDeltaPreview':
+        'Height: last {prev} cm → new {next} cm (confirm)',
+    'aiClarifyFeedingType': 'breast or bottle?',
+    'aiClarifyDiaperKind': 'pee, poop, or both?',
+    'aiClarifyDiaperChangeNow': 'was it a diaper change just now?',
+    'aiRecordSaveFailed':
+        '🤖 I could not save the record now. Please try again or log it manually.',
+    'aiRecordConfirmedPrefix': 'Done — logged {line} for {name} at {time}.',
+    'aiRecordLineDiaperPee': 'diaper (pee)',
+    'aiRecordLineDiaperPoo': 'diaper (poop)',
+    'aiRecordLineDiaperBoth': 'diaper (pee and poop)',
+    'aiRecordLineDiaperGeneric': 'diaper change',
+    'aiRecordLineFeeding': 'feeding',
+    'aiRecordLineSleepStart': 'sleep start',
+    'aiRecordLineSleepEnd': 'sleep end',
+    'aiRecordLineSleep': 'sleep',
+    'aiRecordLineWeight': 'weight',
+    'aiRecordLineHeight': 'height',
+    'aiRecordLineSymptom': 'symptom in Health',
+    'aiRecordLineGeneric': 'entry',
+    'aiRoutineRegisterSkipped': 'OK, I will not log that event.',
+    'aiVoiceSavedFeeding': 'Feeding logged.',
+    'aiVoiceSleepStarted': 'Sleep started — check the Sleep screen or say "woke up" when done.',
+    'aiChatSleepStartedConfirm':
+        'Done! I logged that your baby is going to sleep now. Check Home or Sleep for the active session.',
+    'aiChatSleepEndedConfirm':
+        'Sleep ended and saved to the diary. Thanks for letting me know!',
+    'aiChatRegisterSavedConfirm':
+        'Saved to the app. Check Home or Records.',
+    'aiVoiceSleepEnded': 'Sleep logged successfully.',
+    'aiVoiceRecordFailed': 'Could not process the audio. Try again.',
+    'aiVoiceNotARegisterTitle': 'This sounds like a question, not a log entry.',
+    'aiVoiceRegisterHint':
+        'To log by voice, say e.g. "Baby had 120 ml now" or "diaper change with pee". For questions, just speak — AI Nanny answers in chat.',
+    'aiVoiceHoldMicHint': 'Hold the microphone to talk to AI Nanny.',
+    'aiVoiceReleaseHint': 'Release to send…',
+    'aiVoiceTapMicHint': 'Tap the microphone to record',
+    'aiVoiceTapStopHint': 'Tap again to send audio',
+    'aiVoiceRecordingHint': 'Recording… tap ■ to send',
+    'aiVoiceListenReply': 'Listen',
+    'aiTtsPreparing': 'Preparing audio...',
+    'aiTtsPause': 'Pause',
+    'aiTtsResume': 'Resume',
+    'aiTtsRetry': 'Try again',
+    'aiNannyAutoReadLabel': 'Read answers aloud',
+    'aiNannyDeviceVoiceHint':
+        'Natural voice unavailable — using phone voice. Check internet and update the app.',
+    'aiNannyTtsFailed':
+        'Could not play natural voice. Check volume, internet, and sign-in; tap «Listen» to try again.',
+    'aiVoiceAskAiInstead': 'Ask AI Nanny',
+    'aiVoiceHealthFieldsHint':
+        'Fill in the fields below and tap Confirm to save under Health.',
+    'aiVoiceHealthTempLabel': 'Temperature (°C)',
+    'aiVoiceHealthVaccineNameLabel': 'Vaccine name',
+    'aiVoiceHealthVaccineDoseLabel': 'Dose (optional)',
+    'aiVoiceHealthVaccineNameRequired': 'Enter the vaccine name.',
+    'aiBabyHistoryTitle': 'Baby history',
+    'aiBabyHistorySubtitle':
+        'Share important traits about your baby and routine so AI Nanny can personalize answers.',
+    'aiBabyHistoryFieldLabel': 'Important history for AI',
+    'aiBabyHistoryPlaceholder':
+        'Example: premature birth, reflux, breastfeeding, wakes often at night, formula, allergies, or pediatric guidance.',
+    'aiBabyHistoryDisclaimer':
+        'This helps the AI respond better but does not replace medical advice.',
+    'aiBabyHistorySave': 'Save history',
+    'aiBabyHistoryClear': 'Clear history',
+    'aiBabyHistorySaved': 'History saved successfully',
+    'aiBabyHistoryCleared': 'History cleared',
+    'aiBabyHistoryClearConfirmTitle': 'Clear history?',
+    'aiBabyHistoryClearConfirmBody':
+        'AI Nanny will stop using this information until you fill it in again.',
+    'aiBabyHistoryLinkSubtitle': 'Personalize AI Nanny answers',
+    'aiBabyHistoryCharCount': '{current} / {max} characters',
+    'settingsAiBabyHistory': 'Baby history for AI Nanny',
+    'familyTabTree': 'Family',
+    'familyTabHoroscope': 'Horoscope',
+    'familyTabAiHistory': 'History',
+    'familyHoroscopeDate': 'Horoscope for {date}',
+    'familyHoroscopeGenerateToday': 'Generate today\'s horoscope',
+    'familyHoroscopeRefresh': 'Refresh horoscope',
+    'familyHoroscopeMother': 'Mom\'s horoscope',
+    'familyHoroscopeFather': 'Dad\'s horoscope',
+    'familyHoroscopeBaby': 'Baby\'s horoscope',
+    'familyHoroscopeFamilyEnergy': 'Family energy today',
+    'familyHoroscopeDailyAdvice': 'Family advice for today',
+    'familyHoroscopeDisclaimer':
+        'AI-generated content for family reflection and entertainment. Not professional advice.',
+    'familyHoroscopeRegisterFather':
+        'Add dad\'s profile to include his horoscope in the family reading.',
+    'familyHoroscopePremiumTitle': 'AI family horoscope',
+    'familyHoroscopePremiumBody':
+        'Unlock daily affectionate readings for mom, dad and baby based on zodiac signs.',
+    'familyHoroscopeErrorGeneric':
+        'Could not generate the horoscope now. Please try again.',
+    'familyHoroscopeErrorNotFound':
+        'Horoscope service unavailable. Update the app and try again.',
+    'familyHoroscopeErrorUnauthenticated': 'Sign in to generate the horoscope.',
+    'familyHoroscopeErrorPermission':
+        'Full family horoscope is available on the Premium plan.',
+    'familyHoroscopeErrorPrecondition':
+        'Add birth dates in Family to generate the horoscope.',
+    'familyHoroscopeErrorExhausted':
+        'Temporary limit reached. Try again later.',
+    'appUpdateAvailableMessage': 'A new FaceBaby version is available ❤️',
+    'appUpdateDownloading': 'Downloading the update…',
+    'appUpdateReadyToRestart': 'Restart to finish updating.',
+    'appUpdateActionUpdate': 'Update',
+    'appUpdateActionLater': 'Later',
+    'appUpdateRestart': 'Restart',
     'growthHistoryTitle': '{label} (history)',
     'invalidGrowthValue': 'Enter a valid {label} value.',
     'growthSaved': '{label} saved successfully.',
@@ -5451,6 +6707,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'settingsMotherProfile': 'My profile',
     'profileEditMother': 'Edit mother\'s details',
     'profileEditFather': 'Edit father\'s details',
+    'profileAddFather': 'Register dad',
+    'profileFatherNotRegisteredTitle': 'Dad not registered yet',
+    'profileFatherNotRegisteredSubtitle':
+        'If you skipped dad during signup, you can add his details here anytime.',
+    'profileFatherAddCta': 'Register dad now',
     'profileEditBaby': 'Edit baby\'s details',
     'profileDataSaved': 'Saved.',
     'profileEditData': 'Edit details',
@@ -5492,6 +6753,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'profileFamilyMessagesTitle': 'Messages on Family screen',
     'profileShowChristian': 'Christian messages',
     'profileShowHoroscope': 'Horoscope',
+    'profileShowSpiritist': 'Spiritist messages',
+    'profileShowJewish': 'Jewish messages',
     'motherProfileAddBaby': 'Add another baby',
     'motherProfileNoBabies': 'No babies found for this profile.',
     'motherProfileBabyBornAt': 'Born: {date}',
@@ -6223,6 +7486,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'valWeightRange': 'Weight out of expected range.',
     'valBabyHeightRange': 'Height out of expected range.',
     'placeholderBabyName': 'Baby',
+    'valBirthDateInvalid': 'Invalid date. Use dd/mm/yyyy.',
+    'brDateHint': 'Date of birth',
+    'brDateOpenCalendar': 'Open calendar',
     'exampleCard': 'Example card:',
   },
   AppLang.es: {
@@ -6253,7 +7519,6 @@ const Map<AppLang, Map<String, String>> _strings = {
     'scheduledDiaperReminderBody':
         'Puede ser hora de cambiar el pañal desde la última vez. Toca para registrar.',
     'homeTimeToFeed': '¡Hora de alimentar!',
-
     'sleepBannerEmpty': 'Aún no hay sueños registrados.',
     'sleepToggleAlertsSubtitle':
         'Recordatorios según el último sueño terminado y la edad.',
@@ -6265,7 +7530,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'sleepAlertsWakeWindowSliderLabelCustom': '{m} min',
     'sleepAlertsApproachRulerValueDefault':
         'Antelación efectiva en esta escala: {m} min (predeterminado).',
-    'sleepAlertsApproachRulerValueCustom': 'Antelación en esta escala: {m} min.',
+    'sleepAlertsApproachRulerValueCustom':
+        'Antelación en esta escala: {m} min.',
     'sleepAlertsApproachSliderLabelDefault': '{m} min · predeterminado',
     'sleepAlertsApproachSliderLabelCustom': '{m} min',
     'sleepAlertsWakeWindowAutomatic':
@@ -6365,7 +7631,6 @@ const Map<AppLang, Map<String, String>> _strings = {
     'sleepInsightTrendOk': '💡 Patrón de sueño estable hoy',
     'sleepHistoryToday': 'Hoy',
     'sleepToggleAlerts': 'Activar alertas de sueño',
-
     'sleepNotifTitle': 'Sueño',
     'sleepNotifBeforeBody':
         'Puede ser un buen momento para ayudar al bebé a dormir.',
@@ -6670,6 +7935,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'settingsMotherProfile': 'Mi perfil',
     'profileEditMother': 'Editar datos de la mamá',
     'profileEditFather': 'Editar datos del papá',
+    'profileAddFather': 'Registrar papá',
+    'profileFatherNotRegisteredTitle': 'Papá aún no registrado',
+    'profileFatherNotRegisteredSubtitle':
+        'Si no incluiste al papá en el primer registro, puedes añadir sus datos aquí cuando quieras.',
+    'profileFatherAddCta': 'Registrar papá ahora',
     'profileEditBaby': 'Editar datos del bebé',
     'profileDataSaved': 'Datos guardados.',
     'profileEditData': 'Editar datos',
@@ -6695,6 +7965,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'profileFamilyMessagesTitle': 'Mensajes en la pantalla Familia',
     'profileShowChristian': 'Mensajes cristianos',
     'profileShowHoroscope': 'Horóscopo',
+    'profileShowSpiritist': 'Mensajes espíritas',
+    'profileShowJewish': 'Mensajes judías',
     'motherProfileAddBaby': 'Agregar otro bebé',
     'motherProfileNoBabies': 'No se encontró ningún bebé para este perfil.',
     'motherProfileBabyBornAt': 'Nacimiento: {date}',
@@ -6720,7 +7992,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusRestoreEmptySnack': 'No encontramos una compra para restaurar.',
     'plusSnackLockedFeature': 'Esta función forma parte de FaceBaby Premium.',
     'plusMemoryLimitSnack':
-        'Has alcanzado el límite de recuerdos del plan gratuito.',
+        'En el plan gratuito puedes guardar hasta {max} fotos en insignias.',
+    'plusMemoryLimitDialogTitle': 'Desbloquea más recuerdos',
+    'plusMemoryLimitDialogBody':
+        'En el plan gratuito puedes guardar hasta {max} fotos en insignias.\n\nContrata FaceBaby Premium con pago único — sin mensualidad — para fotos ilimitadas, informes, exportaciones y más funciones del portal.',
+    'plusMemoryLimitDialogSubscribe': 'Contratar Premium',
     'plusReportsLockedHint':
         'Los informes en PDF forman parte de FaceBaby Premium.',
     'plusExportLockedHint':
@@ -6923,6 +8199,13 @@ const Map<AppLang, Map<String, String>> _strings = {
     'onbGoalMoments': 'Registrar momentos especiales',
     'onbGoalReports': 'Generar informes',
     'onbGoalMemoryBook': 'Crear libro de recuerdos',
+    'onbMessagePrefTitle': 'Mamá espiritualizada, bebé feliz.',
+    'onbMessagePrefSubtitle': '¿Deseas recibir mensajes diarios?',
+    'onbMessagePrefChristian': 'Cristianas',
+    'onbMessagePrefHoroscope': 'Horóscopo',
+    'onbMessagePrefSpiritist': 'Espíritas',
+    'onbMessagePrefJewish': 'Judías',
+    'onbMessagePrefAll': 'Todas',
     'onbDragToAdjust': 'Arrastra para ajustar',
     'onbEmailSheetTitle': 'Crear cuenta con correo',
     'onbYourNameHint': 'Tu nombre',
@@ -6957,6 +8240,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'familyEntertainmentNote':
         'Completa los datos de nacimiento para personalizar este contenido.',
     'familyChristianCardTitle': 'Mensaje bíblico',
+    'familySpiritistCardTitle': 'Mensaje espírita',
+    'familyJewishCardTitle': 'Mensaje judío',
     'familyChristianLine': 'Versículo del día · {ref}',
     'familyBornOn': 'Nac. {date}',
     'familyAgeOneYear': '1 año',
@@ -7028,7 +8313,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'familyPremiumUnlockCta': 'Desbloquear Premium',
     'familyScreenTitle': 'Familia 💜',
     'familyPersonalInfoTitle': 'Información personal',
-    'familyHoroscopeCardTitle': 'Horóscopo de {sign}',
+    'familyHoroscopeCardTitle': 'Astrologia de {sign}',
     'familyBibleVerseCardTitle': 'Versículo Bíblico de hoy.',
     'familyDailySummaryTitle': 'Resumen del día',
     'familySummaryFeeding': 'Lactancia',
@@ -7082,14 +8367,25 @@ const Map<AppLang, Map<String, String>> _strings = {
     'deleteAccountConfirm': 'Eliminar todo',
     'deleteAccountDeleting': 'Eliminando tu cuenta...',
     'deleteAccountSuccess': 'Cuenta eliminada con éxito.',
-    'deleteAccountReauthTitle': 'Confirmar identidad',
+    'deleteAccountReauthTitle': 'Confirmar contraseña o Google',
     'deleteAccountReauthBody':
-        'Por seguridad necesitamos verificar tu identidad. Usa el mismo método de acceso habitual y terminaremos de borrar la cuenta.',
+        'Último paso antes de eliminar: confirma el mismo método con el que entras (contraseña del correo o cuenta Google/Gmail).',
+    'deleteAccountReauthGoogleSection': 'Entraste con Google / Gmail',
+    'deleteAccountReauthGoogleAccountHint': 'Cuenta Google: {email}',
+    'deleteAccountReauthPasswordSection': 'Entraste con correo y contraseña',
+    'deleteAccountReauthOrDivider': 'o',
+    'deleteAccountReauthEmailLabel': 'Correo de la cuenta',
     'deleteAccountReauthPasswordHint': 'Contraseña actual',
-    'deleteAccountReauthGoogle': 'Confirmar con Google',
-    'deleteAccountReauthContinue': 'Confirmar contraseña',
+    'deleteAccountReauthPasswordRequired':
+        'Escribe la contraseña actual de la cuenta.',
+    'deleteAccountReauthGoogle': 'Confirmar con Google (Gmail)',
+    'deleteAccountReauthContinue': 'Confirmar con contraseña',
     'deleteAccountReauthCantPassword':
-        'Usa el botón del mismo método de entrada (ej. Google) con el que creaste la cuenta.',
+        'Usa el botón del mismo método de acceso (Google/Gmail o correo y contraseña) con el que creaste la cuenta.',
+    'deleteAccountTypeWordTitle': 'Confirmación final',
+    'deleteAccountTypeWordInstruction':
+        'Para eliminar la cuenta de forma permanente, escribe delete en el campo. Después pediremos confirmación con contraseña o Google (Gmail).',
+    'deleteAccountTypeWordFieldLabel': 'delete',
     'homeBabyBannerForecastSleep': 'Previsión de sueño',
     'homeBabyBannerForecastWake': 'Previsión de despertar',
     'homeBabyBannerForecastSubtitleSleep':
@@ -7149,11 +8445,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'weeklyPhotoPublicOn': 'Pública',
     'weeklyPhotoPublicNeedPhoto':
         'Añade una foto para marcar este recuerdo como público.',
-    'weeklyPhotoConfirmTitle': '¿Hacer público este recuerdo?',
+    'weeklyPhotoConfirmTitle': '¿Hacer pública esta foto?',
     'weeklyPhotoConfirmBody':
-        'Esta foto podrá ser elegida como Foto de la Semana y mostrarse a otras mamás en la app. Puedes quitar esta opción cuando quieras.',
-    'weeklyPhotoConfirmCancel': 'Cancelar',
-    'weeklyPhotoConfirmOk': 'Hacer pública',
+        '¿Aceptas mostrar esta foto a otros usuarios si resultas sorteada de la semana?',
+    'weeklyPhotoConfirmNo': 'No',
+    'weeklyPhotoConfirmYes': 'Sí',
     'weeklyPhotoParticipatingBadge': 'Participando en la Foto de la Semana',
     'weeklyPhotoWinnerBadge':
         'Este recuerdo fue elegido como Foto de la Semana 💜',
@@ -7161,6 +8457,22 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Mostrar el primer nombre del bebé en el mural público',
     'weeklyPhotoDisclaimerFooter':
         'Solo participan las fotos marcadas como públicas. Puedes quitar esta opción en cualquier momento.',
+    'weeklyPhotoReportLink': 'Denunciar',
+    'weeklyPhotoReportTitle': 'Denunciar foto',
+    'weeklyPhotoReportHint':
+        'Describe el motivo de la denuncia. El equipo FaceBaby lo revisará.',
+    'weeklyPhotoReportMessageLabel': 'Motivo de la denuncia',
+    'weeklyPhotoReportSubmit': 'Enviar denuncia',
+    'weeklyPhotoReportSuccess':
+        'Denuncia enviada. Gracias por ayudar a mantener la comunidad segura.',
+    'weeklyPhotoReportNeedLogin':
+        'Inicia sesión en tu cuenta para enviar una denuncia.',
+    'weeklyPhotoReportMessageTooShort':
+        'Escribe al menos 5 caracteres en el motivo de la denuncia.',
+    'weeklyPhotoReportMessageTooLong':
+        'El texto de la denuncia es demasiado largo.',
+    'weeklyPhotoReportFailed':
+        'No se pudo enviar la denuncia. Inténtalo de nuevo.',
     'weeklyPhotoSectionTitleMale': 'Príncipe de la Semana',
     'weeklyPhotoSectionTitleFemale': 'Princesa de la Semana',
     'weeklyPhotoHomeHeroMale': 'PRÍNCIPE DE LA SEMANA',
@@ -7238,6 +8550,27 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeTipTitle': 'Consejo de hoy',
     'homeTipBody':
         'Rutinas suaves ayudan a {name} a dormir mejor por la noche.',
+    'homeYesterdayBabaTitle': 'IA Niñera · ayer',
+    'homeYesterdayBabaFallback':
+        'Registra la rutina de {name} para lectura pediátrica.',
+    'homeYesterdayBabaRoutineQuiet':
+        'Pocos registros — la rutina predecible favorece la regulación emocional.',
+    'homeYesterdayBabaRoutine':
+        '{feeds} tomas · sueño {sleep} · {diapers} pañales.',
+    'homeYesterdayBabaRoutineLowSleep':
+        '{feeds} tomas · sueño {sleep} (bajo) · {diapers} pañales.',
+    'homeYesterdayBabaGrowthBothWithin':
+        'Peso y talla en la curva de referencia.',
+    'homeYesterdayBabaGrowthNoData': 'Actualiza peso/talla en la curva.',
+    'homeYesterdayBabaGrowthBelow':
+        'Antropometría bajo la curva — coméntalo con el pediatra.',
+    'homeYesterdayBabaGrowthAbove':
+        'Antropometría sobre la curva — revisa en la consulta.',
+    'homeYesterdayBabaGrowthCombo': 'Curva: peso {weight}, talla {height}.',
+    'homeYesterdayBabaBandWithin': 'adecuado',
+    'homeYesterdayBabaBandBelow': 'bajo',
+    'homeYesterdayBabaBandAbove': 'alto',
+    'homeYesterdayBabaBandUnknown': '—',
     'homeGreetingSubtitle': '¡Qué bueno verte por aquí hoy!',
     'summaryWeightNotYet': 'Aún no registrado',
     'summarySleepNotYet': 'Sin sueño registrado hoy',
@@ -7601,6 +8934,14 @@ const Map<AppLang, Map<String, String>> _strings = {
     'onbGoalMoments': 'Enregistrer les moments spéciaux',
     'onbGoalReports': 'Générer des rapports',
     'onbGoalMemoryBook': 'Créer un livre de souvenirs',
+    'onbMessagePrefTitle': 'Maman spiritualisée, bébé heureux.',
+    'onbMessagePrefSubtitle':
+        'Souhaitez-vous recevoir des messages quotidiens ?',
+    'onbMessagePrefChristian': 'Chrétiennes',
+    'onbMessagePrefHoroscope': 'Horoscope',
+    'onbMessagePrefSpiritist': 'Spiritistes',
+    'onbMessagePrefJewish': 'Juives',
+    'onbMessagePrefAll': 'Toutes',
     'onbDragToAdjust': 'Faites glisser pour ajuster',
     'onbEmailSheetTitle': 'Créer un compte avec e-mail',
     'onbYourNameHint': 'Votre nom',
@@ -7705,9 +9046,12 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusRestoreEmptySnack': 'Aucun achat à restaurer n’a été trouvé.',
     'plusSnackLockedFeature': 'Cette fonction fait partie de FaceBaby Premium.',
     'plusMemoryLimitSnack':
-        'Vous avez atteint la limite de souvenirs du plan gratuit.',
-    'plusMemoryCounterFree':
-        '{n} sur {max} moments avec l’offre gratuite',
+        'Avec l’offre gratuite, vous pouvez enregistrer jusqu’à {max} photos sur les badges.',
+    'plusMemoryLimitDialogTitle': 'Débloquez plus de souvenirs',
+    'plusMemoryLimitDialogBody':
+        'Avec l’offre gratuite, vous pouvez enregistrer jusqu’à {max} photos sur les badges.\n\nPassez à FaceBaby Premium en paiement unique — sans abonnement mensuel — pour des photos illimitées, des rapports, des exports et d’autres fonctions du portail.',
+    'plusMemoryLimitDialogSubscribe': 'Passer à Premium',
+    'plusMemoryCounterFree': '{n} sur {max} moments avec l’offre gratuite',
     'plusReportsLockedHint':
         'Les rapports PDF font partie de FaceBaby Premium.',
     'plusExportLockedHint':
@@ -8005,6 +9349,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'settingsMotherProfile': 'Mon profil',
     'profileEditMother': 'Modifier les données de maman',
     'profileEditFather': 'Modifier les données de papa',
+    'profileAddFather': 'Enregistrer papa',
+    'profileFatherNotRegisteredTitle': 'Papa pas encore enregistré',
+    'profileFatherNotRegisteredSubtitle':
+        'Si vous n\'avez pas inclus papa lors de l\'inscription, vous pouvez ajouter ses données ici à tout moment.',
+    'profileFatherAddCta': 'Enregistrer papa maintenant',
     'profileEditBaby': 'Modifier les données de bébé',
     'profileDataSaved': 'Données enregistrées.',
     'profileEditData': 'Modifier les données',
@@ -8013,8 +9362,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'motherProfileTabFather': 'Papa',
     'motherProfileTabBabies': 'Bébés',
     'profileLayoutTitle': 'Apparence de l’app',
-    'profileLayoutSubtitle':
-        'Mode jour, nuit ou automatique selon l’heure.',
+    'profileLayoutSubtitle': 'Mode jour, nuit ou automatique selon l’heure.',
     'profileLayoutAutomatic': 'Automatique',
     'profileLayoutDay': 'Jour',
     'profileLayoutNight': 'Nuit',
@@ -8030,6 +9378,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'profileFamilyMessagesTitle': 'Messages sur l’écran Famille',
     'profileShowChristian': 'Messages chrétiens',
     'profileShowHoroscope': 'Horoscope',
+    'profileShowSpiritist': 'Messages spiritistes',
+    'profileShowJewish': 'Messages juives',
     'motherProfileAddBaby': 'Ajouter un autre bébé',
     'motherProfileNoBabies': 'Aucun bébé trouvé pour ce profil.',
     'motherProfileBabyBornAt': 'Naissance : {date}',
@@ -8057,6 +9407,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'familyEntertainmentNote':
         'Complétez les données de naissance pour personnaliser ce contenu.',
     'familyChristianCardTitle': 'Message biblique',
+    'familySpiritistCardTitle': 'Message spiritiste',
+    'familyJewishCardTitle': 'Message juif',
     'familyChristianLine': 'Verset du jour · {ref}',
     'familyBornOn': 'Né(e) le {date}',
     'familyAgeOneYear': '1 an',
@@ -8181,14 +9533,26 @@ const Map<AppLang, Map<String, String>> _strings = {
     'deleteAccountConfirm': 'Tout supprimer',
     'deleteAccountDeleting': 'Suppression de votre compte...',
     'deleteAccountSuccess': 'Compte supprimé avec succès.',
-    'deleteAccountReauthTitle': 'Confirmer l’identité',
+    'deleteAccountReauthTitle': 'Confirmer mot de passe ou Google',
     'deleteAccountReauthBody':
-        'Pour des raisons de sécurité, confirmez votre identité avec la même méthode de connexion que d’habitude — nous terminerons la suppression.',
+        'Dernière étape avant suppression : confirmez la même méthode de connexion (mot de passe e-mail ou compte Google/Gmail).',
+    'deleteAccountReauthGoogleSection': 'Connexion avec Google / Gmail',
+    'deleteAccountReauthGoogleAccountHint': 'Compte Google : {email}',
+    'deleteAccountReauthPasswordSection':
+        'Connexion par e-mail et mot de passe',
+    'deleteAccountReauthOrDivider': 'ou',
+    'deleteAccountReauthEmailLabel': 'E-mail du compte',
     'deleteAccountReauthPasswordHint': 'Mot de passe actuel',
-    'deleteAccountReauthGoogle': 'Confirmer avec Google',
-    'deleteAccountReauthContinue': 'Confirmer le mot de passe',
+    'deleteAccountReauthPasswordRequired':
+        'Saisissez le mot de passe actuel du compte.',
+    'deleteAccountReauthGoogle': 'Confirmer avec Google (Gmail)',
+    'deleteAccountReauthContinue': 'Confirmer avec le mot de passe',
     'deleteAccountReauthCantPassword':
-        'Utilisez le bouton correspondant au fournisseur avec lequel le compte a été créé (ex. Google).',
+        'Utilisez le bouton de la même méthode de connexion (Google/Gmail ou e-mail et mot de passe) qu’à la création du compte.',
+    'deleteAccountTypeWordTitle': 'Confirmation finale',
+    'deleteAccountTypeWordInstruction':
+        'Pour supprimer définitivement le compte, tapez delete dans le champ. Ensuite nous demanderons une confirmation par mot de passe ou Google (Gmail).',
+    'deleteAccountTypeWordFieldLabel': 'delete',
     'homeBabyBannerForecastSleep': 'Prévision de sommeil',
     'homeBabyBannerForecastWake': 'Prévision de réveil',
     'homeBabyBannerForecastSubtitleSleep':
@@ -8255,11 +9619,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'weeklyPhotoPublicOn': 'Publique',
     'weeklyPhotoPublicNeedPhoto':
         'Ajoutez une photo pour rendre ce souvenir public.',
-    'weeklyPhotoConfirmTitle': 'Rendre ce souvenir public ?',
+    'weeklyPhotoConfirmTitle': 'Rendre cette photo publique ?',
     'weeklyPhotoConfirmBody':
-        'Cette photo pourra être choisie comme Photo de la semaine et affichée aux autres mamans dans l’app. Vous pouvez retirer cette option à tout moment.',
-    'weeklyPhotoConfirmCancel': 'Annuler',
-    'weeklyPhotoConfirmOk': 'Rendre publique',
+        'Acceptez-vous d’afficher cette photo à d’autres utilisateurs si vous êtes tirée au sort de la semaine ?',
+    'weeklyPhotoConfirmNo': 'Non',
+    'weeklyPhotoConfirmYes': 'Oui',
     'weeklyPhotoParticipatingBadge': 'Participe à la Photo de la semaine',
     'weeklyPhotoWinnerBadge':
         'Ce souvenir a été choisi comme Photo de la semaine 💜',
@@ -8267,6 +9631,20 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Afficher le prénom de bébé sur le mur public',
     'weeklyPhotoDisclaimerFooter':
         'Seules les photos marquées comme publiques participent. Vous pouvez retirer cette option à tout moment.',
+    'weeklyPhotoReportLink': 'Signaler',
+    'weeklyPhotoReportTitle': 'Signaler la photo',
+    'weeklyPhotoReportHint':
+        'Décrivez le motif du signalement. L’équipe FaceBaby l’examinera.',
+    'weeklyPhotoReportMessageLabel': 'Motif du signalement',
+    'weeklyPhotoReportSubmit': 'Envoyer le signalement',
+    'weeklyPhotoReportSuccess':
+        'Signalement envoyé. Merci d’aider à garder la communauté sûre.',
+    'weeklyPhotoReportNeedLogin': 'Connectez-vous pour envoyer un signalement.',
+    'weeklyPhotoReportMessageTooShort':
+        'Écrivez au moins 5 caractères dans le motif du signalement.',
+    'weeklyPhotoReportMessageTooLong': 'Le texte du signalement est trop long.',
+    'weeklyPhotoReportFailed':
+        'Impossible d’envoyer le signalement. Réessayez.',
     'weeklyPhotoSectionTitleMale': 'Prince de la semaine',
     'weeklyPhotoSectionTitleFemale': 'Princesse de la semaine',
     'weeklyPhotoHomeHeroMale': 'PRINCE DE LA SEMAINE',
@@ -8342,6 +9720,27 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeStatusHungry': 'Peut avoir faim',
     'homeTipTitle': 'Astuce du jour',
     'homeTipBody': 'Des routines douces aident {name} à mieux dormir la nuit.',
+    'homeYesterdayBabaTitle': 'IA Nounou · hier',
+    'homeYesterdayBabaFallback':
+        'Notez la routine de {name} pour une lecture pédiatrique.',
+    'homeYesterdayBabaRoutineQuiet':
+        'Peu de saisies — une routine prévisible aide la régulation émotionnelle.',
+    'homeYesterdayBabaRoutine':
+        '{feeds} tétées · sommeil {sleep} · {diapers} changes.',
+    'homeYesterdayBabaRoutineLowSleep':
+        '{feeds} tétées · sommeil {sleep} (faible) · {diapers} changes.',
+    'homeYesterdayBabaGrowthBothWithin':
+        'Poids et taille sur la courbe de référence.',
+    'homeYesterdayBabaGrowthNoData': 'Mettez à jour poids/taille sur la courbe.',
+    'homeYesterdayBabaGrowthBelow':
+        'Croissance sous la courbe — en parler au pédiatre.',
+    'homeYesterdayBabaGrowthAbove':
+        'Croissance au-dessus de la courbe — à revoir en consultation.',
+    'homeYesterdayBabaGrowthCombo': 'Courbe : poids {weight}, taille {height}.',
+    'homeYesterdayBabaBandWithin': 'adéquat',
+    'homeYesterdayBabaBandBelow': 'bas',
+    'homeYesterdayBabaBandAbove': 'haut',
+    'homeYesterdayBabaBandUnknown': '—',
     'homeGreetingSubtitle': 'Quel plaisir de vous voir ici aujourd’hui !',
     'summaryWeightNotYet': 'Pas encore enregistré',
     'summarySleepNotYet': 'Aucun sommeil enregistré aujourd’hui',
@@ -8653,7 +10052,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'sleepAlertsWakeWindowSliderLabelCustom': '{m} min',
     'sleepAlertsApproachRulerValueDefault':
         'Anticipation effective sur cette échelle : {m} min (par défaut).',
-    'sleepAlertsApproachRulerValueCustom': 'Anticipation sur cette échelle : {m} min.',
+    'sleepAlertsApproachRulerValueCustom':
+        'Anticipation sur cette échelle : {m} min.',
     'sleepAlertsApproachSliderLabelDefault': '{m} min · défaut',
     'sleepAlertsApproachSliderLabelCustom': '{m} min',
     'sleepAlertsWakeWindowAutomatic':
@@ -8694,7 +10094,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'sleepResultExpectedTitle': 'Sommeil dans la norme',
     'sleepResultLongTitle': 'A dormi plus que prévu',
     'sleepResultDurationLine': 'Durée enregistrée : {duration}.',
-    'sleepResultExpectedLine': 'Référence pour l’âge : environ {min}–{max} min.',
+    'sleepResultExpectedLine':
+        'Référence pour l’âge : environ {min}–{max} min.',
     'sleepResultShortBody':
         'Sommeil court. Surveillez les signes de fatigue et préparez un environnement calme pour le prochain repos.',
     'sleepResultExpectedBody':
@@ -8753,7 +10154,6 @@ const Map<AppLang, Map<String, String>> _strings = {
     'sleepInsightTrendOk': '💡 Rythme de sommeil stable aujourd’hui',
     'sleepHistoryToday': 'Aujourd’hui',
     'sleepToggleAlerts': 'Activer les alertes de sommeil',
-
     'sleepNotifTitle': 'Sommeil',
     'sleepNotifBeforeBody': 'C’est peut-être un bon moment pour coucher bébé.',
     'sleepNotifOverdueBody':
@@ -8858,6 +10258,13 @@ const Map<AppLang, Map<String, String>> _strings = {
     'onbGoalMoments': 'Besondere Momente festhalten',
     'onbGoalReports': 'Berichte erstellen',
     'onbGoalMemoryBook': 'Erinnerungsbuch erstellen',
+    'onbMessagePrefTitle': 'Spirituelle Mama, glückliches Baby.',
+    'onbMessagePrefSubtitle': 'Möchtest du tägliche Nachrichten erhalten?',
+    'onbMessagePrefChristian': 'Christliche',
+    'onbMessagePrefHoroscope': 'Horoskop',
+    'onbMessagePrefSpiritist': 'Spiritistische',
+    'onbMessagePrefJewish': 'Jüdische',
+    'onbMessagePrefAll': 'Alle',
     'onbDragToAdjust': 'Zum Anpassen ziehen',
     'onbEmailSheetTitle': 'Konto mit E-Mail erstellen',
     'onbYourNameHint': 'Dein Name',
@@ -8881,7 +10288,8 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Höhere Fotoauflösung. Größere Datei; besser zum Drucken.',
     'memoriesAlbumExportTitle': 'Album wird erstellt…',
     'memoriesAlbumProgressPreparing': 'Seiten werden vorbereitet…',
-    'memoriesAlbumProgressImages': 'Fotos werden verarbeitet ({current}/{total})…',
+    'memoriesAlbumProgressImages':
+        'Fotos werden verarbeitet ({current}/{total})…',
     'memoriesAlbumProgressBuilding': 'PDF wird erstellt ({current}/{total})…',
     'memoriesAlbumProgressSaving': 'Datei wird gespeichert…',
     'memoriesAlbumCancelBtn': 'Abbrechen',
@@ -8963,9 +10371,12 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Wir haben keinen Kauf zum Wiederherstellen gefunden.',
     'plusSnackLockedFeature': 'Diese Funktion ist Teil von FaceBaby Premium.',
     'plusMemoryLimitSnack':
-        'Du hast das Limit für Erinnerungen im kostenlosen Plan erreicht.',
-    'plusMemoryCounterFree':
-        '{n} von {max} Momenten im kostenlosen Plan',
+        'Im kostenlosen Plan kannst du bis zu {max} Fotos auf Badges speichern.',
+    'plusMemoryLimitDialogTitle': 'Mehr Erinnerungen freischalten',
+    'plusMemoryLimitDialogBody':
+        'Im kostenlosen Plan kannst du bis zu {max} Fotos auf Badges speichern.\n\nHol dir FaceBaby Premium mit Einmalzahlung — ohne Monatsabo — für unbegrenzte Fotos, Berichte, Exporte und weitere Portal-Funktionen.',
+    'plusMemoryLimitDialogSubscribe': 'Premium holen',
+    'plusMemoryCounterFree': '{n} von {max} Momenten im kostenlosen Plan',
     'plusReportsLockedHint': 'PDF-Berichte sind Teil von FaceBaby Premium.',
     'plusExportLockedHint': 'Der Badge-Export ist Teil von FaceBaby Premium.',
     'plusLifetimePaymentBadge': 'Einmalzahlung',
@@ -9168,11 +10579,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'weeklyPhotoPublicOn': 'Öffentlich',
     'weeklyPhotoPublicNeedPhoto':
         'Füge ein Foto hinzu, um diese Erinnerung öffentlich zu machen.',
-    'weeklyPhotoConfirmTitle': 'Diese Erinnerung öffentlich machen?',
+    'weeklyPhotoConfirmTitle': 'Dieses Foto öffentlich machen?',
     'weeklyPhotoConfirmBody':
-        'Dieses Foto kann als Foto der Woche ausgewählt und anderen Mamas in der App angezeigt werden. Du kannst diese Option jederzeit entfernen.',
-    'weeklyPhotoConfirmCancel': 'Abbrechen',
-    'weeklyPhotoConfirmOk': 'Öffentlich machen',
+        'Stimmst du zu, dieses Foto anderen Nutzern zu zeigen, falls du als Gewinnerin der Woche ausgelost wirst?',
+    'weeklyPhotoConfirmNo': 'Nein',
+    'weeklyPhotoConfirmYes': 'Ja',
     'weeklyPhotoParticipatingBadge': 'Nimmt am Foto der Woche teil',
     'weeklyPhotoWinnerBadge':
         'Diese Erinnerung wurde als Foto der Woche ausgewählt 💜',
@@ -9180,6 +10591,20 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Vornamen des Babys auf der öffentlichen Pinnwand anzeigen',
     'weeklyPhotoDisclaimerFooter':
         'Nur als öffentlich markierte Fotos nehmen teil. Du kannst diese Option jederzeit entfernen.',
+    'weeklyPhotoReportLink': 'Melden',
+    'weeklyPhotoReportTitle': 'Foto melden',
+    'weeklyPhotoReportHint':
+        'Beschreibe den Grund der Meldung. Das FaceBaby-Team prüft sie.',
+    'weeklyPhotoReportMessageLabel': 'Grund der Meldung',
+    'weeklyPhotoReportSubmit': 'Meldung senden',
+    'weeklyPhotoReportSuccess':
+        'Meldung gesendet. Danke, dass du die Community sicher hältst.',
+    'weeklyPhotoReportNeedLogin': 'Melde dich an, um eine Meldung zu senden.',
+    'weeklyPhotoReportMessageTooShort':
+        'Schreibe mindestens 5 Zeichen als Meldegrund.',
+    'weeklyPhotoReportMessageTooLong': 'Der Meldetext ist zu lang.',
+    'weeklyPhotoReportFailed':
+        'Meldung konnte nicht gesendet werden. Bitte erneut versuchen.',
     'weeklyPhotoSectionTitleMale': 'Prinz der Woche',
     'weeklyPhotoSectionTitleFemale': 'Prinzessin der Woche',
     'weeklyPhotoHomeHeroMale': 'PRINZ DER WOCHE',
@@ -9299,6 +10724,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'settingsMotherProfile': 'Mein Profil',
     'profileEditMother': 'Daten der Mama bearbeiten',
     'profileEditFather': 'Daten des Papas bearbeiten',
+    'profileAddFather': 'Papa registrieren',
+    'profileFatherNotRegisteredTitle': 'Papa noch nicht registriert',
+    'profileFatherNotRegisteredSubtitle':
+        'Wenn Sie Papa bei der Anmeldung übersprungen haben, können Sie seine Daten hier jederzeit ergänzen.',
+    'profileFatherAddCta': 'Papa jetzt registrieren',
     'profileEditBaby': 'Daten des Babys bearbeiten',
     'profileDataSaved': 'Daten gespeichert.',
     'profileEditData': 'Daten bearbeiten',
@@ -9307,8 +10737,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'motherProfileTabFather': 'Papa',
     'motherProfileTabBabies': 'Babys',
     'profileLayoutTitle': 'App-Layout',
-    'profileLayoutSubtitle':
-        'Tag-, Nacht- oder Automatikmodus nach Uhrzeit.',
+    'profileLayoutSubtitle': 'Tag-, Nacht- oder Automatikmodus nach Uhrzeit.',
     'profileLayoutAutomatic': 'Automatisch',
     'profileLayoutDay': 'Tag',
     'profileLayoutNight': 'Nacht',
@@ -9324,6 +10753,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'profileFamilyMessagesTitle': 'Nachrichten auf der Familienseite',
     'profileShowChristian': 'Christliche Nachrichten',
     'profileShowHoroscope': 'Horoskop',
+    'profileShowSpiritist': 'Spiritistische Nachrichten',
+    'profileShowJewish': 'Jüdische Nachrichten',
     'motherProfileAddBaby': 'Weiteres Baby hinzufügen',
     'motherProfileNoBabies': 'Für dieses Profil wurde kein Baby gefunden.',
     'motherProfileBabyBornAt': 'Geburt: {date}',
@@ -9351,6 +10782,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'familyEntertainmentNote':
         'Vervollständige die Geburtsdaten, um diesen Inhalt zu personalisieren.',
     'familyChristianCardTitle': 'Biblische Botschaft',
+    'familySpiritistCardTitle': 'Spiritistische Botschaft',
+    'familyJewishCardTitle': 'Jüdische Botschaft',
     'familyChristianLine': 'Vers des Tages · {ref}',
     'familyBornOn': 'Geb. {date}',
     'familyAgeOneYear': '1 Jahr',
@@ -9553,6 +10986,27 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Letzten Schlaf eintragen, um die Leiste zu sehen',
     'homeTipTitle': 'Tipp für heute',
     'homeTipBody': 'Sanfte Routinen helfen {name}, nachts besser zu schlafen.',
+    'homeYesterdayBabaTitle': 'KI-Babysitter · gestern',
+    'homeYesterdayBabaFallback':
+        'Routine von {name} eintragen — pädiatrische Einordnung.',
+    'homeYesterdayBabaRoutineQuiet':
+        'Wenig Einträge — verlässliche Routinen stützen die Emotionsregulation.',
+    'homeYesterdayBabaRoutine':
+        '{feeds} Mahlzeiten · Schlaf {sleep} · {diapers} Windeln.',
+    'homeYesterdayBabaRoutineLowSleep':
+        '{feeds} Mahlzeiten · Schlaf {sleep} (wenig) · {diapers} Windeln.',
+    'homeYesterdayBabaGrowthBothWithin':
+        'Gewicht und Länge auf der Referenzkurve.',
+    'homeYesterdayBabaGrowthNoData': 'Gewicht/Länge in der Kurve aktualisieren.',
+    'homeYesterdayBabaGrowthBelow':
+        'Wachstum unter der Kurve — mit Kinderarzt besprechen.',
+    'homeYesterdayBabaGrowthAbove':
+        'Wachstum über der Kurve — in der Sprechstunde prüfen.',
+    'homeYesterdayBabaGrowthCombo': 'Kurve: Gewicht {weight}, Länge {height}.',
+    'homeYesterdayBabaBandWithin': 'adäquat',
+    'homeYesterdayBabaBandBelow': 'unten',
+    'homeYesterdayBabaBandAbove': 'oben',
+    'homeYesterdayBabaBandUnknown': '—',
     'homeGreetingSubtitle': 'Schön, dich heute hier zu sehen!',
     'summaryWeightNotYet': 'Noch nicht eingetragen',
     'summarySleepNotYet': 'Heute noch kein Schlaf eingetragen',
@@ -9971,7 +11425,6 @@ const Map<AppLang, Map<String, String>> _strings = {
     'sleepInsightTrendOk': '💡 Schlafmuster heute stabil',
     'sleepHistoryToday': 'Heute',
     'sleepToggleAlerts': 'Schlaferinnerungen aktivieren',
-
     'exampleCard': 'Beispiel-Impfheft:',
   },
   AppLang.it: {
@@ -10077,7 +11530,11 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Non abbiamo trovato un acquisto precedente su questo account.',
     'plusSnackLockedFeature': 'Incluso in FaceBaby Premium.',
     'plusMemoryLimitSnack':
-        'Nel piano gratuito puoi salvare fino a {max} momenti con foto o testo. Premium apre spazio per molti più ricordi.',
+        'Nel piano gratuito puoi salvare fino a {max} foto sui badge.',
+    'plusMemoryLimitDialogTitle': 'Sblocca più ricordi',
+    'plusMemoryLimitDialogBody':
+        'Nel piano gratuito puoi salvare fino a {max} foto sui badge.\n\nPassa a FaceBaby Premium con pagamento unico — senza abbonamento mensile — per foto illimitate, report, export e altre funzioni del portale.',
+    'plusMemoryLimitDialogSubscribe': 'Passa a Premium',
     'plusReportsLockedHint': 'Report FaceBaby Premium',
     'plusExportLockedHint': 'Esportazione FaceBaby Premium',
     'plusLifetimePaymentBadge': 'Pagamento unico',
@@ -10400,11 +11857,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'weeklyPhotoPublicOn': 'Pubblico',
     'weeklyPhotoPublicNeedPhoto':
         'Aggiungi una foto per rendere pubblico questo ricordo.',
-    'weeklyPhotoConfirmTitle': 'Rendere pubblico questo ricordo?',
+    'weeklyPhotoConfirmTitle': 'Rendere pubblica questa foto?',
     'weeklyPhotoConfirmBody':
-        'Questa foto potrà essere scelta come Foto della settimana e mostrata ad altre mamme nell’app. Puoi rimuovere questa opzione quando vuoi.',
-    'weeklyPhotoConfirmCancel': 'Annulla',
-    'weeklyPhotoConfirmOk': 'Rendi pubblica',
+        'Accetti di mostrare questa foto ad altri utenti se vieni estratta come vincitrice della settimana?',
+    'weeklyPhotoConfirmNo': 'No',
+    'weeklyPhotoConfirmYes': 'Sì',
     'weeklyPhotoParticipatingBadge': 'Partecipa alla Foto della settimana',
     'weeklyPhotoWinnerBadge':
         'Questo ricordo è stato scelto come Foto della settimana 💜',
@@ -10412,6 +11869,21 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Mostra il nome del bimbo nella bacheca pubblica',
     'weeklyPhotoDisclaimerFooter':
         'Partecipano solo le foto segnate come pubbliche. Puoi rimuovere questa opzione in qualsiasi momento.',
+    'weeklyPhotoReportLink': 'Segnala',
+    'weeklyPhotoReportTitle': 'Segnala foto',
+    'weeklyPhotoReportHint':
+        'Descrivi il motivo della segnalazione. Il team FaceBaby la esaminerà.',
+    'weeklyPhotoReportMessageLabel': 'Motivo della segnalazione',
+    'weeklyPhotoReportSubmit': 'Invia segnalazione',
+    'weeklyPhotoReportSuccess':
+        'Segnalazione inviata. Grazie per aiutare a mantenere la community sicura.',
+    'weeklyPhotoReportNeedLogin':
+        'Accedi al tuo account per inviare una segnalazione.',
+    'weeklyPhotoReportMessageTooShort':
+        'Scrivi almeno 5 caratteri nel motivo della segnalazione.',
+    'weeklyPhotoReportMessageTooLong':
+        'Il testo della segnalazione è troppo lungo.',
+    'weeklyPhotoReportFailed': 'Impossibile inviare la segnalazione. Riprova.',
     'weeklyPhotoSectionTitleMale': 'Principe della settimana',
     'weeklyPhotoSectionTitleFemale': 'Principessa della settimana',
     'weeklyPhotoHomeHeroMale': 'PRINCIPE DELLA SETTIMANA',
@@ -10682,6 +12154,13 @@ const Map<AppLang, Map<String, String>> _strings = {
     'onbGoalMoments': 'Registrare momenti speciali',
     'onbGoalReports': 'Generare report',
     'onbGoalMemoryBook': 'Creare libro dei ricordi',
+    'onbMessagePrefTitle': 'Mamma spiritualizzata, bebè felice.',
+    'onbMessagePrefSubtitle': 'Vuoi ricevere messaggi quotidiani?',
+    'onbMessagePrefChristian': 'Cristiane',
+    'onbMessagePrefHoroscope': 'Oroscopo',
+    'onbMessagePrefSpiritist': 'Spiritiste',
+    'onbMessagePrefJewish': 'Ebraiche',
+    'onbMessagePrefAll': 'Tutte',
     'onbDragToAdjust': 'Trascina per regolare',
     'onbEmailSheetTitle': 'Crea account con email',
     'onbYourNameHint': 'Il tuo nome',
@@ -10760,6 +12239,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'settingsMotherProfile': 'Il mio profilo',
     'profileEditMother': 'Modifica dati della mamma',
     'profileEditFather': 'Modifica dati del papà',
+    'profileAddFather': 'Registra papà',
+    'profileFatherNotRegisteredTitle': 'Papà non ancora registrato',
+    'profileFatherNotRegisteredSubtitle':
+        'Se non hai incluso il papà al primo accesso, puoi aggiungere i suoi dati qui in qualsiasi momento.',
+    'profileFatherAddCta': 'Registra papà ora',
     'profileEditBaby': 'Modifica dati del bimbo',
     'profileDataSaved': 'Salvato.',
     'profileEditData': 'Modifica dati',
@@ -10805,6 +12289,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'profileFamilyMessagesTitle': 'Messaggi nella schermata Famiglia',
     'profileShowChristian': 'Messaggi cristiani',
     'profileShowHoroscope': 'Oroscopo',
+    'profileShowSpiritist': 'Messaggi spiritisti',
+    'profileShowJewish': 'Messaggi ebraici',
     'motherProfileAddBaby': 'Aggiungi un altro bimbo',
     'motherProfileNoBabies': 'Nessun bimbo trovato per questo profilo.',
     'motherProfileBabyBornAt': 'Nato il: {date}',
@@ -10839,6 +12325,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'familyEntertainmentNote':
         'Completa i dati di nascita per personalizzare questo contenuto.',
     'familyChristianCardTitle': 'Messaggio biblico',
+    'familySpiritistCardTitle': 'Messaggio spiritista',
+    'familyJewishCardTitle': 'Messaggio ebraico',
     'familyChristianLine': 'Versetto del giorno · {ref}',
     'familyBornOn': 'Nato/a il {date}',
     'familyAgeOneYear': '1 anno',
@@ -10959,17 +12447,24 @@ const Map<AppLang, Map<String, String>> _strings = {
     'deleteAccountConfirm': 'Elimina tutto',
     'deleteAccountDeleting': 'Eliminazione account...',
     'deleteAccountSuccess': 'Account eliminato correttamente.',
-    'deleteAccountReauthTitle': 'Conferma identità',
+    'deleteAccountReauthTitle': 'Conferma password o Google',
     'deleteAccountReauthBody':
-        'Per sicurezza serve un’ulteriore verifica. Usa lo stesso metodo di accesso che usi di solito — poi completeremo l’eliminazione.',
+        'Ultimo passo prima dell’eliminazione: conferma lo stesso metodo di accesso (password e-mail o account Google/Gmail).',
+    'deleteAccountReauthGoogleSection': 'Accesso con Google / Gmail',
+    'deleteAccountReauthGoogleAccountHint': 'Account Google: {email}',
+    'deleteAccountReauthPasswordSection': 'Accesso con e-mail e password',
+    'deleteAccountReauthOrDivider': 'oppure',
+    'deleteAccountReauthEmailLabel': 'E-mail dell’account',
     'deleteAccountReauthPasswordHint': 'Password attuale',
-    'deleteAccountReauthGoogle': 'Conferma con Google',
-    'deleteAccountReauthContinue': 'Conferma password',
+    'deleteAccountReauthPasswordRequired':
+        'Inserisci la password attuale dell’account.',
+    'deleteAccountReauthGoogle': 'Conferma con Google (Gmail)',
+    'deleteAccountReauthContinue': 'Conferma con password',
     'deleteAccountReauthCantPassword':
-        'Usa il pulsante del provider con cui hai creato l’account (es. Google).',
+        'Usa il pulsante dello stesso metodo di accesso (Google/Gmail o e-mail e password) usato alla creazione dell’account.',
     'deleteAccountTypeWordTitle': 'Conferma finale',
     'deleteAccountTypeWordInstruction':
-        'Per eliminare definitivamente l’account, digita la parola elimina esattamente come mostrato nel campo sotto.',
+        'Per eliminare definitivamente l’account, digita delete nel campo. Poi chiederemo conferma con password o Google (Gmail).',
     'deleteAccountTypeWordFieldLabel': 'elimina',
     'homeBabyBannerForecastSleep': 'Previsione sonno',
     'homeBabyBannerForecastWake': 'Previsione risveglio',
@@ -11058,6 +12553,27 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeSleepBarNeedLastSleep': 'Registra l’ultimo sonno per vedere la barra',
     'homeTipTitle': 'Suggerimento di oggi',
     'homeTipBody': 'Routine leggere aiutano {name} a dormire meglio la notte.',
+    'homeYesterdayBabaTitle': 'IA Tata · ieri',
+    'homeYesterdayBabaFallback':
+        'Registra la routine di {name} per una lettura pediatrica.',
+    'homeYesterdayBabaRoutineQuiet':
+        'Pochi registri — routine prevedibili favoriscono la regolazione emotiva.',
+    'homeYesterdayBabaRoutine':
+        '{feeds} poppate · sonno {sleep} · {diapers} pannolini.',
+    'homeYesterdayBabaRoutineLowSleep':
+        '{feeds} poppate · sonno {sleep} (basso) · {diapers} pannolini.',
+    'homeYesterdayBabaGrowthBothWithin':
+        'Peso e statura sulla curva di riferimento.',
+    'homeYesterdayBabaGrowthNoData': 'Aggiorna peso/statura nella curva.',
+    'homeYesterdayBabaGrowthBelow':
+        'Antropometria sotto la curva — parlane con il pediatra.',
+    'homeYesterdayBabaGrowthAbove':
+        'Antropometria sopra la curva — verifica in visita.',
+    'homeYesterdayBabaGrowthCombo': 'Curva: peso {weight}, statura {height}.',
+    'homeYesterdayBabaBandWithin': 'adeguato',
+    'homeYesterdayBabaBandBelow': 'sotto',
+    'homeYesterdayBabaBandAbove': 'sopra',
+    'homeYesterdayBabaBandUnknown': '—',
     'homeGreetingSubtitle': 'Che bello vederti qui oggi!',
     'summaryWeightNotYet': 'Non ancora registrato',
     'summarySleepNotYet': 'Nessun sonno registrato oggi',
@@ -11453,7 +12969,6 @@ const Map<AppLang, Map<String, String>> _strings = {
     'sleepCancelSession': 'Annulla sonno',
     'sleepStartButton': 'INIZIA SONNO',
     'sleepSavedOk': 'Sonno salvato.',
-
     'sleepResultDialogTitle': 'Stato del sonno',
     'sleepResultShortTitle': 'Ha dormito meno del previsto',
     'sleepResultExpectedTitle': 'Sonno nella norma',

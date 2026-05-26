@@ -105,6 +105,7 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
         babyId: id,
         periodStart: _rangeStart,
         periodEndInclusive: _rangeEnd,
+        lang: AppI18nScope.of(context).lang,
       );
       if (mounted) {
         setState(() {
@@ -218,6 +219,7 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
       na: s.reportPediatricNa,
       footerDisclaimer: s.reportPediatricPdfFooter,
       noneRegistered: s.reportPediatricNone,
+      sectionGrowthInsights: s.reportPediatricGrowthInsights,
     );
   }
 
@@ -575,6 +577,31 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
                                 MeasurementFormat.length(snap.heightEndCm), s),
                             _row(s.reportPediatricHeightGain,
                                 _heightGainLabel(snap), s),
+                            if (snap.growthInsightLines.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                s.reportPediatricGrowthInsights,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: portalSp(context, 13),
+                                  color: _clinicalPurple,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              ...snap.growthInsightLines.map(
+                                (line) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 6),
+                                  child: Text(
+                                    '• $line',
+                                    style: TextStyle(
+                                      fontSize: portalSp(context, 13),
+                                      height: 1.35,
+                                      color: AppTheme.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                             _row(s.reportPediatricAvgFeeds,
                                 snap.avgFeedingsPerDay.toStringAsFixed(1), s),
                             _row(

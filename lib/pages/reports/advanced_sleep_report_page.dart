@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../utils/app_date_picker.dart';
 import '../../controllers/current_baby_controller.dart';
 import '../../i18n/app_i18n.dart';
 import '../../models/advanced_sleep_report_snapshot.dart';
@@ -83,7 +84,7 @@ class _AdvancedSleepReportPageState extends State<AdvancedSleepReportPage>
 
   Future<void> _pickWeekDay() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
+    final picked = await showAppDatePicker(
       context: context,
       initialDate: _anchor,
       firstDate: DateTime(now.year - 5),

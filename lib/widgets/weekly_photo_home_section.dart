@@ -19,6 +19,7 @@ import '../widgets/memories/cached_memory_photo.dart';
 import '../widgets/memories/memory_badge_icon.dart';
 import '../widgets/weekly_photo_crown_icon.dart';
 import '../widgets/weekly_photo_like_chip.dart';
+import '../widgets/weekly_photo_report_link.dart';
 
 const int _kHomeBannerAlpha = 142;
 const int _kHomeBannerBorderAlpha = 92;
@@ -39,11 +40,61 @@ class WeeklyPhotoHomeSection extends StatefulWidget {
 
 class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _streamSub;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _publicMemSub;
   Map<String, dynamic>? _streamData;
 
   Map<String, dynamic>? _httpData;
+  Map<String, dynamic>? _publicMemData;
+  String? _publicMemDocId;
   bool _httpFetchInFlight = false;
   Timer? _httpStartTimer;
+
+  void _ensurePublicMemoryOverlay(String publicMemoryId) {
+    final id = publicMemoryId.trim();
+    if (id.isEmpty) {
+      _publicMemSub?.cancel();
+      _publicMemSub = null;
+      _publicMemDocId = null;
+      if (_publicMemData != null && mounted) {
+        setState(() => _publicMemData = null);
+      }
+      return;
+    }
+    if (_publicMemDocId == id) return;
+    _publicMemSub?.cancel();
+    _publicMemDocId = id;
+    _publicMemSub = FirestoreService.instance.publicMemorySnapshots(id).listen(
+      (snap) {
+        if (!mounted) return;
+        setState(() => _publicMemData = snap.data());
+      },
+      onError: (Object e) {
+        debugPrint('WeeklyPhotoHomeSection: public memory overlay: $e');
+      },
+    );
+  }
+
+  void _bindPublicMemoryFromSpotlight(Map<String, dynamic>? data) {
+    final memId = (data?['winner_public_memory_id'] as String?)?.trim() ??
+        (data?['winnerPublicMemoryId'] as String?)?.trim() ??
+        '';
+    _ensurePublicMemoryOverlay(memId);
+  }
+
+  Map<String, dynamic> _spotlightWithPublicOverlay(Map<String, dynamic> d) {
+    final overlay = _publicMemData;
+    if (overlay == null) return d;
+    final merged = Map<String, dynamic>.from(d);
+    final name = (overlay['babyDisplayName'] as String?)?.trim();
+    if (name != null && name.isNotEmpty) {
+      merged['winner_baby_display_name'] = name;
+    }
+    final sex = (overlay['babySex'] as String?)?.trim().toUpperCase();
+    if (sex == 'M' || sex == 'F') {
+      merged['winner_baby_sex'] = sex;
+    }
+    return merged;
+  }
 
   void _startHttpSpotlightFetch() {
     if (_httpFetchInFlight) return;
@@ -53,7 +104,10 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
         if (!mounted) return;
         setState(() {
           _httpFetchInFlight = false;
-          if (data != null) _httpData = data;
+          if (data != null) {
+            _httpData = data;
+            _bindPublicMemoryFromSpotlight(data);
+          }
         });
       }).catchError((Object e, StackTrace st) {
         debugPrint('WeeklyPhotoHomeSection: HTTP spotlight failed: $e\n$st');
@@ -70,8 +124,10 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
           .weeklyPhotoSpotlightSnapshots()
           .listen((snap) {
         if (!mounted) return;
+        final payload = snap.data();
+        _bindPublicMemoryFromSpotlight(payload);
         setState(() {
-          _streamData = snap.data();
+          _streamData = payload;
         });
       }, onError: (Object e, StackTrace st) {
         debugPrint('WeeklyPhotoHomeSection: stream error: $e');
@@ -95,6 +151,7 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
   @override
   void dispose() {
     _streamSub?.cancel();
+    _publicMemSub?.cancel();
     _httpStartTimer?.cancel();
     super.dispose();
   }
@@ -199,7 +256,9 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
       return const SizedBox.shrink();
     }
 
-    final photoUrl = (d!['winner_photo_url'] as String?)?.trim() ??
+    d = _spotlightWithPublicOverlay(d!);
+
+    final photoUrl = (d['winner_photo_url'] as String?)?.trim() ??
         (d['winnerPhotoUrl'] as String?)?.trim();
     final badgeTitle = (d['winner_badge_title'] as String?)?.trim() ??
         (d['winnerBadgeTitle'] as String?)?.trim();
@@ -483,6 +542,14 @@ class _WeeklyPhotoHomeSectionState extends State<WeeklyPhotoHomeSection> {
                 color: AppTheme.textMuted,
                 height: 1.35),
           ),
+          if (publicMemoryId.isNotEmpty && !isWinnerMom) ...[
+            const SizedBox(height: 6),
+            WeeklyPhotoReportLink(
+              publicMemoryId: publicMemoryId,
+              photoUrl: photoUrl,
+              targetUserId: winnerUserId,
+            ),
+          ],
         ],
       ),
     );

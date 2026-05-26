@@ -12,7 +12,9 @@ import '../models/baby.dart';
 import '../pages/home_page.dart';
 import '../pages/quick_register_page.dart';
 import '../pages/settings_page.dart';
+import '../pages/ai/ai_nanny_screen.dart';
 import '../pages/memories/memories_page.dart' as new_memories;
+import '../widgets/shell_bottom_navigation.dart';
 import '../services/mock_baby_service.dart';
 import '../utils/pick_image_b64.dart';
 import '../utils/portal_page_route.dart';
@@ -22,15 +24,17 @@ import '../services/home_prefs.dart';
 import '../services/portal_layout_prefs.dart';
 import '../services/local_notifications_service.dart';
 import '../services/reminder_monitor.dart';
+import '../services/update_service.dart';
+import '../widgets/app_update_banner.dart';
 import '../services/scheduled_local_reminders.dart';
 import '../services/firebase/profile_cloud_sync.dart';
 import '../services/measurement_units_prefs.dart';
 import '../theme/app_theme.dart';
-import '../widgets/ai_button.dart';
 import '../widgets/ai_overlay.dart';
 import '../widgets/loading_scope.dart';
 import '../widgets/loading_navigator_observer.dart';
 import '../widgets/weekly_photo_winner_congrats_host.dart';
+import '../widgets/floating_message_host.dart';
 import 'shell_nested_nav.dart';
 
 class MainShell extends StatefulWidget {
@@ -87,6 +91,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     PortalLayoutPrefs.instance.addListener(_onPortalLayoutPrefsChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       LocalNotificationsService.instance.requestPermissionOnceOnFirstLaunch();
+      unawaited(UpdateService.instance.checkForUpdateIfNeeded());
     });
     unawaited(_bootstrapRemindersPipeline());
     _aiMicListener = () {
@@ -97,7 +102,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     HomePrefs.aiMicEnabled.addListener(_aiMicListener);
     ShellNestedNav.selectTab = _goToTab;
     _tabRouteObservers = List<_ShellTabRouteObserver>.generate(
-      4,
+      5,
       (i) => _ShellTabRouteObserver(
         tabIndex: i,
         onDepthChanged: _onTabRouteDepthChanged,
@@ -122,7 +127,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     if (id != null &&
         _lastBabyIdForNavCleanup != null &&
         id != _lastBabyIdForNavCleanup) {
-      for (var i = 0; i < 4; i++) {
+      for (var i = 0; i < 5; i++) {
         _popTabToRoot(i);
       }
     }
@@ -149,6 +154,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       unawaited(currentBaby.refresh());
       // Reagenda lembretes locais (não depender só da Home puxada para refresh).
       ReminderMonitor.instance.onAppResumed();
+      unawaited(UpdateService.instance.checkForUpdateIfNeeded());
     }
   }
 
@@ -182,7 +188,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   void _goToTab(int index) {
     if (!mounted) return;
     setState(() {
-      selectedIndex = index.clamp(0, 3);
+      selectedIndex = index.clamp(0, 4);
     });
   }
 
@@ -257,7 +263,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           return;
         }
         setState(() => selectedIndex = 0);
-        for (var i = 0; i < 4; i++) {
+        for (var i = 0; i < 5; i++) {
           _popTabToRoot(i);
         }
         return;
@@ -389,6 +395,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
               },
             ),
             const QuickRegisterPage(),
+            const AiNannyScreen(),
             const new_memories.MemoriesPage(),
             const SettingsPage(),
           ];
@@ -441,81 +448,48 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                               tabNavigator(1),
                               tabNavigator(2),
                               tabNavigator(3),
+                              tabNavigator(4),
                             ],
                           ),
                         ),
                       ),
                     ),
-                    bottomNavigationBar: SafeArea(
-                      top: false,
-                      child: ValueListenableBuilder<int>(
-                        valueListenable: _homeRouteDepth,
-                        builder: (context, homeRouteDepth, _) {
-                          final hideHomeActiveState =
-                              selectedIndex == 0 && homeRouteDepth > 0;
-                          return Theme(
-                            data: Theme.of(context).copyWith(
-                              navigationBarTheme: Theme.of(context)
-                                  .navigationBarTheme
-                                  .copyWith(
-                                    backgroundColor:
-                                        AppTheme.navigationBarSurfaceForTint(
-                                            bg),
-                                    indicatorColor: hideHomeActiveState
-                                        ? Colors.transparent
-                                        : null,
-                                  ),
-                            ),
-                            child: NavigationBar(
-                              selectedIndex: selectedIndex,
-                              onDestinationSelected: _onDestinationSelected,
-                              destinations: [
-                                NavigationDestination(
-                                    icon: const Icon(Icons.home_outlined),
-                                    selectedIcon: Icon(hideHomeActiveState
-                                        ? Icons.home_outlined
-                                        : Icons.home),
-                                    label: s.home),
-                                NavigationDestination(
-                                  icon: const Icon(Icons.edit_note_outlined),
-                                  selectedIcon: const Icon(Icons.edit_note),
-                                  label: s.records,
-                                ),
-                                NavigationDestination(
-                                    icon: const Icon(Icons.favorite_border),
-                                    selectedIcon: const Icon(Icons.favorite),
-                                    label: s.memories),
-                                NavigationDestination(
-                                    icon: const Icon(Icons.menu),
-                                    label: s.more),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
+                    bottomNavigationBar: ValueListenableBuilder<int>(
+                      valueListenable: _homeRouteDepth,
+                      builder: (context, homeRouteDepth, _) {
+                        final hideHomeActiveState =
+                            selectedIndex == 0 && homeRouteDepth > 0;
+                        return ShellBottomNavigation(
+                          selectedIndex: selectedIndex,
+                          onSelected: _onDestinationSelected,
+                          hideHomeActiveState: hideHomeActiveState,
+                          navBarBackground:
+                              AppTheme.navigationBarSurfaceForTint(bg),
+                        );
+                      },
                     ),
                   ),
                 ),
-                if (HomePrefs.aiMicEnabled.value)
-                  Positioned.fill(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        bottom: MediaQuery.of(context).padding.bottom + 72,
-                      ),
-                      child: Align(
-                        alignment: Alignment.bottomCenter,
-                        child: AiButton(
-                            state: aiController.state,
-                            onTap: aiController.toggle),
-                      ),
-                    ),
-                  ),
                 if (aiController.isActive)
                   AiOverlay(
                     state: aiController.state,
                     onClose: aiController.close,
                   ),
                 const WeeklyPhotoWinnerCongratsHost(),
+                Positioned.fill(
+                  child: FloatingMessageHost(
+                    babyId: currentBaby.currentBabyId,
+                  ),
+                ),
+                const Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: SafeArea(
+                    bottom: false,
+                    child: AppUpdateBanner(),
+                  ),
+                ),
               ],
             ),
           );

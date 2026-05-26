@@ -51,6 +51,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Precisamos da câmera para tirar a foto da mamãe, do bebê e das memórias.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Precisamos do microfone para registrar rotina do bebê por voz na IA Babá.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Precisamos acessar suas fotos para escolher uma imagem da galeria.</string>
 	<key>UILaunchStoryboardName</key>

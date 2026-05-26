@@ -1,6 +1,8 @@
 import 'dart:async' show Timer, unawaited;
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+
+import '../utils/app_date_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../controllers/current_baby_controller.dart';
 import '../controllers/sleep_timer_controller.dart';
@@ -52,6 +54,8 @@ const int _kHomeBannerDiaperOverdueMin = 210;
 const Color _kHomeText = AppTheme.textPrimary;
 const int _kHomeBannerAlpha = 142;
 const int _kHomeBannerBorderAlpha = 92;
+/// Fundo do header (logo) — branco levemente transparente para o céu do portal.
+const int _kPortalHeaderFillAlpha = 200;
 
 Color _homeTextSoft(int alpha) => AppTheme.textSecondary.withAlpha(alpha);
 
@@ -175,8 +179,14 @@ class _HomePageState extends State<HomePage> {
   /// Próxima consulta futura (para o banner do cartão do bebê).
   ConsultationRecord? _bannerNextConsultation;
 
-  /// Dica do dia fechada (prefs): ajusta espaçamento e remove coluna vazia no layout largo.
+  /// Cartões da saudação fechados (prefs): ajusta espaçamento no layout largo.
   bool _homeDailyTipDismissedForLayout = false;
+
+  bool get _homeGreetingBannersCompact =>
+      _consultationForBanner == null && _homeDailyTipDismissedForLayout;
+
+  bool get _homeGreetingRightSlotVisible =>
+      _consultationForBanner != null || !_homeDailyTipDismissedForLayout;
 
   void _onHomeDailyTipLayoutDismissChanged(bool dismissed) {
     if (!mounted) return;
@@ -475,7 +485,7 @@ class _HomePageState extends State<HomePage> {
     if (first.isAfter(today)) first = oldest;
     if (first.isBefore(oldest)) first = oldest;
 
-    final picked = await showDatePicker(
+    final picked = await showAppDatePicker(
       context: context,
       initialDate: _selectedDay.isAfter(today) ? today : _selectedDay,
       firstDate: first,
@@ -625,7 +635,7 @@ class _HomePageState extends State<HomePage> {
                       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
                       decoration: BoxDecoration(
                         color: Color.lerp(
-                          Colors.white,
+                          Colors.white.withAlpha(_kPortalHeaderFillAlpha),
                           liveBaby.sex == 'M'
                               ? AppTheme.babyBlue
                               : AppTheme.primaryPurple,
@@ -724,10 +734,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     SizedBox(
-                      height: (_consultationForBanner == null &&
-                              _homeDailyTipDismissedForLayout)
-                          ? 10
-                          : 14,
+                      height: _homeGreetingBannersCompact ? 10 : 14,
                     ),
                     LayoutBuilder(
                       builder: (context, greetC) {
@@ -807,12 +814,9 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ],
                         );
-                        final greetTipGap = (consultAlert == null &&
-                                _homeDailyTipDismissedForLayout)
-                            ? 2.0
-                            : 6.0;
-                        final showWideRightSlot = consultAlert != null ||
-                            !_homeDailyTipDismissedForLayout;
+                        final greetTipGap =
+                            _homeGreetingBannersCompact ? 2.0 : 6.0;
+                        final showWideRightSlot = _homeGreetingRightSlotVisible;
                         if (narrow) {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -856,10 +860,7 @@ class _HomePageState extends State<HomePage> {
                       },
                     ),
                     SizedBox(
-                      height: (_consultationForBanner == null &&
-                              _homeDailyTipDismissedForLayout)
-                          ? 6
-                          : 10,
+                      height: _homeGreetingBannersCompact ? 6 : 10,
                     ),
                     _PrimaryBabyCard(
                       baby: liveBaby,
@@ -3221,16 +3222,22 @@ class _TodaySummaryCard extends StatelessWidget {
   }
 }
 
-/// Cartão "Dica do dia" ao lado da saudação (layout referência Home).
+/// Cartão compacto ao lado da saudação (dica do dia, resumo IA Babá, etc.).
 class _HomeDailyTipCard extends StatelessWidget {
   final String title;
   final String text;
   final VoidCallback? onDismiss;
+  final IconData leadingIcon;
+  final Color leadingIconColor;
+  final Color leadingBackgroundColor;
 
   const _HomeDailyTipCard({
     required this.title,
     required this.text,
     this.onDismiss,
+    this.leadingIcon = Icons.star_rounded,
+    this.leadingIconColor = const Color(0xFFFFB020),
+    this.leadingBackgroundColor = const Color(0xFFFFF2C2),
   });
 
   @override
@@ -3262,12 +3269,13 @@ class _HomeDailyTipCard extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF2C2),
+                  color: leadingBackgroundColor,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.yellow.withAlpha(120)),
+                  border: Border.all(
+                    color: leadingIconColor.withAlpha(120),
+                  ),
                 ),
-                child: const Icon(Icons.star_rounded,
-                    color: Color(0xFFFFB020), size: 22),
+                child: Icon(leadingIcon, color: leadingIconColor, size: 22),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -3286,11 +3294,13 @@ class _HomeDailyTipCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       text,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: _homeTextSoft(215),
                         fontWeight: FontWeight.w600,
-                        height: 1.3,
-                        fontSize: portalSp(context, 11.5),
+                        height: 1.25,
+                        fontSize: portalSp(context, 10.5),
                       ),
                     ),
                   ],

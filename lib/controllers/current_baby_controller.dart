@@ -29,6 +29,12 @@ class CurrentBabyController extends ChangeNotifier {
   int _staleFallbackRecoveries = 0;
 
   int? get currentBabyId => _currentBabyId;
+  /// Firestore `users/{uid}/babies/{id}` — usado por Cloud Functions de IA.
+  String? get currentBabyCloudId {
+    final id = (_currentBabyRow?['cloud_id'] as String?)?.trim();
+    return (id == null || id.isEmpty) ? null : id;
+  }
+
   List<Map<String, Object?>> get babies => _babies;
   Map<String, Object?>? get currentBabyRow => _currentBabyRow;
   Map<String, Object?>? get currentMotherRow => _currentMotherRow;

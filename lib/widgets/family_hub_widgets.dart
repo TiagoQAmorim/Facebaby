@@ -305,7 +305,9 @@ class FamilyHubBabyHeroCard extends StatelessWidget {
         final hasHeightEstimate =
             heightEstimateTitle != null && heightEstimateBody != null;
         final cardHeight = hasHeightEstimate
-            ? (compact ? 268.0 : 288.0)
+            ? (heightEstimateLocked
+                ? (compact ? 322.0 : 342.0)
+                : (compact ? 268.0 : 288.0))
             : (compact ? 165.0 : 180.0);
         final avatarSize =
             showZodiac ? (compact ? 76.0 : 82.0) : (compact ? 88.0 : 96.0);
@@ -518,12 +520,18 @@ class FamilyHubBabyHeroCard extends StatelessWidget {
                     if (hasHeightEstimate) ...[
                       const SizedBox(height: 10),
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
+                        crossAxisAlignment: heightEstimateLocked
+                            ? CrossAxisAlignment.start
+                            : CrossAxisAlignment.center,
                         children: [
                           if (heightEstimateAsset != null)
                             SizedBox(
-                              width: compact ? 100 : 118,
-                              height: compact ? 118 : 138,
+                              width: heightEstimateLocked
+                                  ? (compact ? 88 : 104)
+                                  : (compact ? 100 : 118),
+                              height: heightEstimateLocked
+                                  ? (compact ? 100 : 120)
+                                  : (compact ? 118 : 138),
                               child: Image.asset(
                                 heightEstimateAsset!,
                                 fit: BoxFit.contain,
@@ -542,7 +550,9 @@ class FamilyHubBabyHeroCard extends StatelessWidget {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Transform.translate(
-                              offset: Offset(0, compact ? 10 : 12),
+                              offset: heightEstimateLocked
+                                  ? Offset.zero
+                                  : Offset(0, compact ? 10 : 12),
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -795,8 +805,14 @@ class FamilyHubContentCards extends StatelessWidget {
     required this.bibleTitle,
     required this.bibleBody,
     this.bibleReference,
+    this.spiritistTitle,
+    this.spiritistBody,
+    this.jewishTitle,
+    this.jewishBody,
     required this.showHoroscope,
     required this.showChristian,
+    this.showSpiritist = false,
+    this.showJewish = false,
     required this.contentUnlocked,
     this.accent = _kHubPink,
     this.signId,
@@ -809,8 +825,14 @@ class FamilyHubContentCards extends StatelessWidget {
   final String bibleTitle;
   final String bibleBody;
   final String? bibleReference;
+  final String? spiritistTitle;
+  final String? spiritistBody;
+  final String? jewishTitle;
+  final String? jewishBody;
   final bool showHoroscope;
   final bool showChristian;
+  final bool showSpiritist;
+  final bool showJewish;
   final bool contentUnlocked;
   final Color accent;
   final ZodiacId? signId;
@@ -818,7 +840,12 @@ class FamilyHubContentCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!showHoroscope && !showChristian) return const SizedBox.shrink();
+    if (!showHoroscope &&
+        !showChristian &&
+        !showSpiritist &&
+        !showJewish) {
+      return const SizedBox.shrink();
+    }
 
     final reference = _cleanReference(bibleReference);
     final verse = _cleanVerseBody(bibleBody, reference);
@@ -929,7 +956,6 @@ class FamilyHubContentCards extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, c) {
-        final wide = c.maxWidth >= 430 && showHoroscope && showChristian;
         final cards = <Widget>[
           if (showChristian)
             emotionalCard(
@@ -940,6 +966,26 @@ class FamilyHubContentCards extends StatelessWidget {
               body: contentUnlocked ? verse : s.familyPremiumFeatureLockedBody,
               reference: contentUnlocked ? reference : null,
               locked: !contentUnlocked,
+            ),
+          if (showSpiritist)
+            emotionalCard(
+              icon: Icons.spa_rounded,
+              accent: const Color(0xFF5BAED4),
+              assetIcon: familySpiritistIconAsset,
+              title: spiritistTitle ?? s.familySpiritistCardTitle,
+              body: (spiritistBody ?? '').trim().isEmpty
+                  ? s.familyEntertainmentNote
+                  : spiritistBody!.trim(),
+            ),
+          if (showJewish)
+            emotionalCard(
+              icon: Icons.star_rounded,
+              accent: const Color(0xFFD4A017),
+              assetIcon: familyJewishIconAsset,
+              title: jewishTitle ?? s.familyJewishCardTitle,
+              body: (jewishBody ?? '').trim().isEmpty
+                  ? s.familyEntertainmentNote
+                  : jewishBody!.trim(),
             ),
           if (showHoroscope)
             emotionalCard(
@@ -953,6 +999,7 @@ class FamilyHubContentCards extends StatelessWidget {
             ),
         ];
 
+        final wide = c.maxWidth >= 430 && cards.length == 2;
         if (wide) {
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1274,12 +1321,17 @@ class FamilyHubPremiumBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PremiumLockedContentCard(
-      title: s.familyPremiumBannerTitle,
-      subtitle: s.familyPremiumBannerBody,
-      ctaLabel: s.familyPremiumViewPlans,
-      onTap: onPremiumTap,
-      accent: AppTheme.primaryPurple,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: PremiumLockedContentCard(
+        title: s.familyPremiumBannerTitle,
+        subtitle: s.familyPremiumBannerBody,
+        ctaLabel: s.familyPremiumViewPlans,
+        onTap: onPremiumTap,
+        accent: AppTheme.primaryPurple,
+        tagline: s.plusReportsPremiumTagline,
+        wrapContent: true,
+      ),
     );
   }
 }

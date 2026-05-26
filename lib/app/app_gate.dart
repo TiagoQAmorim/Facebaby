@@ -9,9 +9,11 @@ import '../services/firebase/auth_service.dart';
 import '../services/firebase/cloud_load_status.dart';
 import '../services/firebase/firestore_user_repository.dart';
 import '../pages/auth/onboarding_page.dart';
+import '../pages/auth/suspended_account_page.dart';
 import 'main_shell.dart';
 import '../widgets/face_baby_loading.dart';
 import '../widgets/loading_scope.dart';
+import '../services/auth_local_scope.dart';
 import '../services/app_database.dart';
 import '../services/firebase/profile_cloud_sync.dart';
 import '../services/onboarding_draft_store.dart';
@@ -85,6 +87,7 @@ class _AppGateState extends State<AppGate> with WidgetsBindingObserver {
   }
 
   Future<CloudLoadResult> _loadGateWithPendingOnboarding() async {
+    await AuthLocalScope.resetLocalIfAuthUserChanged();
     final initial = await FirestoreUserRepository.instance.loadGate();
     if (initial.status == CloudLoadStatus.loaded) return initial;
     if (initial.status != CloudLoadStatus.newUser &&
@@ -151,8 +154,8 @@ class _AppGateState extends State<AppGate> with WidgetsBindingObserver {
         // Segurança: AuthGate deve segurar, mas mantemos o estado.
         if (FirebaseAuth.instance.currentUser == null ||
             r.status == CloudLoadStatus.unauthenticated) {
-          return const Scaffold(
-              body: Center(child: FaceBabySpinner(size: 36, strokeWidth: 3.5)));
+          // AuthGate troca para OnboardingPage; evita spinner/preto por cima.
+          return const SizedBox.shrink();
         }
 
         if (r.status == CloudLoadStatus.permissionDenied ||
@@ -203,7 +206,8 @@ class _AppGateState extends State<AppGate> with WidgetsBindingObserver {
                     const SizedBox(height: 10),
                     OutlinedButton(
                       onPressed: () async {
-                        await AuthService.instance.signOut();
+                        await AuthService.instance.signOut(
+                            trustAuthNullImmediately: true);
                       },
                       child: const Text('Sair da conta'),
                     ),
@@ -212,6 +216,10 @@ class _AppGateState extends State<AppGate> with WidgetsBindingObserver {
               ),
             ),
           );
+        }
+
+        if (r.status == CloudLoadStatus.suspended) {
+          return const SuspendedAccountPage();
         }
 
         if (r.status == CloudLoadStatus.newUser) {

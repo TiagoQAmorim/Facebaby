@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../utils/app_date_picker.dart';
 import '../controllers/current_baby_controller.dart';
 import '../controllers/sleep_timer_controller.dart';
 import '../i18n/app_i18n.dart';
@@ -444,7 +445,7 @@ class _SleepPageState extends State<SleepPage> {
                       '${started.hour.toString().padLeft(2, '0')}:${started.minute.toString().padLeft(2, '0')}',
                     ),
                     onTap: () async {
-                      final d = await showDatePicker(
+                      final d = await showAppDatePicker(
                         context: ctx,
                         initialDate: started,
                         firstDate: DateTime(started.year - 3),
@@ -474,7 +475,7 @@ class _SleepPageState extends State<SleepPage> {
                       '${ended.hour.toString().padLeft(2, '0')}:${ended.minute.toString().padLeft(2, '0')}',
                     ),
                     onTap: () async {
-                      final d = await showDatePicker(
+                      final d = await showAppDatePicker(
                         context: ctx,
                         initialDate: ended,
                         firstDate:

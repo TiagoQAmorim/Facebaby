@@ -28,6 +28,7 @@ class PediatricReportSnapshot {
     required this.vaccinesInPeriodLines,
     required this.customMedicationHints,
     required this.symptomOccurrencesByKind,
+    this.growthInsightLines = const [],
   });
 
   /// Primeiro dia do período (data civil, início do dia).
@@ -81,4 +82,7 @@ class PediatricReportSnapshot {
 
   /// Chaves: `reflux`, `colic`, `crying`, `pain`, `fever`, `medication`, `other`.
   final Map<String, List<PediatricSymptomOccurrence>> symptomOccurrencesByKind;
+
+  /// Mensagens informativas da curva de crescimento (não diagnóstico).
+  final List<String> growthInsightLines;
 }

@@ -258,7 +258,10 @@ class FirestoreService {
   }
 
   Future<List<Map<String, dynamic>>> listMemoriesByBadge(String babyId) async {
-    return _listEventsForBaby(babyId, 'memory_badge');
+    final rows = await _listEventsForBaby(babyId, 'memory_badge');
+    return rows
+        .where((r) => r['deleted'] != true && r['deleted'] != 1)
+        .toList(growable: false);
   }
 
   Future<String> createFeeding({
