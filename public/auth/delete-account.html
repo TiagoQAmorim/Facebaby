@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Como apagar a sua conta FaceBaby e todos os dados associados." />
+  <title>FaceBaby — Apagar conta</title>
+  <style>
+    :root {
+      --bg: #f7f8fc;
+      --card: #ffffff;
+      --text: #1f1f2e;
+      --muted: #74717f;
+      --accent: #5b6b8c;
+      --accent-hover: #4a5875;
+      --danger: #c62828;
+      --danger-bg: #ffebee;
+      --ok: #2e7d4e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(165deg, #fff8f0 0%, var(--bg) 45%, #e8f4ff 100%);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+    .card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--card);
+      border-radius: 24px;
+      padding: 32px 28px 28px;
+      box-shadow: 0 12px 40px rgba(31, 31, 46, 0.08);
+      border: 1px solid rgba(31, 31, 46, 0.06);
+    }
+    .logo {
+      width: 96px;
+      height: auto;
+      margin: 0 auto 16px;
+      display: block;
+    }
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 800;
+      margin: 0 0 8px;
+      color: #163b68;
+      text-align: center;
+    }
+    p.lead {
+      margin: 0 0 20px;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: var(--muted);
+      text-align: center;
+    }
+    .notice {
+      background: var(--danger-bg);
+      color: var(--danger);
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+    h2 {
+      font-size: 0.95rem;
+      font-weight: 800;
+      margin: 0 0 10px;
+      color: var(--text);
+    }
+    ol.steps {
+      margin: 0 0 20px;
+      padding-left: 1.25rem;
+      font-size: 0.92rem;
+      line-height: 1.55;
+      color: var(--text);
+    }
+    ol.steps li { margin-bottom: 8px; }
+    ul.data {
+      margin: 0 0 20px;
+      padding-left: 1.25rem;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+    ul.data li { margin-bottom: 6px; }
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    a.btn {
+      display: block;
+      text-align: center;
+      padding: 14px 16px;
+      border-radius: 14px;
+      font-size: 0.95rem;
+      font-weight: 800;
+      text-decoration: none;
+      background: var(--accent);
+      color: #fff;
+    }
+    a.btn:hover { background: var(--accent-hover); }
+    a.btn.secondary {
+      background: transparent;
+      color: var(--accent);
+      border: 2px solid var(--accent);
+    }
+    a.btn.secondary:hover { background: rgba(91, 107, 140, 0.08); }
+    .footer {
+      margin-top: 22px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.4;
+    }
+    .lang-switch {
+      text-align: center;
+      margin-top: 16px;
+      font-size: 0.8rem;
+    }
+    .lang-switch a {
+      color: var(--accent);
+      font-weight: 700;
+      text-decoration: none;
+      margin: 0 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <img class="logo" src="/brand/logo.png" alt="FaceBaby" width="96" height="96" />
+    <h1 id="title">Apagar conta FaceBaby</h1>
+    <p class="lead" id="subtitle">
+      A exclusão da conta é feita na aplicação móvel, com confirmação explícita. Esta página explica o processo exigido pelas lojas de apps.
+    </p>
+
+    <div class="notice" id="notice">
+      Esta ação apaga a sua conta e todos os dados na nuvem (perfil da mãe, bebés, registos e memórias). Não pode ser desfeita.
+    </div>
+
+    <h2 id="stepsTitle">Como apagar a conta</h2>
+    <ol class="steps" id="steps"></ol>
+
+    <h2 id="dataTitle">O que é eliminado</h2>
+    <ul class="data" id="dataList"></ul>
+
+    <div class="actions">
+      <a class="btn" id="playLink" href="https://play.google.com/store/apps/details?id=com.facebaby.app">Abrir na Google Play</a>
+      <a class="btn secondary" id="appleLink" href="https://apps.apple.com/search?term=FaceBaby">Procurar na App Store</a>
+    </div>
+
+    <p class="footer" id="footer">
+      FaceBaby — cuidando do seu ninho com carinho<br />
+      Precisa de ajuda? Use «Contato» em Mais, dentro da app.
+    </p>
+
+    <p class="lang-switch" id="langSwitch"></p>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const lang = (params.get('lang') || navigator.language || 'pt').toLowerCase();
+
+    const copy = {
+      pt: {
+        title: 'Apagar conta FaceBaby',
+        subtitle:
+          'A exclusão da conta é feita na aplicação móvel, com confirmação explícita. Esta página explica o processo exigido pelas lojas de apps.',
+        notice:
+          'Esta ação apaga a sua conta e todos os dados na nuvem (perfil da mãe, bebés, registos e memórias). Não pode ser desfeita.',
+        stepsTitle: 'Como apagar a conta',
+        steps: [
+          'Instale ou abra o app FaceBaby e inicie sessão na conta que deseja apagar.',
+          'Vá ao separador «Mais» (menu inferior).',
+          'Abra «Definições» / «Ajustes».',
+          'Toque em «Deletar conta» (no final da lista).',
+          'Leia o aviso, confirme «Apagar tudo» e digite a palavra delete no campo de confirmação.',
+          'Se for pedido, confirme a identidade (palavra-passe ou Google, conforme o seu método de login).',
+          'Aguarde a conclusão. Será desligado e os dados locais serão limpos.',
+        ],
+        dataTitle: 'O que é eliminado',
+        data: [
+          'Conta de autenticação (e-mail / Google / Apple)',
+          'Perfil da mãe e bebés associados',
+          'Registos (alimentação, sono, fraldas, crescimento, etc.)',
+          'Memórias e fotos sincronizadas na nuvem',
+          'Ficheiros no armazenamento cloud ligados à sua conta',
+        ],
+        play: 'Abrir na Google Play',
+        apple: 'Procurar na App Store',
+        footer:
+          'FaceBaby — cuidando do seu ninho com carinho<br />Precisa de ajuda? Use «Contato» em Mais, dentro da app.',
+        langs: {
+          pt: 'Português',
+          en: 'English',
+          es: 'Español',
+          de: 'Deutsch',
+          fr: 'Français',
+          it: 'Italiano',
+        },
+      },
+      en: {
+        title: 'Delete FaceBaby account',
+        subtitle:
+          'Account deletion is completed inside the mobile app with explicit confirmation. This page describes the process required by app stores.',
+        notice:
+          'This permanently deletes your account and all cloud data (mother profile, babies, logs, and memories). It cannot be undone.',
+        stepsTitle: 'How to delete your account',
+        steps: [
+          'Install or open the FaceBaby app and sign in to the account you want to delete.',
+          'Go to the «More» tab (bottom navigation).',
+          'Open «Settings».',
+          'Tap «Delete account» (at the bottom of the list).',
+          'Read the warning, confirm «Delete everything», and type the word delete in the confirmation field.',
+          'If prompted, verify your identity (password or Google, depending on how you sign in).',
+          'Wait for completion. You will be signed out and local data will be cleared.',
+        ],
+        dataTitle: 'What is deleted',
+        data: [
+          'Authentication account (email / Google / Apple)',
+          'Mother profile and linked babies',
+          'Logs (feeding, sleep, diapers, growth, etc.)',
+          'Memories and photos synced to the cloud',
+          'Cloud storage files tied to your account',
+        ],
+        play: 'Open on Google Play',
+        apple: 'Search on App Store',
+        footer:
+          'FaceBaby — caring for your nest with love<br />Need help? Use «Contact» under More in the app.',
+        langs: {
+          pt: 'Português',
+          en: 'English',
+          es: 'Español',
+          de: 'Deutsch',
+          fr: 'Français',
+          it: 'Italiano',
+        },
+      },
+      es: {
+        title: 'Eliminar cuenta FaceBaby',
+        subtitle:
+          'La eliminación de la cuenta se realiza en la app móvil con confirmación explícita. Esta página describe el proceso exigido por las tiendas.',
+        notice:
+          'Esta acción elimina su cuenta y todos los datos en la nube (perfil de la madre, bebés, registros y recuerdos). No se puede deshacer.',
+        stepsTitle: 'Cómo eliminar la cuenta',
+        steps: [
+          'Instale o abra la app FaceBaby e inicie sesión en la cuenta que desea eliminar.',
+          'Vaya a la pestaña «Más» (menú inferior).',
+          'Abra «Ajustes» / «Configuración».',
+          'Toque «Eliminar cuenta» (al final de la lista).',
+          'Lea el aviso, confirme «Eliminar todo» y escriba la palabra delete en el campo de confirmación.',
+          'Si se solicita, verifique su identidad (contraseña o Google, según su método de acceso).',
+          'Espere a que termine. Se cerrará la sesión y se borrarán los datos locales.',
+        ],
+        dataTitle: 'Qué se elimina',
+        data: [
+          'Cuenta de autenticación (correo / Google / Apple)',
+          'Perfil de la madre y bebés vinculados',
+          'Registros (alimentación, sueño, pañales, crecimiento, etc.)',
+          'Recuerdos y fotos sincronizados en la nube',
+          'Archivos en almacenamiento cloud vinculados a su cuenta',
+        ],
+        play: 'Abrir en Google Play',
+        apple: 'Buscar en App Store',
+        footer:
+          'FaceBaby — cuidando de su nido con cariño<br />¿Necesita ayuda? Use «Contacto» en Más, dentro de la app.',
+        langs: {
+          pt: 'Português',
+          en: 'English',
+          es: 'Español',
+          de: 'Deutsch',
+          fr: 'Français',
+          it: 'Italiano',
+        },
+      },
+      de: {
+        title: 'FaceBaby-Konto löschen',
+        subtitle:
+          'Die Kontolöschung erfolgt in der mobilen App mit ausdrücklicher Bestätigung. Diese Seite beschreibt den von den App-Stores geforderten Ablauf.',
+        notice:
+          'Dies löscht Ihr Konto und alle Cloud-Daten (Mama-Profil, Babys, Einträge und Erinnerungen) dauerhaft. Dies kann nicht rückgängig gemacht werden.',
+        stepsTitle: 'So löschen Sie Ihr Konto',
+        steps: [
+          'Installieren oder öffnen Sie die FaceBaby-App und melden Sie sich mit dem zu löschenden Konto an.',
+          'Wechseln Sie zum Tab «Mehr» (untere Navigation).',
+          'Scrollen Sie nach unten und tippen Sie auf «Konto löschen».',
+          'Lesen Sie den Hinweis, bestätigen Sie «Alles löschen» und geben Sie im Bestätigungsfeld das Wort delete ein.',
+          'Bestätigen Sie bei Aufforderung Ihre Identität (Passwort oder Google, je nach Anmeldemethode).',
+          'Warten Sie, bis der Vorgang abgeschlossen ist. Sie werden abgemeldet und lokale Daten werden gelöscht.',
+        ],
+        dataTitle: 'Was wird gelöscht',
+        data: [
+          'Authentifizierungskonto (E-Mail / Google / Apple)',
+          'Mama-Profil und verknüpfte Babys',
+          'Einträge (Stillen, Schlaf, Windeln, Wachstum usw.)',
+          'In der Cloud synchronisierte Erinnerungen und Fotos',
+          'Mit Ihrem Konto verknüpfte Cloud-Speicherdateien',
+        ],
+        play: 'Bei Google Play öffnen',
+        apple: 'Im App Store suchen',
+        footer:
+          'FaceBaby — mit Liebe für Ihr Nest<br />Hilfe nötig? Nutzen Sie «Kontakt» unter Mehr in der App.',
+        langs: {
+          pt: 'Português',
+          en: 'English',
+          es: 'Español',
+          de: 'Deutsch',
+          fr: 'Français',
+          it: 'Italiano',
+        },
+      },
+      fr: {
+        title: 'Supprimer le compte FaceBaby',
+        subtitle:
+          'La suppression du compte se fait dans l’application mobile avec confirmation explicite. Cette page décrit la procédure exigée par les stores.',
+        notice:
+          'Cette action supprime votre compte et toutes les données cloud (profil maman, bébés, registres et souvenirs). Elle est irréversible.',
+        stepsTitle: 'Comment supprimer votre compte',
+        steps: [
+          'Installez ou ouvrez l’app FaceBaby et connectez-vous au compte à supprimer.',
+          'Allez à l’onglet « Plus » (navigation du bas).',
+          'Faites défiler et touchez « Supprimer le compte ».',
+          'Lisez l’avertissement, confirmez « Tout supprimer » et saisissez le mot delete dans le champ de confirmation.',
+          'Si demandé, confirmez votre identité (mot de passe ou Google, selon votre mode de connexion).',
+          'Attendez la fin. Vous serez déconnecté et les données locales seront effacées.',
+        ],
+        dataTitle: 'Ce qui est supprimé',
+        data: [
+          'Compte d’authentification (e-mail / Google / Apple)',
+          'Profil maman et bébés associés',
+          'Registres (allaitement, sommeil, couches, croissance, etc.)',
+          'Souvenirs et photos synchronisés dans le cloud',
+          'Fichiers de stockage cloud liés à votre compte',
+        ],
+        play: 'Ouvrir sur Google Play',
+        apple: 'Rechercher sur l’App Store',
+        footer:
+          'FaceBaby — prendre soin de votre nid avec tendresse<br />Besoin d’aide ? Utilisez « Contact » dans Plus, dans l’app.',
+        langs: {
+          pt: 'Português',
+          en: 'English',
+          es: 'Español',
+          de: 'Deutsch',
+          fr: 'Français',
+          it: 'Italiano',
+        },
+      },
+      it: {
+        title: 'Elimina account FaceBaby',
+        subtitle:
+          'L’eliminazione dell’account avviene nell’app mobile con conferma esplicita. Questa pagina descrive il processo richiesto dagli store.',
+        notice:
+          'Questa azione elimina il tuo account e tutti i dati nel cloud (profilo mamma, bimbi, registri e ricordi). Non può essere annullata.',
+        stepsTitle: 'Come eliminare l’account',
+        steps: [
+          'Installa o apri l’app FaceBaby e accedi all’account che vuoi eliminare.',
+          'Vai alla scheda «Altro» (menu in basso).',
+          'Scorri in basso e tocca «Elimina account».',
+          'Leggi l’avviso, conferma «Elimina tutto» e digita la parola delete nel campo di conferma.',
+          'Se richiesto, verifica la tua identità (password o Google, in base al metodo di accesso).',
+          'Attendi il completamento. Verrai disconnesso e i dati locali saranno cancellati.',
+        ],
+        dataTitle: 'Cosa viene eliminato',
+        data: [
+          'Account di autenticazione (e-mail / Google / Apple)',
+          'Profilo mamma e bimbi collegati',
+          'Registri (allattamento, sonno, pannolini, crescita, ecc.)',
+          'Ricordi e foto sincronizzati nel cloud',
+          'File nello storage cloud collegati al tuo account',
+        ],
+        play: 'Apri su Google Play',
+        apple: 'Cerca su App Store',
+        footer:
+          'FaceBaby — con cura per il tuo nido<br />Serve aiuto? Usa «Contatto» in Altro, nell’app.',
+        langs: {
+          pt: 'Português',
+          en: 'English',
+          es: 'Español',
+          de: 'Deutsch',
+          fr: 'Français',
+          it: 'Italiano',
+        },
+      },
+    };
+
+    const ALL_LANGS = ['pt', 'en', 'es', 'de', 'fr', 'it'];
+    const HTML_LANG = {
+      pt: 'pt-BR',
+      en: 'en',
+      es: 'es',
+      de: 'de',
+      fr: 'fr',
+      it: 'it',
+    };
+
+    function resolveLocale(raw) {
+      const l = (raw || 'pt').toLowerCase();
+      if (l.startsWith('en')) return 'en';
+      if (l.startsWith('es')) return 'es';
+      if (l.startsWith('de')) return 'de';
+      if (l.startsWith('fr')) return 'fr';
+      if (l.startsWith('it')) return 'it';
+      return 'pt';
+    }
+
+    const locale = resolveLocale(lang);
+    const t = copy[locale];
+    document.documentElement.lang = HTML_LANG[locale];
+
+    document.getElementById('title').textContent = t.title;
+    document.getElementById('subtitle').textContent = t.subtitle;
+    document.getElementById('notice').textContent = t.notice;
+    document.getElementById('stepsTitle').textContent = t.stepsTitle;
+    document.getElementById('dataTitle').textContent = t.dataTitle;
+    document.getElementById('playLink').textContent = t.play;
+    document.getElementById('appleLink').textContent = t.apple;
+    document.getElementById('footer').innerHTML = t.footer;
+
+    const stepsOl = document.getElementById('steps');
+    t.steps.forEach((s) => {
+      const li = document.createElement('li');
+      li.textContent = s;
+      stepsOl.appendChild(li);
+    });
+
+    const dataUl = document.getElementById('dataList');
+    t.data.forEach((s) => {
+      const li = document.createElement('li');
+      li.textContent = s;
+      dataUl.appendChild(li);
+    });
+
+    const langSwitch = document.getElementById('langSwitch');
+    ALL_LANGS.forEach((code) => {
+      if (code === locale) return;
+      const a = document.createElement('a');
+      a.href = '?lang=' + code;
+      a.textContent = t.langs[code];
+      langSwitch.appendChild(a);
+    });
+  </script>
+</body>
+</html>

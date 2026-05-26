@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../utils/app_date_picker.dart';
 import '../models/vaccine_record.dart';
 import '../services/app_database.dart';
 import '../i18n/app_i18n.dart';
@@ -102,39 +103,6 @@ class _VaccinesPageState extends State<VaccinesPage> {
     if (loading == null) return await action();
     return await loading.run(action, label: label);
   }
-
-  static final List<VaccineRecord> _exampleRecords = [
-    VaccineRecord(
-      id: -1,
-      babyId: -1,
-      name: 'BCG',
-      dose: 'Dose única',
-      appliedAt: DateTime(2026, 1, 6),
-      nextDueAt: null,
-      notes: 'Maternidade',
-      createdAt: DateTime(2026, 1, 6),
-    ),
-    VaccineRecord(
-      id: -2,
-      babyId: -1,
-      name: 'Hepatite B',
-      dose: 'Ao nascer',
-      appliedAt: DateTime(2026, 1, 6),
-      nextDueAt: DateTime(2026, 3, 6),
-      notes: 'OK',
-      createdAt: DateTime(2026, 1, 6),
-    ),
-    VaccineRecord(
-      id: -3,
-      babyId: -1,
-      name: 'Pentavalente',
-      dose: '1ª dose (2 meses)',
-      appliedAt: DateTime(2026, 3, 10),
-      nextDueAt: DateTime(2026, 5, 10),
-      notes: 'Postinho',
-      createdAt: DateTime(2026, 3, 10),
-    ),
-  ];
 
   Future<void> _addVaccine() async {
     await _openVaccineSheet();
@@ -270,20 +238,7 @@ class _VaccinesPageState extends State<VaccinesPage> {
                                   );
                                 }
                                 if (babies.isEmpty) {
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(s.vaccNoBabies),
-                                      const SizedBox(height: 12),
-                                      Text(s.exampleCard,
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.w900)),
-                                      const SizedBox(height: 10),
-                                      _VaccinesTable(
-                                          records: _exampleRecords),
-                                    ],
-                                  );
+                                  return Text(s.vaccNoBabies);
                                 }
 
                                 return _BabySelectorField(
@@ -332,21 +287,14 @@ class _VaccinesPageState extends State<VaccinesPage> {
                       }
                       final rows = snapshot.data ?? const [];
                       if (rows.isEmpty) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            CardBox(
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.info_outline),
-                                  const SizedBox(width: 10),
-                                  Expanded(child: Text('${s.noVaccinesYet} ${s.exampleCard}')),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            _VaccinesTable(records: _exampleRecords),
-                          ],
+                        return CardBox(
+                          child: Row(
+                            children: [
+                              const Icon(Icons.info_outline),
+                              const SizedBox(width: 10),
+                              Expanded(child: Text(s.noVaccinesYet)),
+                            ],
+                          ),
                         );
                       }
 
@@ -417,7 +365,7 @@ class _VaccineEditorSheetState extends State<_VaccineEditorSheet> {
 
   Future<void> _pickApplied() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
+    final picked = await showAppDatePicker(
       context: context,
       initialDate: _appliedAt ?? now,
       firstDate: DateTime(now.year - 5),
@@ -429,7 +377,7 @@ class _VaccineEditorSheetState extends State<_VaccineEditorSheet> {
 
   Future<void> _pickNextDue() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
+    final picked = await showAppDatePicker(
       context: context,
       initialDate: _nextDueAt ?? now,
       firstDate: DateTime(now.year - 5),

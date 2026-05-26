@@ -58,6 +58,16 @@ class AuthService {
 
   static final AuthService instance = AuthService._();
 
+  /// Após [signOut], o [AuthGate] mostra o onboarding sem esperar revalidação de sessão.
+  bool _trustAuthNullImmediately = false;
+
+  /// Consumido pelo [AuthGate] no próximo `authStateChanges(null)`.
+  bool consumeTrustAuthNullImmediately() {
+    final v = _trustAuthNullImmediately;
+    _trustAuthNullImmediately = false;
+    return v;
+  }
+
   FirebaseAuth get _auth => FirebaseAuth.instance;
 
   late final GoogleSignIn _googleSignIn = GoogleSignIn(
@@ -227,7 +237,11 @@ class AuthService {
     }
   }
 
-  Future<void> signOut() async {
+  /// [trustAuthNullImmediately]: true após apagar conta ou «Sair» — evita ecrã preto no [AppGate].
+  Future<void> signOut({bool trustAuthNullImmediately = false}) async {
+    if (trustAuthNullImmediately) {
+      _trustAuthNullImmediately = true;
+    }
     try {
       await _googleSignIn.signOut();
     } catch (_) {}
@@ -237,6 +251,10 @@ class AuthService {
   /// Página de redefinição com logo (Firebase Hosting). Deploy: `firebase deploy --only hosting`
   static const passwordResetActionUrl =
       'https://facebaby-afc41.web.app/auth/reset.html';
+
+  /// Instruções de exclusão de conta (App Store / Google Play). Deploy: `firebase deploy --only hosting`
+  static const accountDeletionInfoUrl =
+      'https://facebaby-afc41.web.app/auth/delete-account.html';
 
   Future<void> sendPasswordResetEmail(String email) async {
     final e = normalizeEmail(email);

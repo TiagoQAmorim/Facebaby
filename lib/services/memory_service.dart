@@ -1,6 +1,7 @@
 import '../models/baby_memory.dart';
 import '../utils/weekly_photo_schedule.dart';
 import 'app_database.dart';
+import 'firebase/firestore_user_repository.dart';
 import 'firebase/memory_cloud_sync.dart';
 
 class MemoryService {
@@ -22,6 +23,15 @@ class MemoryService {
       publicEnabledAt: m.publicEnabledAt,
       now: DateTime.now(),
     );
+
+    final babyRow = await db.getBabyById(m.babyId);
+    final babyCloud = (babyRow?['cloud_id'] as String?)?.trim();
+    if (babyCloud != null && babyCloud.isNotEmpty) {
+      await FirestoreUserRepository.instance.clearMemoryBadgeDeletion(
+        babyCloudId: babyCloud,
+        badgeId: m.badgeId,
+      );
+    }
 
     final id = await db.upsertBabyMemory(
       babyId: m.babyId,
@@ -53,8 +63,9 @@ class MemoryService {
     required int babyId,
     required String badgeId,
   }) async {
-    await db.deleteBabyMemoryByBadge(babyId: babyId, badgeId: badgeId);
+    // Nuvem primeiro: tombstone + apagar evento antes de limpar o SQLite.
     await MemoryCloudSync.deleteBadgeMemory(
         localBabyId: babyId, badgeId: badgeId);
+    await db.deleteBabyMemoryByBadge(babyId: babyId, badgeId: badgeId);
   }
 }

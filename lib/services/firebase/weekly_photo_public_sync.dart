@@ -200,4 +200,20 @@ class WeeklyPhotoPublicSync {
       }),
     );
   }
+
+  /// Repropaga nome/sexo do bebé em todas as entradas públicas (mural + candidatos Foto da Semana).
+  static Future<void> syncAllPublicMemoriesForBaby({required int localBabyId}) async {
+    if (!_authed || kIsWeb) return;
+    try {
+      final rows = await AppDatabase.instance.listBabyMemories(babyId: localBabyId);
+      for (final row in rows) {
+        if (((row['is_public'] as int?) ?? 0) != 1) continue;
+        final badgeId = ((row['badge_id'] as String?) ?? '').trim();
+        if (badgeId.isEmpty) continue;
+        await syncBadgeMemory(localBabyId: localBabyId, badgeId: badgeId);
+      }
+    } catch (e, st) {
+      debugPrint('WeeklyPhotoPublicSync.syncAllPublicMemoriesForBaby failed: $e\n$st');
+    }
+  }
 }

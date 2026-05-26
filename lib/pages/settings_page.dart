@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../app/face_baby_app.dart';
 import '../i18n/app_i18n.dart';
 import '../theme/app_theme.dart';
 import '../utils/portal_page_route.dart';
@@ -18,6 +19,7 @@ import '../widgets/loading_scope.dart';
 import 'alerts_settings_page.dart';
 import 'contact_page.dart';
 import 'family_tree_page.dart';
+import 'ai/ai_baby_history_page.dart';
 import 'mother_profile_page.dart';
 import 'units_settings_page.dart';
 import 'privacy_policy_page.dart';
@@ -104,6 +106,44 @@ String _userVisibleDeleteError(Object e) {
   return '$e'.replaceFirst(RegExp(r'^Bad state:\s*'), '');
 }
 
+TextStyle _deleteReauthSectionStyle(BuildContext context) {
+  return TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w800,
+    color: AppTheme.textSecondary.withAlpha(235),
+    height: 1.2,
+  );
+}
+
+Widget _deleteReauthSectionLabel(BuildContext context, String text) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(text, style: _deleteReauthSectionStyle(context)),
+  );
+}
+
+Widget _deleteReauthOrDivider(BuildContext context, S s) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 14),
+    child: Row(
+      children: [
+        const Expanded(child: Divider(height: 1)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Text(
+            s.deleteAccountReauthOrDivider,
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: AppTheme.textMuted.withAlpha(220),
+            ),
+          ),
+        ),
+        const Expanded(child: Divider(height: 1)),
+      ],
+    ),
+  );
+}
+
 Future<bool> _promptReauthenticateForDeletion(BuildContext ctx, S s) async {
   final user = FirebaseAuth.instance.currentUser;
   if (user == null) return false;
@@ -119,6 +159,12 @@ Future<bool> _promptReauthenticateForDeletion(BuildContext ctx, S s) async {
   }
 
   final passCtrl = TextEditingController();
+  final accountEmail = user.email?.trim() ?? '';
+  const googleLogoAsset = 'assets/google_g_logo.png';
+  const deleteBtnStyle = ButtonStyle(
+    backgroundColor: WidgetStatePropertyAll(Color(0xFFFF3B30)),
+    foregroundColor: WidgetStatePropertyAll(Colors.white),
+  );
 
   Future<void> toastErr(String msg) async {
     if (!ctx.mounted) return;
@@ -137,15 +183,129 @@ Future<bool> _promptReauthenticateForDeletion(BuildContext ctx, S s) async {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(s.deleteAccountReauthBody),
+                    Text(
+                      s.deleteAccountReauthBody,
+                      style: TextStyle(
+                        height: 1.4,
+                        color: AppTheme.textSecondary.withAlpha(240),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (hasGoogle) ...[
+                      const SizedBox(height: 18),
+                      _deleteReauthSectionLabel(
+                        dialogCtx,
+                        s.deleteAccountReauthGoogleSection,
+                      ),
+                      if (accountEmail.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Text(
+                            s.deleteAccountReauthGoogleAccountHint(
+                                accountEmail),
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary.withAlpha(220),
+                              height: 1.25,
+                            ),
+                          ),
+                        ),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          style: deleteBtnStyle,
+                          icon: Image.asset(
+                            googleLogoAsset,
+                            width: 20,
+                            height: 20,
+                            errorBuilder: (_, __, ___) => const Icon(
+                              Icons.g_mobiledata_rounded,
+                              size: 22,
+                              color: Colors.white,
+                            ),
+                          ),
+                          label: Text(s.deleteAccountReauthGoogle),
+                          onPressed: () async {
+                            try {
+                              await AuthService.instance
+                                  .reauthenticateWithGoogle();
+                              if (dialogCtx.mounted) {
+                                Navigator.of(dialogCtx).pop(true);
+                              }
+                            } catch (e) {
+                              await toastErr(_userVisibleDeleteError(e));
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                    if (hasGoogle && hasPassword)
+                      _deleteReauthOrDivider(dialogCtx, s),
                     if (hasPassword) ...[
-                      const SizedBox(height: 14),
+                      if (!hasGoogle) const SizedBox(height: 18),
+                      _deleteReauthSectionLabel(
+                        dialogCtx,
+                        s.deleteAccountReauthPasswordSection,
+                      ),
+                      TextFormField(
+                        initialValue: accountEmail,
+                        readOnly: true,
+                        decoration: InputDecoration(
+                          labelText: s.deleteAccountReauthEmailLabel,
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
                       TextField(
                         controller: passCtrl,
                         obscureText: true,
+                        autofocus: !hasGoogle,
+                        textInputAction: TextInputAction.done,
                         decoration: InputDecoration(
                           labelText: s.deleteAccountReauthPasswordHint,
                           border: const OutlineInputBorder(),
+                        ),
+                        onSubmitted: (_) async {
+                          final p = passCtrl.text.trim();
+                          if (p.isEmpty) {
+                            await toastErr(s.deleteAccountReauthPasswordRequired);
+                            return;
+                          }
+                          try {
+                            await AuthService.instance
+                                .reauthenticateWithPassword(password: p);
+                            if (dialogCtx.mounted) {
+                              Navigator.of(dialogCtx).pop(true);
+                            }
+                          } catch (e) {
+                            await toastErr(_userVisibleDeleteError(e));
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          style: deleteBtnStyle,
+                          onPressed: () async {
+                            final p = passCtrl.text.trim();
+                            if (p.isEmpty) {
+                              await toastErr(
+                                  s.deleteAccountReauthPasswordRequired);
+                              return;
+                            }
+                            try {
+                              await AuthService.instance
+                                  .reauthenticateWithPassword(password: p);
+                              if (dialogCtx.mounted) {
+                                Navigator.of(dialogCtx).pop(true);
+                              }
+                            } catch (e) {
+                              await toastErr(_userVisibleDeleteError(e));
+                            }
+                          },
+                          child: Text(s.deleteAccountReauthContinue),
                         ),
                       ),
                     ],
@@ -157,49 +317,6 @@ Future<bool> _promptReauthenticateForDeletion(BuildContext ctx, S s) async {
                   onPressed: () => Navigator.of(dialogCtx).pop(false),
                   child: Text(s.cancel),
                 ),
-                if (hasGoogle)
-                  SizedBox(
-                    width: double.maxFinite,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF3B30),
-                          foregroundColor: Colors.white),
-                      onPressed: () async {
-                        try {
-                          await AuthService.instance.reauthenticateWithGoogle();
-                          if (dialogCtx.mounted)
-                            Navigator.of(dialogCtx).pop(true);
-                        } catch (e) {
-                          await toastErr(_userVisibleDeleteError(e));
-                        }
-                      },
-                      child: Text(s.deleteAccountReauthGoogle),
-                    ),
-                  ),
-                if (hasPassword)
-                  SizedBox(
-                    width: double.maxFinite,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF3B30)),
-                      onPressed: () async {
-                        final p = passCtrl.text.trim();
-                        if (p.isEmpty) {
-                          await toastErr(s.deleteAccountReauthPasswordHint);
-                          return;
-                        }
-                        try {
-                          await AuthService.instance
-                              .reauthenticateWithPassword(password: p);
-                          if (dialogCtx.mounted)
-                            Navigator.of(dialogCtx).pop(true);
-                        } catch (e) {
-                          await toastErr(_userVisibleDeleteError(e));
-                        }
-                      },
-                      child: Text(s.deleteAccountReauthContinue),
-                    ),
-                  ),
               ],
             );
           },
@@ -272,11 +389,14 @@ class SettingsPage extends StatelessWidget {
     if (confirmWord != true) return;
     if (!context.mounted) return;
 
+    final verified = await _promptReauthenticateForDeletion(context, s);
+    if (verified != true || !context.mounted) return;
+
     Future<void> onSuccessUx() async {
+      FaceBabyApp.navigatorKey.currentState?.popUntil((r) => r.isFirst);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(s.deleteAccountSuccess)));
-      Navigator.of(context).popUntil((r) => r.isFirst);
     }
 
     try {
@@ -287,8 +407,8 @@ class SettingsPage extends StatelessWidget {
       await onSuccessUx();
     } on AccountDeletionRequiresRecentLogin catch (_) {
       if (!context.mounted) return;
-      final verified = await _promptReauthenticateForDeletion(context, s);
-      if (verified != true || !context.mounted) return;
+      final reVerified = await _promptReauthenticateForDeletion(context, s);
+      if (reVerified != true || !context.mounted) return;
       try {
         await LoadingScope.of(context).run(
           () =>
@@ -351,6 +471,13 @@ class SettingsPage extends StatelessWidget {
             icon: Icons.family_restroom_outlined,
             title: s.settingsFamilyTree,
             onTap: () => pushPortalPage<void>(context, const FamilyTreePage()),
+          ),
+          _SettingsTile(
+            compact: true,
+            icon: Icons.auto_awesome_outlined,
+            title: s.settingsAiBabyHistory,
+            onTap: () =>
+                pushPortalPage<void>(context, const AiBabyHistoryPage()),
           ),
           _SettingsTile(
             compact: true,

@@ -2,12 +2,17 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../i18n/app_i18n.dart';
 import '../theme/app_theme.dart';
+import '../utils/input_formatters.dart';
 
 const _rulerInk = Color(0xFF163B68);
 
 /// Arrasto horizontal (px) para percorrer min→max. Valor maior = régua mais lenta.
 const _rulerDragPixelsPerFullRange = 5000.0;
+
+/// Cadastro inicial — peso do bebê (faixa 0–25 kg exige arrasto mais longo).
+const double growthRulerDragPixelsOnboarding = 14000.0;
 
 /// Ruler for weight/height used in onboarding and in the portal (growth, etc.).
 class GrowthRulerPicker extends StatefulWidget {
@@ -28,6 +33,15 @@ class GrowthRulerPicker extends StatefulWidget {
   /// When `true`, opening at the maximum snaps to [min] (onboarding newborn weight).
   final bool snapStartToZeroWhenAtMax;
 
+  /// Toque no valor abre edição numérica (a régua mantém-se igual).
+  final bool allowManualEdit;
+
+  /// Pixels de arrasto para percorrer [min]→[max]. Maior = menos sensível ao toque.
+  final double dragPixelsPerFullRange;
+
+  /// Arredonda a cada movimento (útil no peso ao nascer no onboarding).
+  final bool quantizeDuringDrag;
+
   const GrowthRulerPicker({
     super.key,
     required this.value,
@@ -44,6 +58,9 @@ class GrowthRulerPicker extends StatefulWidget {
     this.onUnitSelected,
     required this.onChanged,
     this.snapStartToZeroWhenAtMax = true,
+    this.allowManualEdit = true,
+    this.dragPixelsPerFullRange = _rulerDragPixelsPerFullRange,
+    this.quantizeDuringDrag = false,
   });
 
   @override
@@ -156,25 +173,136 @@ class _GrowthRulerPickerState extends State<GrowthRulerPicker> {
     return clamped;
   }
 
-  void _commit(double value) {
+  double _quantize(double value) {
     final step = widget.divisions <= 0
         ? 0.0
         : (widget.max - widget.min) / widget.divisions;
-    final rounded = step <= 0
-        ? value
-        : widget.min + ((value - widget.min) / step).round() * step;
-    final next = rounded.clamp(widget.min, widget.max).toDouble();
+    if (step <= 0) return value.clamp(widget.min, widget.max).toDouble();
+    final rounded =
+        widget.min + ((value - widget.min) / step).round() * step;
+    return rounded.clamp(widget.min, widget.max).toDouble();
+  }
+
+  void _commit(double value) {
+    final next = _quantize(value);
     setState(() => _liveValue = next);
     widget.onChanged(next);
   }
 
   void _dragBy(double deltaDx) {
     final sensitivity =
-        (widget.max - widget.min) / _rulerDragPixelsPerFullRange;
-    final next = (_liveValue - deltaDx * sensitivity)
+        (widget.max - widget.min) / widget.dragPixelsPerFullRange;
+    var next = (_liveValue - deltaDx * sensitivity)
         .clamp(widget.min, widget.max)
         .toDouble();
+    if (widget.quantizeDuringDrag) {
+      next = _quantize(next);
+    }
     setState(() => _liveValue = next);
+  }
+
+  double? _parseManualInput(String raw) {
+    final parsed = ShiftDecimalPtBrFormatter.parse(
+      raw,
+      _manualEntryDecimalDigits,
+    );
+    if (parsed == null) return null;
+    return _manualValueToStored(parsed);
+  }
+
+  /// Em cm, entrada manual em metros (ex.: `170` → `1,70` = 170 cm).
+  bool get _manualEntryUsesMeters =>
+      widget.unit == 'cm' && widget.max >= 30;
+
+  int get _manualEntryDecimalDigits =>
+      _manualEntryUsesMeters ? 2 : widget.decimalDigits;
+
+  double _storedValueForManualFormatter(double stored) =>
+      _manualEntryUsesMeters ? stored / 100 : stored;
+
+  double _manualValueToStored(double manual) =>
+      _manualEntryUsesMeters ? manual * 100 : manual;
+
+  String _manualEditInitialText() {
+    return ShiftDecimalPtBrFormatter.formatValue(
+      _storedValueForManualFormatter(_liveValue),
+      _manualEntryDecimalDigits,
+    );
+  }
+
+  double get _manualEditMaxValue =>
+      _storedValueForManualFormatter(widget.max);
+
+  String get _manualEditUnitLabel {
+    if (widget.unit == 'cm') return 'cm';
+    return widget.unit;
+  }
+
+  Future<void> _promptManualEdit() async {
+    if (!widget.allowManualEdit) return;
+    final s = S.of(context);
+    final unitLabel = _manualEditUnitLabel;
+    final controller = TextEditingController(text: _manualEditInitialText());
+    final result = await showDialog<double>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text(
+            _subjectTrimmed != null
+                ? '$_subjectTrimmed · $unitLabel'
+                : unitLabel,
+          ),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              ShiftDecimalPtBrFormatter(
+                decimalDigits: _manualEntryDecimalDigits,
+                maxValue: _manualEditMaxValue,
+              ),
+            ],
+            decoration: InputDecoration(
+              suffixText: unitLabel,
+            ),
+            onSubmitted: (_) => _submitManualEdit(ctx, controller, unitLabel, s),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(s.cancel),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  _submitManualEdit(ctx, controller, unitLabel, s),
+              child: Text(s.commonSave),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+    if (result != null && mounted) {
+      _commit(result);
+    }
+  }
+
+  void _submitManualEdit(
+    BuildContext ctx,
+    TextEditingController controller,
+    String unitLabel,
+    S s,
+  ) {
+    final parsed = _parseManualInput(controller.text);
+    if (parsed == null ||
+        parsed < widget.min ||
+        parsed > widget.max) {
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        SnackBar(content: Text(s.invalidGrowthValue(unitLabel))),
+      );
+      return;
+    }
+    Navigator.pop(ctx, parsed);
   }
 
   String? get _subjectTrimmed {
@@ -205,51 +333,56 @@ class _GrowthRulerPickerState extends State<GrowthRulerPicker> {
                     padding: const EdgeInsets.only(left: 16),
                     child: Align(
                       alignment: Alignment.centerLeft,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (_subjectTrimmed != null) ...[
-                            Text(
-                              _subjectTrimmed!.toLowerCase(),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFFE15A72),
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                          ],
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
+                      child: GestureDetector(
+                        onTap: widget.allowManualEdit ? _promptManualEdit : null,
+                        behavior: HitTestBehavior.opaque,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (_subjectTrimmed != null) ...[
                               Text(
-                                _label,
-                                style: TextStyle(
-                                  fontSize: _usesMetersLabel ? 34 : 44,
-                                  height: 0.95,
-                                  letterSpacing: _usesMetersLabel ? -0.8 : -1.6,
+                                _subjectTrimmed!.toLowerCase(),
+                                style: const TextStyle(
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w900,
-                                  color: _rulerInk,
+                                  color: Color(0xFFE15A72),
                                 ),
                               ),
-                              if (!_usesMetersLabel) ...[
-                                const SizedBox(width: 8),
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 5),
-                                  child: Text(
-                                    widget.unit,
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w800,
-                                      color: _rulerInk,
-                                    ),
+                              const SizedBox(height: 2),
+                            ],
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _label,
+                                  style: TextStyle(
+                                    fontSize: _usesMetersLabel ? 34 : 44,
+                                    height: 0.95,
+                                    letterSpacing:
+                                        _usesMetersLabel ? -0.8 : -1.6,
+                                    fontWeight: FontWeight.w900,
+                                    color: _rulerInk,
                                   ),
                                 ),
+                                if (!_usesMetersLabel) ...[
+                                  const SizedBox(width: 8),
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 5),
+                                    child: Text(
+                                      widget.unit,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                        color: _rulerInk,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
-                            ],
-                          ),
-                        ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

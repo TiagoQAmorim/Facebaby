@@ -21,7 +21,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const _dbName = 'facebaby.db';
-  static const _dbVersion = 31;
+  static const _dbVersion = 34;
 
   Database? _db;
   SharedPreferences? _prefs;
@@ -84,6 +84,8 @@ CREATE TABLE mothers (
   register_father INTEGER,
   show_family_christian INTEGER NOT NULL DEFAULT 0,
   show_family_horoscope INTEGER NOT NULL DEFAULT 1,
+  show_family_spiritist INTEGER NOT NULL DEFAULT 0,
+  show_family_jewish INTEGER NOT NULL DEFAULT 0,
   photo_b64 TEXT,
   photo_url TEXT,
   cloud_id TEXT,
@@ -162,6 +164,19 @@ CREATE TABLE memories (
               'CREATE INDEX idx_memories_day_key ON memories(baby_id, day_key)');
           await db.execute(
               'CREATE INDEX idx_memories_badge ON memories(baby_id, badge_id)');
+
+          await db.execute('''
+CREATE TABLE memory_badge_tombstones (
+  baby_id INTEGER NOT NULL,
+  badge_id TEXT NOT NULL,
+  baby_cloud_id TEXT,
+  deleted_at TEXT NOT NULL,
+  PRIMARY KEY (baby_id, badge_id),
+  FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
+)
+''');
+          await db.execute(
+              'CREATE INDEX idx_memory_tombstones_cloud ON memory_badge_tombstones(baby_cloud_id, badge_id)');
 
           await db.execute('''
 CREATE TABLE vaccines (
@@ -832,6 +847,52 @@ CREATE TABLE IF NOT EXISTS symptom_reports (
             );
           }
 
+          if (oldVersion < 32) {
+            await db.execute('''
+CREATE TABLE IF NOT EXISTS memory_badge_tombstones (
+  baby_id INTEGER NOT NULL,
+  badge_id TEXT NOT NULL,
+  deleted_at TEXT NOT NULL,
+  PRIMARY KEY (baby_id, badge_id),
+  FOREIGN KEY (baby_id) REFERENCES babies(id) ON DELETE CASCADE
+)
+''');
+          }
+
+          if (oldVersion < 33) {
+            try {
+              await db.execute(
+                  'ALTER TABLE memory_badge_tombstones ADD COLUMN baby_cloud_id TEXT');
+            } catch (e) {
+              debugPrint('migration v33 memory_badge_tombstones.baby_cloud_id: $e');
+            }
+            try {
+              await db.execute(
+                  'CREATE INDEX IF NOT EXISTS idx_memory_tombstones_cloud ON memory_badge_tombstones(baby_cloud_id, badge_id)');
+            } catch (e) {
+              debugPrint('migration v33 idx_memory_tombstones_cloud: $e');
+            }
+          }
+
+          if (oldVersion < 34) {
+            Future<void> tryAdd34(String sql, String label) async {
+              try {
+                await db.execute(sql);
+              } catch (e) {
+                debugPrint('migration v34 $label: $e');
+              }
+            }
+
+            await tryAdd34(
+              'ALTER TABLE mothers ADD COLUMN show_family_spiritist INTEGER NOT NULL DEFAULT 0',
+              'mothers.show_family_spiritist',
+            );
+            await tryAdd34(
+              'ALTER TABLE mothers ADD COLUMN show_family_jewish INTEGER NOT NULL DEFAULT 0',
+              'mothers.show_family_jewish',
+            );
+          }
+
           if (oldVersion < 10) {
             await db.execute('''
 CREATE TABLE IF NOT EXISTS diapers (
@@ -1176,6 +1237,16 @@ CREATE TABLE IF NOT EXISTS diapers (
         ) ??
         _parseCloudBool(existingRow?['show_family_horoscope']) ??
         true;
+    final showSpiritist = _parseCloudBool(
+          data['show_family_spiritist'] ?? data['showFamilySpiritist'],
+        ) ??
+        _parseCloudBool(existingRow?['show_family_spiritist']) ??
+        false;
+    final showJewish = _parseCloudBool(
+          data['show_family_jewish'] ?? data['showFamilyJewish'],
+        ) ??
+        _parseCloudBool(existingRow?['show_family_jewish']) ??
+        false;
 
     if (rows.isEmpty) {
       final id = await db.insert('mothers', {
@@ -1191,6 +1262,8 @@ CREATE TABLE IF NOT EXISTS diapers (
             registerFather == null ? null : (registerFather ? 1 : 0),
         'show_family_christian': showChristian ? 1 : 0,
         'show_family_horoscope': showHoroscope ? 1 : 0,
+        'show_family_spiritist': showSpiritist ? 1 : 0,
+        'show_family_jewish': showJewish ? 1 : 0,
         'photo_b64': null,
         'photo_url': mergedPhotoUrl,
         'father_photo_url': mergedFatherPhotoUrl,
@@ -1213,6 +1286,8 @@ CREATE TABLE IF NOT EXISTS diapers (
           registerFather == null ? null : (registerFather ? 1 : 0),
       'show_family_christian': showChristian ? 1 : 0,
       'show_family_horoscope': showHoroscope ? 1 : 0,
+      'show_family_spiritist': showSpiritist ? 1 : 0,
+      'show_family_jewish': showJewish ? 1 : 0,
       'cloud_id': cloudId,
     };
     if (mergedPhotoUrl != null) patch['photo_url'] = mergedPhotoUrl;
@@ -1404,11 +1479,179 @@ CREATE TABLE IF NOT EXISTS diapers (
     );
   }
 
+  Future<bool> isBabyMemoryBadgeTombstoned({
+    required int babyId,
+    required String badgeId,
+    String? babyCloudId,
+  }) async {
+    final bid = badgeId.trim();
+    if (bid.isEmpty) return false;
+    final cloud = babyCloudId?.trim() ?? '';
+    if (kIsWeb) {
+      return _webSerialized(() async {
+        final prefs = await _webPrefs();
+        final list = _webReadList(prefs, 'memory_badge_tombstones');
+        return list.any((r) {
+          if ((r['badge_id'] as String?) != bid) return false;
+          if ((r['baby_id'] as num?)?.toInt() == babyId) return true;
+          if (cloud.isNotEmpty && (r['baby_cloud_id'] as String?) == cloud) {
+            return true;
+          }
+          return false;
+        });
+      });
+    }
+    final db = await database;
+    if (cloud.isNotEmpty) {
+      final byCloud = await db.query(
+        'memory_badge_tombstones',
+        columns: const ['badge_id'],
+        where: 'baby_cloud_id = ? AND badge_id = ?',
+        whereArgs: [cloud, bid],
+        limit: 1,
+      );
+      if (byCloud.isNotEmpty) return true;
+    }
+    final rows = await db.query(
+      'memory_badge_tombstones',
+      columns: const ['badge_id'],
+      where: 'baby_id = ? AND badge_id = ?',
+      whereArgs: [babyId, bid],
+      limit: 1,
+    );
+    return rows.isNotEmpty;
+  }
+
+  Future<void> tombstoneBabyMemoryBadge({
+    required int babyId,
+    required String badgeId,
+    String? babyCloudId,
+  }) async {
+    final bid = badgeId.trim();
+    if (bid.isEmpty) return;
+    var cloud = babyCloudId?.trim() ?? '';
+    if (cloud.isEmpty && !kIsWeb) {
+      final row = await getBabyById(babyId);
+      cloud = (row?['cloud_id'] as String?)?.trim() ?? '';
+    }
+    final deletedAt = DateTime.now().toIso8601String();
+    if (kIsWeb) {
+      await _webSerialized(() async {
+        final prefs = await _webPrefs();
+        final list = _webReadList(prefs, 'memory_badge_tombstones');
+        list.removeWhere((r) {
+          if ((r['badge_id'] as String?) != bid) return false;
+          return (r['baby_id'] as num?)?.toInt() == babyId ||
+              (cloud.isNotEmpty && (r['baby_cloud_id'] as String?) == cloud);
+        });
+        list.add({
+          'baby_id': babyId,
+          'badge_id': bid,
+          if (cloud.isNotEmpty) 'baby_cloud_id': cloud,
+          'deleted_at': deletedAt,
+        });
+        await _webWriteList(prefs, 'memory_badge_tombstones', list);
+      });
+      return;
+    }
+    final db = await database;
+    await db.insert(
+      'memory_badge_tombstones',
+      {
+        'baby_id': babyId,
+        'badge_id': bid,
+        'baby_cloud_id': cloud.isEmpty ? null : cloud,
+        'deleted_at': deletedAt,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Aplica exclusões guardadas na nuvem ao SQLite local (após login).
+  Future<void> applyCloudMemoryDeletions({
+    required int localBabyId,
+    required String babyCloudId,
+    required List<String> badgeIds,
+  }) async {
+    for (final raw in badgeIds) {
+      final bid = raw.trim();
+      if (bid.isEmpty) continue;
+      await tombstoneBabyMemoryBadge(
+        babyId: localBabyId,
+        badgeId: bid,
+        babyCloudId: babyCloudId,
+      );
+      await deleteBabyMemoryByBadge(
+        babyId: localBabyId,
+        badgeId: bid,
+        skipTombstone: true,
+      );
+    }
+  }
+
+  Future<void> clearBabyMemoryBadgeTombstone({
+    required int babyId,
+    required String badgeId,
+    String? babyCloudId,
+  }) async {
+    final bid = badgeId.trim();
+    if (bid.isEmpty) return;
+    var cloud = babyCloudId?.trim() ?? '';
+    if (cloud.isEmpty && !kIsWeb) {
+      final row = await getBabyById(babyId);
+      cloud = (row?['cloud_id'] as String?)?.trim() ?? '';
+    }
+    if (kIsWeb) {
+      await _webSerialized(() async {
+        final prefs = await _webPrefs();
+        final list = _webReadList(prefs, 'memory_badge_tombstones');
+        list.removeWhere((r) {
+          if ((r['badge_id'] as String?) != bid) return false;
+          return (r['baby_id'] as num?)?.toInt() == babyId ||
+              (cloud.isNotEmpty && (r['baby_cloud_id'] as String?) == cloud);
+        });
+        await _webWriteList(prefs, 'memory_badge_tombstones', list);
+      });
+      return;
+    }
+    final db = await database;
+    await db.delete(
+      'memory_badge_tombstones',
+      where: 'baby_id = ? AND badge_id = ?',
+      whereArgs: [babyId, bid],
+    );
+    if (cloud.isNotEmpty) {
+      await db.delete(
+        'memory_badge_tombstones',
+        where: 'baby_cloud_id = ? AND badge_id = ?',
+        whereArgs: [cloud, bid],
+      );
+    }
+  }
+
   Future<void> upsertBabyMemoryFromCloud({
     required int localBabyId,
     required Map<String, dynamic> data,
   }) async {
     if (kIsWeb) return;
+    if (data['deleted'] == true) {
+      final babyRow = await getBabyById(localBabyId);
+      final babyCloud = (babyRow?['cloud_id'] as String?)?.trim() ?? '';
+      var badgeId = (data['badge_id'] as String?)?.trim() ?? '';
+      final docId = (data['id'] as String?)?.trim() ?? '';
+      if (badgeId.isEmpty &&
+          babyCloud.isNotEmpty &&
+          docId.startsWith('badge_${babyCloud}_')) {
+        badgeId = docId.substring('badge_${babyCloud}_'.length);
+      }
+      if (badgeId.isNotEmpty) {
+        await tombstoneBabyMemoryBadge(
+            babyId: localBabyId, badgeId: badgeId);
+        await deleteBabyMemoryByBadge(
+            babyId: localBabyId, badgeId: badgeId);
+      }
+      return;
+    }
     final babyRow = await getBabyById(localBabyId);
     final babyCloud = (babyRow?['cloud_id'] as String?)?.trim() ?? '';
     final docId = (data['id'] as String?)?.trim() ?? '';
@@ -1423,6 +1666,13 @@ CREATE TABLE IF NOT EXISTS diapers (
       badgeId = docId;
     }
     if (badgeId.isEmpty) return;
+    if (await isBabyMemoryBadgeTombstoned(
+      babyId: localBabyId,
+      badgeId: badgeId,
+      babyCloudId: babyCloud.isEmpty ? null : babyCloud,
+    )) {
+      return;
+    }
     final title = (data['title'] as String?)?.trim() ?? '';
     if (title.isEmpty) return;
 
@@ -1472,10 +1722,14 @@ CREATE TABLE IF NOT EXISTS diapers (
     final showBaby = (data['show_baby_name_public'] == false)
         ? false
         : (data['show_baby_name_public'] != 0);
+    final createdAt = _parseCloudIso(data['created_at']) ??
+        _parseCloudIso(data['createdAt']);
 
     await upsertBabyMemory(
       babyId: localBabyId,
       badgeId: badgeId,
+      fromCloudImport: true,
+      preserveCreatedAt: createdAt,
       title: title,
       description: (desc == null || desc.isEmpty) ? null : desc,
       photoB64: (photoB64 == null || photoB64.isEmpty) ? null : photoB64,
@@ -2052,6 +2306,8 @@ WHERE baby_id = ?
     String? fatherPhotoB64,
     bool showFamilyChristian = false,
     bool showFamilyHoroscope = true,
+    bool showFamilySpiritist = false,
+    bool showFamilyJewish = false,
   }) async {
     if (kIsWeb) {
       return _webSerialized(() async {
@@ -2081,6 +2337,8 @@ WHERE baby_id = ?
               registerFather == null ? null : (registerFather ? 1 : 0),
           'show_family_christian': showFamilyChristian ? 1 : 0,
           'show_family_horoscope': showFamilyHoroscope ? 1 : 0,
+          'show_family_spiritist': showFamilySpiritist ? 1 : 0,
+          'show_family_jewish': showFamilyJewish ? 1 : 0,
           'photo_b64': pb,
           'cloud_id': null,
           'created_at': createdAt,
@@ -2101,7 +2359,7 @@ WHERE baby_id = ?
         fatherPhotoB64?.trim().isEmpty == true ? null : fatherPhotoB64?.trim();
     try {
       final res = await db.rawInsert(
-        'INSERT INTO mothers(name, phone, birth_date, height_cm, father_name, father_height_cm, father_birth_date, father_photo_b64, register_father, show_family_christian, show_family_horoscope, photo_b64, created_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO mothers(name, phone, birth_date, height_cm, father_name, father_height_cm, father_birth_date, father_photo_b64, register_father, show_family_christian, show_family_horoscope, show_family_spiritist, show_family_jewish, photo_b64, created_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
           n,
           p,
@@ -2114,6 +2372,8 @@ WHERE baby_id = ?
           registerFather == null ? null : (registerFather ? 1 : 0),
           showFamilyChristian ? 1 : 0,
           showFamilyHoroscope ? 1 : 0,
+          showFamilySpiritist ? 1 : 0,
+          showFamilyJewish ? 1 : 0,
           pb,
           createdAt
         ],
@@ -2390,6 +2650,8 @@ LIMIT 1
         'register_father',
         'show_family_christian',
         'show_family_horoscope',
+        'show_family_spiritist',
+        'show_family_jewish',
         'photo_b64',
         'photo_url',
         'cloud_id',
@@ -2578,6 +2840,8 @@ LIMIT 1
     required int motherId,
     required bool showChristian,
     required bool showHoroscope,
+    required bool showSpiritist,
+    required bool showJewish,
   }) async {
     if (kIsWeb) {
       return _webSerialized(() async {
@@ -2588,6 +2852,8 @@ LIMIT 1
           if ((m['id'] as num?)?.toInt() == motherId) {
             m['show_family_christian'] = showChristian ? 1 : 0;
             m['show_family_horoscope'] = showHoroscope ? 1 : 0;
+            m['show_family_spiritist'] = showSpiritist ? 1 : 0;
+            m['show_family_jewish'] = showJewish ? 1 : 0;
             mothers[i] = m;
             break;
           }
@@ -2601,6 +2867,8 @@ LIMIT 1
       {
         'show_family_christian': showChristian ? 1 : 0,
         'show_family_horoscope': showHoroscope ? 1 : 0,
+        'show_family_spiritist': showSpiritist ? 1 : 0,
+        'show_family_jewish': showJewish ? 1 : 0,
       },
       where: 'id = ?',
       whereArgs: [motherId],
@@ -5450,8 +5718,13 @@ WHERE baby_id = ?
     bool weeklyPhotoWinner = false,
     String? weeklyPhotoWeekId,
     bool showBabyFirstNameWhenPublic = true,
+    bool fromCloudImport = false,
+    DateTime? preserveCreatedAt,
   }) async {
-    final created = DateTime.now().toIso8601String();
+    if (!fromCloudImport) {
+      await clearBabyMemoryBadgeTombstone(babyId: babyId, badgeId: badgeId);
+    }
+    final created = (preserveCreatedAt ?? DateTime.now()).toIso8601String();
     final pb = photoB64?.trim().isEmpty == true ? null : photoB64?.trim();
     final purl = photoUrl?.trim().isEmpty == true ? null : photoUrl?.trim();
     final desc =
@@ -5597,7 +5870,11 @@ WHERE baby_id = ?
   Future<int> deleteBabyMemoryByBadge({
     required int babyId,
     required String badgeId,
+    bool skipTombstone = false,
   }) async {
+    if (!skipTombstone) {
+      await tombstoneBabyMemoryBadge(babyId: babyId, badgeId: badgeId);
+    }
     if (kIsWeb) {
       return _webSerialized(() async {
         final prefs = await _webPrefs();

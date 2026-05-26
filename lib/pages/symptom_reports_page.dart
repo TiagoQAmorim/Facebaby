@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../utils/app_date_picker.dart';
 import '../controllers/current_baby_controller.dart';
 import '../i18n/app_i18n.dart';
 import '../models/symptom_report.dart';
@@ -286,7 +287,7 @@ class _SymptomReportEditorPageState extends State<SymptomReportEditorPage> {
 
   Future<void> _pickDateTime(S s) async {
     final now = DateTime.now();
-    final d = await showDatePicker(
+    final d = await showAppDatePicker(
       context: context,
       initialDate: _occurredAt,
       firstDate: DateTime(now.year - 3),
@@ -355,6 +356,9 @@ class _SymptomReportEditorPageState extends State<SymptomReportEditorPage> {
     final s = S.of(context);
     return PortalNightUi.listen((context, night) {
       const iconColor = AppTheme.primary;
+      /// Data/hora, calendário e medicamentos — amarelo clarinho no modo noturno.
+      final dateMedIconColor =
+          night ? const Color(0xFFFFF3B0) : AppTheme.primary;
 
       return Scaffold(
         backgroundColor: Colors.transparent,
@@ -367,7 +371,7 @@ class _SymptomReportEditorPageState extends State<SymptomReportEditorPage> {
         children: [
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.event_rounded, color: iconColor),
+            leading: Icon(Icons.event_rounded, color: dateMedIconColor),
             title: Text(
               s.symptomReportOccurredAt,
               style: PortalNightUi.cardTitleStyle(fontSize: 15),
@@ -377,7 +381,7 @@ class _SymptomReportEditorPageState extends State<SymptomReportEditorPage> {
               '${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(_occurredAt))}',
               style: PortalNightUi.cardSubtitleStyle(fontSize: 14),
             ),
-            trailing: Icon(Icons.edit_calendar_outlined, color: iconColor),
+            trailing: Icon(Icons.edit_calendar_outlined, color: dateMedIconColor),
             onTap: () => _pickDateTime(s),
           ),
           const SizedBox(height: 8),
@@ -386,7 +390,7 @@ class _SymptomReportEditorPageState extends State<SymptomReportEditorPage> {
             decoration: InputDecoration(
               labelText: s.symptomReportMedication,
               hintText: s.symptomReportMedicationHint,
-              prefixIcon: Icon(Icons.medication_outlined, color: iconColor),
+              prefixIcon: Icon(Icons.medication_outlined, color: dateMedIconColor),
             ),
             textCapitalization: TextCapitalization.sentences,
           ),

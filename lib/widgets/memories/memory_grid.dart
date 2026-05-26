@@ -7,6 +7,8 @@ import '../../pages/memories/add_memory_page.dart';
 import '../../pages/memories/memory_badges_catalog.dart';
 import '../../pages/memories/memory_detail_carousel_page.dart';
 import '../../pages/memories/memory_detail_page.dart';
+import '../../pages/premium/premium_paywall_screen.dart';
+import '../../services/premium/feature_access.dart';
 import '../../utils/portal_page_route.dart';
 import 'empty_memory_card.dart';
 import 'filled_memory_card.dart';
@@ -72,10 +74,7 @@ class _AddMemoryBadgeCard extends StatelessWidget {
   }
 }
 
-bool _memoryHasContent(BabyMemory m) {
-  if (_memoryHasPhoto(m)) return true;
-  return (m.description ?? '').trim().isNotEmpty;
-}
+bool _memoryHasContent(BabyMemory m) => FeatureAccess.memoryHasBody(m);
 
 class MemoryGrid extends StatefulWidget {
   final List<MemoryBadge> badges;
@@ -127,6 +126,34 @@ class _MemoryGridState extends State<MemoryGrid>
           id: memory.badgeId,
           title: memory.title,
         );
+  }
+
+  Future<void> _tryOpenAddMemory({
+    required BuildContext context,
+    required int babyId,
+    required Map<String, Object?> babyRow,
+    required MemoryController controller,
+    required List<MemoryBadge> availableBadges,
+    MemoryBadge? badge,
+    BabyMemory? initialMemory,
+  }) async {
+    final badgeId = badge?.id ?? initialMemory?.badgeId;
+    if (!FeatureAccess.canOpenNewMemoryMoment(
+      controller: controller,
+      badgeId: badgeId,
+    )) {
+      await showMemoryPremiumLimitDialog(context);
+      return;
+    }
+    await _openAddMemory(
+      context: context,
+      babyId: babyId,
+      babyRow: babyRow,
+      controller: controller,
+      availableBadges: availableBadges,
+      badge: badge,
+      initialMemory: initialMemory,
+    );
   }
 
   Future<void> _openAddMemory({
@@ -200,7 +227,7 @@ class _MemoryGridState extends State<MemoryGrid>
               itemBuilder: (context, i) {
                 if (i == 0) {
                   return _AddMemoryBadgeCard(
-                    onTap: () => _openAddMemory(
+                    onTap: () => _tryOpenAddMemory(
                       context: context,
                       babyId: babyId,
                       babyRow: babyRow,
@@ -215,7 +242,7 @@ class _MemoryGridState extends State<MemoryGrid>
                   final badge = emptyBadges[filledIndex - filled.length];
                   return EmptyMemoryCard(
                     badge: badge,
-                    onTap: () => _openAddMemory(
+                    onTap: () => _tryOpenAddMemory(
                       context: context,
                       babyId: babyId,
                       babyRow: babyRow,

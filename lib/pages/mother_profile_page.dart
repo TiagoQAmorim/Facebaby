@@ -8,11 +8,14 @@ import '../services/firebase/profile_cloud_sync.dart';
 import '../services/firebase/baby_deletion_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/measurement_format.dart';
+import '../utils/portal_page_route.dart';
+import '../utils/portal_time_of_day.dart';
 import '../widgets/card_box.dart';
 import '../widgets/language_picker.dart';
 import '../widgets/portal_layout_preference_control.dart';
 import '../widgets/photo_avatar.dart';
 import 'mother_baby_register_page.dart';
+import 'ai/ai_baby_history_page.dart';
 
 /// Aba inicial ao abrir [MotherProfilePage] (ex.: vindo da tela Família).
 enum MotherProfileInitialTab { preferences, mother, father, babies }
@@ -29,19 +32,16 @@ class MotherProfilePage extends StatefulWidget {
   State<MotherProfilePage> createState() => _MotherProfilePageState();
 }
 
-int motherProfileTabIndex({
-  required MotherProfileInitialTab tab,
-  required bool fatherRegistered,
-}) {
+int motherProfileTabIndex({required MotherProfileInitialTab tab}) {
   switch (tab) {
     case MotherProfileInitialTab.preferences:
       return 0;
     case MotherProfileInitialTab.mother:
       return 1;
     case MotherProfileInitialTab.father:
-      return fatherRegistered ? 2 : 1;
+      return 2;
     case MotherProfileInitialTab.babies:
-      return fatherRegistered ? 3 : 2;
+      return 3;
   }
 }
 
@@ -67,16 +67,13 @@ class _MotherProfilePageState extends State<MotherProfilePage>
   TabController? _tabs;
   int _tabCount = 2;
 
-  TabController _tabsFor(int count, {required bool fatherRegistered}) {
+  TabController _tabsFor(int count) {
     if (_tabs != null && _tabCount == count) return _tabs!;
     final prevIndex = _tabs?.index;
     _tabs?.dispose();
     _tabCount = count;
     final initial = prevIndex ??
-        motherProfileTabIndex(
-          tab: widget.initialTab,
-          fatherRegistered: fatherRegistered,
-        );
+        motherProfileTabIndex(tab: widget.initialTab);
     _tabs = TabController(
       length: count,
       vsync: this,
@@ -106,13 +103,16 @@ class _MotherProfilePageState extends State<MotherProfilePage>
   }
 
   Future<void> _editMother(
-      int motherId, MotherProfileMotherFormSection section) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => MotherBabyRegisterPage(
-          editMotherId: motherId,
-          profileMotherSection: section,
-        ),
+    int motherId,
+    MotherProfileMotherFormSection section, {
+    bool profileFatherIsAdd = false,
+  }) async {
+    await pushPortalPage<void>(
+      context,
+      MotherBabyRegisterPage(
+        editMotherId: motherId,
+        profileMotherSection: section,
+        profileFatherIsAdd: profileFatherIsAdd,
       ),
     );
     await CurrentBabyController.instance.refresh();
@@ -125,19 +125,28 @@ class _MotherProfilePageState extends State<MotherProfilePage>
     final motherId = (mother?['id'] as num?)?.toInt();
     final fatherRegistered =
         mother != null && motherProfileFatherRegistered(mother);
-    final tabCount = fatherRegistered ? 4 : 3;
-    final tabs = _tabsFor(tabCount, fatherRegistered: fatherRegistered);
+    const tabCount = 4;
+    final tabs = _tabsFor(tabCount);
 
     final tabWidgets = <Widget>[
       Tab(text: s.motherProfileTabPreferences),
       Tab(text: s.motherProfileTabMother),
-      if (fatherRegistered) Tab(text: s.motherProfileTabFather),
+      Tab(text: s.motherProfileTabFather),
       Tab(text: s.motherProfileTabBabies),
     ];
 
+    final atNight = PortalTimeOfDay.isNight(DateTime.now());
+    final portalVeil = (atNight ? const Color(0xFF152238) : const Color(0xFFB8D9EE))
+        .withAlpha(18);
+
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(s.settingsMotherProfile),
+        backgroundColor: CardBox.frostedFill,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        shadowColor: Colors.transparent,
         bottom: TabBar(
           controller: tabs,
           isScrollable: true,
@@ -145,35 +154,49 @@ class _MotherProfilePageState extends State<MotherProfilePage>
           tabs: tabWidgets,
         ),
       ),
-      body: SafeArea(
-        top: false,
-        child: motherId == null
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child:
-                      Text(s.motherProfileNoData, textAlign: TextAlign.center),
-                ),
-              )
-            : TabBarView(
-                controller: tabs,
-                children: [
-                  _PreferencesTab(motherRow: mother!),
-                  _MotherInfoTab(
-                    motherRow: mother,
-                    showFatherHeight: !fatherRegistered,
-                    onEdit: () => _editMother(
-                        motherId, MotherProfileMotherFormSection.mother),
-                  ),
-                  if (fatherRegistered)
-                    _FatherInfoTab(
-                      motherRow: mother,
-                      onEdit: () => _editMother(
-                          motherId, MotherProfileMotherFormSection.father),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          ColoredBox(color: portalVeil),
+          SafeArea(
+            top: false,
+            child: motherId == null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(s.motherProfileNoData,
+                          textAlign: TextAlign.center),
                     ),
-                  _BabiesTab(motherId: motherId),
-                ],
-              ),
+                  )
+                : TabBarView(
+                    controller: tabs,
+                    children: [
+                      _PreferencesTab(motherRow: mother!),
+                      _MotherInfoTab(
+                        motherRow: mother,
+                        onEdit: () => _editMother(
+                            motherId, MotherProfileMotherFormSection.mother),
+                      ),
+                      fatherRegistered
+                          ? _FatherInfoTab(
+                              motherRow: mother,
+                              onEdit: () => _editMother(
+                                motherId,
+                                MotherProfileMotherFormSection.father,
+                              ),
+                            )
+                          : _FatherAddPromptTab(
+                              onAdd: () => _editMother(
+                                motherId,
+                                MotherProfileMotherFormSection.father,
+                                profileFatherIsAdd: true,
+                              ),
+                            ),
+                      _BabiesTab(motherId: motherId),
+                    ],
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -230,6 +253,8 @@ class _PreferencesTab extends StatefulWidget {
 class _PreferencesTabState extends State<_PreferencesTab> {
   late bool _showChristian;
   late bool _showHoroscope;
+  late bool _showSpiritist;
+  late bool _showJewish;
   bool _savingMessagePrefs = false;
 
   @override
@@ -248,22 +273,30 @@ class _PreferencesTabState extends State<_PreferencesTab> {
     final prefs = FamilyMessagePrefs.fromMother(widget.motherRow);
     _showChristian = prefs.showChristian;
     _showHoroscope = prefs.showHoroscope;
+    _showSpiritist = prefs.showSpiritist;
+    _showJewish = prefs.showJewish;
   }
 
   Future<void> _setMessagePref({
     bool? showChristian,
     bool? showHoroscope,
+    bool? showSpiritist,
+    bool? showJewish,
   }) async {
     final motherId = (widget.motherRow['id'] as num?)?.toInt();
     if (motherId == null || _savingMessagePrefs) return;
 
     final nextChristian = showChristian ?? _showChristian;
     final nextHoroscope = showHoroscope ?? _showHoroscope;
+    final nextSpiritist = showSpiritist ?? _showSpiritist;
+    final nextJewish = showJewish ?? _showJewish;
 
     setState(() {
       _savingMessagePrefs = true;
       _showChristian = nextChristian;
       _showHoroscope = nextHoroscope;
+      _showSpiritist = nextSpiritist;
+      _showJewish = nextJewish;
     });
 
     try {
@@ -271,6 +304,8 @@ class _PreferencesTabState extends State<_PreferencesTab> {
         motherId: motherId,
         showChristian: nextChristian,
         showHoroscope: nextHoroscope,
+        showSpiritist: nextSpiritist,
+        showJewish: nextJewish,
       );
       await ProfileCloudSync.pushMother(motherId);
       await CurrentBabyController.instance.refresh();
@@ -288,14 +323,22 @@ class _PreferencesTabState extends State<_PreferencesTab> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const CardBox(
+            frosted: true,
             child: LanguagePreferencePicker(),
           ),
           const SizedBox(height: 14),
           const CardBox(
+            frosted: true,
             child: PortalLayoutPreferenceControl(),
           ),
           const SizedBox(height: 14),
+          const CardBox(
+            frosted: true,
+            child: AiBabyHistoryLinkTile(),
+          ),
+          const SizedBox(height: 14),
           CardBox(
+            frosted: true,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -327,6 +370,28 @@ class _PreferencesTabState extends State<_PreferencesTab> {
                       ? null
                       : (v) => _setMessagePref(showHoroscope: v),
                 ),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    s.profileShowSpiritist,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  value: _showSpiritist,
+                  onChanged: _savingMessagePrefs
+                      ? null
+                      : (v) => _setMessagePref(showSpiritist: v),
+                ),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    s.profileShowJewish,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  value: _showJewish,
+                  onChanged: _savingMessagePrefs
+                      ? null
+                      : (v) => _setMessagePref(showJewish: v),
+                ),
               ],
             ),
           ),
@@ -338,12 +403,10 @@ class _PreferencesTabState extends State<_PreferencesTab> {
 
 class _MotherInfoTab extends StatelessWidget {
   final Map<String, Object?> motherRow;
-  final bool showFatherHeight;
   final Future<void> Function()? onEdit;
 
   const _MotherInfoTab({
     required this.motherRow,
-    this.showFatherHeight = false,
     this.onEdit,
   });
 
@@ -357,7 +420,6 @@ class _MotherInfoTab extends StatelessWidget {
         ? null
         : DateTime.tryParse(birthRaw);
     final height = (motherRow['height_cm'] as num?)?.toDouble();
-    final fatherHeight = (motherRow['father_height_cm'] as num?)?.toDouble();
     final photoB64 = (motherRow['photo_b64'] as String?)?.trim();
     final photoUrlRaw = (motherRow['photo_url'] as String?)?.trim();
 
@@ -367,6 +429,7 @@ class _MotherInfoTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           CardBox(
+            frosted: true,
             child: Row(
               children: [
                 PhotoAvatar(
@@ -391,6 +454,7 @@ class _MotherInfoTab extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           CardBox(
+            frosted: true,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -410,12 +474,6 @@ class _MotherInfoTab extends StatelessWidget {
                   label: s.motherProfileFieldHeight,
                   value: MeasurementFormat.length(height, decimalsCm: 0),
                 ),
-                if (showFatherHeight)
-                  _ProfileInfoLine(
-                    label: s.motherProfileFieldFatherHeight,
-                    value:
-                        MeasurementFormat.length(fatherHeight, decimalsCm: 0),
-                  ),
               ],
             ),
           ),
@@ -430,6 +488,62 @@ class _MotherInfoTab extends StatelessWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _FatherAddPromptTab extends StatelessWidget {
+  const _FatherAddPromptTab({required this.onAdd});
+
+  final Future<void> Function() onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          CardBox(
+            frosted: true,
+            child: Column(
+              children: [
+                const Text('👨', style: TextStyle(fontSize: 48)),
+                const SizedBox(height: 12),
+                Text(
+                  s.profileFatherNotRegisteredTitle,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  s.profileFatherNotRegisteredSubtitle,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black.withAlpha(140),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => onAdd(),
+              icon: const Icon(Icons.person_add_outlined),
+              label: Text(s.profileFatherAddCta),
+            ),
+          ),
         ],
       ),
     );
@@ -461,6 +575,7 @@ class _FatherInfoTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           CardBox(
+            frosted: true,
             child: Row(
               children: [
                 PhotoAvatar(
@@ -485,6 +600,7 @@ class _FatherInfoTab extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           CardBox(
+            frosted: true,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -553,10 +669,9 @@ class _BabiesTabState extends State<_BabiesTab> {
   Future<void> _openEditBaby(Map<String, Object?> b) async {
     final id = (b['id'] as num?)?.toInt();
     if (id == null) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => MotherBabyRegisterPage(editBabyId: id),
-      ),
+    await pushPortalPage<void>(
+      context,
+      MotherBabyRegisterPage(editBabyId: id),
     );
     await CurrentBabyController.instance.refresh();
     if (!mounted) return;
@@ -564,12 +679,11 @@ class _BabiesTabState extends State<_BabiesTab> {
   }
 
   Future<void> _addAnotherBaby() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => MotherBabyRegisterPage(
-          babyOnly: true,
-          presetMotherId: widget.motherId,
-        ),
+    await pushPortalPage<void>(
+      context,
+      MotherBabyRegisterPage(
+        babyOnly: true,
+        presetMotherId: widget.motherId,
       ),
     );
     await CurrentBabyController.instance.refresh();
@@ -630,6 +744,13 @@ class _BabiesTabState extends State<_BabiesTab> {
     final s = S.of(context);
     return Column(
       children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: CardBox(
+            frosted: true,
+            child: AiBabyHistoryLinkTile(),
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
           child: SizedBox(
@@ -687,6 +808,7 @@ class _BabiesTabState extends State<_BabiesTab> {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: CardBox(
+                      frosted: true,
                       padding: EdgeInsets.zero,
                       child: InkWell(
                         borderRadius: BorderRadius.circular(18),

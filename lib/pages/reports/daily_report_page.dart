@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../utils/app_date_picker.dart';
 import '../../controllers/current_baby_controller.dart';
 import '../../i18n/app_i18n.dart';
 import '../../models/daily_report_snapshot.dart';
@@ -69,7 +70,7 @@ class _DailyReportPageState extends State<DailyReportPage> {
 
   Future<void> _pickDay() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
+    final picked = await showAppDatePicker(
       context: context,
       initialDate: _day,
       firstDate: DateTime(now.year - 5),

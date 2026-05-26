@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/app_date_picker.dart';
+
 import '../controllers/current_baby_controller.dart';
 import '../i18n/app_i18n.dart';
 import '../services/app_database.dart';
@@ -48,7 +50,7 @@ class _DailyJournalPageState extends State<DailyJournalPage> {
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
   Future<void> _pickDay() async {
-    final picked = await showDatePicker(
+    final picked = await showAppDatePicker(
       context: context,
       initialDate: _day,
       firstDate: DateTime(2000),

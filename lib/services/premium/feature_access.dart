@@ -22,6 +22,12 @@ abstract final class FeatureAccess {
 
   static bool get canOpenAdvancedReports => _premium;
 
+  /// IA Babá 24h (chat).
+  static bool get canUseAiNanny => _premium;
+
+  /// Horóscopo familiar diário gerado por IA.
+  static bool get canUseAiFamilyHoroscope => _premium;
+
   /// Textos de signo solar (pai, mãe, bebê) na árvore Família.
   static bool get canViewFamilyZodiac => _premium;
 
@@ -35,6 +41,19 @@ abstract final class FeatureAccess {
     return photo || text;
   }
 
+  /// Abrir editor para novo selo (+ ou badge vazio) sem Premium.
+  static bool canOpenNewMemoryMoment({
+    required MemoryController controller,
+    String? badgeId,
+  }) {
+    if (_premium) return true;
+    if (badgeId != null) {
+      final existing = controller.byBadge[badgeId];
+      if (memoryHasBody(existing)) return true;
+    }
+    return filledMemoryCount(controller) < PremiumConstants.freeMemoryMomentsMax;
+  }
+
   static bool canSaveNewMemoryMoment({
     required MemoryController controller,
     required String badgeId,
@@ -42,14 +61,7 @@ abstract final class FeatureAccess {
   }) {
     if (_premium) return true;
     if (isEditing) return true;
-    final existing = controller.byBadge[badgeId];
-    if (memoryHasBody(existing)) return true;
-
-    var filled = 0;
-    for (final m in controller.byBadge.values) {
-      if (memoryHasBody(m)) filled++;
-    }
-    return filled < PremiumConstants.freeMemoryMomentsMax;
+    return canOpenNewMemoryMoment(controller: controller, badgeId: badgeId);
   }
 
   static int filledMemoryCount(MemoryController controller) {

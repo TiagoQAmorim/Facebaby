@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../utils/app_date_picker.dart';
 import '../../controllers/current_baby_controller.dart';
 import '../../i18n/app_i18n.dart';
 import '../../models/baby_memory.dart';
@@ -77,7 +78,7 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
 
   Future<void> _pickMonth() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
+    final picked = await showAppDatePicker(
       context: context,
       initialDate: _monthAnchor,
       firstDate: DateTime(now.year - 5),

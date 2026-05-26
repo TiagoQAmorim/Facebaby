@@ -44,6 +44,7 @@ class PediatricReportPdfStrings {
     required this.na,
     required this.footerDisclaimer,
     required this.noneRegistered,
+    required this.sectionGrowthInsights,
   });
 
   final String title;
@@ -81,6 +82,7 @@ class PediatricReportPdfStrings {
   final String na;
   final String footerDisclaimer;
   final String noneRegistered;
+  final String sectionGrowthInsights;
 }
 
 Future<Uint8List> buildPediatricReportPdf({
@@ -191,6 +193,21 @@ Future<Uint8List> buildPediatricReportPdf({
             ),
           ],
         ),
+        if (snap.growthInsightLines.isNotEmpty) ...[
+          pw.SizedBox(height: 10),
+          _boxed(
+            softLine,
+            str.sectionGrowthInsights,
+            accent,
+            snap.growthInsightLines
+                .map((line) => pw.Padding(
+                      padding: const pw.EdgeInsets.only(bottom: 4),
+                      child: pw.Text('• $line',
+                          style: const pw.TextStyle(fontSize: 9.5)),
+                    ))
+                .toList(),
+          ),
+        ],
         pw.SizedBox(height: 10),
         _boxed(
           softLine,

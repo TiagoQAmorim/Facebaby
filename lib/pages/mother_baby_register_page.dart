@@ -13,6 +13,9 @@ import '../services/measurement_units_prefs.dart';
 import '../theme/app_theme.dart';
 import '../utils/input_formatters.dart';
 import '../utils/pick_image_b64.dart';
+import '../utils/portal_night_ui.dart';
+import '../utils/portal_time_of_day.dart';
+import '../utils/br_date_picker.dart';
 import '../utils/zodiac.dart';
 import '../widgets/card_box.dart';
 import '../widgets/loading_scope.dart';
@@ -66,6 +69,8 @@ class MotherBabyRegisterPage extends StatefulWidget {
   final int? editMotherId;
   /// Com [editMotherId]: só campos da mãe ou só do pai (o restante preserva-se na BD).
   final MotherProfileMotherFormSection? profileMotherSection;
+  /// Cadastro inicial do pai em Meu Perfil (título «Cadastrar pai»).
+  final bool profileFatherIsAdd;
   /// Editar dados do bebê existente (Meu Perfil).
   final int? editBabyId;
 
@@ -77,6 +82,7 @@ class MotherBabyRegisterPage extends StatefulWidget {
     this.presetMotherId,
     this.editMotherId,
     this.profileMotherSection,
+    this.profileFatherIsAdd = false,
     this.editBabyId,
   });
 
@@ -338,6 +344,8 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
       unit: unitStr,
       decimalDigits: dec,
       icon: Icons.monitor_weight_outlined,
+      dragPixelsPerFullRange: growthRulerDragPixelsOnboarding,
+      quantizeDuringDrag: true,
       subjectLabel:
           _babyNameCtrl.text.trim().isEmpty ? null : _babyNameCtrl.text.trim(),
       dragHint: s.onb('DragToAdjust'),
@@ -389,12 +397,14 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
 
   Future<void> _pickBirthDate() async {
     final now = DateTime.now();
-    final initial = _babyBirthDate ?? DateTime(now.year, now.month, now.day);
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initial,
+    final s = S.of(context);
+    final picked = await showBrDatePicker(
+      context,
+      title: s.regBirthLabel,
+      initialDate: _babyBirthDate ?? DateTime(now.year, now.month, now.day),
       firstDate: DateTime(now.year - 5),
-      lastDate: now,
+      lastDate: babyBirthDateLastAllowed(now),
+      calendarFirst: true,
     );
     if (picked == null) return;
     setState(() => _babyBirthDate = picked);
@@ -402,12 +412,14 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
 
   Future<void> _pickMotherBirthDate() async {
     final now = DateTime.now();
-    final initial = _motherBirthDate ?? DateTime(now.year - 25, now.month, now.day);
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initial,
+    final s = S.of(context);
+    final picked = await showBrDatePicker(
+      context,
+      title: s.regBirthLabel,
+      initialDate: _motherBirthDate ?? DateTime(now.year - 25, now.month, now.day),
       firstDate: DateTime(now.year - 80),
       lastDate: now,
+      calendarFirst: true,
     );
     if (picked == null) return;
     setState(() => _motherBirthDate = picked);
@@ -415,12 +427,14 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
 
   Future<void> _pickFatherBirthDate() async {
     final now = DateTime.now();
-    final initial = _fatherBirthDate ?? DateTime(now.year - 30, now.month, now.day);
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: DateTime(now.year - 80),
+    final s = S.of(context);
+    final picked = await showBrDatePicker(
+      context,
+      title: s.regFatherBirthLabel,
+      initialDate: _fatherBirthDate ?? DateTime(now.year - 30, now.month, now.day),
+      firstDate: DateTime(now.year - 90),
       lastDate: now,
+      calendarFirst: true,
     );
     if (picked == null) return;
     setState(() => _fatherBirthDate = picked);
@@ -939,6 +953,14 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
         : '${_babyBirthDate!.day.toString().padLeft(2, '0')}/${_babyBirthDate!.month.toString().padLeft(2, '0')}/${_babyBirthDate!.year}';
     final zodiac = _babyZodiacSign;
 
+    final atNight = PortalTimeOfDay.isNight(DateTime.now());
+    final portalVeil = (atNight ? const Color(0xFF152238) : const Color(0xFFB8D9EE))
+        .withAlpha(18);
+    final sectionTitleColor =
+        atNight ? PortalTimeOfDay.nightOutlinedTextColor : null;
+    final sectionTitleShadows =
+        atNight ? PortalTimeOfDay.nightTextOutlineShadows : null;
+
     return PopScope<Object?>(
       canPop: !widget.mandatory && (_profileEditMode || widget.babyOnly || _step == 0),
       onPopInvokedWithResult: (didPop, result) {
@@ -949,34 +971,41 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
         if (_step == 1) _goToMotherStep();
       },
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: Colors.transparent,
         appBar: AppBar(
           title: widget.editBabyId != null
               ? Text(s.profileEditBaby, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17))
               : widget.editMotherId != null
                   ? Text(
-                      widget.profileMotherSection == MotherProfileMotherFormSection.father
-                          ? s.profileEditFather
+                      widget.profileMotherSection ==
+                              MotherProfileMotherFormSection.father
+                          ? (widget.profileFatherIsAdd
+                              ? s.profileAddFather
+                              : s.profileEditFather)
                           : s.profileEditMother,
                       style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17),
                     )
                   : const SizedBox.shrink(),
           automaticallyImplyLeading: !widget.mandatory,
           toolbarHeight: 44,
-          backgroundColor: AppTheme.background,
+          backgroundColor: CardBox.frostedFill,
           foregroundColor: AppTheme.textPrimary,
           elevation: 0,
           scrolledUnderElevation: 0,
           shadowColor: Colors.transparent,
           surfaceTintColor: Colors.transparent,
-          systemOverlayStyle: const SystemUiOverlayStyle(
-            statusBarColor: AppTheme.background,
+          systemOverlayStyle: SystemUiOverlayStyle(
+            statusBarColor: CardBox.frostedFill,
             statusBarIconBrightness: Brightness.dark,
-            systemNavigationBarColor: AppTheme.background,
+            systemNavigationBarColor: atNight
+                ? const Color(0xFF152238)
+                : const Color(0xFFB8D9EE),
             systemNavigationBarIconBrightness: Brightness.dark,
           ),
         ),
-        body: SingleChildScrollView(
+        body: ColoredBox(
+          color: portalVeil,
+          child: SingleChildScrollView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Center(
             child: ConstrainedBox(
@@ -1043,7 +1072,11 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 if (_motherFormSectionVisible) ...[
-                                  SectionTitle(title: s.regMotherSection),
+                                  SectionTitle(
+                                    title: s.regMotherSection,
+                                    titleColor: sectionTitleColor,
+                                    titleShadows: sectionTitleShadows,
+                                  ),
                                   const SizedBox(height: 8),
                                 TextFormField(
                                   controller: _motherNameCtrl,
@@ -1089,13 +1122,18 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                                 ),
                                 const SizedBox(height: 12),
                                 CardBox(
+                                  frosted: true,
                                   padding: EdgeInsets.zero,
                                   child: _motherHeightRuler(s),
                                 ),
                                 const SizedBox(height: 16),
                                 ],
                                 if (_fatherFormSectionVisible) ...[
-                                SectionTitle(title: s.regFatherSection),
+                                SectionTitle(
+                                  title: s.regFatherSection,
+                                  titleColor: sectionTitleColor,
+                                  titleShadows: sectionTitleShadows,
+                                ),
                                 const SizedBox(height: 8),
                                 TextFormField(
                                   controller: _fatherNameCtrl,
@@ -1122,6 +1160,7 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                                 ),
                                 const SizedBox(height: 12),
                                 CardBox(
+                                  frosted: true,
                                   padding: EdgeInsets.zero,
                                   child: _fatherHeightRuler(s),
                                 ),
@@ -1266,7 +1305,13 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                                   tooltip: s.commonBack,
                                 ),
                               if (!widget.babyOnly && !_profileEditBaby) const SizedBox(width: 6),
-                              Expanded(child: SectionTitle(title: s.regBabySection)),
+                              Expanded(
+                                child: SectionTitle(
+                                  title: s.regBabySection,
+                                  titleColor: sectionTitleColor,
+                                  titleShadows: sectionTitleShadows,
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 12),
@@ -1286,7 +1331,11 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                                       );
                                     }
                                     if (mothers.isEmpty) {
-                                      return Text(s.regBabyPrompt);
+                                      return Text(
+                                        s.regBabyPrompt,
+                                        style: PortalNightUi.bodyStyle(atNight,
+                                            fontSize: 16),
+                                      );
                                     }
                                     _selectedMotherId ??= (mothers.first['id'] as num).toInt();
                                     final mid = _selectedMotherId;
@@ -1387,11 +1436,13 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                                 ],
                                 const SizedBox(height: 12),
                                 CardBox(
+                                  frosted: true,
                                   padding: EdgeInsets.zero,
                                   child: _babyWeightRuler(s),
                                 ),
                                 const SizedBox(height: 12),
                                 CardBox(
+                                  frosted: true,
                                   padding: EdgeInsets.zero,
                                   child: _babyHeightRuler(s),
                                 ),
@@ -1419,7 +1470,11 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                   ),
                   if (!widget.mandatory && !_profileEditMode) ...[
                     const SizedBox(height: 18),
-                    SectionTitle(title: s.regRegisteredList),
+                    SectionTitle(
+                      title: s.regRegisteredList,
+                      titleColor: sectionTitleColor,
+                      titleShadows: sectionTitleShadows,
+                    ),
                     const SizedBox(height: 12),
                     FutureBuilder<List<Map<String, Object?>>>(
                       future: _listFuture,
@@ -1433,6 +1488,7 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                         final rows = snapshot.data ?? const [];
                         if (rows.isEmpty) {
                           return CardBox(
+                            frosted: true,
                             child: Row(
                               children: [
                                 const Icon(Icons.info_outline),
@@ -1470,6 +1526,7 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 10),
                               child: CardBox(
+                                frosted: true,
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -1502,6 +1559,7 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
               ),
             ),
           ),
+        ),
         ),
       ),
     );

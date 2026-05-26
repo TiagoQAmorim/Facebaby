@@ -83,7 +83,7 @@ class _HomeRecentMemoriesSectionState extends State<HomeRecentMemoriesSection> {
   void _openMemoriesTab() {
     ShellNestedNav.tabNavigatorKeys[2].currentState
         ?.popUntil((route) => route.isFirst);
-    ShellNestedNav.selectTab?.call(2);
+    ShellNestedNav.selectTab?.call(3);
   }
 
   @override

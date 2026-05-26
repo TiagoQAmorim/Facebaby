@@ -8,6 +8,7 @@ import '../controllers/current_baby_controller.dart';
 import '../i18n/app_i18n.dart';
 import '../models/feeding_record.dart';
 import '../services/app_database.dart';
+import '../services/feeding_events.dart';
 import '../services/firebase/feeding_cloud_sync.dart';
 import '../services/firebase/firestore_service.dart';
 import '../services/home_prefs.dart';
@@ -92,13 +93,17 @@ class _FeedingHubPageState extends State<FeedingHubPage>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _currentBaby.addListener(_onBabyChanged);
+    FeedingEvents.revision.addListener(_onFeedingsRevision);
     _breastTimer.addListener(_onBreastTimerTick);
     _refreshFeedingsFuture();
   }
 
+  void _onFeedingsRevision() => _refreshFeedingsFuture();
+
   @override
   void dispose() {
     _currentBaby.removeListener(_onBabyChanged);
+    FeedingEvents.revision.removeListener(_onFeedingsRevision);
     _breastTimer.removeListener(_onBreastTimerTick);
     _breastScrollController.dispose();
     _bottleScrollController.dispose();

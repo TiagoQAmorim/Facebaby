@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "facebaby-afc41"
+  },
+  "targets": {
+    "facebaby-afc41": {
+      "hosting": {
+        "admin": [
+          "facebaby-admin"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

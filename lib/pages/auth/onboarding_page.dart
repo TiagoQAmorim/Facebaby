@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import '../../pages/dev/logged_out_screen_mirror.dart';
 import '../../controllers/current_baby_controller.dart';
 import '../../i18n/app_i18n.dart';
-import '../../models/family_message_prefs.dart';
 import '../../services/app_database.dart';
 import '../../services/firebase/auth_service.dart';
 import '../../services/firebase/firestore_user_repository.dart';
@@ -14,13 +13,19 @@ import '../../services/firebase/profile_cloud_sync.dart';
 import '../../services/measurement_units_prefs.dart';
 import '../../services/onboarding_draft_store.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/br_date_picker.dart';
 import '../../utils/login_platform.dart';
 import '../../utils/portal_time_of_day.dart';
+import '../../models/family_message_kind.dart';
+import '../../models/family_message_prefs.dart';
 import '../../utils/zodiac.dart';
 import '../../utils/pick_image_b64.dart';
+import '../../widgets/auth_screen_background.dart';
 import '../../widgets/growth_ruler_picker.dart';
 import '../../widgets/language_picker.dart';
 import '../../widgets/photo_avatar.dart';
+import '../../widgets/ai_baby_history_form.dart';
+import '../../repositories/ai/ai_profile_repository.dart';
 import 'login_page.dart';
 
 InputDecoration _modernInputDecoration({
@@ -55,6 +60,7 @@ class _OnboardingAssets {
   static const welcomeLogo = 'assets/onboarding/logo_welcome.png';
   /// Mesmo fundo diurno do portal ([PortalTimeOfDay.backgroundDay]).
   static const registrationBackground = PortalTimeOfDay.backgroundDay;
+  static const loginBackground = PortalTimeOfDay.backgroundLogin;
   static const backgroundLoading = 'assets/onboarding/background_loading.png';
   static const cloudIcon = 'assets/onboarding/cloud_icon.png';
   static const dateBirthIcon = 'assets/onboarding/date_birth_icon.png';
@@ -85,7 +91,7 @@ class OnboardingPage extends StatefulWidget {
 }
 
 class _OnboardingPageState extends State<OnboardingPage> {
-  static const _totalSteps = 19;
+  static const _totalSteps = 20;
   static const _defaultWeightKg = 0.0;
   static const _defaultHeightCm = 0.0;
   static const _defaultMotherHeightCm = 0.0;
@@ -95,6 +101,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   final _nameCtrl = TextEditingController();
   final _motherNameCtrl = TextEditingController();
   final _fatherNameCtrl = TextEditingController();
+  final _aiHistoryCtrl = TextEditingController();
   bool _loading = true;
   bool _busy = false;
   String? _error;
@@ -177,6 +184,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     _nameCtrl.dispose();
     _motherNameCtrl.dispose();
     _fatherNameCtrl.dispose();
+    _aiHistoryCtrl.dispose();
     super.dispose();
   }
 
@@ -193,6 +201,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     _nameCtrl.text = draft.babyName;
     _motherNameCtrl.text = draft.motherName;
     _fatherNameCtrl.text = draft.fatherName;
+    _aiHistoryCtrl.text = draft.aiHistory;
     if (!mounted) return;
     setState(() {
       _draft = draft;
@@ -213,43 +222,49 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   Future<void> _pickBirthDate() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
+    final s = S.of(context);
+    final picked = await showBrDatePicker(
+      context,
+      title: s.onb('BabyBirthTitle'),
       initialDate: _draft.birthDate ?? DateTime(now.year, now.month, now.day),
       firstDate: DateTime(now.year - 5),
-      lastDate: now,
+      lastDate: babyBirthDateLastAllowed(now),
+      calendarFirst: true,
     );
     if (picked == null) return;
-    await _save(_draft.copyWith(
-        birthDate: DateTime(picked.year, picked.month, picked.day)));
+    await _save(_draft.copyWith(birthDate: picked));
   }
 
   Future<void> _pickMotherBirthDate() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
+    final s = S.of(context);
+    final picked = await showBrDatePicker(
+      context,
+      title: s.onb('MotherBirthTitle'),
       initialDate:
           _draft.motherBirthDate ?? DateTime(now.year - 28, now.month, now.day),
       firstDate: DateTime(now.year - 80),
       lastDate: now,
+      calendarFirst: true,
     );
     if (picked == null) return;
-    await _save(_draft.copyWith(
-        motherBirthDate: DateTime(picked.year, picked.month, picked.day)));
+    await _save(_draft.copyWith(motherBirthDate: picked));
   }
 
   Future<void> _pickFatherBirthDate() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
+    final s = S.of(context);
+    final picked = await showBrDatePicker(
+      context,
+      title: s.onb('FatherBirthTitle'),
       initialDate:
           _draft.fatherBirthDate ?? DateTime(now.year - 30, now.month, now.day),
       firstDate: DateTime(now.year - 90),
       lastDate: now,
+      calendarFirst: true,
     );
     if (picked == null) return;
-    await _save(_draft.copyWith(
-        fatherBirthDate: DateTime(picked.year, picked.month, picked.day)));
+    await _save(_draft.copyWith(fatherBirthDate: picked));
   }
 
   String _birthLabel(S s) {
@@ -325,8 +340,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
       case 17:
         return _draft.goals.isNotEmpty;
       case 18:
-        return _draft.familyMessageChoice != null &&
-            _draft.familyMessageChoice!.isNotEmpty;
+        return true;
+      case 19:
+        return true;
       default:
         return false;
     }
@@ -369,6 +385,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
     if (!_canContinue()) return;
     if (_draft.step == 1) {
       await _save(_draft.copyWith(babyName: _nameCtrl.text.trim()));
+    }
+    if (_draft.step == 19) {
+      await _save(_draft.copyWith(aiHistory: _aiHistoryCtrl.text.trim()));
     }
     await _saveStepDefaultIfNeeded();
     if (_draft.step == 11 && _draft.registerFather == false) {
@@ -449,10 +468,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
             value: value,
             min: 0,
             max: _weightUnit == WeightUnit.lb ? 55.1 : 25,
-            divisions: _weightUnit == WeightUnit.lb ? 551 : 500,
+            divisions: _weightUnit == WeightUnit.lb ? 276 : 250,
             unit: _weightUnitLabel,
             decimalDigits: _weightUnit == WeightUnit.lb ? 1 : 2,
             icon: Icons.monitor_weight_outlined,
+            dragPixelsPerFullRange: growthRulerDragPixelsOnboarding,
+            quantizeDuringDrag: true,
             subjectLabel: _draft.babyName.trim().isEmpty
                 ? s.onb('BabyFallback')
                 : _draft.babyName.trim(),
@@ -768,34 +789,29 @@ class _OnboardingPageState extends State<OnboardingPage> {
           ),
         );
       case 18:
+        return _messagePreferenceStep(s);
+      case 19:
         return _QuestionScaffold(
-          title: s.onb('MessagePrefTitle'),
-          subtitle: s.onb('MessagePrefSubtitle'),
+          title: s.onb('AiHistoryTitle'),
+          subtitle: s.onb('AiHistorySubtitle'),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _OptionTile(
-                label: s.onb('MessagePrefChristian'),
-                selected: _draft.familyMessageChoice == 'christian',
-                onTap: () =>
-                    _save(_draft.copyWith(familyMessageChoice: 'christian')),
+              AiBabyHistoryForm(
+                controller: _aiHistoryCtrl,
+                embedded: true,
+                showActions: false,
+                initialText: _draft.aiHistory,
               ),
-              _OptionTile(
-                label: s.onb('MessagePrefHoroscope'),
-                selected: _draft.familyMessageChoice == 'horoscope',
-                onTap: () =>
-                    _save(_draft.copyWith(familyMessageChoice: 'horoscope')),
-              ),
-              _OptionTile(
-                label: s.onb('MessagePrefBoth'),
-                selected: _draft.familyMessageChoice == 'both',
-                onTap: () =>
-                    _save(_draft.copyWith(familyMessageChoice: 'both')),
-              ),
-              _OptionTile(
-                label: s.onb('MessagePrefNone'),
-                selected: _draft.familyMessageChoice == 'none',
-                onTap: () =>
-                    _save(_draft.copyWith(familyMessageChoice: 'none')),
+              const SizedBox(height: 8),
+              Text(
+                s.onb('AiHistoryOptional'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black.withAlpha(130),
+                ),
               ),
             ],
           ),
@@ -803,6 +819,61 @@ class _OnboardingPageState extends State<OnboardingPage> {
       default:
         return _questionBody(18);
     }
+  }
+
+  Widget _messagePreferenceStep(S s) {
+    final kinds = Set<String>.from(_draft.familyMessageKinds);
+    final allOn = FamilyMessageKind.allKinds.every(kinds.contains);
+
+    Future<void> applyKinds(Set<String> next) async {
+      await _save(_draft.copyWith(familyMessageKinds: next.toList()));
+    }
+
+    void toggleKind(String kind) {
+      final next = Set<String>.from(kinds);
+      if (next.contains(kind)) {
+        next.remove(kind);
+      } else {
+        next.add(kind);
+      }
+      unawaited(applyKinds(next));
+    }
+
+    return _QuestionScaffold(
+      title: s.onb('MessagePrefTitle'),
+      subtitle: s.onb('MessagePrefSubtitle'),
+      child: Column(
+        children: [
+          _OptionTile(
+            label: s.onb('MessagePrefAll'),
+            selected: allOn,
+            onTap: () => unawaited(applyKinds(
+              allOn ? <String>{} : FamilyMessageKind.allKinds.toSet(),
+            )),
+          ),
+          _OptionTile(
+            label: s.onb('MessagePrefChristian'),
+            selected: kinds.contains(FamilyMessageKind.christian),
+            onTap: () => toggleKind(FamilyMessageKind.christian),
+          ),
+          _OptionTile(
+            label: s.onb('MessagePrefHoroscope'),
+            selected: kinds.contains(FamilyMessageKind.horoscope),
+            onTap: () => toggleKind(FamilyMessageKind.horoscope),
+          ),
+          _OptionTile(
+            label: s.onb('MessagePrefSpiritist'),
+            selected: kinds.contains(FamilyMessageKind.spiritist),
+            onTap: () => toggleKind(FamilyMessageKind.spiritist),
+          ),
+          _OptionTile(
+            label: s.onb('MessagePrefJewish'),
+            selected: kinds.contains(FamilyMessageKind.jewish),
+            onTap: () => toggleKind(FamilyMessageKind.jewish),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _finishQuestions() async {
@@ -861,8 +932,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
         : (user?.displayName ?? '').trim().isNotEmpty
             ? user!.displayName!.trim()
             : S.of(context).onb('MomFallback');
-    final msgPrefs =
-        FamilyMessagePrefs.fromOnboardingChoice(_draft.familyMessageChoice);
+    final msgPrefs = FamilyMessagePrefs.fromKinds(_draft.familyMessageKinds);
     final motherId = existingMother ??
         await AppDatabase.instance.insertMother(
           name: motherName,
@@ -878,6 +948,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
           fatherPhotoB64: _draft.fatherPhotoB64,
           showFamilyChristian: msgPrefs.showChristian,
           showFamilyHoroscope: msgPrefs.showHoroscope,
+          showFamilySpiritist: msgPrefs.showSpiritist,
+          showFamilyJewish: msgPrefs.showJewish,
         );
     final sex = _draft.sex == 'M' || _draft.sex == 'F' ? _draft.sex : 'N';
     final babyId = existingBaby ??
@@ -912,6 +984,15 @@ class _OnboardingPageState extends State<OnboardingPage> {
       'email': AuthService.instance.currentUser?.email,
     });
     await FirestoreUserRepository.instance.setSelectedBabyId(uid, cloudId);
+    final history = _draft.aiHistory.trim();
+    if (history.isNotEmpty) {
+      try {
+        await AiProfileRepository.instance.save(
+          aiHistory: history,
+          babyId: cloudId,
+        );
+      } catch (_) {}
+    }
   }
 
   Future<void> _runAuth(Future<void> Function() action) async {
@@ -930,12 +1011,22 @@ class _OnboardingPageState extends State<OnboardingPage> {
     }
   }
 
+  String _motherNameForAccountCreation() {
+    final fromDraft = _draft.motherName.trim();
+    if (fromDraft.length >= 2) return fromDraft;
+    final fromField = _motherNameCtrl.text.trim();
+    if (fromField.length >= 2) return fromField;
+    return '';
+  }
+
   Future<void> _showEmailAccountSheet() async {
     final result = await showModalBottomSheet<_EmailAccountData>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => const _EmailAccountSheet(),
+      builder: (_) => _EmailAccountSheet(
+        initialName: _motherNameForAccountCreation(),
+      ),
     );
     if (result == null) return;
     await _runAuth(() async {
@@ -988,7 +1079,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     final keyboardBottom = MediaQuery.viewInsetsOf(context).bottom;
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      backgroundColor: const Color(0xFFB8D9EE),
+      backgroundColor: kAuthScreenSkyFallback,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -1159,7 +1250,24 @@ class _OnboardingPageState extends State<OnboardingPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.center,
+                      child: SizedBox(
+                        width: band,
+                        child: Text(
+                          s.onb('PlusEarlyOffer'),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            height: 1.35,
+                            fontWeight: FontWeight.w800,
+                            color: _welcomeHeadlineBlue.withAlpha(200),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
                     const _WelcomeFeatureGrid(),
                   ],
                 );
@@ -1506,21 +1614,16 @@ class _StageBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const fallback = Color(0xFFB8D9EE);
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        const ColoredBox(color: fallback),
-        Image.asset(
-          stage == 'processing'
-              ? _OnboardingAssets.backgroundLoading
-              : _OnboardingAssets.registrationBackground,
-          fit: BoxFit.cover,
-          alignment: Alignment.topCenter,
-          gaplessPlayback: true,
-          errorBuilder: (_, __, ___) => const ColoredBox(color: fallback),
-        ),
-      ],
+    const fallback = kAuthScreenSkyFallback;
+    final asset = switch (stage) {
+      'processing' => _OnboardingAssets.backgroundLoading,
+      'auth' => _OnboardingAssets.loginBackground,
+      _ => _OnboardingAssets.registrationBackground,
+    };
+    return AuthScreenBackground(
+      asset: asset,
+      fallbackColor: fallback,
+      alignment: Alignment.bottomCenter,
     );
   }
 }
@@ -1893,7 +1996,10 @@ class _EmailAccountData {
 }
 
 class _EmailAccountSheet extends StatefulWidget {
-  const _EmailAccountSheet();
+  const _EmailAccountSheet({this.initialName});
+
+  /// Nome da mãe já recolhido no onboarding (evita pedir de novo).
+  final String? initialName;
 
   @override
   State<_EmailAccountSheet> createState() => _EmailAccountSheetState();
@@ -1906,6 +2012,21 @@ class _EmailAccountSheetState extends State<_EmailAccountSheet> {
   final _password = TextEditingController();
   bool _checking = false;
   String? _submitError;
+
+  bool get _hasPrefilledName =>
+      (widget.initialName ?? '').trim().length >= 2;
+
+  String get _resolvedName =>
+      _hasPrefilledName ? widget.initialName!.trim() : _name.text.trim();
+
+  @override
+  void initState() {
+    super.initState();
+    final preset = widget.initialName?.trim() ?? '';
+    if (preset.isNotEmpty) {
+      _name.text = preset;
+    }
+  }
 
   @override
   void dispose() {
@@ -1935,18 +2056,20 @@ class _EmailAccountSheetState extends State<_EmailAccountSheet> {
                       fontWeight: FontWeight.w900,
                       color: _onboardingDarkBlue)),
               const SizedBox(height: 14),
-              TextFormField(
-                controller: _name,
-                style: const TextStyle(color: _onboardingDarkBlue),
-                textCapitalization: TextCapitalization.words,
-                decoration: _modernInputDecoration(
-                  hintText: s.onb('YourNameHint'),
-                  icon: Icons.person_outline_rounded,
+              if (!_hasPrefilledName) ...[
+                TextFormField(
+                  controller: _name,
+                  style: const TextStyle(color: _onboardingDarkBlue),
+                  textCapitalization: TextCapitalization.words,
+                  decoration: _modernInputDecoration(
+                    hintText: s.onb('YourNameHint'),
+                    icon: Icons.person_outline_rounded,
+                  ),
+                  validator: (v) =>
+                      (v ?? '').trim().length < 2 ? s.onb('ValYourName') : null,
                 ),
-                validator: (v) =>
-                    (v ?? '').trim().length < 2 ? s.onb('ValYourName') : null,
-              ),
-              const SizedBox(height: 10),
+                const SizedBox(height: 10),
+              ],
               TextFormField(
                 controller: _email,
                 style: const TextStyle(color: _onboardingDarkBlue),
@@ -1990,6 +2113,13 @@ class _EmailAccountSheetState extends State<_EmailAccountSheet> {
                 onPressed: _checking
                     ? null
                     : () async {
+                        if (!_hasPrefilledName &&
+                            _resolvedName.length < 2) {
+                          setState(() {
+                            _submitError = s.onb('ValYourName');
+                          });
+                          return;
+                        }
                         if (!(_formKey.currentState?.validate() ?? false)) {
                           return;
                         }
@@ -2005,7 +2135,7 @@ class _EmailAccountSheetState extends State<_EmailAccountSheet> {
                           if (!context.mounted) return;
                           Navigator.of(context).pop(
                             _EmailAccountData(
-                              name: _name.text.trim(),
+                              name: _resolvedName,
                               email: AuthService.normalizeEmail(_email.text),
                               password: _password.text,
                             ),

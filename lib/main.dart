@@ -7,14 +7,17 @@ import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 import 'app/face_baby_app.dart';
 import 'app/app_locale.dart';
+import 'services/ai/ai_chat_session.dart';
 import 'firebase_options.dart';
 import 'services/notification_timezone.dart';
 import 'services/portal_layout_prefs.dart';
 import 'services/premium/premium_service.dart';
+import 'services/update_service.dart';
 import 'utils/platform_info.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  AiChatSession.onAppStarted();
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -36,6 +39,7 @@ Future<void> main() async {
 
   await PremiumService.instance.initialize();
   await PortalLayoutPrefs.init();
+  await UpdateService.instance.initialize();
 
   if (kIsWeb) {
     databaseFactory = databaseFactoryFfiWebBasicWebWorker;

@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../app_database.dart';
 import '../premium/premium_service.dart';
 import 'firestore_service.dart';
+import 'firestore_user_repository.dart';
 import 'profile_cloud_sync.dart';
 import 'storage_service.dart';
 import 'weekly_photo_public_sync.dart';
@@ -172,19 +173,28 @@ class MemoryCloudSync {
       final babyCloud = (baby?['cloud_id'] as String?)?.trim();
       if (babyCloud == null || babyCloud.isEmpty) return;
 
+      final bid = badgeId.trim();
+      if (bid.isEmpty) return;
+
+      // 1) Tombstone na nuvem (prioridade) — evita reimport após logout/login.
+      await FirestoreUserRepository.instance.setMemoryBadgeDeletion(
+        babyCloudId: babyCloud,
+        badgeId: bid,
+      );
+
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid != null) {
         await FirestoreService.instance.deletePublicMemoryDoc(
           WeeklyPhotoPublicSync.publicDocId(
             ownerUid: uid,
             babyCloudId: babyCloud,
-            badgeId: badgeId,
+            badgeId: bid,
           ),
         );
       }
 
-      await FirestoreService.instance
-          .deleteEvent('badge_${babyCloud}_$badgeId');
+      // 2) Remove o evento de memória (se ainda existir).
+      await FirestoreService.instance.deleteEvent('badge_${babyCloud}_$bid');
     } catch (e, st) {
       debugPrint('MemoryCloudSync.deleteBadgeMemory failed: $e\n$st');
     }

@@ -4,6 +4,8 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image/image.dart' as img;
 
+import '../../utils/strip_image_metadata.dart';
+
 class StorageService {
   StorageService._();
 
@@ -100,10 +102,11 @@ class StorageService {
     required String fileExt,
   }) async {
     final e = fileExt.toLowerCase().replaceAll('.', '');
+    final stripped = stripImageMetadata(bytes);
 
     // Primeiro: redimensiona para um tamanho "otimizado" (maior lado).
     // Isso reduz muito upload/armazenamento e evita imagens gigantes no perfil/badges.
-    final resized = _resizeIfNeeded(bytes: bytes, fileExt: e, maxSide: 1080);
+    final resized = _resizeIfNeeded(bytes: stripped, fileExt: e, maxSide: 1080);
 
     // Web: faz só o resize (encode) e retorna.
     if (kIsWeb) return resized;

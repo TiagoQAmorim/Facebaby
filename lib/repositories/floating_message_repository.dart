@@ -1,0 +1,177 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
+
+import '../models/floating_message_model.dart';
+import '../services/admin_broadcast_inbox_service.dart';
+
+/// Firestore: `floating_messages` + `floating_message_reads/{uid}/messages`.
+class FloatingMessageRepository {
+  FloatingMessageRepository({
+    FirebaseFirestore? firestore,
+    FirebaseAuth? auth,
+  })  : _db = firestore ?? FirebaseFirestore.instance,
+        _auth = auth ?? FirebaseAuth.instance;
+
+  final FirebaseFirestore _db;
+  final FirebaseAuth _auth;
+
+  String? get _uid => _auth.currentUser?.uid;
+
+  /// Até [limit] mensagens ativas (filtro de datas no serviço).
+  Future<List<FloatingMessage>> fetchActiveMessages({int limit = 5}) async {
+    final snap = await _db
+        .collection('floating_messages')
+        .where('active', isEqualTo: true)
+        .limit(limit.clamp(1, 20))
+        .get();
+    final items = snap.docs.map(FloatingMessage.fromFirestore).toList();
+    items.sort((a, b) {
+      final p = b.priority.compareTo(a.priority);
+      if (p != 0) return p;
+      final ac = a.createdAt;
+      final bc = b.createdAt;
+      if (ac != null && bc != null) return bc.compareTo(ac);
+      return b.id.compareTo(a.id);
+    });
+    return items;
+  }
+
+  Stream<List<FloatingMessage>> watchActiveMessages({int limit = 5}) {
+    return _db
+        .collection('floating_messages')
+        .where('active', isEqualTo: true)
+        .limit(limit.clamp(1, 20))
+        .snapshots()
+        .map((snap) {
+      final items = snap.docs.map(FloatingMessage.fromFirestore).toList();
+      items.sort((a, b) {
+        final p = b.priority.compareTo(a.priority);
+        if (p != 0) return p;
+        final ac = a.createdAt;
+        final bc = b.createdAt;
+        if (ac != null && bc != null) return bc.compareTo(ac);
+        return b.id.compareTo(a.id);
+      });
+      return items;
+    });
+  }
+
+  /// Legado: inbox por usuário até migração completa.
+  Future<List<FloatingMessage>> fetchLegacyInbox() async {
+    final inbox = await AdminBroadcastInboxService.instance
+        .watchActive()
+        .first
+        .timeout(const Duration(seconds: 8), onTimeout: () => const []);
+    return inbox
+        .map(
+          (e) => FloatingMessage.fromInboxBroadcast(
+            campaignId: e.campaignId,
+            text: e.text,
+            imageUrl: e.imageUrl,
+            actionUrl: e.actionUrl,
+            actionButtonLabel: e.actionButtonLabel,
+          ),
+        )
+        .toList();
+  }
+
+  Future<FloatingMessageReadState?> readStateFor(String messageId) async {
+    final uid = _uid;
+    if (uid == null) return null;
+    final snap = await _db
+        .collection('floating_message_reads')
+        .doc(uid)
+        .collection('messages')
+        .doc(messageId)
+        .get();
+    if (!snap.exists) return null;
+    return FloatingMessageReadState.fromMap(snap.data());
+  }
+
+  Future<Map<String, FloatingMessageReadState>> readStatesFor(
+    Iterable<String> messageIds,
+  ) async {
+    final uid = _uid;
+    if (uid == null || messageIds.isEmpty) return {};
+    final out = <String, FloatingMessageReadState>{};
+    final ids = messageIds.toSet().toList();
+    for (var i = 0; i < ids.length; i += 10) {
+      final chunk = ids.skip(i).take(10).toList();
+      final snap = await _db
+          .collection('floating_message_reads')
+          .doc(uid)
+          .collection('messages')
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+      for (final doc in snap.docs) {
+        out[doc.id] = FloatingMessageReadState.fromMap(doc.data());
+      }
+    }
+    return out;
+  }
+
+  Future<void> markSeen(String messageId) async {
+    final uid = _uid;
+    if (uid == null) return;
+    try {
+      await _db
+          .collection('floating_message_reads')
+          .doc(uid)
+          .collection('messages')
+          .doc(messageId)
+          .set(
+        {'seenAt': FieldValue.serverTimestamp()},
+        SetOptions(merge: true),
+      );
+    } catch (e) {
+      debugPrint('FloatingMessageRepository.markSeen: $e');
+    }
+  }
+
+  Future<void> markDismissed(String messageId) async {
+    final uid = _uid;
+    if (uid == null) return;
+    try {
+      await _db
+          .collection('floating_message_reads')
+          .doc(uid)
+          .collection('messages')
+          .doc(messageId)
+          .set(
+        {
+          'dismissedAt': FieldValue.serverTimestamp(),
+          'seenAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    } catch (e) {
+      debugPrint('FloatingMessageRepository.markDismissed: $e');
+    }
+  }
+
+  Future<void> markClicked(String messageId) async {
+    final uid = _uid;
+    if (uid == null) return;
+    try {
+      await _db
+          .collection('floating_message_reads')
+          .doc(uid)
+          .collection('messages')
+          .doc(messageId)
+          .set(
+        {
+          'clickedAt': FieldValue.serverTimestamp(),
+          'seenAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    } catch (e) {
+      debugPrint('FloatingMessageRepository.markClicked: $e');
+    }
+  }
+
+  Future<void> dismissLegacyInbox(String campaignId) async {
+    await AdminBroadcastInboxService.instance.dismiss(campaignId);
+  }
+}

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../i18n/app_i18n.dart';
 import '../models/daily_summary.dart';
 import '../services/family_christian_content_service.dart';
+import '../services/family_phrase_content_service.dart';
 import '../services/family_zodiac_content_service.dart';
 import '../services/premium/feature_access.dart';
 import '../utils/family_zodiac_art.dart';
@@ -31,7 +32,11 @@ class FamilyTreeStage extends StatefulWidget {
     required this.zodiacReady,
     this.showChristianMessages = false,
     this.showHoroscopeMessages = true,
+    this.showSpiritistMessages = false,
+    this.showJewishMessages = false,
     this.christianReady = false,
+    this.spiritistReady = false,
+    this.jewishReady = false,
     required this.mother,
     required this.babies,
     required this.heightCmByBabyId,
@@ -65,7 +70,11 @@ class FamilyTreeStage extends StatefulWidget {
   final bool zodiacReady;
   final bool showChristianMessages;
   final bool showHoroscopeMessages;
+  final bool showSpiritistMessages;
+  final bool showJewishMessages;
   final bool christianReady;
+  final bool spiritistReady;
+  final bool jewishReady;
   final Map<String, Object?>? mother;
   final List<Map<String, Object?>> babies;
   final Map<int, double> heightCmByBabyId;
@@ -465,8 +474,14 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
           bibleTitle: s.familyBibleVerseCardTitle,
           bibleBody: model.christianFreeBody,
           bibleReference: _christianReference(model.role, babyId: babyId),
+          spiritistTitle: s.familySpiritistCardTitle,
+          spiritistBody: _spiritistCardBody(model.role, babyId: babyId),
+          jewishTitle: s.familyJewishCardTitle,
+          jewishBody: _jewishCardBody(model.role, babyId: babyId),
           showHoroscope: widget.showHoroscopeMessages,
           showChristian: widget.showChristianMessages,
+          showSpiritist: widget.showSpiritistMessages,
+          showJewish: widget.showJewishMessages,
           contentUnlocked: widget.zodiacUnlocked,
           accent: accent,
           signId: signId,
@@ -560,8 +575,14 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
           bibleTitle: s.familyBibleVerseCardTitle,
           bibleBody: model.christianFreeBody,
           bibleReference: _christianReference(model.role),
+          spiritistTitle: s.familySpiritistCardTitle,
+          spiritistBody: _spiritistCardBody(model.role),
+          jewishTitle: s.familyJewishCardTitle,
+          jewishBody: _jewishCardBody(model.role),
           showHoroscope: widget.showHoroscopeMessages,
           showChristian: widget.showChristianMessages,
+          showSpiritist: widget.showSpiritistMessages,
+          showJewish: widget.showJewishMessages,
           contentUnlocked: widget.zodiacUnlocked,
           accent: pageAccent,
           signId: signId,
@@ -848,6 +869,36 @@ class _FamilyTreeStageState extends State<FamilyTreeStage> {
           babyId: babyId,
         )
         .trim();
+  }
+
+  static int _phraseRoleSalt(FamilyMemberRole role) => switch (role) {
+        FamilyMemberRole.mother => 1,
+        FamilyMemberRole.father => 2,
+        FamilyMemberRole.baby => 3,
+      };
+
+  String _spiritistCardBody(FamilyMemberRole role, {int? babyId}) {
+    if (!widget.showSpiritistMessages || !widget.spiritistReady) return '';
+    return FamilyPhraseContentService.spiritist
+            .phraseFor(
+              widget.s.lang,
+              roleSalt: _phraseRoleSalt(role),
+              memberSalt: babyId ?? 0,
+            )
+            ?.trim() ??
+        '';
+  }
+
+  String _jewishCardBody(FamilyMemberRole role, {int? babyId}) {
+    if (!widget.showJewishMessages || !widget.jewishReady) return '';
+    return FamilyPhraseContentService.jewish
+            .phraseFor(
+              widget.s.lang,
+              roleSalt: _phraseRoleSalt(role),
+              memberSalt: babyId ?? 0,
+            )
+            ?.trim() ??
+        '';
   }
 
   String _tabLabelFor(_CarouselMember m) {
