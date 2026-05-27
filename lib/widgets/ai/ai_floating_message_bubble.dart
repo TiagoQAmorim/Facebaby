@@ -1,7 +1,11 @@
+import 'dart:async' show unawaited;
+import 'dart:ui' show ImageFilter;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
-
+import 'package:flutter/services.dart';
+import 'package:photo_view/photo_view.dart';
+import '../../utils/floating_message_action.dart';
 import '../../utils/portal_layout.dart';
 
 /// Bolinha flutuante estilo balão de chat: arrastar, toque para expandir.
@@ -35,6 +39,11 @@ class AiFloatingMessageBubble extends StatefulWidget {
     this.messageAlert = false,
     this.onActionTap,
     this.onCloseTap,
+    this.messageIndex,
+    this.messageCount,
+    this.onPreviousMessage,
+    this.onNextMessage,
+    this.navigationLabel,
   });
 
   final String? title;
@@ -72,21 +81,122 @@ class AiFloatingMessageBubble extends StatefulWidget {
   final bool messageAlert;
   final VoidCallback? onActionTap;
   final VoidCallback? onCloseTap;
+  /// Índice da mensagem atual (0-based) para navegação multi-mensagem.
+  final int? messageIndex;
+  final int? messageCount;
+  final VoidCallback? onPreviousMessage;
+  final VoidCallback? onNextMessage;
+  final String? navigationLabel;
 
+  /// Diâmetro visual do orb minimizado.
   static const double collapsedSize = 56;
-  static const double dismissZoneHeight = 88;
-  static const double expandedMaxWidth = 280;
+
+  /// Margem externa para badge, pulso e sombra (evita corte no layout).
+  static const double collapsedVisualPadding = 10;
+
+  /// Área total ocupada no Stack (clamp, arraste, hit test).
+  static double get collapsedLayoutSize =>
+      collapsedSize + collapsedVisualPadding * 2;
+  static const double dismissZoneHeight = 96;
+  static const double expandedMaxWidth = 300;
   static const double expandedMaxHeight = 168;
   static const double promoMinWidth = 300;
-  static const double promoImageMinHeight = 220;
-  static const double promoImageMaxHeight = 340;
-  static const double promoImageHeightFraction = 0.42;
+  static const double promoImageMinHeight = 180;
+  static const double promoImageMaxHeight = 260;
+  static const double promoImageHeightFraction = 0.36;
+  static const double promoImageWidthFraction = 0.90;
   static const double promoActionButtonHeight = 48;
-  static const double attachmentImageHeight = 112;
+  static const double attachmentImageHeight = 180;
   static const double actionLinkRowHeight = 36;
   static const double edgePadding = 12;
-  static const double dismissStripHeight = 88;
-  static const String _avatarAsset = 'assets/ai/ia_baba_button.png';
+  /// Margem horizontal mínima do orb minimizado (arraste em toda a largura).
+  static const double collapsedHorizontalInset = 8;
+  static const double dismissStripHeight = 96;
+  static const double dismissStripMaxHeight = 100;
+  static const double dismissStripWidthFraction = 0.88;
+  static const double dismissStripBottomGap = 16;
+  // (removido) _avatarAsset: não usado após redesign do minimizado.
+
+  /// Topo da faixa vermelha (coordenadas do viewport do balão).
+  static double dismissStripTop(Size viewport) =>
+      viewport.height -
+      dismissStripBottomGap -
+      dismissStripHeight;
+
+  /// O balão entrou na faixa de soltar para fechar.
+  static bool isInDismissStrip({
+    required Offset topLeft,
+    required Size bubbleSize,
+    required Size viewport,
+    double overlapPx = 10,
+  }) {
+    return topLeft.dy + bubbleSize.height >
+        dismissStripTop(viewport) + overlapPx;
+  }
+
+  /// Posição fixa do ícone minimizado — canto superior-direito do card do bebê.
+  /// Fallback: `right: 28`, `top: 330` (nunca sobre saudação/header).
+  static const double defaultRightInset = 28;
+  static const double defaultTop = 330;
+
+  /// Escurecimento do fundo com banner aberto (60%).
+  static const double expandedScrimOpacity = 0.60;
+
+  static Offset defaultCollapsedTopLeft({
+    required Size viewport,
+    EdgeInsets safePadding = EdgeInsets.zero,
+    double rightInset = defaultRightInset,
+    double topFallback = defaultTop,
+    double bottomReserve = 24,
+  }) {
+    final layout = collapsedLayoutSize;
+    final maxTop = viewport.height -
+        layout -
+        bottomReserve -
+        edgePadding;
+    final top = (topFallback + safePadding.top).clamp(
+      safePadding.top + edgePadding,
+      maxTop,
+    );
+    final left = viewport.width -
+        layout -
+        rightInset -
+        safePadding.right;
+    return Offset(left, top);
+  }
+
+  /// Mantém o orb minimizado dentro da área útil (safe horizontal 8px).
+  static Offset clampCollapsedTopLeft({
+    required Offset topLeft,
+    required Size viewport,
+    double bottomReserve = 24,
+    double horizontalInset = collapsedHorizontalInset,
+  }) {
+    final layout = collapsedLayoutSize;
+    final minX = horizontalInset;
+    final maxX = (viewport.width - layout - horizontalInset)
+        .clamp(horizontalInset, viewport.width);
+    final maxY = viewport.height - layout - bottomReserve - edgePadding;
+    return Offset(
+      topLeft.dx.clamp(minX, maxX),
+      topLeft.dy.clamp(edgePadding, maxY),
+    );
+  }
+
+  /// O orb entrou na faixa de soltar para fechar (usa a base do círculo).
+  static bool isDroppedInDismissZone({
+    required Offset topLeft,
+    required Size viewport,
+    double bubbleSize = collapsedSize,
+    double overlapPx = 8,
+  }) {
+    return isInDismissStrip(
+      topLeft: topLeft,
+      bubbleSize: Size(bubbleSize, bubbleSize),
+      viewport: viewport,
+      overlapPx: overlapPx,
+    );
+  }
 
   /// Mantém o canto superior-esquerdo do balão dentro da área útil.
   static Offset clampTopLeft({
@@ -117,10 +227,7 @@ class AiFloatingMessageBubble extends StatefulWidget {
     double? imageAspectRatio,
   }) {
     if (!expanded) {
-      if (hasAttachmentImage || promoLayout) {
-        return const Size(58, 58);
-      }
-      return const Size(collapsedSize, collapsedSize);
+      return Size(collapsedLayoutSize, collapsedLayoutSize);
     }
     if (bannerLayout || promoLayout) {
       final w = (viewportWidth - 16).clamp(200.0, viewportWidth - 16);
@@ -137,7 +244,9 @@ class AiFloatingMessageBubble extends StatefulWidget {
       const textBlock = 56.0;
       final btnH = hasActionLink ? promoActionButtonHeight + 12 : 0.0;
       final pad = bannerLayout ? 24.0 : 20.0;
-      return Size(w, titleH + imgH + textBlock + btnH + pad);
+      final rawH = titleH + imgH + textBlock + btnH + pad;
+      final maxH = viewportHeight * 0.82;
+      return Size(w, rawH.clamp(120.0, maxH));
     }
     final w = (viewportWidth - edgePadding * 2).clamp(200.0, expandedMaxWidth);
     var h = expandedMaxHeight;
@@ -173,12 +282,16 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
     with TickerProviderStateMixin {
   Offset? _dragOrigin;
   Offset? _pointerStart;
+  Offset? _lastDragTopLeft;
   bool _moved = false;
   bool _nearDismissZone = false;
   late final AnimationController _expandCtrl;
   late final Animation<double> _expandCurve;
   late final AnimationController _alertCtrl;
   late final Animation<double> _alertPulse;
+  late final AnimationController _dismissStripCtrl;
+  late final Animation<double> _dismissStripFade;
+  late final Animation<Offset> _dismissStripSlide;
   final GlobalKey _bubbleKey = GlobalKey();
 
   @override
@@ -199,7 +312,36 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
       duration: const Duration(milliseconds: 900),
     );
     _alertPulse = CurvedAnimation(parent: _alertCtrl, curve: Curves.easeInOut);
+    _dismissStripCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+      reverseDuration: const Duration(milliseconds: 220),
+    );
+    _dismissStripFade = CurvedAnimation(
+      parent: _dismissStripCtrl,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    _dismissStripSlide = Tween<Offset>(
+      begin: const Offset(0, 0.42),
+      end: Offset.zero,
+    ).animate(_dismissStripFade);
+    if (widget.showDismissZone) {
+      _dismissStripCtrl.value = 1.0;
+    }
     _syncAlertAnimation();
+  }
+
+  void _syncDismissStripAnimation() {
+    final show = widget.allowDragDismiss && widget.showDismissZone;
+    if (show) {
+      if (_dismissStripCtrl.status != AnimationStatus.forward &&
+          _dismissStripCtrl.value < 1.0) {
+        unawaited(_dismissStripCtrl.forward());
+      }
+    } else if (_dismissStripCtrl.value > 0) {
+      unawaited(_dismissStripCtrl.reverse());
+    }
   }
 
   void _syncAlertAnimation() {
@@ -229,14 +371,21 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
         oldWidget.expanded != widget.expanded) {
       _syncAlertAnimation();
     }
+    if (oldWidget.showDismissZone != widget.showDismissZone) {
+      _syncDismissStripAnimation();
+    }
   }
 
   @override
   void dispose() {
     _expandCtrl.dispose();
     _alertCtrl.dispose();
+    _dismissStripCtrl.dispose();
     super.dispose();
   }
+
+  bool get _isDragActive =>
+      widget.allowDragDismiss && widget.showDismissZone;
 
   void _clampAfterLayout() {
     final box = _bubbleKey.currentContext?.findRenderObject() as RenderBox?;
@@ -255,6 +404,12 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
   }
 
   Size _currentBubbleSize(Size viewport) {
+    if (_isDragActive) {
+      return Size(
+        AiFloatingMessageBubble.collapsedLayoutSize,
+        AiFloatingMessageBubble.collapsedLayoutSize,
+      );
+    }
     final box = _bubbleKey.currentContext?.findRenderObject() as RenderBox?;
     if (box != null && box.hasSize) return box.size;
     return AiFloatingMessageBubble.estimatedSize(
@@ -270,14 +425,20 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
     );
   }
 
+  bool _hapticDismissFired = false;
+
   void _onPanStart(DragStartDetails d) {
+    if (widget.expanded) return;
     _dragOrigin = widget.position;
     _pointerStart = d.globalPosition;
+    _lastDragTopLeft = widget.position;
     _moved = false;
+    _hapticDismissFired = false;
     setState(() => _nearDismissZone = false);
   }
 
   void _onPanUpdate(DragUpdateDetails d, Size area) {
+    if (widget.expanded) return;
     final start = _dragOrigin;
     final ptr = _pointerStart;
     if (start == null || ptr == null) return;
@@ -290,84 +451,129 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
     }
     final bubble = _currentBubbleSize(area);
     final raw = Offset(start.dx + delta.dx, start.dy + delta.dy);
-    final next = AiFloatingMessageBubble.clampTopLeft(
-      topLeft: raw,
-      bubbleSize: bubble,
-      viewport: area,
-      bottomReserve: widget.allowDragDismiss &&
-              (widget.showDismissZone || _nearDismissZone)
-          ? AiFloatingMessageBubble.dismissStripHeight
-          : 24,
-    );
+    final draggingDismiss =
+        widget.allowDragDismiss && widget.showDismissZone;
+    final next = (!widget.expanded &&
+            bubble.width <= AiFloatingMessageBubble.collapsedLayoutSize + 1)
+        ? AiFloatingMessageBubble.clampCollapsedTopLeft(
+            topLeft: raw,
+            viewport: area,
+            bottomReserve: draggingDismiss ? 0 : 24,
+          )
+        : AiFloatingMessageBubble.clampTopLeft(
+            topLeft: raw,
+            bubbleSize: bubble,
+            viewport: area,
+            bottomReserve: draggingDismiss ? 0 : 24,
+          );
     final near = widget.allowDragDismiss &&
-        next.dy + bubble.height >
-            area.height - AiFloatingMessageBubble.dismissStripHeight + 8;
+        AiFloatingMessageBubble.isInDismissStrip(
+          topLeft: next,
+          bubbleSize: bubble,
+          viewport: area,
+        );
     if (near != _nearDismissZone) {
+      if (near && !_hapticDismissFired) {
+        _hapticDismissFired = true;
+        HapticFeedback.mediumImpact();
+      }
       setState(() => _nearDismissZone = near);
     }
+    _lastDragTopLeft = next;
     widget.onPositionChanged(next);
   }
 
   void _onPanEnd(DragEndDetails d, Size area) {
+    if (widget.expanded) return;
     if (!_moved) {
-      widget.onToggleExpanded();
+      // Toque curto: [onTap] abre/fecha; não alternar aqui para evitar duplo toggle.
       _dragOrigin = null;
       _pointerStart = null;
+      _lastDragTopLeft = null;
       setState(() => _nearDismissZone = false);
       return;
     }
-    final pos = widget.position;
-    final bubble = _currentBubbleSize(area);
-    final inDismissZone = widget.allowDragDismiss &&
-        (pos.dy + bubble.height >
-                area.height - AiFloatingMessageBubble.dismissStripHeight + 4 ||
-            _nearDismissZone);
-    if (inDismissZone && widget.allowDragDismiss) {
+    final releasePos = _lastDragTopLeft ?? widget.position;
+    final droppedInDismissZone = widget.allowDragDismiss &&
+        AiFloatingMessageBubble.isDroppedInDismissZone(
+          topLeft: releasePos,
+          viewport: area,
+        );
+    // Fecha ao soltar na faixa vermelha — não exige showDismissZone no frame final.
+    if (droppedInDismissZone) {
       widget.onDismissDrag();
     } else {
       widget.onDragEnded();
     }
     _dragOrigin = null;
     _pointerStart = null;
+    _lastDragTopLeft = null;
     _moved = false;
     setState(() => _nearDismissZone = false);
   }
 
-  Widget _collapsedIconFace() {
-    final emoji = widget.collapsedIcon?.trim() ?? '';
-    final size = AiFloatingMessageBubble.collapsedSize - 8;
-    if (emoji.isNotEmpty) {
-      return SizedBox(
-        width: size,
-        height: size,
-        child: Center(
-          child: Text(emoji, style: TextStyle(fontSize: size * 0.55)),
+  static List<BoxShadow> _orbShadows({bool dismissHot = false}) => [
+        if (dismissHot)
+          BoxShadow(
+            color: const Color(0xFFE53935).withAlpha(150),
+            blurRadius: 24,
+            spreadRadius: 4,
+          ),
+        BoxShadow(
+          color: const Color(0xFFE91E8C).withAlpha(90),
+          blurRadius: 16,
+          spreadRadius: 1,
         ),
-      );
-    }
-    return _avatarFace(size: size - 6);
-  }
+        BoxShadow(
+          color: const Color(0xFF9C27B0).withAlpha(45),
+          blurRadius: 14,
+          spreadRadius: 0,
+        ),
+        BoxShadow(
+          color: Colors.black.withAlpha(22),
+          blurRadius: 10,
+          offset: const Offset(0, 6),
+        ),
+      ];
 
-  Widget _avatarFace({required double size}) {
+  /// Ícone do balão minimizado — NUNCA usa [attachmentImageUrl] (só no card expandido).
+  Widget _minimizedIconOrb({
+    double size = AiFloatingMessageBubble.collapsedSize,
+    bool includeOuterShadow = true,
+    bool dismissHot = false,
+  }) {
+    final emoji = widget.collapsedIcon?.trim() ?? '';
+    final diameter =
+        size.clamp(48.0, AiFloatingMessageBubble.collapsedSize).toDouble();
+    final fontSize = diameter * 0.52;
+
     return SizedBox(
-      width: size,
-      height: size,
-      child: Container(
+      width: diameter,
+      height: diameter,
+      child: DecoratedBox(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: const Color(0xFFFFF8FC),
-          border: Border.all(color: Colors.white, width: 2),
+          border: Border.all(color: Colors.white.withAlpha(240), width: 2.5),
+          boxShadow:
+              includeOuterShadow ? _orbShadows(dismissHot: dismissHot) : null,
         ),
-        padding: EdgeInsets.all(size * 0.05),
-        child: ClipOval(
-          child: Image.asset(
-            AiFloatingMessageBubble._avatarAsset,
-            fit: BoxFit.cover,
+        child: Center(
+          child: Text(
+            emoji.isNotEmpty ? emoji : '🤖',
+            style: TextStyle(fontSize: fontSize),
           ),
         ),
       ),
     );
   }
+
+  /// Chip pequeno no cabeçalho do card expandido (só emoji, sem banner).
+  Widget _expandedHeaderIcon() {
+    return _minimizedIconOrb(size: 40);
+  }
+
+  // (removido) _avatarFace: não usado após redesign do minimizado.
 
   Widget _networkImage({
     required String url,
@@ -384,6 +590,8 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
         width: width,
         height: height,
         fit: fit,
+        fadeInDuration: const Duration(milliseconds: 220),
+        fadeOutDuration: const Duration(milliseconds: 160),
         placeholder: (_, __) => Container(
           height: height,
           width: width,
@@ -410,18 +618,71 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
     );
   }
 
+  void _openImagePreview(String url, {String? semanticsLabel}) {
+    final raw = url.trim();
+    final uri = Uri.tryParse(raw);
+    if (raw.isEmpty || uri == null || !uri.hasScheme) return;
+    if (!mounted) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      useSafeArea: false,
+      barrierColor: Colors.black.withAlpha(245),
+      builder: (ctx) {
+        final pad = MediaQuery.paddingOf(ctx);
+        final sz = MediaQuery.sizeOf(ctx);
+        final provider = CachedNetworkImageProvider(raw);
+        return Material(
+          color: Colors.black,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Semantics(
+                label: semanticsLabel,
+                child: PhotoView(
+                  imageProvider: provider,
+                  gaplessPlayback: true,
+                  minScale: PhotoViewComputedScale.contained * 0.9,
+                  maxScale: PhotoViewComputedScale.covered * 4,
+                  initialScale: PhotoViewComputedScale.contained,
+                  backgroundDecoration: const BoxDecoration(color: Colors.black),
+                  loadingBuilder: (_, __) => const Center(
+                    child: CircularProgressIndicator(color: Colors.white54),
+                  ),
+                  filterQuality: FilterQuality.medium,
+                  customSize: sz,
+                ),
+              ),
+              Positioned(
+                top: pad.top + 10,
+                right: 12,
+                child: IconButton(
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black.withAlpha(150),
+                  ),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: Colors.white,
+                    size: 26,
+                  ),
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _openActionLink() async {
     final custom = widget.onActionTap;
     if (custom != null) {
       custom();
       return;
     }
-    final raw = widget.actionUrl?.trim() ?? '';
-    if (raw.isEmpty) return;
-    final uri = Uri.tryParse(raw);
-    if (uri == null || !uri.hasScheme) return;
-    if (!await canLaunchUrl(uri)) return;
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    await FloatingMessageAction.openExternalUrl(widget.actionUrl);
   }
 
   Widget _promoCtaButton(String linkLabel) {
@@ -469,45 +730,35 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
           .toDouble();
     }
 
-    return _promoCardShell(
+    final card = _promoCardShell(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
+        padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _dragHandle(),
+            _navHeader(),
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                _collapsedIconFace(),
-                const SizedBox(width: 8),
+                _expandedHeaderIcon(),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     (widget.title?.trim() ?? '').isNotEmpty
                         ? widget.title!.trim()
                         : 'FaceBaby',
                     style: TextStyle(
-                      fontSize: portalSp(context, 15),
+                      fontSize: portalSp(context, 16),
                       fontWeight: FontWeight.w900,
                       color: const Color(0xFF4A148C),
+                      height: 1.15,
                     ),
                   ),
                 ),
                 if (widget.showCloseButton)
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 32,
-                      minHeight: 32,
-                    ),
-                    onPressed: widget.onCloseTap,
-                    icon: const Icon(
-                      Icons.close_rounded,
-                      size: 22,
-                      color: Color(0xFF9E9E9E),
-                    ),
-                  ),
+                  _premiumCloseButton(onTap: widget.onCloseTap),
               ],
             ),
             if (attachment.isNotEmpty) ...[
@@ -516,33 +767,52 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
                 label: widget.imageAlt?.trim().isNotEmpty == true
                     ? widget.imageAlt!.trim()
                     : null,
-                child: _networkImage(
-                  url: attachment,
-                  height: imgH,
-                  width: maxWidth - 24,
-                  radius: BorderRadius.circular(14),
+                child: GestureDetector(
+                  onTap: () => _openImagePreview(
+                    attachment,
+                    semanticsLabel: widget.imageAlt,
+                  ),
+                  child: _networkImage(
+                    url: attachment,
+                    height: imgH,
+                    width: maxWidth - 36,
+                    fit: aspect != null && aspect > 1.15
+                        ? BoxFit.contain
+                        : BoxFit.cover,
+                    radius: BorderRadius.circular(16),
+                  ),
                 ),
               ),
             ],
             if (body.isNotEmpty) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Text(
                 body,
-                maxLines: 5,
+                maxLines: 6,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: portalSp(context, 14),
-                  height: 1.35,
+                  fontSize: portalSp(context, 14.2),
+                  height: 1.45,
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFF3D2A4F),
+                  color: Colors.black.withAlpha(175),
                 ),
               ),
             ],
             if (widget.hasActionButton) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               _promoCtaButton(linkLabel),
             ],
           ],
+        ),
+      ),
+    );
+    return SizedBox(
+      width: maxWidth,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: viewportHeight * 0.78),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: card,
         ),
       ),
     );
@@ -550,82 +820,115 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
 
   Widget _dismissStrip(Size area) {
     final label = (widget.closeZoneLabel ?? 'Solte aqui para fechar').trim();
-    final visible = widget.allowDragDismiss && widget.showDismissZone;
-    final height =
-        visible ? AiFloatingMessageBubble.dismissStripHeight : 0.0;
-    final hot = _nearDismissZone && visible;
+    final hot = _nearDismissZone && _isDragActive;
+    final stripW = area.width * AiFloatingMessageBubble.dismissStripWidthFraction;
+    final left = (area.width - stripW) / 2;
+    const stripH = AiFloatingMessageBubble.dismissStripHeight;
+    final hotScale = 1.0 + (hot ? 0.045 : 0.0);
 
-    return AnimatedPositioned(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-      left: 12,
-      right: 12,
-      bottom: 8,
-      height: height,
-      child: IgnorePointer(
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          decoration: BoxDecoration(
-            color: Color.lerp(
-              const Color(0xFFFFEBEE).withAlpha(220),
-              const Color(0xFFE53935).withAlpha(235),
-              hot ? 1.0 : 0.35,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Color.lerp(
-                const Color(0xFFEF9A9A),
-                const Color(0xFFC62828),
-                hot ? 1.0 : 0.5,
-              )!,
-              width: hot ? 2 : 1.2,
-            ),
-            boxShadow: hot
-                ? [
-                    BoxShadow(
-                      color: const Color(0xFFE53935).withAlpha(90),
-                      blurRadius: 14,
-                      spreadRadius: 1,
+    return AnimatedBuilder(
+      animation: _dismissStripCtrl,
+      builder: (context, child) {
+        if (_dismissStripCtrl.value <= 0.01) {
+          return const SizedBox.shrink();
+        }
+        return Positioned(
+          left: left,
+          width: stripW,
+          bottom: AiFloatingMessageBubble.dismissStripBottomGap,
+          child: IgnorePointer(
+            child: SlideTransition(
+              position: _dismissStripSlide,
+              child: FadeTransition(
+                opacity: _dismissStripFade,
+                child: Transform.scale(
+                  scale: hotScale,
+                  alignment: Alignment.bottomCenter,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(28),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Color.lerp(
+                            const Color(0xFFFFEBEE).withAlpha(185),
+                            const Color(0xFFEF9A9A).withAlpha(200),
+                            hot ? 0.75 : 0.35,
+                          )!,
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(
+                            color: Colors.white.withAlpha(hot ? 200 : 140),
+                            width: 1.25,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFE53935)
+                                  .withAlpha(hot ? 55 : 35),
+                              blurRadius: hot ? 18 : 12,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: SizedBox(
+                          height: stripH.clamp(
+                            90.0,
+                            AiFloatingMessageBubble.dismissStripMaxHeight,
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.delete_outline_rounded,
+                                size: hot ? 32 : 28,
+                                color: hot
+                                    ? const Color(0xFFB71C1C)
+                                    : const Color(0xFFC62828),
+                              ),
+                              const SizedBox(height: 6),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 14),
+                                child: DefaultTextStyle(
+                                  style: const TextStyle(
+                                    decoration: TextDecoration.none,
+                                    decorationThickness: 0,
+                                  ),
+                                  child: Text(
+                                    label,
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: const Color(0xFFB71C1C),
+                                      fontSize: portalSp(context, hot ? 16.5 : 16),
+                                      fontWeight: hot ? FontWeight.w800 : FontWeight.w700,
+                                      letterSpacing: 0.2,
+                                      height: 1.25,
+                                      decoration: TextDecoration.none,
+                                      decorationColor: Colors.transparent,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
-                  ]
-                : null,
-          ),
-          child: Opacity(
-            opacity: visible ? 1 : 0,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '🗑️',
-                  style: TextStyle(fontSize: portalSp(context, hot ? 22 : 18)),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: hot
-                        ? Colors.white
-                        : const Color(0xFFB71C1C),
-                    fontSize: portalSp(context, 12),
-                    fontWeight: FontWeight.w800,
-                    height: 1.2,
                   ),
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   Widget _newMessageBadge() {
     return Container(
-      width: 22,
-      height: 22,
+      width: 20,
+      height: 20,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: const LinearGradient(
@@ -655,145 +958,199 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
     );
   }
 
-  Widget _chatBubbleShell({
-    required Widget child,
-    required bool showTail,
-    required double tailAlignX,
+  List<BoxShadow> _collapsedOrbShadows({
+    bool dragDismissHot = false,
     double alertT = 0,
   }) {
-    const fill = Color(0xFFFAF5FF);
-    const border = Color(0xFFE1BEE7);
-    const alertFill = Color(0xFFFFEBF3);
-    const alertBorder = Color(0xFFE91E8C);
-
-    final bg = Color.lerp(fill, alertFill, alertT)!;
-    final bd = Color.lerp(border, alertBorder, alertT)!;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Material(
-          color: Colors.transparent,
-          elevation: 6 + (alertT * 6),
-          shadowColor: Color.lerp(
-            const Color(0xFF9C27B0).withAlpha(80),
-            const Color(0xFFE91E8C).withAlpha(160),
-            alertT,
-          )!,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(18),
-            topRight: Radius.circular(18),
-            bottomLeft: Radius.circular(18),
-            bottomRight: Radius.circular(6),
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(18),
-                topRight: Radius.circular(18),
-                bottomLeft: Radius.circular(18),
-                bottomRight: Radius.circular(6),
-              ),
-              border: Border.all(
-                color: bd.withAlpha((200 + 55 * alertT).round()),
-                width: 1.5 + alertT,
-              ),
-            ),
-            child: child,
-          ),
+    return [
+      ..._orbShadows(dismissHot: dragDismissHot),
+      if (alertT > 0.05)
+        BoxShadow(
+          color: const Color(0xFFE91E8C).withAlpha((90 * alertT).round()),
+          blurRadius: 18 + 8 * alertT,
+          spreadRadius: 2 * alertT,
         ),
-        if (showTail)
-          Padding(
-            padding: EdgeInsets.only(right: (1 - tailAlignX).clamp(0.0, 1.0) * 24),
-            child: CustomPaint(
-              size: const Size(16, 10),
-              painter: _BubbleTailPainter(color: bg, borderColor: bd),
-            ),
-          ),
-      ],
-    );
+    ];
   }
 
-  Widget _wrapWithAlert(Widget child) {
-    return AnimatedBuilder(
-      animation: _alertPulse,
-      builder: (context, _) {
-        final t = widget.messageAlert && !widget.expanded ? _alertPulse.value : 0.0;
-        final scale = 1.0 + (0.07 * t);
-        return Transform.scale(
-          scale: scale,
-          alignment: Alignment.bottomRight,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              if (t > 0.05)
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(22),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFE91E8C).withAlpha((90 * t).round()),
-                          blurRadius: 18 + 8 * t,
-                          spreadRadius: 2 * t,
+  /// Orb minimizado: área externa maior + círculo menor (badge/sombra não cortam).
+  Widget _buildCollapsedOrb({
+    bool dragDismissHot = false,
+    double alertT = 0,
+  }) {
+    const diameter = AiFloatingMessageBubble.collapsedSize;
+    final layout = AiFloatingMessageBubble.collapsedLayoutSize;
+    final emoji = widget.collapsedIcon?.trim() ?? '';
+    final fontSize = diameter * 0.5;
+    final scale = 1.0 + (0.06 * alertT);
+
+    return SizedBox(
+      width: layout,
+      height: layout,
+      child: Center(
+        child: SizedBox(
+          width: diameter,
+          height: diameter,
+          child: Transform.scale(
+            scale: scale,
+            alignment: Alignment.center,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                ClipOval(
+                  child: SizedBox(
+                    width: diameter,
+                    height: diameter,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFFFFF8FC),
+                        border: Border.all(
+                          color: Colors.white.withAlpha(240),
+                          width: 2,
                         ),
-                      ],
+                        boxShadow: _collapsedOrbShadows(
+                          dragDismissHot: dragDismissHot,
+                          alertT: alertT,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          emoji.isNotEmpty ? emoji : '🤖',
+                          style: TextStyle(fontSize: fontSize),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              child,
-              if (widget.messageAlert && !widget.expanded)
-                Positioned(
-                  top: -6,
-                  right: -6,
-                  child: Transform.scale(
-                    scale: 0.92 + (0.12 * t),
-                    child: _newMessageBadge(),
+                if (widget.messageAlert && !widget.expanded)
+                  Positioned(
+                    top: -2,
+                    right: -2,
+                    child: Transform.scale(
+                      scale: 0.92 + (0.1 * alertT),
+                      child: _newMessageBadge(),
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
-  Widget _collapsedContent({double alertT = 0}) {
-    final attachment = widget.attachmentImageUrl?.trim() ?? '';
-    return _chatBubbleShell(
-      showTail: true,
-      tailAlignX: 0.85,
+  Widget _collapsedContent({
+    bool dragDismissHot = false,
+    double alertT = 0,
+  }) {
+    return _buildCollapsedOrb(
+      dragDismissHot: dragDismissHot,
       alertT: alertT,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(6, 6, 8, 6),
-        child: attachment.isNotEmpty
-            ? _networkImage(
-                url: attachment,
-                height: 46,
-                width: 46,
-                radius: BorderRadius.circular(12),
-              )
-            : _collapsedIconFace(),
-      ),
     );
   }
 
   Widget _promoCardShell({required Widget child}) {
     return Material(
       color: Colors.transparent,
-      elevation: 12,
-      shadowColor: const Color(0xFF9C27B0).withAlpha(100),
-      borderRadius: BorderRadius.circular(20),
+      elevation: 10,
+      shadowColor: const Color(0xFF9C27B0).withAlpha(70),
+      borderRadius: BorderRadius.circular(30),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFE1BEE7), width: 1.5),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: const Color(0xFFEDE7F6), width: 1.25),
         ),
         clipBehavior: Clip.antiAlias,
         child: child,
+      ),
+    );
+  }
+
+  Widget _premiumCloseButton({VoidCallback? onTap}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(999),
+          child: Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(170),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: Colors.black.withAlpha(18)),
+            ),
+            child: Icon(
+              Icons.close_rounded,
+              size: 20,
+              color: Colors.black.withAlpha(160),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _dragHandle() {
+    return Center(
+      child: Container(
+        width: 44,
+        height: 5,
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: Colors.black.withAlpha(25),
+          borderRadius: BorderRadius.circular(999),
+        ),
+      ),
+    );
+  }
+
+  Widget _navHeader() {
+    final label = widget.navigationLabel?.trim() ?? '';
+    final canNav = (widget.messageCount ?? 0) > 1 &&
+        (widget.onPreviousMessage != null || widget.onNextMessage != null);
+    if (!canNav && label.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          if (canNav)
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+              onPressed: widget.onPreviousMessage,
+              icon: const Icon(Icons.chevron_left_rounded),
+            )
+          else
+            const SizedBox(width: 34, height: 34),
+          Expanded(
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: portalSp(context, 12),
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black.withAlpha(110),
+                ),
+              ),
+            ),
+          ),
+          if (canNav)
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+              onPressed: widget.onNextMessage,
+              icon: const Icon(Icons.chevron_right_rounded),
+            )
+          else
+            const SizedBox(width: 34, height: 34),
+        ],
       ),
     );
   }
@@ -817,50 +1174,87 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
     final linkLabel = (widget.actionLinkLabel ?? 'Saiba mais').trim();
     final imgH = _promoImageHeight(viewportHeight);
 
-    return _promoCardShell(
+    final card = _promoCardShell(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+        padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (widget.showCloseButton)
-              Align(
-                alignment: Alignment.topRight,
-                child: IconButton(
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  onPressed: widget.onCloseTap,
-                  icon: const Icon(Icons.close_rounded, size: 22),
+            _dragHandle(),
+            _navHeader(),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _expandedHeaderIcon(),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    (widget.title?.trim() ?? '').isNotEmpty
+                        ? widget.title!.trim()
+                        : 'FaceBaby',
+                    style: TextStyle(
+                      fontSize: portalSp(context, 16),
+                      fontWeight: FontWeight.w900,
+                      color: const Color(0xFF4A148C),
+                      height: 1.15,
+                    ),
+                  ),
+                ),
+                if (widget.showCloseButton)
+                  _premiumCloseButton(onTap: widget.onCloseTap),
+              ],
+            ),
+            if (attachment.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Semantics(
+                label: widget.imageAlt?.trim().isNotEmpty == true
+                    ? widget.imageAlt!.trim()
+                    : null,
+                child: GestureDetector(
+                  onTap: () => _openImagePreview(
+                    attachment,
+                    semanticsLabel: widget.imageAlt,
+                  ),
+                  child: _networkImage(
+                    url: attachment,
+                    height: imgH,
+                    width: maxWidth - 36,
+                    fit: BoxFit.cover,
+                    radius: BorderRadius.circular(16),
+                  ),
                 ),
               ),
-            if (attachment.isNotEmpty)
-              _networkImage(
-                url: attachment,
-                height: imgH,
-                width: maxWidth - 24,
-                radius: BorderRadius.circular(14),
-              ),
+            ],
             if (body.isNotEmpty) ...[
-              if (attachment.isNotEmpty) const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Text(
                 body,
                 maxLines: 4,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: portalSp(context, 14),
-                  height: 1.35,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF3D2A4F),
+                  fontSize: portalSp(context, 14.2),
+                  height: 1.45,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black.withAlpha(175),
                 ),
               ),
             ],
             if (widget.hasActionButton) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               _promoCtaButton(linkLabel),
             ],
           ],
+        ),
+      ),
+    );
+    return SizedBox(
+      width: maxWidth,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: viewportHeight * 0.78),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: card,
         ),
       ),
     );
@@ -876,117 +1270,320 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
         : msg.replaceFirst(RegExp(r'^🤖\s*'), '').trim();
     final attachment = widget.attachmentImageUrl?.trim() ?? '';
     final linkLabel = (widget.actionLinkLabel ?? 'Abrir link').trim();
-    final maxH = AiFloatingMessageBubble.estimatedSize(
-      expanded: true,
-      viewportWidth: maxWidth + AiFloatingMessageBubble.edgePadding * 2,
-      hasAttachmentImage: attachment.isNotEmpty,
-      hasActionLink: widget.hasActionButton,
-    ).height;
+    final title = widget.title?.trim() ?? '';
 
-    return _chatBubbleShell(
-      showTail: true,
-      tailAlignX: 0.88,
-      alertT: alertT,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: maxWidth,
-          maxHeight: maxH,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (widget.showCloseButton && widget.onCloseTap != null)
-                Align(
-                  alignment: Alignment.topRight,
-                  child: IconButton(
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                    onPressed: widget.onCloseTap,
-                    icon: const Icon(Icons.close_rounded, size: 20),
-                  ),
-                ),
-              if (attachment.isNotEmpty) ...[
-                _networkImage(
-                  url: attachment,
-                  height: AiFloatingMessageBubble.attachmentImageHeight,
-                  width: maxWidth - 22,
-                ),
-                const SizedBox(height: 8),
-              ],
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return _promoCardShell(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _dragHandle(),
+            SizedBox(
+              height: 44,
+              child: Stack(
+                alignment: Alignment.center,
+                clipBehavior: Clip.none,
                 children: [
-                  _collapsedIconFace(),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if ((widget.title?.trim() ?? '').isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: Text(
-                                widget.title!.trim(),
-                                style: TextStyle(
-                                  fontSize: portalSp(context, 14),
-                                  fontWeight: FontWeight.w900,
-                                  color: const Color(0xFF4A148C),
-                                ),
-                              ),
-                            ),
-                          Text(
-                            body,
-                            style: TextStyle(
-                              fontSize: portalSp(context, 13),
-                              height: 1.42,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF3D2A4F),
-                            ),
-                          ),
-                        ],
-                      ),
+                  _navHeader(),
+                  if (widget.showCloseButton && widget.onCloseTap != null)
+                    Positioned(
+                      right: -4,
+                      top: 0,
+                      child: _premiumCloseButton(onTap: widget.onCloseTap),
                     ),
-                  ),
                 ],
               ),
-              if (widget.hasActionButton) ...[
-                const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: _openActionLink,
-                    icon: const Icon(
-                      Icons.open_in_new_rounded,
-                      size: 18,
-                      color: Color(0xFF7B1FA2),
-                    ),
-                    label: Text(
-                      linkLabel,
-                      style: TextStyle(
-                        fontSize: portalSp(context, 13),
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF7B1FA2),
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            const SizedBox(height: 8),
+            Center(child: _expandedHeaderIcon()),
+            if (attachment.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Center(
+                child: _networkImage(
+                  url: attachment,
+                  height: AiFloatingMessageBubble.attachmentImageHeight,
+                  width: maxWidth - 48,
+                  radius: BorderRadius.circular(18),
+                ),
+              ),
+            ],
+            if (title.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: portalSp(context, 16),
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFF4A148C),
+                  height: 1.2,
+                ),
+              ),
+            ],
+            if (body.isNotEmpty) ...[
+              SizedBox(height: title.isNotEmpty ? 8 : 14),
+              Text(
+                body,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: portalSp(context, 14),
+                  height: 1.45,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF3D2A4F),
+                ),
+              ),
+            ],
+            if (widget.hasActionButton) ...[
+              const SizedBox(height: 16),
+              Center(
+                child: TextButton.icon(
+                  onPressed: _openActionLink,
+                  icon: const Icon(
+                    Icons.open_in_new_rounded,
+                    size: 18,
+                    color: Color(0xFF7B1FA2),
+                  ),
+                  label: Text(
+                    linkLabel,
+                    style: TextStyle(
+                      fontSize: portalSp(context, 13),
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF7B1FA2),
+                      decoration: TextDecoration.none,
                     ),
                   ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                 ),
-              ],
+              ),
             ],
-          ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _bubbleSurfaceContent({
+    required String msg,
+    required bool banner,
+    required bool promo,
+    required double maxW,
+    required double viewportHeight,
+    required double alertT,
+  }) {
+    if (widget.expanded) {
+      return KeyedSubtree(
+        key: ValueKey(
+          banner
+              ? 'ai_bubble_banner'
+              : promo
+                  ? 'ai_bubble_promo'
+                  : 'ai_bubble_expanded',
+        ),
+        child: banner
+            ? _expandedBannerContent(msg, maxW, viewportHeight)
+            : promo
+                ? _expandedPromoContent(msg, maxW, viewportHeight)
+                : _expandedContent(msg, maxW, alertT: 0),
+      );
+    }
+    return KeyedSubtree(
+      key: const ValueKey('ai_bubble_collapsed'),
+      child: _collapsedContent(alertT: alertT),
+    );
+  }
+
+  Widget _draggableBubbleChild({
+    required String msg,
+    required bool banner,
+    required bool promo,
+    required double maxW,
+    required double viewportHeight,
+    required double alertT,
+  }) {
+    if (_isDragActive) {
+      return KeyedSubtree(
+        key: const ValueKey('ai_bubble_drag_orb'),
+        child: _buildCollapsedOrb(
+          dragDismissHot: _nearDismissZone,
+          alertT: alertT,
+        ),
+      );
+    }
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 280),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, anim) => FadeTransition(
+        opacity: anim,
+        child: SizeTransition(
+          sizeFactor: anim,
+          axisAlignment: -1,
+          child: child,
+        ),
+      ),
+      child: _bubbleSurfaceContent(
+        msg: msg,
+        banner: banner,
+        promo: promo,
+        maxW: maxW,
+        viewportHeight: viewportHeight,
+        alertT: alertT,
+      ),
+    );
+  }
+
+  Widget _buildBubbleSurface({
+    required String msg,
+    required bool banner,
+    required bool promo,
+    required double maxW,
+    required double viewportHeight,
+    required double alertT,
+    required bool collapsed,
+    required double expandT,
+  }) {
+    final surface = KeyedSubtree(
+      key: _bubbleKey,
+      child: collapsed
+          ? _draggableBubbleChild(
+              msg: msg,
+              banner: banner,
+              promo: promo,
+              maxW: maxW,
+              viewportHeight: viewportHeight,
+              alertT: alertT,
+            )
+          : AnimatedSize(
+              duration: const Duration(milliseconds: 340),
+              curve: Curves.easeOutBack,
+              reverseDuration: const Duration(milliseconds: 260),
+              alignment: Alignment.center,
+              clipBehavior: Clip.hardEdge,
+              child: _draggableBubbleChild(
+                msg: msg,
+                banner: banner,
+                promo: promo,
+                maxW: maxW,
+                viewportHeight: viewportHeight,
+                alertT: alertT,
+              ),
+            ),
+    );
+    if (collapsed) {
+      return surface;
+    }
+    return Transform.scale(
+      scale: 0.92 + (0.08 * expandT),
+      alignment: Alignment.center,
+      child: Opacity(
+        opacity: 0.92 + (0.08 * expandT),
+        child: surface,
+      ),
+    );
+  }
+
+  Widget _buildExpandedModal({
+    required String msg,
+    required bool banner,
+    required bool promo,
+    required double maxW,
+    required double viewportHeight,
+  }) {
+    return Stack(
+      key: const Key('floating_message_expanded_layer'),
+      fit: StackFit.expand,
+      children: [
+        Positioned.fill(
+          child: ColoredBox(
+            key: const Key('floating_message_expanded_scrim'),
+            color: Colors.black.withValues(
+              alpha: AiFloatingMessageBubble.expandedScrimOpacity,
+            ),
+          ),
+        ),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: AnimatedBuilder(
+              animation: _expandCurve,
+              builder: (context, _) {
+                final t = _expandCurve.value;
+                return ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: maxW,
+                    minWidth: 280,
+                  ),
+                  child: _buildBubbleSurface(
+                    msg: msg,
+                    banner: banner,
+                    promo: promo,
+                    maxW: maxW,
+                    viewportHeight: viewportHeight,
+                    alertT: 0,
+                    collapsed: false,
+                    expandT: t,
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCollapsedLayer({
+    required String msg,
+    required bool banner,
+    required bool promo,
+    required double maxW,
+    required Size area,
+    required double bottomReserve,
+  }) {
+    final clampedPos = AiFloatingMessageBubble.clampCollapsedTopLeft(
+      topLeft: widget.position,
+      viewport: area,
+      bottomReserve: bottomReserve,
+    );
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        _dismissStrip(area),
+        Positioned(
+          left: clampedPos.dx,
+          top: clampedPos.dy,
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: widget.onToggleExpanded,
+            onPanStart: _onPanStart,
+            onPanUpdate: (d) => _onPanUpdate(d, area),
+            onPanEnd: (d) => _onPanEnd(d, area),
+            child: AnimatedBuilder(
+              animation: Listenable.merge([_expandCurve, _alertPulse]),
+              builder: (context, child) {
+                final alertT = widget.messageAlert ? _alertPulse.value : 0.0;
+                return _buildBubbleSurface(
+                  msg: msg,
+                  banner: banner,
+                  promo: promo,
+                  maxW: maxW,
+                  viewportHeight: area.height,
+                  alertT: alertT,
+                  collapsed: true,
+                  expandT: 0,
+                );
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1008,138 +1605,28 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
                 : (area.width - AiFloatingMessageBubble.edgePadding * 2)
                     .clamp(200.0, AiFloatingMessageBubble.expandedMaxWidth))
             .toDouble();
-        final bottomReserve = widget.allowDragDismiss && widget.showDismissZone
-            ? AiFloatingMessageBubble.dismissStripHeight
-            : 24.0;
-        final clampedPos = AiFloatingMessageBubble.clampTopLeft(
-          topLeft: widget.position,
-          bubbleSize: _currentBubbleSize(area),
-          viewport: area,
-          bottomReserve: bottomReserve,
-        );
 
-        return Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            _dismissStrip(area),
-            Positioned(
-              left: clampedPos.dx,
-              top: clampedPos.dy,
-              child: GestureDetector(
-                onPanStart: _onPanStart,
-                onPanUpdate: (d) => _onPanUpdate(d, area),
-                onPanEnd: (d) => _onPanEnd(d, area),
-                child: AnimatedBuilder(
-                  animation: Listenable.merge([_expandCurve, _alertPulse]),
-                  builder: (context, child) {
-                    final t = _expandCurve.value;
-                    final alertT = widget.messageAlert && !widget.expanded
-                        ? _alertPulse.value
-                        : 0.0;
-                    return Transform.scale(
-                      scale: 0.72 + (0.28 * t),
-                      alignment: Alignment.bottomRight,
-                      child: Opacity(
-                        opacity: 0.88 + (0.12 * t),
-                        child: _wrapWithAlert(
-                          KeyedSubtree(
-                            key: _bubbleKey,
-                            child: AnimatedSize(
-                              duration: const Duration(milliseconds: 340),
-                              curve: Curves.easeOutBack,
-                              reverseDuration: const Duration(milliseconds: 260),
-                              alignment: Alignment.bottomRight,
-                              clipBehavior: Clip.hardEdge,
-                              child: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 280),
-                                switchInCurve: Curves.easeOutCubic,
-                                switchOutCurve: Curves.easeInCubic,
-                                transitionBuilder: (child, anim) =>
-                                    FadeTransition(
-                                  opacity: anim,
-                                  child: SizeTransition(
-                                    sizeFactor: anim,
-                                    axisAlignment: -1,
-                                    child: child,
-                                  ),
-                                ),
-                                child: widget.expanded
-                                    ? KeyedSubtree(
-                                        key: ValueKey(
-                                          banner
-                                              ? 'ai_bubble_banner'
-                                              : promo
-                                                  ? 'ai_bubble_promo'
-                                                  : 'ai_bubble_expanded',
-                                        ),
-                                        child: banner
-                                            ? _expandedBannerContent(
-                                                msg,
-                                                maxW,
-                                                area.height,
-                                              )
-                                            : promo
-                                                ? _expandedPromoContent(
-                                                    msg,
-                                                    maxW,
-                                                    area.height,
-                                                  )
-                                                : _expandedContent(
-                                                    msg,
-                                                    maxW,
-                                                    alertT: 0,
-                                                  ),
-                                      )
-                                    : KeyedSubtree(
-                                        key: const ValueKey(
-                                          'ai_bubble_collapsed',
-                                        ),
-                                        child: _collapsedContent(
-                                          alertT: alertT,
-                                        ),
-                                      ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ],
+        if (widget.expanded) {
+          return _buildExpandedModal(
+            msg: msg,
+            banner: banner,
+            promo: promo,
+            maxW: maxW,
+            viewportHeight: area.height,
+          );
+        }
+
+        final bottomReserve =
+            widget.allowDragDismiss && widget.showDismissZone ? 0.0 : 24.0;
+        return _buildCollapsedLayer(
+          msg: msg,
+          banner: banner,
+          promo: promo,
+          maxW: maxW,
+          area: area,
+          bottomReserve: bottomReserve,
         );
       },
     );
   }
-}
-
-/// Cauda do balão (triângulo) apontando para baixo-direita.
-class _BubbleTailPainter extends CustomPainter {
-  _BubbleTailPainter({required this.color, required this.borderColor});
-
-  final Color color;
-  final Color borderColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final path = Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width, 0)
-      ..lineTo(size.width * 0.55, size.height)
-      ..close();
-    canvas.drawPath(path, Paint()..color = color);
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = borderColor.withAlpha(180)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _BubbleTailPainter oldDelegate) =>
-      oldDelegate.color != color;
 }

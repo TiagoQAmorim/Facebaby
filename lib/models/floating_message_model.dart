@@ -30,9 +30,11 @@ enum FloatingMessageType {
       this == adminAd || this == adminNotice || this == promoBanner;
 
   String get collapsedEmoji => switch (this) {
-        adminAd || adminNotice || promoBanner => '📣',
-        aiTip || aiSummary || aiAlert => '🤖',
-        premiumOffer => '❤️',
+        adminAd || promoBanner => '📣',
+        adminNotice => '🔔',
+        aiTip || aiSummary => '🤖',
+        aiAlert => '🤖',
+        premiumOffer => '👑',
       };
 }
 

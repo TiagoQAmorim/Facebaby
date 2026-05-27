@@ -1,7 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
+import '../../controllers/current_baby_controller.dart';
 import '../../i18n/app_i18n.dart';
+import '../../models/ai/ai_nanny_parsed_message.dart';
 import '../../models/ai/voice_record_interpretation.dart';
+import 'pending_records_explanation.dart';
+import '../../utils/voice_record_clarification.dart' show parseFeedingDurationMinutes;
+import 'feeding_record_verifier.dart';
 import 'voice_record_save_service.dart';
 
 /// Ações de registro da IA Babá — única porta para persistir no banco.
@@ -50,23 +56,72 @@ class AiNannyRecordActions {
   Future<AiNannySaveResult> applyInterpretation(
     VoiceRecordInterpretation interpretation, {
     String transcript = '',
+    S? strings,
   }) async =>
       _run(
-        () => _save.applyConfirmed(
-          interpretation: interpretation,
-          transcript: transcript,
-        ),
+        () {
+          if (interpretation.type == 'feeding') {
+            FeedingRecordVerifier.logSavePayload(
+              babyId: CurrentBabyController.instance.currentBabyId ?? -1,
+              interpretation: interpretation,
+            );
+          }
+          return _save.applyConfirmed(
+            interpretation: interpretation,
+            transcript: transcript,
+          );
+        },
+        interpretation: interpretation,
+        strings: strings,
       );
 
   Future<AiNannySaveResult> _run(
-    Future<VoiceRecordSaveKind> Function() action,
-  ) async {
+    Future<VoiceRecordApplyResult> Function() action, {
+    VoiceRecordInterpretation? interpretation,
+    S? strings,
+  }) async {
     try {
-      final kind = await action();
-      return AiNannySaveResult(success: true, saveKind: kind);
+      final apply = await action();
+      if (interpretation?.type == 'feeding') {
+        final babyId = CurrentBabyController.instance.currentBabyId;
+        final feedingId = apply.localFeedingId;
+        final s = strings ?? const S(AppLang.pt);
+        if (babyId == null || feedingId == null) {
+          debugPrint(
+            'AiNannySave[feeding]: verify failed — missing babyId or localId',
+          );
+          return AiNannySaveResult(
+            success: false,
+            error: s.aiBreastfeedingSaveFailed,
+          );
+        }
+        final ok = await FeedingRecordVerifier.existsInHistory(
+          babyId: babyId,
+          localFeedingId: feedingId,
+        );
+        if (!ok) {
+          debugPrint(
+            'AiNannySave[feeding]: verify failed — id $feedingId not in history',
+          );
+          return AiNannySaveResult(
+            success: false,
+            error: s.aiBreastfeedingSaveFailed,
+          );
+        }
+        debugPrint(
+          'AiNannySave[feeding]: repository ok verified id=$feedingId',
+        );
+      }
+      return AiNannySaveResult(
+        success: true,
+        saveKind: apply.kind,
+        localFeedingId: apply.localFeedingId,
+      );
     } on VoiceRecordSaveException catch (e) {
+      debugPrint('AiNannySave: VoiceRecordSaveException ${e.message}');
       return AiNannySaveResult(success: false, error: e.message);
     } catch (e) {
+      debugPrint('AiNannySave: error $e');
       return AiNannySaveResult(success: false, error: '$e');
     }
   }
@@ -78,10 +133,38 @@ class AiNannyRecordActions {
     required S strings,
     DateTime? at,
   }) {
+    if (interpretation.type == 'feeding') {
+      final breast = _breastfeedingSuccessMessage(interpretation, strings);
+      if (breast != null) return breast;
+    }
     final name = babyName.trim().isEmpty ? 'o bebê' : babyName.trim();
     final when = DateFormat('HH:mm').format(at ?? DateTime.now());
     final line = _recordLine(interpretation, strings);
     return '🤖 ${strings.aiRecordConfirmedPrefix(name, line, when)}';
+  }
+
+  static String? _breastfeedingSuccessMessage(
+    VoiceRecordInterpretation interpretation,
+    S strings,
+  ) {
+    final f = interpretation.feeding;
+    if ((f?.subtype ?? '').toLowerCase() != 'peito') return null;
+    final sideCode = (f?.side ?? '').toUpperCase();
+    final sideLabel = switch (sideCode) {
+      'E' => strings.aiRecordSideLeft,
+      'D' => strings.aiRecordSideRight,
+      _ => null,
+    };
+    if (sideLabel == null) return null;
+    final mins = _feedingDurationMinutes(f?.note);
+    if (mins == null) return null;
+    return strings.aiBreastfeedingSavedSuccess(sideLabel, mins);
+  }
+
+  static int? _feedingDurationMinutes(String? note) {
+    if (note == null || note.trim().isEmpty) return null;
+    return parseFeedingDurationMinutes(note.toLowerCase()) ??
+        int.tryParse(note.replaceAll(RegExp(r'[^0-9]'), ''));
   }
 
   static String _recordLine(
@@ -124,10 +207,21 @@ class AiNannyRecordActions {
     required String? confirmation,
     required String? clarificationPrompt,
     required S strings,
+    AiNannyRecordsBundle? pendingBundle,
   }) {
     final confirm = confirmation?.trim();
     final ai = aiAnswer?.trim();
     final clarify = clarificationPrompt?.trim() ?? '';
+    String pendingFallback() {
+      final explained = pendingBundle != null
+          ? PendingRecordsExplanation.buildPendingRecordsExplanation(
+              bundle: pendingBundle,
+              strings: strings,
+            )
+          : null;
+      if (explained != null && explained.isNotEmpty) return explained;
+      return PendingRecordsExplanation.fallbackRetry(strings);
+    }
 
     if (saved && !needsClarification && confirm != null && confirm.isNotEmpty) {
       if (ai == null || ai.isEmpty || _shouldReplaceWithConfirmation(ai)) {
@@ -142,7 +236,8 @@ class AiNannyRecordActions {
         return '$confirm\n\n${_insistentClarificationBubble(ai, clarify, strings)}';
       }
       if (_claimsFullRegistration(ai)) {
-        return '$confirm\n\n${strings.aiVoiceNeedClarification}';
+        final extra = pendingFallback();
+        return extra.isEmpty ? confirm : '$confirm\n\n$extra';
       }
       final sanitized = _stripFalseRegistrationClaims(ai);
       if (sanitized.isEmpty) return confirm;
@@ -153,11 +248,10 @@ class AiNannyRecordActions {
       if (clarify.isNotEmpty) {
         return _insistentClarificationBubble(ai, clarify, strings);
       }
-      if (_claimsRegistration(ai)) {
-        return strings.aiVoiceNeedClarification;
+      if (ai != null && ai.isNotEmpty && !_claimsRegistration(ai)) {
+        return ai;
       }
-      if (ai != null && ai.isNotEmpty) return ai;
-      return strings.aiVoiceNeedClarification;
+      return pendingFallback();
     }
 
     if (error != null && error.trim().isNotEmpty && !saved) {
@@ -250,23 +344,24 @@ class AiNannyRecordActions {
     S strings,
   ) {
     final questions = clarificationPrompt.trim();
-    if (questions.isEmpty) return strings.aiVoiceNeedClarification;
+    if (questions.isEmpty) {
+      return PendingRecordsExplanation.fallbackRetry(strings);
+    }
 
     final ai = aiAnswer?.trim();
     if (_claimsRegistration(ai)) return questions;
 
-    final lead = strings.aiClarifyRegisterNeeded;
-    if (ai == null || ai.isEmpty) return '$lead\n\n$questions';
+    if (ai == null || ai.isEmpty) return questions;
 
     if (_looksLikeClarificationAsk(ai) && _coversClarificationPoints(ai, questions)) {
       return ai;
     }
 
     if (_looksLikeClarificationAsk(ai)) {
-      return '$ai\n\n$questions';
+      return questions;
     }
 
-    return '$lead\n\n$questions';
+    return questions;
   }
 
   static bool _looksLikeClarificationAsk(String text) {
@@ -286,7 +381,12 @@ class AiNannyRecordActions {
         low.contains('minute') ||
         low.contains('diaper') ||
         low.contains('pee') ||
-        low.contains('poop');
+        low.contains('poop') ||
+        low.contains('vacina') ||
+        low.contains('vaccine') ||
+        low.contains('peso') ||
+        low.contains('weight') ||
+        low.contains('grama');
   }
 
   /// Verifica se a resposta da IA já cobre os pontos do roteiro de esclarecimento.
@@ -315,9 +415,11 @@ class AiNannySaveResult {
     required this.success,
     this.saveKind,
     this.error,
+    this.localFeedingId,
   });
 
   final bool success;
   final VoiceRecordSaveKind? saveKind;
   final String? error;
+  final int? localFeedingId;
 }

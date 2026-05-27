@@ -392,6 +392,50 @@ function summarizeEvents(events) {
 
 
 
+/** Última medição de crescimento nos eventos (peso ou altura). */
+
+function latestGrowthValueFromEvents(events, kind) {
+
+  let bestVal = null;
+
+  let bestWhen = null;
+
+  for (const e of events) {
+
+    if (`${e.type || ''}` !== 'growth') continue;
+
+    const p = e.payload || {};
+
+    const k = `${p.kind || ''}`.trim().toLowerCase();
+
+    if (k !== kind) continue;
+
+    const when = e.when;
+
+    if (!when || Number.isNaN(when.getTime())) continue;
+
+    const val =
+
+      typeof p.value === 'number' ? p.value : Number(`${p.value ?? ''}`);
+
+    if (!Number.isFinite(val) || val <= 0) continue;
+
+    if (!bestWhen || when > bestWhen) {
+
+      bestWhen = when;
+
+      bestVal = val;
+
+    }
+
+  }
+
+  return bestVal;
+
+}
+
+
+
 /**
 
  * @param {import('firebase-admin/firestore').Firestore} db
@@ -456,15 +500,23 @@ async function buildBabyContextBlock(db, uid, babyId) {
 
 
 
-  const weight =
+  const events = await fetchRecentEvents(db, uid, `${babyId}`);
+
+  const latestWeight = latestGrowthValueFromEvents(events, 'weight');
+
+  const latestHeight = latestGrowthValueFromEvents(events, 'height');
+
+  const profileWeight =
 
     baby.weight_kg ?? baby.weightKg ?? user.weight_kg ?? user.weightKg;
 
-  const height = baby.height_cm ?? baby.heightCm ?? user.height_cm ?? user.heightCm;
+  const profileHeight =
 
+    baby.height_cm ?? baby.heightCm ?? user.height_cm ?? user.heightCm;
 
+  const weight = latestWeight ?? profileWeight;
 
-  const events = await fetchRecentEvents(db, uid, `${babyId}`);
+  const height = latestHeight ?? profileHeight;
 
   const eventsSummary = summarizeEvents(events);
 
@@ -492,9 +544,17 @@ async function buildBabyContextBlock(db, uid, babyId) {
 
     sign ? `Signo: ${sign}` : null,
 
-    weight != null ? `Peso de referência (kg): ${weight}` : null,
+    weight != null
 
-    height != null ? `Altura de referência (cm): ${height}` : null,
+      ? `Peso atual (kg): ${weight}${latestWeight != null ? ' (última medição no app)' : ' (cadastro)'}`
+
+      : null,
+
+    height != null
+
+      ? `Altura atual (cm): ${height}${latestHeight != null ? ' (última medição no app)' : ' (cadastro)'}`
+
+      : null,
 
     '',
 

@@ -138,7 +138,7 @@ const Map<String, String> _es = {
   'aiNannySubtitle':
       'Respuestas inteligentes y orientación personalizada para la rutina de tu bebé.',
   'aiNannyWelcomeMessage':
-      '¡Hola! Soy la IA Niñera de FaceBaby ❤️ Pregunta sobre rutina, sueño o alimentación — con cariño y sin alarmismo.',
+      '🤖 ¡Hola! Soy la IA Niñera 💜\nPuedo ayudar con tomas, sueño, pañales, salud, crecimiento y más ✨',
   'aiNannyMockReply':
       'Entendido ❤️ En la próxima fase responderé con los registros reales de tu bebé.',
   'aiNannyInputHint': 'Escribe tu pregunta…',
@@ -267,7 +267,7 @@ const Map<String, String> _fr = {
   'aiNannySubtitle':
       'Réponses intelligentes et conseils personnalisés pour la routine de votre bébé.',
   'aiNannyWelcomeMessage':
-      'Bonjour ! Je suis l’IA Nounou de FaceBaby ❤️ Posez vos questions sur la routine, le sommeil ou l’alimentation — avec douceur.',
+      '🤖 Bonjour ! Je suis l’IA Nounou 💜\nTétées, sommeil, couches, santé, croissance et plus ✨',
   'aiNannyMockReply':
       'Compris ❤️ Dans la prochaine phase, je répondrai avec les vrais enregistrements de votre bébé.',
   'aiNannyInputHint': 'Saisissez votre question…',
@@ -397,7 +397,7 @@ const Map<String, String> _de = {
   'aiNannySubtitle':
       'Intelligente Antworten und persönliche Tipps für die Routine Ihres Babys.',
   'aiNannyWelcomeMessage':
-      'Hallo! Ich bin FaceBabys KI-Babysitterin ❤️ Fragen Sie zu Routine, Schlaf oder Ernährung — einfühlsam und ohne Panik.',
+      '🤖 Hallo! Ich bin die KI-Babysitterin 💜\nMahlzeiten, Schlaf, Windeln, Gesundheit, Wachstum und mehr ✨',
   'aiNannyMockReply':
       'Verstanden ❤️ In der nächsten Phase antworte ich mit echten Einträgen Ihres Babys.',
   'aiNannyInputHint': 'Frage eingeben…',
@@ -527,7 +527,7 @@ const Map<String, String> _it = {
   'aiNannySubtitle':
       'Risposte intelligenti e consigli personalizzati per la routine del tuo bambino.',
   'aiNannyWelcomeMessage':
-      'Ciao! Sono l’IA Tata di FaceBaby ❤️ Chiedi su routine, sonno o alimentazione — con dolcezza.',
+      '🤖 Ciao! Sono l’IA Tata 💜\nPasti, sonno, pannolini, salute, crescita e altro ✨',
   'aiNannyMockReply':
       'Capito ❤️ Nella prossima fase risponderò con i registri reali del bambino.',
   'aiNannyInputHint': 'Scrivi la tua domanda…',

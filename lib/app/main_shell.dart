@@ -138,7 +138,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
       // Última oportunidade antes do SO suspender o isolate: regravar alarmes no AlarmManager.
       // Sem isto, em alguns equipamentos só o `show()` ao voltar a abrir parece “funcionar”.
       final bid = currentBaby.currentBabyId;

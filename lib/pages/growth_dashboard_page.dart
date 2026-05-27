@@ -19,7 +19,9 @@ import '../utils/portal_night_ui.dart';
 import '../utils/portal_time_of_day.dart';
 import '../data/growth_curves.dart';
 import '../services/growth_insights_service.dart';
+import '../utils/growth_baseline.dart';
 import '../utils/growth_measurements_builder.dart';
+import '../services/firebase/profile_cloud_sync.dart';
 import '../widgets/growth_chart_widget.dart';
 import '../widgets/growth_ruler_picker.dart';
 
@@ -438,6 +440,12 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage>
                                 babyId: bid, kind: kind, value: parsed);
                         GrowthCloudSync.pushLocalSoon(
                             localBabyId: bid, localGrowthId: newId);
+                        await GrowthBaseline.syncBabyProfileAfterMeasurement(
+                          babyId: bid,
+                          weightKg: kind == 'weight' ? parsed : null,
+                          heightCm: kind == 'height' ? parsed : null,
+                        );
+                        unawaited(ProfileCloudSync.pushBaby(bid));
                         GrowthEvents.ping();
                         if (ctx.mounted) Navigator.pop(ctx);
                         if (!mounted) return;
@@ -1421,6 +1429,12 @@ class _EditGrowthSheetBodyState extends State<_EditGrowthSheetBody> {
     );
     GrowthCloudSync.pushLocalSoon(
         localBabyId: widget.babyId, localGrowthId: widget.recordId);
+    await GrowthBaseline.syncBabyProfileAfterMeasurement(
+      babyId: widget.babyId,
+      weightKg: await GrowthBaseline.latestWeightKg(widget.babyId),
+      heightCm: await GrowthBaseline.latestHeightCm(widget.babyId),
+    );
+    unawaited(ProfileCloudSync.pushBaby(widget.babyId));
     GrowthEvents.ping();
     if (mounted) Navigator.pop(context);
     widget.onSaved();

@@ -1444,6 +1444,7 @@ class S {
   String get aiBubbleDragToClose => _t('aiBubbleDragToClose');
   String get aiBubbleCloseZone => _t('aiBubbleCloseZone');
   String get floatingMessageDropToClose => _t('floatingMessageDropToClose');
+  String get floatingMessageDropToCloseAll => _t('floatingMessageDropToCloseAll');
   String get floatingMessageLinkOpenFailed =>
       _t('floatingMessageLinkOpenFailed');
   String get aiBubbleOpenLink => _t('aiBubbleOpenLink');
@@ -1756,6 +1757,54 @@ class S {
   String get aiNannyTitle => _t('aiNannyTitle');
   String get aiNannySubtitle => _t('aiNannySubtitle');
   String get aiNannyWelcomeMessage => _t('aiNannyWelcomeMessage');
+  String aiEmotionalMonthiversary(String name, int months, String hint) {
+    final unit = months == 1
+        ? _t('aiEmotionalMonthSingular')
+        : _t('aiEmotionalMonthsPlural');
+    return _t('aiEmotionalMonthiversary')
+        .replaceAll('{name}', name)
+        .replaceAll('{months}', '$months')
+        .replaceAll('{unit}', unit)
+        .replaceAll('{hint}', hint);
+  }
+  String aiEmotionalTbtPhoto(String name, String when) =>
+      _t('aiEmotionalTbtPhoto').replaceAll('{name}', name).replaceAll('{when}', when);
+  String get aiEmotionalTbtWeek => _t('aiEmotionalTbtWeek');
+  String get aiEmotionalTbtMonth => _t('aiEmotionalTbtMonth');
+  String get aiEmotionalTbtYear => _t('aiEmotionalTbtYear');
+  String aiEmotionalAchieveFeedingStreak(String name, int days) =>
+      _t('aiEmotionalAchieveFeedingStreak')
+          .replaceAll('{name}', name)
+          .replaceAll('{days}', '$days');
+  String aiEmotionalAchieve100Records(String name, int count) =>
+      _t('aiEmotionalAchieve100Records')
+          .replaceAll('{name}', name)
+          .replaceAll('{count}', '$count');
+  String aiEmotionalAchieveFirstMonth(String name) =>
+      _t('aiEmotionalAchieveFirstMonth').replaceAll('{name}', name);
+  String aiEmotionalAchieveSleepStable(String name) =>
+      _t('aiEmotionalAchieveSleepStable').replaceAll('{name}', name);
+  String aiEmotionalSpontSleepBetter(String name) =>
+      _t('aiEmotionalSpontSleepBetter').replaceAll('{name}', name);
+  String aiEmotionalSpontFeedingRegular(String name) =>
+      _t('aiEmotionalSpontFeedingRegular').replaceAll('{name}', name);
+  String aiEmotionalSpontDevelopment(String name, String hint) =>
+      _t('aiEmotionalSpontDevelopment')
+          .replaceAll('{name}', name)
+          .replaceAll('{hint}', hint);
+  String get aiEmotionalSpontSmilePhase => _t('aiEmotionalSpontSmilePhase');
+  String aiEmotionalSpontEncouragement(String name) =>
+      _t('aiEmotionalSpontEncouragement').replaceAll('{name}', name);
+  String aiEmotionalSpontGentleCare(String name) =>
+      _t('aiEmotionalSpontGentleCare').replaceAll('{name}', name);
+  String get aiEmotionalDev1Month => _t('aiEmotionalDev1Month');
+  String get aiEmotionalDev2Months => _t('aiEmotionalDev2Months');
+  String get aiEmotionalDev3Months => _t('aiEmotionalDev3Months');
+  String get aiEmotionalDev4to5Months => _t('aiEmotionalDev4to5Months');
+  String get aiEmotionalDev6to8Months => _t('aiEmotionalDev6to8Months');
+  String get aiEmotionalDev9to11Months => _t('aiEmotionalDev9to11Months');
+  String get aiEmotionalDev12to23Months => _t('aiEmotionalDev12to23Months');
+  String get aiEmotionalDevToddler => _t('aiEmotionalDevToddler');
   String get aiNannyMockReply => _t('aiNannyMockReply');
   String get aiNannyInputHint => _t('aiNannyInputHint');
   String get aiNannyThinking => _t('aiNannyThinking');
@@ -1835,8 +1884,184 @@ class S {
           .replaceAll('{name}', name)
           .replaceAll('{line}', line)
           .replaceAll('{time}', time);
+  String aiBreastfeedingSavedSuccess(String sideLabel, int minutes) =>
+      _t('aiBreastfeedingSavedSuccess')
+          .replaceAll('{side}', sideLabel)
+          .replaceAll('{minutes}', '$minutes');
+  String get aiBreastfeedingSaveFailed => _t('aiBreastfeedingSaveFailed');
   String get aiClarifyFeedingPrefix => _t('aiClarifyFeedingPrefix');
   String get aiClarifyDiaperPrefix => _t('aiClarifyDiaperPrefix');
+  String get aiClarifyBreastSideOptions => _t('aiClarifyBreastSideOptions');
+  String get aiClarifyDiaperKindOptions => _t('aiClarifyDiaperKindOptions');
+  String get aiClarifyFeedingTypeOptions => _t('aiClarifyFeedingTypeOptions');
+  String get aiClarifyBottleAmount => _t('aiClarifyBottleAmount');
+  String get aiClarifySleepStart => _t('aiClarifySleepStart');
+  String get aiClarifyVaccineName => _t('aiClarifyVaccineName');
+  String get aiClarifyVaccineDate => _t('aiClarifyVaccineDate');
+  String get aiClarifyAppointmentReason => _t('aiClarifyAppointmentReason');
+  String get aiClarifyAppointmentWhen => _t('aiClarifyAppointmentWhen');
+  String get aiClarifySymptomDetails => _t('aiClarifySymptomDetails');
+  String get aiClarifyFeverTemperature => _t('aiClarifyFeverTemperature');
+  String aiActionFirstNeedData(int n) =>
+      _t('aiActionFirstNeedData').replaceAll('{n}', '$n');
+  String aiActionFirstConfirmCard(int n) =>
+      _t('aiActionFirstConfirmCard').replaceAll('{n}', '$n');
+  String aiActionFirstSummaryHeader(int n) =>
+      _t('aiActionFirstSummaryHeader').replaceAll('{n}', '$n');
+  String get aiActionFirstFoundIntro => _t('aiActionFirstFoundIntro');
+  String get aiActionFirstSummarySingle => _t('aiActionFirstSummarySingle');
+  String get aiActionFirstFirstQuestionLead =>
+      _t('aiActionFirstFirstQuestionLead');
+  String get aiActionFirstNextQuestionLead => _t('aiActionFirstNextQuestionLead');
+  String aiOrchestratorFinishSleepAndDiaper(String duration, String diaper) =>
+      _t('aiOrchestratorFinishSleepAndDiaper')
+          .replaceAll('{duration}', duration)
+          .replaceAll('{diaper}', diaper);
+  String aiOrchestratorFinishSleepOnly(String duration) =>
+      _t('aiOrchestratorFinishSleepOnly').replaceAll('{duration}', duration);
+  String aiOrchestratorFinishSleepWithStartedAt(String startedAt, String duration) =>
+      _t('aiOrchestratorFinishSleepWithStartedAt')
+          .replaceAll('{startedAt}', startedAt)
+          .replaceAll('{duration}', duration);
+  String aiOrchestratorFinishBreastfeeding(String side, String duration) =>
+      _t('aiOrchestratorFinishBreastfeeding')
+          .replaceAll('{side}', side)
+          .replaceAll('{duration}', duration);
+  String get aiOrchestratorDiaperBoth => _t('aiOrchestratorDiaperBoth');
+  String get aiOrchestratorDiaperPee => _t('aiOrchestratorDiaperPee');
+  String get aiOrchestratorDiaperPoo => _t('aiOrchestratorDiaperPoo');
+  String get aiActionFirstNeedDataIntro => _t('aiActionFirstNeedDataIntro');
+  String aiActionFirstAllComplete(int n) =>
+      _t('aiActionFirstAllComplete').replaceAll('{n}', '$n');
+  String get aiPendingAnswerAck => _t('aiPendingAnswerAck');
+  String get aiFollowUpSleepStatusQuestion =>
+      _t('aiFollowUpSleepStatusQuestion');
+  String get aiFollowUpSleepDurationQuestion =>
+      _t('aiFollowUpSleepDurationQuestion');
+  String get aiSleepOptionFellAsleepNow => _t('aiSleepOptionFellAsleepNow');
+  String get aiSleepOptionAlreadyWoke => _t('aiSleepOptionAlreadyWoke');
+  String get aiRecordCardFeedingDetected => _t('aiRecordCardFeedingDetected');
+  String get aiRecordCardDiaperDetected => _t('aiRecordCardDiaperDetected');
+  String get aiRecordCardSleepDetected => _t('aiRecordCardSleepDetected');
+  String get aiRecordCardSymptomDetected => _t('aiRecordCardSymptomDetected');
+  String get aiRecordCardWeightDetected => _t('aiRecordCardWeightDetected');
+  String get aiRecordCardHeightDetected => _t('aiRecordCardHeightDetected');
+  String get aiRecordCardVaccineDetected => _t('aiRecordCardVaccineDetected');
+  String get aiRecordCardAppointmentDetected =>
+      _t('aiRecordCardAppointmentDetected');
+  String get aiRecordFieldMethod => _t('aiRecordFieldMethod');
+  String get aiRecordFieldSide => _t('aiRecordFieldSide');
+  String get aiRecordFieldType => _t('aiRecordFieldType');
+  String get aiRecordFieldTime => _t('aiRecordFieldTime');
+  String get aiRecordFieldDuration => _t('aiRecordFieldDuration');
+  String get aiRecordFieldAmount => _t('aiRecordFieldAmount');
+  String get aiRecordFieldMissing => _t('aiRecordFieldMissing');
+  String get aiRecordFieldNow => _t('aiRecordFieldNow');
+  String get aiRecordFieldAction => _t('aiRecordFieldAction');
+  String get aiRecordFieldTemperature => _t('aiRecordFieldTemperature');
+  String get aiRecordFieldSymptoms => _t('aiRecordFieldSymptoms');
+  String get aiRecordFieldValue => _t('aiRecordFieldValue');
+  String get aiRecordFieldName => _t('aiRecordFieldName');
+  String get aiRecordFieldStatus => _t('aiRecordFieldStatus');
+  String get aiRecordFieldDate => _t('aiRecordFieldDate');
+  String get aiRecordFieldReason => _t('aiRecordFieldReason');
+  String get aiRecordFeedingBreast => _t('aiRecordFeedingBreast');
+  String get aiRecordFeedingBottle => _t('aiRecordFeedingBottle');
+  String get aiRecordFeedingFormula => _t('aiRecordFeedingFormula');
+  String get aiRecordFeedingExpressed => _t('aiRecordFeedingExpressed');
+  String get aiRecordSideLeft => _t('aiRecordSideLeft');
+  String get aiRecordSideRight => _t('aiRecordSideRight');
+  String get aiRecordSideBoth => _t('aiRecordSideBoth');
+  String get aiPhaseTranscribing => _t('aiPhaseTranscribing');
+  String get aiPhaseUnderstandingRecords => _t('aiPhaseUnderstandingRecords');
+  String get aiPhaseUnderstanding => _t('aiPhaseUnderstanding');
+  String get aiVoiceTranscriptionFailed => _t('aiVoiceTranscriptionFailed');
+  String get aiPhaseIdentifying => _t('aiPhaseIdentifying');
+  String get aiPhasePreparing => _t('aiPhasePreparing');
+  String get aiPhaseSlowWarning => _t('aiPhaseSlowWarning');
+  String get aiPhaseVerySlow => _t('aiPhaseVerySlow');
+  String get aiPhaseShowingResults => _t('aiPhaseShowingResults');
+  String get aiExtractionFallbackHint => _t('aiExtractionFallbackHint');
+  String get aiConfirmNeedInfoTitle => _t('aiConfirmNeedInfoTitle');
+  String get aiConfirmAndSaveRecords => _t('aiConfirmAndSaveRecords');
+  String get aiConfirmReadyToSaveVoice => _t('aiConfirmReadyToSaveVoice');
+  String get aiCardUnderstood => _t('aiCardUnderstood');
+  String get aiCardMissing => _t('aiCardMissing');
+  String get aiBadgeComplete => _t('aiBadgeComplete');
+  String get aiBadgeMissingInfo => _t('aiBadgeMissingInfo');
+  String get aiBadgeIncomplete => _t('aiBadgeIncomplete');
+  String get aiRecordLabelBreastfeeding => _t('aiRecordLabelBreastfeeding');
+  String get aiRecordLabelBottle => _t('aiRecordLabelBottle');
+  String get aiRecordLabelFeeding => _t('aiRecordLabelFeeding');
+  String get aiRecordLabelDiaper => _t('aiRecordLabelDiaper');
+  String get aiRecordLabelSleep => _t('aiRecordLabelSleep');
+  String get aiRecordLabelSymptom => _t('aiRecordLabelSymptom');
+  String get aiRecordLabelGrowth => _t('aiRecordLabelGrowth');
+  String get aiRecordLabelVaccine => _t('aiRecordLabelVaccine');
+  String get aiRecordLabelAppointment => _t('aiRecordLabelAppointment');
+  String get aiRecordLabelMemory => _t('aiRecordLabelMemory');
+  String get aiConfirmCompleteToSaveHint => _t('aiConfirmCompleteToSaveHint');
+  String get aiPendingSessionCancelled => _t('aiPendingSessionCancelled');
+  String get aiPendingRepeatQuestionIntro => _t('aiPendingRepeatQuestionIntro');
+  String get aiPendingAnswerRecorded => _t('aiPendingAnswerRecorded');
+  String get aiPendingFinishInSheet => _t('aiPendingFinishInSheet');
+  String get aiPendingMustFinishRecords => _t('aiPendingMustFinishRecords');
+  String get aiPendingStateRetry => _t('aiPendingStateRetry');
+  String get aiPendingRecordsIntroSingle => _t('aiPendingRecordsIntroSingle');
+  String aiPendingRecordsIntroPlural(int n) =>
+      _t('aiPendingRecordsIntroPlural').replaceAll('{n}', '$n');
+  String aiPendingMissingFieldsLine(String fields) =>
+      _t('aiPendingMissingFieldsLine').replaceAll('{fields}', fields);
+  String get aiPendingGrowthMissingBaseline =>
+      _t('aiPendingGrowthMissingBaseline');
+  String aiPendingGrowthStatusDelta(int grams) =>
+      _t('aiPendingGrowthStatusDelta').replaceAll('{grams}', '$grams');
+  String aiPendingGrowthStatusHeightDelta(int cm) =>
+      _t('aiPendingGrowthStatusHeightDelta').replaceAll('{cm}', '$cm');
+  String aiPendingVaccineScheduledStatus(String when) =>
+      _t('aiPendingVaccineScheduledStatus').replaceAll('{when}', when);
+  String aiPendingVaccineNamedStatus(String name, String when) =>
+      _t('aiPendingVaccineNamedStatus')
+          .replaceAll('{name}', name)
+          .replaceAll('{when}', when);
+  String aiPendingVaccineAskNameWithWhen(String when) =>
+      _t('aiPendingVaccineAskNameWithWhen').replaceAll('{when}', when);
+  String aiPendingGrowthNeedLastWeight(int grams) =>
+      _t('aiPendingGrowthNeedLastWeight').replaceAll('{grams}', '$grams');
+  String aiPendingGrowthWeightDeltaConfirm(
+    String prevKg,
+    int grams,
+    String nextKg,
+  ) =>
+      _t('aiPendingGrowthWeightDeltaConfirm')
+          .replaceAll('{prev}', prevKg)
+          .replaceAll('{grams}', '$grams')
+          .replaceAll('{next}', nextKg);
+  String get aiRecordWhenTomorrow => _t('aiRecordWhenTomorrow');
+  String get aiRecordAtConnector => _t('aiRecordAtConnector');
+  String get aiPendingRequiredFieldCannotSkip =>
+      _t('aiPendingRequiredFieldCannotSkip');
+  String get aiFollowUpBreastSideQuestion => _t('aiFollowUpBreastSideQuestion');
+  String get aiFollowUpDurationQuestion => _t('aiFollowUpDurationQuestion');
+  String get aiFollowUpBreastLeftDuration => _t('aiFollowUpBreastLeftDuration');
+  String get aiFollowUpBreastRightDuration => _t('aiFollowUpBreastRightDuration');
+  String get aiFollowUpDiaperTypeQuestion => _t('aiFollowUpDiaperTypeQuestion');
+  String get aiPartialSaveSummaryHeader => _t('aiPartialSaveSummaryHeader');
+  String aiPartialSaveLineSaved(String detail) =>
+      _t('aiPartialSaveLineSaved').replaceAll('{detail}', detail);
+  String aiPartialSaveLineNeedsInfo(String title) =>
+      _t('aiPartialSaveLineNeedsInfo').replaceAll('{title}', title);
+  String aiPartialSaveLineBreastNeedsDuration(String title, String side) =>
+      _t('aiPartialSaveLineBreastNeedsDuration')
+          .replaceAll('{title}', title)
+          .replaceAll('{side}', side);
+  String aiPartialSaveRecordFailed(String title, String reason) =>
+      _t('aiPartialSaveRecordFailed')
+          .replaceAll('{title}', title)
+          .replaceAll('{reason}', reason);
+  String get aiDiaperOptionPee => _t('aiDiaperOptionPee');
+  String get aiDiaperOptionPoo => _t('aiDiaperOptionPoo');
+  String get aiDiaperOptionBoth => _t('aiDiaperOptionBoth');
   String get aiRoutineRegisterSkipped => _t('aiRoutineRegisterSkipped');
   String get aiVoiceSavedFeeding => _t('aiVoiceSavedFeeding');
   String get aiVoiceSleepStarted => _t('aiVoiceSleepStarted');
@@ -1885,6 +2110,7 @@ class S {
       .replaceAll('{max}', '$max');
   String get familyTabTree => _t('familyTabTree');
   String get familyTabHoroscope => _t('familyTabHoroscope');
+  String get familyTabHomily => _t('familyTabHomily');
   String get familyTabAiHistory => _t('familyTabAiHistory');
   String familyHoroscopeDate(String date) =>
       _t('familyHoroscopeDate').replaceAll('{date}', date);
@@ -1896,6 +2122,42 @@ class S {
   String get familyHoroscopeFamilyEnergy => _t('familyHoroscopeFamilyEnergy');
   String get familyHoroscopeDailyAdvice => _t('familyHoroscopeDailyAdvice');
   String get familyHoroscopeDisclaimer => _t('familyHoroscopeDisclaimer');
+  String get familyHoroscopeLoading => _t('familyHoroscopeLoading');
+  String get familyHoroscopeOpenTabHint => _t('familyHoroscopeOpenTabHint');
+  String get aiBubbleHoroscopeReady => _t('aiBubbleHoroscopeReady');
+  String get aiBubbleHoroscopeOpenLink => _t('aiBubbleHoroscopeOpenLink');
+  String familyHomilyDate(String date) =>
+      _t('familyHomilyDate').replaceAll('{date}', date);
+  String get familyHomilyLoading => _t('familyHomilyLoading');
+  String get familyHomilyOpenTabHint => _t('familyHomilyOpenTabHint');
+  String get familyHomilyLiturgicalDay => _t('familyHomilyLiturgicalDay');
+  String get familyHomilyFeast => _t('familyHomilyFeast');
+  String get familyHomilyGospel => _t('familyHomilyGospel');
+  String get familyHomilyTitle => _t('familyHomilyTitle');
+  String get familyHomilyFamilyReflection => _t('familyHomilyFamilyReflection');
+  String get familyHomilyDisclaimer => _t('familyHomilyDisclaimer');
+  String get familyHomilyPremiumTitle => _t('familyHomilyPremiumTitle');
+  String get familyHomilyPremiumBody => _t('familyHomilyPremiumBody');
+  String get aiBubbleHomilyReady => _t('aiBubbleHomilyReady');
+  String get aiBubbleHomilyOpenLink => _t('aiBubbleHomilyOpenLink');
+  String get aiBubbleCuriosityTitle => _t('aiBubbleCuriosityTitle');
+
+  String familyHomilyError(String code, {String? serverMessage}) {
+    switch (code) {
+      case 'not-found':
+        return _t('familyHomilyErrorNotFound');
+      case 'unauthenticated':
+        return _t('familyHomilyErrorUnauthenticated');
+      case 'permission-denied':
+        return _t('familyHomilyErrorPermission');
+      case 'failed-precondition':
+        return _t('familyHomilyErrorPrecondition');
+      case 'resource-exhausted':
+        return _t('familyHomilyErrorExhausted');
+      default:
+        return _t('familyHomilyErrorGeneric');
+    }
+  }
   String get familyHoroscopeRegisterFather => _t('familyHoroscopeRegisterFather');
   String get familyHoroscopePremiumTitle => _t('familyHoroscopePremiumTitle');
   String get familyHoroscopePremiumBody => _t('familyHoroscopePremiumBody');
@@ -3775,6 +4037,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'aiBubbleDragToClose': 'Arraste até a área vermelha para fechar',
     'aiBubbleCloseZone': 'Solte aqui para fechar',
     'floatingMessageDropToClose': 'Solte aqui para fechar',
+    'floatingMessageDropToCloseAll': 'Solte aqui para fechar todos os avisos',
     'floatingMessageLinkOpenFailed':
         'Não foi possível abrir o link. Verifique a URL (https).',
     'aiBubbleOpenLink': 'Abrir link',
@@ -3954,7 +4217,50 @@ const Map<AppLang, Map<String, String>> _strings = {
     'aiNannySubtitle':
         'Respostas inteligentes e orientações personalizadas para a rotina do seu bebê.',
     'aiNannyWelcomeMessage':
-        'Olá! Sou a IA Babá do FaceBaby ❤️ Pergunte sobre rotina, sono ou alimentação — com carinho e sem alarmismo.',
+        '🤖 Olá! Eu sou a IA Babá 💜\nPosso ajudar com mamadas, sono, fraldas, saúde, crescimento e muito mais ✨',
+    'aiEmotionalMonthiversary':
+        '🤖 Hoje {name} completa {months} {unit} ❤️\n{hint}',
+    'aiEmotionalMonthSingular': 'mês',
+    'aiEmotionalMonthsPlural': 'meses',
+    'aiEmotionalTbtPhoto':
+        '🤖 {when}, essa era uma das primeiras fotos da {name} 🥹',
+    'aiEmotionalTbtWeek': 'Há 1 semana',
+    'aiEmotionalTbtMonth': 'Há 1 mês',
+    'aiEmotionalTbtYear': 'Há 1 ano',
+    'aiEmotionalAchieveFeedingStreak':
+        '🤖 {days} dias seguidos registrando alimentação de {name} 🎉',
+    'aiEmotionalAchieve100Records':
+        '🤖 {count} registros concluídos com {name} ✨',
+    'aiEmotionalAchieveFirstMonth':
+        '🤖 Primeiro mês acompanhando {name} no FaceBaby ❤️',
+    'aiEmotionalAchieveSleepStable':
+        '🤖 A rotina de sono de {name} pareceu mais estável esta semana 🌙',
+    'aiEmotionalSpontSleepBetter':
+        '🤖 {name} dormiu melhor que ontem 🌙',
+    'aiEmotionalSpontFeedingRegular':
+        '🤖 O padrão de alimentação de {name} parece mais regular ❤️',
+    'aiEmotionalSpontDevelopment':
+        '🤖 {name} pode começar a {hint} 👶✨',
+    'aiEmotionalSpontSmilePhase': 'sorrir mais nesta fase',
+    'aiEmotionalSpontEncouragement': '🤖 Vocês estão indo muito bem com {name} 💕',
+    'aiEmotionalSpontGentleCare':
+        '🤖 Cuidar de {name} com calma faz diferença — estou aqui com vocês 💜',
+    'aiEmotionalDev1Month':
+        'Ela está começando a reconhecer vozes familiares ✨',
+    'aiEmotionalDev2Months':
+        'Ela está descobrindo mais o mundo ao redor ✨',
+    'aiEmotionalDev3Months':
+        'Os sorrisos e sons novos podem aparecer com mais frequência ✨',
+    'aiEmotionalDev4to5Months':
+        'Ela explora mais o ambiente e responde ao seu carinho ✨',
+    'aiEmotionalDev6to8Months':
+        'Ela pode demonstrar mais curiosidade e interação ✨',
+    'aiEmotionalDev9to11Months':
+        'Ela pode estar mais ativa e comunicativa nesta fase ✨',
+    'aiEmotionalDev12to23Months':
+        'Cada conquista pequena conta muito nesta fase ✨',
+    'aiEmotionalDevToddler':
+        'A personalidade dela brilha cada vez mais ✨',
     'aiNannyMockReply':
         'Entendi ❤️ Na próxima fase eu vou responder com base nos registros reais do bebê.',
     'aiNannyInputHint': 'Digite sua pergunta…',
@@ -4000,8 +4306,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'aiVoiceSavedOk': 'Registro salvo com sucesso.',
     'aiVoiceSavedFeedingAndDiaper': 'Mamada e troca de fralda registradas.',
     'aiVoiceSavedSymptom': 'Sintomas registrados em Saúde.',
-    'aiVoiceNeedClarification':
-        'Ainda não registrei — responda no chat para eu completar.',
+    'aiVoiceNeedClarification': '',
     'aiClarifyFeedingPrefix': 'Sobre a mamada:',
     'aiClarifyDiaperPrefix': 'Sobre a fralda:',
     'aiClarifyBreastSide': 'foi peito esquerdo ou direito?',
@@ -4023,11 +4328,167 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Altura: último {prev} cm → novo {next} cm (confirmar)',
     'aiClarifyFeedingType': 'foi peito ou mamadeira?',
     'aiClarifyDiaperKind': 'tinha xixi, cocô ou os dois?',
+    'aiClarifyBreastSideOptions':
+        'Qual lado foi usado mais?\n• Esquerdo\n• Direito\n• Ambos',
+    'aiClarifyDiaperKindOptions':
+        'Que tipo de troca foi?\n• Xixi\n• Cocô\n• Ambos',
+    'aiClarifyFeedingTypeOptions':
+        'Como foi a alimentação?\n• Peito\n• Mamadeira\n• Fórmula',
+    'aiClarifyBottleAmount': 'Quantos ml tomou?',
+    'aiClarifySleepStart': 'Quando o sono começou?',
+    'aiClarifyVaccineName': 'Qual é o nome da vacina?',
+    'aiClarifyVaccineDate': 'Qual a data da vacina?',
+    'aiClarifyAppointmentReason': 'Qual especialidade ou motivo?',
+    'aiClarifyAppointmentWhen': 'Quando é a consulta (data e hora)?',
+    'aiClarifySymptomDetails':
+        'Quais sintomas ou temperatura devo registrar?',
+    'aiClarifyFeverTemperature':
+        'Qual a temperatura agora, em graus? (ex.: 38,5)',
+    'aiActionFirstNeedData':
+        'Entendi {n} registro(s), mas ainda faltam dados.',
+    'aiActionFirstFoundIntro': 'Entendi 😊',
+    'aiActionFirstSummarySingle': 'Encontrei:',
+    'aiActionFirstSummaryHeader': 'Encontrei:',
+    'aiActionFirstFirstQuestionLead': 'Primeiro:',
+    'aiActionFirstNextQuestionLead': 'Agora:',
+    'aiOrchestratorFinishSleepAndDiaper':
+        '🤖 Posso finalizar o sono ativo ({duration}), registrar {diaper}. Deseja salvar?',
+    'aiOrchestratorFinishSleepOnly':
+        '🤖 Posso finalizar o sono ativo ({duration}) e registrar que ela acordou agora. Deseja salvar?',
+    'aiOrchestratorFinishSleepWithStartedAt':
+        '🤖 Encontrei um sono ativo iniciado às {startedAt}. Posso finalizar com duração total de {duration}?',
+    'aiOrchestratorFinishBreastfeeding':
+        '🤖 Posso finalizar a mamada do peito {side} ({duration}). Deseja salvar?',
+    'aiOrchestratorDiaperBoth': 'xixi e cocô',
+    'aiOrchestratorDiaperPee': 'xixi',
+    'aiOrchestratorDiaperPoo': 'cocô',
+    'aiActionFirstNeedDataIntro':
+        'Agora preciso completar algumas informações.',
+    'aiActionFirstAllComplete':
+        'Pronto 😊\nOs registros estão completos.',
+    'aiActionFirstConfirmCard':
+        'Organizei {n} registro(s). Confira o card e toque em confirmar para salvar.',
+    'aiRecordCardFeedingDetected': 'Mamada detectada',
+    'aiRecordCardDiaperDetected': 'Fralda detectada',
+    'aiRecordCardSleepDetected': 'Sono detectado',
+    'aiRecordCardSymptomDetected': 'Sintoma detectado',
+    'aiRecordCardWeightDetected': 'Peso detectado',
+    'aiRecordCardHeightDetected': 'Altura detectada',
+    'aiRecordCardVaccineDetected': 'Vacina detectada',
+    'aiRecordCardAppointmentDetected': 'Consulta detectada',
+    'aiRecordFieldMethod': 'Método',
+    'aiRecordFieldSide': 'Lado',
+    'aiRecordFieldType': 'Tipo',
+    'aiRecordFieldTime': 'Horário',
+    'aiRecordFieldDuration': 'Duração',
+    'aiRecordFieldAmount': 'Quantidade',
+    'aiRecordFieldMissing': 'faltando',
+    'aiRecordFieldNow': 'agora (pode editar)',
+    'aiRecordFieldAction': 'Ação',
+    'aiRecordFieldTemperature': 'Temperatura',
+    'aiRecordFieldSymptoms': 'Sintomas',
+    'aiRecordFieldValue': 'Valor',
+    'aiRecordFieldName': 'Nome',
+    'aiRecordFieldStatus': 'Status',
+    'aiRecordFieldDate': 'Data',
+    'aiRecordFieldReason': 'Motivo',
+    'aiRecordFeedingBreast': 'amamentação',
+    'aiRecordFeedingBottle': 'mamadeira',
+    'aiRecordFeedingFormula': 'fórmula',
+    'aiRecordFeedingExpressed': 'leite ordenhado',
+    'aiRecordSideLeft': 'esquerdo',
+    'aiRecordSideRight': 'direito',
+    'aiRecordSideBoth': 'ambos',
+    'aiPhaseTranscribing': 'Transcrevendo áudio...',
+    'aiPhaseUnderstandingRecords': 'Entendendo registros...',
+    'aiPhaseUnderstanding': 'Entendendo sua mensagem...',
+    'aiVoiceTranscriptionFailed':
+        'Não consegui transcrever o áudio. Tente gravar de novo.',
+    'aiPhaseIdentifying': 'Identificando registros...',
+    'aiPhasePreparing': 'Preparando confirmação...',
+    'aiPhaseSlowWarning': 'Ainda processando...',
+    'aiPhaseVerySlow':
+        'Estou demorando mais que o normal, mas continuo processando...',
+    'aiPhaseShowingResults': 'Quase pronto...',
+    'aiExtractionFallbackHint':
+        'Não consegui entender tudo. Pode revisar os dados abaixo?',
+    'aiConfirmNeedInfoTitle': 'Preciso de algumas informações antes de salvar',
+    'aiConfirmAndSaveRecords': 'Confirmar e salvar registros',
+    'aiConfirmReadyToSaveVoice':
+        'Pronto, agora posso salvar os registros. Deseja confirmar?',
+    'aiCardUnderstood': 'Entendi:',
+    'aiCardMissing': 'Falta:',
+    'aiBadgeComplete': 'Completo',
+    'aiBadgeMissingInfo': 'Falta informação',
+    'aiBadgeIncomplete': 'Incompleto',
+    'aiRecordLabelBreastfeeding': 'Amamentação',
+    'aiRecordLabelBottle': 'Mamadeira',
+    'aiRecordLabelFeeding': 'Alimentação',
+    'aiRecordLabelDiaper': 'Fralda',
+    'aiRecordLabelSleep': 'Sono',
+    'aiRecordLabelSymptom': 'Sintoma',
+    'aiRecordLabelGrowth': 'Crescimento',
+    'aiRecordLabelVaccine': 'Vacina',
+    'aiRecordLabelAppointment': 'Consulta',
+    'aiRecordLabelMemory': 'Memória',
+    'aiConfirmCompleteToSaveHint': 'Complete as informações para salvar',
+    'aiPendingSessionCancelled': 'Certo, cancelei os registros pendentes.',
+    'aiPendingRepeatQuestionIntro': 'Ainda preciso saber:',
+    'aiPendingAnswerRecorded': 'Anotado.',
+    'aiPendingAnswerAck': 'Perfeito 😊',
+    'aiPendingFinishInSheet': 'Abra o card de registros para continuar.',
+    'aiPendingMustFinishRecords':
+        'Antes de continuar, preciso finalizar estes registros.',
+    'aiPendingStateRetry':
+        'Pode me dizer de novo o que deseja registrar?',
+    'aiPendingRecordsIntroSingle': '🤖 Ainda tenho 1 registro pendente:',
+    'aiPendingRecordsIntroPlural': '🤖 Ainda tenho {n} registros pendentes:',
+    'aiPendingMissingFieldsLine': 'Falta informar: {fields}.',
+    'aiPendingGrowthMissingBaseline':
+        'Preciso do último peso registrado para calcular o novo valor.',
+    'aiPendingGrowthStatusDelta': 'Crescimento: ganho de {grams}g.',
+    'aiPendingGrowthStatusHeightDelta': 'Crescimento: +{cm} cm.',
+    'aiPendingVaccineScheduledStatus': 'Vacina agendada para {when}.',
+    'aiPendingVaccineNamedStatus': 'Vacina {name} ({when}).',
+    'aiPendingVaccineAskNameWithWhen':
+        '🤖 Entendi. Quer agendar uma vacina para {when}. Qual é o nome da vacina?',
+    'aiPendingGrowthNeedLastWeight':
+        '🤖 Entendi que ela ganhou {grams}g. Qual era o último peso registrado?',
+    'aiPendingGrowthWeightDeltaConfirm':
+        '🤖 Último peso: {prev} kg. Com +{grams}g, o novo peso será {next} kg. Deseja salvar?',
+    'aiRecordWhenTomorrow': 'amanhã',
+    'aiRecordAtConnector': 'às',
+    'aiPendingRequiredFieldCannotSkip':
+        'Este campo é obrigatório. Pode responder com uma das opções.',
+    'aiFollowUpBreastSideQuestion': 'Sobre a amamentação: qual lado foi usado?',
+    'aiFollowUpDurationQuestion': 'Quanto tempo ela mamou?',
+    'aiFollowUpBreastLeftDuration': 'Quantos minutos no peito esquerdo?',
+    'aiFollowUpBreastRightDuration': 'Quantos minutos no peito direito?',
+    'aiPartialSaveSummaryHeader': '🤖 Encontrei estes registros:',
+    'aiPartialSaveLineSaved': '{detail}',
+    'aiPartialSaveLineNeedsInfo': '{title}: preciso de mais um detalhe',
+    'aiPartialSaveLineBreastNeedsDuration':
+        '{title}: preciso dos minutos do peito {side}',
+    'aiPartialSaveRecordFailed':
+        'Não consegui salvar {title}: {reason}',
+    'aiFollowUpDiaperTypeQuestion': 'Sobre a fralda: foi xixi, cocô ou ambos?',
+    'aiFollowUpSleepStatusQuestion':
+        'Agora sobre o sono:\nEla dormiu agora ou já acordou?',
+    'aiFollowUpSleepDurationQuestion': 'Quanto tempo ela dormiu?',
+    'aiSleepOptionFellAsleepNow': 'Dormiu agora',
+    'aiSleepOptionAlreadyWoke': 'Já acordou',
+    'aiDiaperOptionPee': 'Xixi',
+    'aiDiaperOptionPoo': 'Cocô',
+    'aiDiaperOptionBoth': 'Ambos',
     'aiClarifyDiaperChangeNow': 'foi na fralda — você trocou agora?',
     'aiRecordSaveFailed':
         '🤖 Não consegui salvar o registro agora. Tente novamente ou registre manualmente.',
     'aiRecordConfirmedPrefix':
         'Pronto, registrei {line} para {name} às {time}.',
+    'aiBreastfeedingSavedSuccess':
+        '✅ Registrei a mamada no peito {side} por {minutes} minutos.',
+    'aiBreastfeedingSaveFailed':
+        'Não consegui salvar a mamada. Tente novamente.',
     'aiRecordLineDiaperPee': 'fralda com xixi',
     'aiRecordLineDiaperPoo': 'fralda com cocô',
     'aiRecordLineDiaperBoth': 'fralda com xixi e cocô',
@@ -4096,6 +4557,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'settingsAiBabyHistory': 'Histórico do Bebê para a IA Babá',
     'familyTabTree': 'Família',
     'familyTabHoroscope': 'Horóscopo',
+    'familyTabHomily': 'Homilia',
     'familyTabAiHistory': 'Histórico',
     'familyHoroscopeDate': 'Horóscopo de {date}',
     'familyHoroscopeGenerateToday': 'Gerar horóscopo de hoje',
@@ -4107,6 +4569,41 @@ const Map<AppLang, Map<String, String>> _strings = {
     'familyHoroscopeDailyAdvice': 'Conselho do Dia para a Família',
     'familyHoroscopeDisclaimer':
         'Conteúdo gerado por IA para entretenimento e reflexão familiar. Não substitui orientação profissional.',
+    'familyHoroscopeLoading': 'Gerando o horóscopo familiar de hoje…',
+    'familyHoroscopeOpenTabHint':
+        'Abra esta guia para ver o horóscopo do dia.',
+    'aiBubbleHoroscopeReady':
+        '✨ O horóscopo familiar de hoje está pronto! Toque abaixo para ler na Família.',
+    'aiBubbleHoroscopeOpenLink': 'Ver horóscopo',
+    'familyHomilyDate': 'Homilia de {date}',
+    'familyHomilyLoading': 'Preparando a homilia do dia no calendário litúrgico…',
+    'familyHomilyOpenTabHint':
+        'Abra esta guia para ler a homilia cristã do dia.',
+    'familyHomilyLiturgicalDay': 'Tempo litúrgico',
+    'familyHomilyFeast': 'Festa ou memória',
+    'familyHomilyGospel': 'Evangelho do dia',
+    'familyHomilyTitle': 'Homilia do dia',
+    'familyHomilyFamilyReflection': 'Para refletir em família',
+    'familyHomilyDisclaimer':
+        'Conteúdo gerado por IA com base no calendário litúrgico católico, para reflexão e fé no lar. Não substitui orientação pastoral.',
+    'familyHomilyPremiumTitle': 'Homilia diária com IA',
+    'familyHomilyPremiumBody':
+        'Receba cada dia uma homilia acolhedora alinhada ao calendário cristão, pensada para a sua família.',
+    'aiBubbleHomilyReady':
+        '✝️ A homilia de hoje está pronta! Toque abaixo para ler na Família.',
+    'aiBubbleHomilyOpenLink': 'Ver homilia',
+    'aiBubbleCuriosityTitle': 'Curiosidade do dia ✨',
+    'familyHomilyErrorGeneric':
+        'Não foi possível gerar a homilia agora. Tente novamente.',
+    'familyHomilyErrorNotFound':
+        'Homilia não encontrada. Tente gerar novamente.',
+    'familyHomilyErrorUnauthenticated': 'Faça login para gerar a homilia.',
+    'familyHomilyErrorPermission':
+        'Homilia diária disponível no plano Premium.',
+    'familyHomilyErrorPrecondition':
+        'Complete seu cadastro na Família para gerar a homilia.',
+    'familyHomilyErrorExhausted':
+        'Muitas tentativas agora. Aguarde alguns minutos e tente de novo.',
     'familyHoroscopeRegisterFather':
         'Cadastre o papai para incluir o horóscopo dele na leitura familiar.',
     'familyHoroscopePremiumTitle': 'Horóscopo familiar com IA',
@@ -6244,6 +6741,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'aiBubbleDragToClose': 'Drag to the red zone to close',
     'aiBubbleCloseZone': 'Drop here to close',
     'floatingMessageDropToClose': 'Drop here to close',
+    'floatingMessageDropToCloseAll': 'Drop here to close all notices',
     'floatingMessageLinkOpenFailed':
         'Could not open the link. Check the URL (https).',
     'aiBubbleOpenLink': 'Open link',
@@ -6423,7 +6921,51 @@ const Map<AppLang, Map<String, String>> _strings = {
     'aiNannySubtitle':
         'Smart answers and personalized guidance for your baby\'s routine.',
     'aiNannyWelcomeMessage':
-        'Hi! I\'m FaceBaby\'s AI Nanny ❤️ Ask about routine, sleep or feeding — gently and without alarm.',
+        '🤖 Hi! I\'m AI Nanny 💜\nI can help with feeds, sleep, diapers, health, growth and more ✨',
+    'aiEmotionalMonthiversary':
+        '🤖 Today {name} turns {months} {unit} ❤️\n{hint}',
+    'aiEmotionalMonthSingular': 'month',
+    'aiEmotionalMonthsPlural': 'months',
+    'aiEmotionalTbtPhoto':
+        '🤖 {when}, this was one of {name}\'s first photos 🥹',
+    'aiEmotionalTbtWeek': 'One week ago',
+    'aiEmotionalTbtMonth': 'One month ago',
+    'aiEmotionalTbtYear': 'One year ago',
+    'aiEmotionalAchieveFeedingStreak':
+        '🤖 {days} days in a row logging feeds for {name} 🎉',
+    'aiEmotionalAchieve100Records':
+        '🤖 {count} records logged with {name} ✨',
+    'aiEmotionalAchieveFirstMonth':
+        '🤖 First month tracking {name} on FaceBaby ❤️',
+    'aiEmotionalAchieveSleepStable':
+        '🤖 {name}\'s sleep routine looked steadier this week 🌙',
+    'aiEmotionalSpontSleepBetter':
+        '🤖 {name} slept better than yesterday 🌙',
+    'aiEmotionalSpontFeedingRegular':
+        '🤖 {name}\'s feeding pattern looks more regular ❤️',
+    'aiEmotionalSpontDevelopment':
+        '🤖 {name} may start to {hint} 👶✨',
+    'aiEmotionalSpontSmilePhase': 'smile more at this stage',
+    'aiEmotionalSpontEncouragement':
+        '🤖 You\'re doing great with {name} 💕',
+    'aiEmotionalSpontGentleCare':
+        '🤖 Gentle care for {name} matters — I\'m here with you 💜',
+    'aiEmotionalDev1Month':
+        'They\'re starting to recognize familiar voices ✨',
+    'aiEmotionalDev2Months':
+        'They\'re discovering more of the world around them ✨',
+    'aiEmotionalDev3Months':
+        'Smiles and new sounds may show up more often ✨',
+    'aiEmotionalDev4to5Months':
+        'They explore more and respond to your warmth ✨',
+    'aiEmotionalDev6to8Months':
+        'They may show more curiosity and interaction ✨',
+    'aiEmotionalDev9to11Months':
+        'They may be more active and communicative now ✨',
+    'aiEmotionalDev12to23Months':
+        'Every small milestone counts at this stage ✨',
+    'aiEmotionalDevToddler':
+        'Their personality shines brighter every day ✨',
     'aiNannyMockReply':
         'Got it ❤️ In the next phase I\'ll answer using your baby\'s real records.',
     'aiNannyInputHint': 'Type your question…',
@@ -6468,8 +7010,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'aiVoiceSavedOk': 'Record saved successfully.',
     'aiVoiceSavedFeedingAndDiaper': 'Feeding and diaper change saved.',
     'aiVoiceSavedSymptom': 'Symptoms saved in Health.',
-    'aiVoiceNeedClarification':
-        'Not saved yet — reply in chat so I can complete the log.',
+    'aiVoiceNeedClarification': '',
     'aiClarifyFeedingPrefix': 'About feeding:',
     'aiClarifyDiaperPrefix': 'About the diaper:',
     'aiClarifyBreastSide': 'left or right breast?',
@@ -6490,10 +7031,161 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Height: last {prev} cm → new {next} cm (confirm)',
     'aiClarifyFeedingType': 'breast or bottle?',
     'aiClarifyDiaperKind': 'pee, poop, or both?',
+    'aiClarifyBreastSideOptions':
+        'Which side was used more?\n• Left\n• Right\n• Both',
+    'aiClarifyDiaperKindOptions':
+        'What kind of diaper change was it?\n• Pee\n• Poop\n• Both',
+    'aiClarifyFeedingTypeOptions':
+        'How was the feeding?\n• Breast\n• Bottle\n• Formula',
+    'aiClarifyBottleAmount': 'How many ml?',
+    'aiClarifySleepStart': 'When did sleep start?',
+    'aiClarifyVaccineName': 'What is the vaccine name?',
+    'aiClarifyVaccineDate': 'What is the vaccine date?',
+    'aiClarifyAppointmentReason': 'Which specialty or reason?',
+    'aiClarifyAppointmentWhen': 'When is the appointment (date and time)?',
+    'aiClarifySymptomDetails': 'Which symptoms or temperature should I log?',
+    'aiClarifyFeverTemperature':
+        'What is the temperature now, in degrees? (e.g. 38.5)',
+    'aiActionFirstNeedData':
+        'I found {n} record(s) but still need details.',
+    'aiActionFirstFoundIntro': 'Got it 😊',
+    'aiActionFirstSummarySingle': 'I found:',
+    'aiActionFirstSummaryHeader': 'I found:',
+    'aiActionFirstFirstQuestionLead': 'First:',
+    'aiActionFirstNextQuestionLead': 'Now:',
+    'aiOrchestratorFinishSleepAndDiaper':
+        '🤖 I can end the active sleep ({duration}) and log {diaper}. Save now?',
+    'aiOrchestratorFinishSleepOnly':
+        '🤖 I can end the active sleep ({duration}) and log that they woke up. Save now?',
+    'aiOrchestratorFinishSleepWithStartedAt':
+        '🤖 There is an active sleep since {startedAt}. End it with total duration {duration}?',
+    'aiOrchestratorFinishBreastfeeding':
+        '🤖 I can finish the {side} breast feeding ({duration}). Save now?',
+    'aiOrchestratorDiaperBoth': 'pee and poop',
+    'aiOrchestratorDiaperPee': 'pee',
+    'aiOrchestratorDiaperPoo': 'poop',
+    'aiActionFirstNeedDataIntro': 'I need to complete a few details now.',
+    'aiActionFirstAllComplete': 'All set 😊\nThe records are complete.',
+    'aiActionFirstConfirmCard':
+        'I organized {n} record(s). Review the card and tap confirm to save.',
+    'aiRecordCardFeedingDetected': 'Breastfeeding detected',
+    'aiRecordCardDiaperDetected': 'Diaper detected',
+    'aiRecordCardSleepDetected': 'Sleep detected',
+    'aiRecordCardSymptomDetected': 'Symptom detected',
+    'aiRecordCardWeightDetected': 'Weight detected',
+    'aiRecordCardHeightDetected': 'Height detected',
+    'aiRecordCardVaccineDetected': 'Vaccine detected',
+    'aiRecordCardAppointmentDetected': 'Appointment detected',
+    'aiRecordFieldMethod': 'Method',
+    'aiRecordFieldSide': 'Side',
+    'aiRecordFieldType': 'Type',
+    'aiRecordFieldTime': 'Time',
+    'aiRecordFieldDuration': 'Duration',
+    'aiRecordFieldAmount': 'Amount',
+    'aiRecordFieldMissing': 'missing',
+    'aiRecordFieldNow': 'now (editable)',
+    'aiRecordFieldAction': 'Action',
+    'aiRecordFieldTemperature': 'Temperature',
+    'aiRecordFieldSymptoms': 'Symptoms',
+    'aiRecordFieldValue': 'Value',
+    'aiRecordFieldName': 'Name',
+    'aiRecordFieldStatus': 'Status',
+    'aiRecordFieldDate': 'Date',
+    'aiRecordFieldReason': 'Reason',
+    'aiRecordFeedingBreast': 'breastfeeding',
+    'aiRecordFeedingBottle': 'bottle',
+    'aiRecordFeedingFormula': 'formula',
+    'aiRecordFeedingExpressed': 'expressed milk',
+    'aiRecordSideLeft': 'left',
+    'aiRecordSideRight': 'right',
+    'aiRecordSideBoth': 'both',
+    'aiPhaseTranscribing': 'Transcribing audio...',
+    'aiPhaseUnderstandingRecords': 'Understanding records...',
+    'aiPhaseUnderstanding': 'Understanding your message...',
+    'aiVoiceTranscriptionFailed':
+        'Could not transcribe the audio. Please try recording again.',
+    'aiPhaseIdentifying': 'Identifying records...',
+    'aiPhasePreparing': 'Preparing confirmation...',
+    'aiPhaseSlowWarning': 'Still processing...',
+    'aiPhaseVerySlow':
+        'This is taking longer than usual, but I am still processing...',
+    'aiPhaseShowingResults': 'Almost ready...',
+    'aiExtractionFallbackHint':
+        'I could not understand everything. Please review the data below.',
+    'aiConfirmNeedInfoTitle': 'I need a few details before saving',
+    'aiConfirmAndSaveRecords': 'Confirm and save records',
+    'aiConfirmReadyToSaveVoice':
+        'All set, I can save the records now. Would you like to confirm?',
+    'aiCardUnderstood': 'Understood:',
+    'aiCardMissing': 'Missing:',
+    'aiBadgeComplete': 'Complete',
+    'aiBadgeMissingInfo': 'Missing information',
+    'aiBadgeIncomplete': 'Incomplete',
+    'aiRecordLabelBreastfeeding': 'Breastfeeding',
+    'aiRecordLabelBottle': 'Bottle feeding',
+    'aiRecordLabelFeeding': 'Feeding',
+    'aiRecordLabelDiaper': 'Diaper',
+    'aiRecordLabelSleep': 'Sleep',
+    'aiRecordLabelSymptom': 'Symptom',
+    'aiRecordLabelGrowth': 'Growth',
+    'aiRecordLabelVaccine': 'Vaccine',
+    'aiRecordLabelAppointment': 'Appointment',
+    'aiRecordLabelMemory': 'Memory',
+    'aiConfirmCompleteToSaveHint': 'Complete the details to save',
+    'aiPendingSessionCancelled': 'Okay, I cancelled the pending records.',
+    'aiPendingRepeatQuestionIntro': 'I still need to know:',
+    'aiPendingAnswerRecorded': 'Got it.',
+    'aiPendingAnswerAck': 'Perfect.',
+    'aiPendingFinishInSheet': 'Open the records card to continue.',
+    'aiPendingMustFinishRecords':
+        'Before we continue, I need to finish these records.',
+    'aiPendingStateRetry': 'Can you tell me again what you want to log?',
+    'aiPendingRecordsIntroSingle': '🤖 I still have 1 pending record:',
+    'aiPendingRecordsIntroPlural': '🤖 I still have {n} pending records:',
+    'aiPendingMissingFieldsLine': 'Still need: {fields}.',
+    'aiPendingGrowthMissingBaseline':
+        'I need the last recorded weight to calculate the new value.',
+    'aiPendingGrowthStatusDelta': 'Growth: gained {grams}g.',
+    'aiPendingGrowthStatusHeightDelta': 'Growth: +{cm} cm.',
+    'aiPendingVaccineScheduledStatus': 'Vaccine scheduled for {when}.',
+    'aiPendingVaccineNamedStatus': 'Vaccine {name} ({when}).',
+    'aiPendingVaccineAskNameWithWhen':
+        '🤖 Got it. Vaccine for {when}. What is the vaccine name?',
+    'aiPendingGrowthNeedLastWeight':
+        '🤖 Got it — gained {grams}g. What was the last recorded weight?',
+    'aiPendingGrowthWeightDeltaConfirm':
+        '🤖 Last weight: {prev} kg. With +{grams}g, the new weight will be {next} kg. Save it?',
+    'aiRecordWhenTomorrow': 'tomorrow',
+    'aiRecordAtConnector': 'at',
+    'aiPendingRequiredFieldCannotSkip':
+        'This field is required. Please pick one of the options.',
+    'aiFollowUpBreastSideQuestion': 'About feeding: which side was used?',
+    'aiFollowUpDurationQuestion': 'How long did they feed?',
+    'aiFollowUpBreastLeftDuration': 'How many minutes on the left breast?',
+    'aiFollowUpBreastRightDuration': 'How many minutes on the right breast?',
+    'aiPartialSaveSummaryHeader': '🤖 Here is what I found:',
+    'aiPartialSaveLineSaved': '{detail}',
+    'aiPartialSaveLineNeedsInfo': '{title}: I still need one detail',
+    'aiPartialSaveLineBreastNeedsDuration':
+        '{title}: I need minutes for the {side} breast',
+    'aiPartialSaveRecordFailed': 'Could not save {title}: {reason}',
+    'aiFollowUpDiaperTypeQuestion': 'About the diaper: pee, poop, or both?',
+    'aiFollowUpSleepStatusQuestion':
+        'About sleep:\nDid they fall asleep now or already wake up?',
+    'aiFollowUpSleepDurationQuestion': 'How long did they sleep?',
+    'aiSleepOptionFellAsleepNow': 'Fell asleep now',
+    'aiSleepOptionAlreadyWoke': 'Already woke up',
+    'aiDiaperOptionPee': 'Pee',
+    'aiDiaperOptionPoo': 'Poop',
+    'aiDiaperOptionBoth': 'Both',
     'aiClarifyDiaperChangeNow': 'was it a diaper change just now?',
     'aiRecordSaveFailed':
         '🤖 I could not save the record now. Please try again or log it manually.',
     'aiRecordConfirmedPrefix': 'Done — logged {line} for {name} at {time}.',
+    'aiBreastfeedingSavedSuccess':
+        '✅ Logged breastfeeding on the {side} breast for {minutes} minutes.',
+    'aiBreastfeedingSaveFailed':
+        "Couldn't save the feeding. Please try again.",
     'aiRecordLineDiaperPee': 'diaper (pee)',
     'aiRecordLineDiaperPoo': 'diaper (poop)',
     'aiRecordLineDiaperBoth': 'diaper (pee and poop)',
@@ -6562,6 +7254,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'settingsAiBabyHistory': 'Baby history for AI Nanny',
     'familyTabTree': 'Family',
     'familyTabHoroscope': 'Horoscope',
+    'familyTabHomily': 'Homily',
     'familyTabAiHistory': 'History',
     'familyHoroscopeDate': 'Horoscope for {date}',
     'familyHoroscopeGenerateToday': 'Generate today\'s horoscope',
@@ -6573,6 +7266,37 @@ const Map<AppLang, Map<String, String>> _strings = {
     'familyHoroscopeDailyAdvice': 'Family advice for today',
     'familyHoroscopeDisclaimer':
         'AI-generated content for family reflection and entertainment. Not professional advice.',
+    'familyHoroscopeLoading': 'Generating today\'s family horoscope…',
+    'familyHoroscopeOpenTabHint': 'Open this tab to see today\'s horoscope.',
+    'aiBubbleHoroscopeReady':
+        '✨ Today\'s family horoscope is ready! Tap below to read it in Family.',
+    'aiBubbleHoroscopeOpenLink': 'View horoscope',
+    'familyHomilyDate': 'Homily for {date}',
+    'familyHomilyLoading': 'Preparing today\'s homily from the liturgical calendar…',
+    'familyHomilyOpenTabHint': 'Open this tab to read today\'s Christian homily.',
+    'familyHomilyLiturgicalDay': 'Liturgical season',
+    'familyHomilyFeast': 'Feast or memorial',
+    'familyHomilyGospel': 'Gospel of the day',
+    'familyHomilyTitle': 'Homily of the day',
+    'familyHomilyFamilyReflection': 'Family reflection',
+    'familyHomilyDisclaimer':
+        'AI-generated content based on the Catholic liturgical calendar for family reflection. Not a substitute for pastoral guidance.',
+    'familyHomilyPremiumTitle': 'Daily AI homily',
+    'familyHomilyPremiumBody':
+        'Each day, receive a warm homily aligned with the Christian calendar for your family.',
+    'aiBubbleHomilyReady':
+        '✝️ Today\'s homily is ready! Tap below to read it in Family.',
+    'aiBubbleHomilyOpenLink': 'View homily',
+    'aiBubbleCuriosityTitle': 'Daily curiosity ✨',
+    'familyHomilyErrorGeneric':
+        'Could not generate the homily right now. Please try again.',
+    'familyHomilyErrorNotFound': 'Homily not found. Try generating again.',
+    'familyHomilyErrorUnauthenticated': 'Sign in to generate the homily.',
+    'familyHomilyErrorPermission': 'Daily homily is available on Premium.',
+    'familyHomilyErrorPrecondition':
+        'Complete your Family profile to generate the homily.',
+    'familyHomilyErrorExhausted':
+        'Too many attempts. Wait a few minutes and try again.',
     'familyHoroscopeRegisterFather':
         'Add dad\'s profile to include his horoscope in the family reading.',
     'familyHoroscopePremiumTitle': 'AI family horoscope',

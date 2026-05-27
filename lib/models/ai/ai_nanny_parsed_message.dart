@@ -1,3 +1,5 @@
+import 'detected_baby_record.dart';
+
 /// Resultado estruturado de [parseAiNannyMessage] (local ou Cloud Function).
 class AiNannyParseResult {
   const AiNannyParseResult({
@@ -138,13 +140,32 @@ class AiNannyRecordDraft {
     required this.structured,
     required this.status,
     required this.displayLine,
+    required this.title,
+    this.detailLines = const [],
+    this.understoodLines = const [],
+    this.missingLines = const [],
+    this.followUpQuestion,
+    this.detected,
     this.growthPreview,
   });
 
   final AiNannyStructuredRecord structured;
   final AiNannyRecordDraftStatus status;
   final String displayLine;
+  final String title;
+  final List<String> detailLines;
+  final List<String> understoodLines;
+  final List<String> missingLines;
+  final String? followUpQuestion;
+  final DetectedBabyRecord? detected;
   final AiNannyGrowthPreview? growthPreview;
+
+  bool get hasCardContent =>
+      title.trim().isNotEmpty ||
+      understoodLines.isNotEmpty ||
+      missingLines.isNotEmpty ||
+      detailLines.isNotEmpty ||
+      displayLine.trim().isNotEmpty;
 }
 
 class AiNannyGrowthPreview {
@@ -165,10 +186,14 @@ class AiNannyRecordsBundle {
   const AiNannyRecordsBundle({
     required this.drafts,
     required this.userMessage,
+    this.followUpQuestions = const [],
+    this.usedExtractionFallback = false,
   });
 
   final List<AiNannyRecordDraft> drafts;
   final String userMessage;
+  final List<AiFollowUpQuestion> followUpQuestions;
+  final bool usedExtractionFallback;
 
   int get completeCount =>
       drafts.where((d) => d.status == AiNannyRecordDraftStatus.complete).length;
@@ -179,4 +204,14 @@ class AiNannyRecordsBundle {
   int get confirmCount => drafts
       .where((d) => d.status == AiNannyRecordDraftStatus.needsConfirm)
       .length;
+
+  bool get allRequiredFilled =>
+      drafts.isNotEmpty &&
+      drafts.every(
+        (d) =>
+            d.structured.missingFields.isEmpty &&
+            (d.status == AiNannyRecordDraftStatus.complete ||
+                d.status == AiNannyRecordDraftStatus.needsConfirm),
+      ) &&
+      followUpQuestions.isEmpty;
 }

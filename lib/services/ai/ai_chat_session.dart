@@ -15,4 +15,10 @@ abstract final class AiChatSession {
   static void markChatPreparedForLaunch() {
     _chatPreparedForLaunch = _launchSerial;
   }
+
+  /// Força novo chat na próxima abertura da aba (ex.: logout explícito).
+  /// Não usar ao minimizar o app — o histórico deve persistir em segundo plano.
+  static void requestFreshChatOnNextOpen() {
+    _chatPreparedForLaunch = null;
+  }
 }

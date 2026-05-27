@@ -31,6 +31,92 @@ abstract final class AiNannyParseNormalize {
     return null;
   }
 
+  /// Duração de sono (até ~10h) — "dormiu por 72 minutos", "1h30", etc.
+  static int? parseSleepDurationMinutes(String text) {
+    final low = text.toLowerCase();
+    var total = 0;
+    var found = false;
+
+    final hours = RegExp(r'(\d+)\s*(?:h|horas?|hours?)\b').allMatches(low);
+    for (final m in hours) {
+      final h = int.tryParse(m.group(1) ?? '');
+      if (h != null && h > 0 && h < 24) {
+        total += h * 60;
+        found = true;
+      }
+    }
+
+    final mins = RegExp(
+      r'(\d+)\s*(?:min(?:utos?)?|minutes?|m)\b',
+      caseSensitive: false,
+    ).allMatches(low);
+    for (final m in mins) {
+      final n = int.tryParse(m.group(1) ?? '');
+      if (n != null && n > 0 && n < 600) {
+        total += n;
+        found = true;
+      }
+    }
+
+    if (!found) {
+      final alone = RegExp(
+        r'(?:dormiu|soneca|sono|dormindo)\s*(?:por\s*)?(\d{1,3})\s*(?:min)?',
+        caseSensitive: false,
+      ).firstMatch(low);
+      if (alone != null) {
+        final n = int.tryParse(alone.group(1) ?? '');
+        if (n != null && n > 0 && n < 600) {
+          total = n;
+          found = true;
+        }
+      }
+    }
+
+    if (found && total > 0) return total;
+    final short = parseDurationMinutes(text);
+    if (short != null) return short;
+    return parseDurationHoursAsMinutes(text);
+  }
+
+  /// Início do sono quando se sabe duração e hora de fim (ex.: às 18:03).
+  static DateTime? computeSleepStartedAt({
+    required int durationMinutes,
+    String? endTime24h,
+    DateTime? onDay,
+  }) {
+    final day = onDay ?? DateTime.now();
+    late DateTime end;
+    if (endTime24h != null && endTime24h.contains(':')) {
+      final parts = endTime24h.split(':');
+      final h = int.tryParse(parts[0]) ?? 12;
+      final m = int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0;
+      end = DateTime(day.year, day.month, day.day, h, m);
+    } else {
+      end = DateTime.now();
+    }
+    return end.subtract(Duration(minutes: durationMinutes));
+  }
+
+  static bool textImpliesCompletedSleep(String text) {
+    final low = text.toLowerCase();
+    if (AiNannyIntentLexicon.textImpliesWake(low)) return false;
+    return AiNannyIntentLexicon.containsAny(
+      low,
+      AiNannyIntentLexicon.sleepCompleteCues,
+    );
+  }
+
+  static bool textImpliesSleepStartNow(String text) {
+    final low = text.toLowerCase();
+    if (textImpliesCompletedSleep(text)) return false;
+    return low.contains('agora') ||
+        low.contains('now') ||
+        AiNannyIntentLexicon.containsAny(
+          low,
+          AiNannyIntentLexicon.sleepStartCues,
+        );
+  }
+
   /// 10 minutos / 10 minutes / 10 Minuten / per 10 minuti → 10
   static int? parseDurationMinutes(String text) {
     final low = text.toLowerCase();
@@ -51,6 +137,41 @@ abstract final class AiNannyParseNormalize {
       final n = int.tryParse(m.group(1)!);
       if (n != null && n > 0 && n <= 180) return n;
     }
+    return null;
+  }
+
+  /// 1h, 1h12, 1 hora, 1h30 → minutos
+  static int? parseDurationHoursAsMinutes(String text) {
+    final low = text.toLowerCase().trim();
+    if (low.isEmpty) return null;
+
+    var m = RegExp(
+      r'(\d{1,2})\s*h\s*(\d{1,2})?\b',
+      caseSensitive: false,
+    ).firstMatch(low);
+    if (m != null) {
+      final h = int.tryParse(m.group(1)!);
+      if (h == null || h > 24) return null;
+      final extra = m.group(2);
+      final mins = extra != null ? int.tryParse(extra) ?? 0 : 0;
+      final total = h * 60 + mins;
+      if (total > 0 && total <= 24 * 60) return total;
+    }
+
+    m = RegExp(
+      r'(\d{1,2})\s*(?:hora|horas|hr|hours?)\b',
+      caseSensitive: false,
+    ).firstMatch(low);
+    if (m != null) {
+      final h = int.tryParse(m.group(1)!);
+      if (h != null && h > 0 && h <= 24) return h * 60;
+    }
+
+    if (RegExp(r'^\d{1,2}h$').hasMatch(low)) {
+      final h = int.tryParse(low.replaceAll('h', ''));
+      if (h != null && h > 0) return h * 60;
+    }
+
     return null;
   }
 
@@ -196,5 +317,287 @@ abstract final class AiNannyParseNormalize {
       p *= 10;
     }
     return p;
+  }
+
+  /// Data relativa para consulta/vacina: hoje, amanhã, próxima sexta → ISO `YYYY-MM-DD`.
+  static String? parseAppointmentDate(String text, {DateTime? now}) {
+    final low = text.toLowerCase();
+    final clock = now ?? DateTime.now();
+    final today = DateTime(clock.year, clock.month, clock.day);
+
+    if (low.contains('hoje') || low.contains('today')) {
+      return _isoDate(today);
+    }
+    if (low.contains('amanh') || low.contains('tomorrow')) {
+      return _isoDate(today.add(const Duration(days: 1)));
+    }
+
+    final weekday = _weekdayFromText(low);
+    if (weekday != null) {
+      var diff = weekday - today.weekday;
+      if (diff <= 0) diff += 7;
+      return _isoDate(today.add(Duration(days: diff)));
+    }
+
+    final m = RegExp(r'(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?').firstMatch(low);
+    if (m != null) {
+      final day = int.tryParse(m.group(1)!);
+      final month = int.tryParse(m.group(2)!);
+      if (day != null && month != null && day >= 1 && month >= 1 && month <= 12) {
+        var year = int.tryParse(m.group(3) ?? '') ?? today.year;
+        if (year < 100) year += 2000;
+        return _isoDate(DateTime(year, month, day));
+      }
+    }
+    return null;
+  }
+
+  /// Nome da vacina a partir da frase (B1, BCG, pentavalente, etc.).
+  static String? inferVaccineName(String text) {
+    final low = text.toLowerCase();
+    if (!low.contains('vacin') && !low.contains('vaccin')) return null;
+
+    const known = <(String, String)>[
+      ('bcg', 'BCG'),
+      ('pentavalente', 'Pentavalente'),
+      ('pentavalent', 'Pentavalente'),
+      ('hexavalente', 'Hexavalente'),
+      ('hexa', 'Hexavalente'),
+      ('pneumocócica', 'Pneumocócica'),
+      ('pneumococica', 'Pneumocócica'),
+      ('pneumo', 'Pneumocócica'),
+      ('rotavírus', 'Rotavírus'),
+      ('rotavirus', 'Rotavírus'),
+      ('meningocócica', 'Meningocócica'),
+      ('meningo', 'Meningocócica'),
+      ('gripe', 'Gripe'),
+      ('influenza', 'Gripe'),
+      ('covid', 'COVID-19'),
+      ('tríplice viral', 'Tríplice viral'),
+      ('triplice viral', 'Tríplice viral'),
+      ('tríplice', 'Tríplice viral'),
+      ('triplice', 'Tríplice viral'),
+      ('dpt', 'DTP'),
+      ('dtp', 'DTP'),
+      ('poliomielite', 'Poliomielite'),
+      ('polio', 'Poliomielite'),
+      ('sarampo', 'Sarampo'),
+      ('vip', 'VIP'),
+      ('vop', 'VOP'),
+      ('mmr', 'MMR'),
+      ('hpv', 'HPV'),
+    ];
+    for (final k in known) {
+      if (low.contains(k.$1)) return k.$2;
+    }
+
+    final afterVacina = RegExp(
+      r'vacina\s+([a-záàâãéêíóôõúç0-9][\wáàâãéêíóôõúç0-9-]*)',
+      caseSensitive: false,
+    ).firstMatch(low);
+    if (afterVacina != null) {
+      final raw = afterVacina.group(1)!.trim();
+      if (raw.length <= 24) return _titleCaseVaccineToken(raw);
+    }
+
+    final code = RegExp(
+      r'\b([a-z]\d{1,2})\b',
+      caseSensitive: false,
+    ).firstMatch(low);
+    if (code != null) return code.group(1)!.toUpperCase();
+
+    return null;
+  }
+
+  static String _titleCaseVaccineToken(String raw) {
+    if (RegExp(r'^[a-z]\d+$', caseSensitive: false).hasMatch(raw)) {
+      return raw.toUpperCase();
+    }
+    if (raw.length <= 4 && raw == raw.toUpperCase()) return raw;
+    return raw[0].toUpperCase() + raw.substring(1);
+  }
+
+  /// Dias até a próxima dose: "daqui a 60 dias", "próxima em 30 dias".
+  static int? parseVaccineNextDueInDays(String text) {
+    final low = text.toLowerCase();
+    final hasNextCue = low.contains('proxim') ||
+        low.contains('próxim') ||
+        low.contains('daqui a') ||
+        low.contains('daqui à');
+    if (!hasNextCue && !low.contains(' dias')) return null;
+
+    final patterns = <RegExp>[
+      RegExp(
+        r'(?:proxim\w*|próxim\w*)[^.]{0,50}?(?:daqui\s+a|daqui\s+à|em)\s*(\d{1,3})\s*dias',
+        caseSensitive: false,
+      ),
+      RegExp(
+        r'(?:só\s+)?(?:daqui\s+a|daqui\s+à|em)\s*(\d{1,3})\s*dias',
+        caseSensitive: false,
+      ),
+      RegExp(
+        r'(\d{1,3})\s*dias\s*(?:para|pra|até|ate)\s*(?:a\s+)?(?:proxim|próxim)',
+        caseSensitive: false,
+      ),
+    ];
+    for (final re in patterns) {
+      final m = re.firstMatch(low);
+      if (m != null) {
+        final days = int.tryParse(m.group(1)!);
+        if (days != null && days > 0 && days <= 730) return days;
+      }
+    }
+    return null;
+  }
+
+  /// Data ISO da próxima dose (hoje + N dias) quando a frase indicar intervalo.
+  static String? parseVaccineNextDueDateIso(String text, {DateTime? now}) {
+    final days = parseVaccineNextDueInDays(text);
+    if (days == null) return null;
+    final base = now ?? DateTime.now();
+    final due = DateTime(base.year, base.month, base.day).add(Duration(days: days));
+    return '${due.year.toString().padLeft(4, '0')}-'
+        '${due.month.toString().padLeft(2, '0')}-'
+        '${due.day.toString().padLeft(2, '0')}';
+  }
+
+  /// `taken` quando tomou/aplicou hoje; `scheduled` só se pediu agendamento futuro.
+  static String inferVaccineStatus(String text) {
+    final low = text.toLowerCase();
+    final taken = AiNannyIntentLexicon.containsAny(
+      low,
+      AiNannyIntentLexicon.takenCues,
+    );
+    final scheduled = AiNannyIntentLexicon.containsAny(
+      low,
+      AiNannyIntentLexicon.scheduleCues,
+    );
+    if (taken) return 'taken';
+    if (scheduled) return 'scheduled';
+    if (AiNannyIntentLexicon.containsAny(low, AiNannyIntentLexicon.todayCues) ||
+        low.contains('aplicad') ||
+        low.contains('recebeu')) {
+      return 'taken';
+    }
+    return 'taken';
+  }
+
+  /// Motivo padrão quando o utilizador diz "consulta" sem especialidade.
+  static String? inferAppointmentReason(String text) {
+    final low = text.toLowerCase();
+    for (final s in [
+      'pediatra',
+      'pediatrician',
+      'cardiolog',
+      'neurolog',
+      'ginecolog',
+      'oftalmolog',
+      'kindesarzt',
+    ]) {
+      if (low.contains(s)) return s;
+    }
+    if (low.contains('consulta') ||
+        low.contains('appointment') ||
+        low.contains('doctor visit') ||
+        low.contains('médico') ||
+        low.contains('medico')) {
+      return 'Consulta';
+    }
+    return null;
+  }
+
+  static int? _weekdayFromText(String low) {
+    const map = {
+      'segunda': DateTime.monday,
+      'monday': DateTime.monday,
+      'lunes': DateTime.monday,
+      'lundi': DateTime.monday,
+      'montag': DateTime.monday,
+      'terça': DateTime.tuesday,
+      'terca': DateTime.tuesday,
+      'tuesday': DateTime.tuesday,
+      'martes': DateTime.tuesday,
+      'mardi': DateTime.tuesday,
+      'dienstag': DateTime.tuesday,
+      'quarta': DateTime.wednesday,
+      'wednesday': DateTime.wednesday,
+      'miércoles': DateTime.wednesday,
+      'miercoles': DateTime.wednesday,
+      'mercredi': DateTime.wednesday,
+      'mittwoch': DateTime.wednesday,
+      'quinta': DateTime.thursday,
+      'thursday': DateTime.thursday,
+      'jueves': DateTime.thursday,
+      'jeudi': DateTime.thursday,
+      'donnerstag': DateTime.thursday,
+      'sexta': DateTime.friday,
+      'friday': DateTime.friday,
+      'viernes': DateTime.friday,
+      'vendredi': DateTime.friday,
+      'freitag': DateTime.friday,
+      'sábado': DateTime.saturday,
+      'sabado': DateTime.saturday,
+      'saturday': DateTime.saturday,
+      'samstag': DateTime.saturday,
+      'domingo': DateTime.sunday,
+      'sunday': DateTime.sunday,
+      'dimanche': DateTime.sunday,
+      'sonntag': DateTime.sunday,
+    };
+    for (final e in map.entries) {
+      if (low.contains(e.key)) return e.value;
+    }
+    return null;
+  }
+
+  static String _isoDate(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
+  /// Tipos canónicos do schema (cloud/local podem devolver `height`, `growth`, etc.).
+  static String canonicalRecordType(
+    String type,
+    Map<String, dynamic> fields,
+  ) {
+    var t = type.trim().toLowerCase();
+    if (t == 'height' || t == 'altura') return 'growth_height';
+    if (t == 'weight' || t == 'peso') return 'growth_weight';
+
+    if (t == 'growth' || t == 'crescimento' || t == 'measurement') {
+      final mt = '${fields['measurementType'] ?? ''}'.toLowerCase();
+      if (mt == 'height' || mt == 'altura') return 'growth_height';
+      if (mt == 'weight' || mt == 'peso') return 'growth_weight';
+      final unit = '${fields['unit'] ?? ''}'.toLowerCase();
+      if (unit == 'cm') return 'growth_height';
+      if (unit == 'kg' || unit == 'g') return 'growth_weight';
+    }
+    return t;
+  }
+
+  /// Remove campos obrigatórios de outros tipos (ex.: `pee` num registro de altura).
+  static Set<String> sanitizeMissingForType(
+    String type,
+    Set<String> missing,
+  ) {
+    final allowed = switch (type) {
+      'growth_height' || 'growth_weight' => const {'value'},
+      'diaper' => const {'pee', 'poop'},
+      'feeding' => const {
+        'feedingType',
+        'breastSide',
+        'durationMinutes',
+        'amountMl',
+      },
+      'sleep' => const {'startedAt', 'sleepStatus', 'durationMinutes'},
+      'health_symptom' => const {'symptoms', 'temperatureCelsius'},
+      'vaccine' => const {'vaccineName', 'date'},
+      'appointment' => const {'reasonOrSpecialty', 'date'},
+      _ => const <String>{},
+    };
+    if (allowed.isEmpty) {
+      return missing.where((f) => f != 'type' && f != 'measurementType').toSet();
+    }
+    return missing.where(allowed.contains).toSet();
   }
 }

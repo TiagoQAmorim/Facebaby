@@ -31,11 +31,14 @@ abstract final class AiNannyLocalMessageParser {
       records.add(h);
     }
 
-    final vaccine = _parseVaccine(low);
+    final vaccine = _parseVaccine(text);
     if (vaccine != null) records.add(vaccine);
 
-    final appointment = _parseAppointment(low);
+    final appointment = _parseAppointment(text);
     if (appointment != null) records.add(appointment);
+
+    final sleep = _parseSleep(text);
+    if (sleep != null) records.add(sleep);
 
     if (records.isEmpty) {
       return const AiNannyParseResult(classification: 'chat_only');
@@ -172,6 +175,18 @@ abstract final class AiNannyLocalMessageParser {
     if (temp != null && temp >= 35) {
       symptoms.add('elevated_temperature');
     }
+    final hasFeverCue = AiNannyIntentLexicon.hasTemperatureCue(low);
+    if (hasFeverCue && temp == null) {
+      return AiNannyStructuredRecord(
+        type: 'health_symptom',
+        missingFields: ['temperatureCelsius'],
+        fields: {
+          'symptoms': ['fever'],
+          'feverReported': true,
+          'time': 'now',
+        },
+      );
+    }
     if (AiNannyIntentLexicon.containsAny(low, AiNannyIntentLexicon.symptomCues)) {
       if (low.contains('chor') ||
           low.contains('cry') ||
@@ -268,101 +283,145 @@ abstract final class AiNannyLocalMessageParser {
     return const [];
   }
 
-  static AiNannyStructuredRecord? _parseVaccine(String low) {
+  static AiNannyStructuredRecord? _parseVaccine(String text) {
+    final low = text.toLowerCase();
     if (!AiNannyIntentLexicon.containsAny(low, AiNannyIntentLexicon.vaccineCues)) {
       return null;
     }
 
-    final scheduled =
-        AiNannyIntentLexicon.containsAny(low, AiNannyIntentLexicon.scheduleCues);
-    final taken =
-        AiNannyIntentLexicon.containsAny(low, AiNannyIntentLexicon.takenCues);
-
-    String? name;
-    if (low.contains('bcg')) name = 'BCG';
-    if (low.contains('pentavalent')) name = 'pentavalente';
+    final name = AiNannyParseNormalize.inferVaccineName(text);
+    final status = AiNannyParseNormalize.inferVaccineStatus(text);
+    final dateIso = AiNannyParseNormalize.parseAppointmentDate(text);
+    final time = AiNannyParseNormalize.parseTime24h(text);
+    final nextDays = AiNannyParseNormalize.parseVaccineNextDueInDays(text);
+    final nextDueIso = AiNannyParseNormalize.parseVaccineNextDueDateIso(text);
 
     final missing = <String>[];
     if (name == null || name.isEmpty) missing.add('vaccineName');
-    if (scheduled && !_hasDateHint(low)) missing.add('date');
+    if (status == 'scheduled' && dateIso == null && nextDueIso == null) {
+      missing.add('date');
+    }
 
     return AiNannyStructuredRecord(
       type: 'vaccine',
       missingFields: missing,
       fields: {
-        'status': scheduled && !taken ? 'scheduled' : 'taken',
+        'status': status,
         if (name != null) 'vaccineName': name,
-        ..._dateFields(low),
-        if (AiNannyParseNormalize.parseTime24h(low) != null)
-          'time': AiNannyParseNormalize.parseTime24h(low),
+        if (dateIso != null) 'date': dateIso,
+        if (time != null) 'time': time,
+        if (nextDays != null) 'nextDueInDays': nextDays,
+        if (nextDueIso != null) 'nextDueDate': nextDueIso,
       },
     );
   }
 
-  static AiNannyStructuredRecord? _parseAppointment(String low) {
-    if (!AiNannyIntentLexicon.containsAny(
+  static AiNannyStructuredRecord? _parseAppointment(String text) {
+    final low = text.toLowerCase();
+    final hasConsult = AiNannyIntentLexicon.containsAny(
       low,
       AiNannyIntentLexicon.consultationCues,
-    )) {
+    );
+    final hasSchedule = AiNannyIntentLexicon.containsAny(
+      low,
+      AiNannyIntentLexicon.scheduleCues,
+    );
+    if (!hasConsult && !hasSchedule) return null;
+    if (hasSchedule && !hasConsult && !low.contains('médic') && !low.contains('medico')) {
       return null;
     }
 
-    String? specialty;
-    for (final s in [
-      'pediatra',
-      'pediatrician',
-      'cardiolog',
-      'neurolog',
-      'ginecolog',
-      'oftalmolog',
-      'kindesarzt',
-    ]) {
-      if (low.contains(s)) {
-        specialty = s;
-        break;
-      }
-    }
+    final specialty = AiNannyParseNormalize.inferAppointmentReason(text);
+    final dateIso = AiNannyParseNormalize.parseAppointmentDate(text);
+    final time = AiNannyParseNormalize.parseTime24h(text);
 
     final missing = <String>[];
     if (specialty == null) missing.add('reasonOrSpecialty');
-    if (!_hasDateHint(low)) missing.add('date');
-    if (AiNannyParseNormalize.parseTime24h(low) == null) {
-      missing.add('time');
-    }
+    if (dateIso == null) missing.add('date');
 
     return AiNannyStructuredRecord(
       type: 'appointment',
       missingFields: missing,
       fields: {
         if (specialty != null) 'reasonOrSpecialty': specialty,
-        ..._dateFields(low),
-        if (AiNannyParseNormalize.parseTime24h(low) != null)
-          'time': AiNannyParseNormalize.parseTime24h(low),
+        if (dateIso != null) 'date': dateIso,
+        if (time != null) 'time': time,
       },
     );
   }
 
-  static Map<String, dynamic> _dateFields(String low) {
-    if (AiNannyIntentLexicon.containsAny(low, AiNannyIntentLexicon.todayCues)) {
-      return {'date': 'today'};
-    }
-    if (AiNannyIntentLexicon.containsAny(
-      low,
-      AiNannyIntentLexicon.tomorrowCues,
-    )) {
-      return {'date': 'tomorrow'};
-    }
-    if (low.contains('segunda') ||
-        low.contains('monday') ||
-        low.contains('lunes') ||
-        low.contains('lundi') ||
-        low.contains('montag')) {
-      return {'date': 'next_monday'};
-    }
-    return {};
-  }
-
   static bool _hasDateHint(String low) =>
-      _dateFields(low).isNotEmpty ||
+      AiNannyParseNormalize.parseAppointmentDate(low) != null ||
       RegExp(r'day\s+\d{1,2}|dia\s+\d{1,2}').hasMatch(low);
+
+  static AiNannyStructuredRecord? _parseSleep(String text) {
+    final low = text.toLowerCase();
+    if (!AiNannyIntentLexicon.hasSleepCue(low)) return null;
+
+    // "acabou de acordar e mamou" = contexto, não fim de sono sem intenção clara.
+    if (AiNannyIntentLexicon.textImpliesWake(low) &&
+        (AiNannyIntentLexicon.hasFeedingCue(low) ||
+            AiNannyIntentLexicon.hasTemperatureCue(low) ||
+            AiNannyIntentLexicon.hasDiaperCue(low))) {
+      return null;
+    }
+
+    final waking = AiNannyIntentLexicon.textImpliesWake(low);
+    final mins = AiNannyParseNormalize.parseSleepDurationMinutes(text);
+    final time = AiNannyParseNormalize.parseTime24h(text);
+
+    if (waking) {
+      final missing = <String>[];
+      if (mins == null) missing.add('durationMinutes');
+      return AiNannyStructuredRecord(
+        type: 'sleep',
+        missingFields: missing,
+        fields: {
+          'action': 'end',
+          'sleepStatus': 'woke',
+          if (mins != null) 'durationMinutes': mins,
+          'time': time ?? 'now',
+        },
+      );
+    }
+
+    if (mins != null && mins > 0) {
+      final started = AiNannyParseNormalize.computeSleepStartedAt(
+        durationMinutes: mins,
+        endTime24h: time,
+      );
+      return AiNannyStructuredRecord(
+        type: 'sleep',
+        fields: {
+          'action': 'complete',
+          'durationMinutes': mins,
+          'sleepStatus': 'slept',
+          if (started != null) 'startedAt': started.toIso8601String(),
+          if (time != null) 'time': time,
+        },
+      );
+    }
+
+    if (AiNannyParseNormalize.textImpliesSleepStartNow(text)) {
+      return AiNannyStructuredRecord(
+        type: 'sleep',
+        fields: {
+          'action': 'start',
+          'sleepStatus': 'now',
+          'startedAt': DateTime.now().toIso8601String(),
+          'time': 'now',
+        },
+      );
+    }
+
+    final missing = <String>['sleepStatus', 'startedAt'];
+    return AiNannyStructuredRecord(
+      type: 'sleep',
+      missingFields: missing,
+      fields: {
+        'action': 'start',
+        'time': time ?? 'now',
+      },
+    );
+  }
 }

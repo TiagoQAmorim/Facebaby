@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../controllers/current_baby_controller.dart';
 import '../models/floating_message_model.dart';
 import '../repositories/floating_message_repository.dart';
+import 'admin_broadcast_inbox_service.dart';
 import 'premium/premium_service.dart';
 
 /// Contexto do utilizador para `targetAudience`.
@@ -38,7 +39,7 @@ class FloatingMessageUserContext {
   }
 }
 
-/// Seleciona uma mensagem ativa para o balão (sem OpenAI).
+/// Seleciona mensagens ativas para o balão (sem OpenAI).
 class FloatingMessageService {
   FloatingMessageService._();
   static final FloatingMessageService instance = FloatingMessageService._();
@@ -47,50 +48,91 @@ class FloatingMessageService {
 
   final Set<String> _sessionDismissed = {};
   FloatingMessage? _cached;
+  List<FloatingMessage> _cachedList = const [];
   DateTime? _cacheAt;
   static const _cacheTtl = Duration(seconds: 45);
 
   StreamSubscription<List<FloatingMessage>>? _messagesSub;
+  StreamSubscription<List<AdminBroadcastInboxItem>>? _inboxSub;
   final _controller = StreamController<FloatingMessage?>.broadcast();
+  final _listController = StreamController<List<FloatingMessage>>.broadcast();
 
   Stream<FloatingMessage?> watchBestMessage() {
     _ensureWatching();
-    return _controller.stream;
+    return Stream.multi((multi) {
+      multi.add(_cached);
+      final sub = _controller.stream.listen(
+        multi.add,
+        onError: multi.addError,
+        onDone: multi.close,
+      );
+      multi.onCancel = sub.cancel;
+    });
+  }
+
+  /// Todas as mensagens ativas ordenadas por prioridade (para navegação).
+  Stream<List<FloatingMessage>> watchActiveMessageList() {
+    _ensureWatching();
+    return Stream.multi((multi) {
+      multi.add(_cachedList);
+      final sub = _listController.stream.listen(
+        multi.add,
+        onError: multi.addError,
+        onDone: multi.close,
+      );
+      multi.onCancel = sub.cancel;
+    });
   }
 
   void _ensureWatching() {
     if (_messagesSub != null) return;
-    _messagesSub = _repo.watchActiveMessages(limit: 5).listen((_) {
-      unawaited(_refresh());
+    _messagesSub = _repo.watchActiveMessages(limit: 20).listen((_) {
+      unawaited(_refresh(force: true));
     });
-    unawaited(_refresh());
+    _inboxSub = AdminBroadcastInboxService.instance.watchActive().listen((_) {
+      unawaited(_refresh(force: true));
+    });
+    unawaited(_refresh(force: true));
   }
 
   void dispose() {
     _messagesSub?.cancel();
     _messagesSub = null;
+    _inboxSub?.cancel();
+    _inboxSub = null;
     _controller.close();
+    _listController.close();
   }
 
-  Future<void> _refresh() async {
-    final picked = await pickBestMessage();
-    _cached = picked;
-    _cacheAt = DateTime.now();
-    if (!_controller.isClosed) _controller.add(picked);
+  Future<void> _refresh({bool force = false}) async {
+    final prevId = _cached?.id;
+    final list = await listActiveMessages(forceRefresh: force);
+    if (!_controller.isClosed) {
+      final picked = list.isEmpty ? null : list.first;
+      if (force || picked?.id != prevId) {
+        _controller.add(picked);
+      }
+    }
+    if (!_listController.isClosed) {
+      _listController.add(list);
+    }
   }
 
-  Future<FloatingMessage?> pickBestMessage({bool forceRefresh = false}) async {
+  Future<List<FloatingMessage>> listActiveMessages({
+    bool forceRefresh = false,
+  }) async {
     if (!forceRefresh &&
         _cacheAt != null &&
         DateTime.now().difference(_cacheAt!) < _cacheTtl &&
-        (_cached != null || _sessionDismissed.isNotEmpty)) {
-      return _cached;
+        _cachedList.isNotEmpty) {
+      return _cachedList;
     }
 
     final now = DateTime.now();
     final ctx = await FloatingMessageUserContext.load();
+    final resetBefore = await _repo.fetchResetBefore();
 
-    final global = await _repo.fetchActiveMessages(limit: 5);
+    final global = await _repo.fetchActiveMessages(limit: 20);
     List<FloatingMessage> legacy = const [];
     try {
       legacy = await _repo.fetchLegacyInbox();
@@ -98,19 +140,29 @@ class FloatingMessageService {
       debugPrint('FloatingMessageService legacy inbox: $e');
     }
 
-    final candidates = <FloatingMessage>[...global, ...legacy];
+    final seenIds = <String>{};
+    final candidates = <FloatingMessage>[];
+    for (final m in [...global, ...legacy]) {
+      if (seenIds.add(m.id)) candidates.add(m);
+    }
     if (candidates.isEmpty) {
       _cached = null;
+      _cachedList = const [];
       _cacheAt = DateTime.now();
-      return null;
+      return _cachedList;
     }
 
     final ids = candidates.map((c) => c.id).toList();
     final reads = await _repo.readStatesFor(ids);
 
-    FloatingMessage? best;
+    final active = <FloatingMessage>[];
     for (final msg in candidates) {
       if (!msg.active && global.any((g) => g.id == msg.id)) continue;
+      if (resetBefore != null &&
+          msg.createdAt != null &&
+          msg.createdAt!.isBefore(resetBefore)) {
+        continue;
+      }
       if (!_isInSchedule(msg, now)) continue;
       if (!_matchesAudience(msg.targetAudience, ctx)) continue;
 
@@ -118,24 +170,27 @@ class FloatingMessageService {
       if (read?.isDismissed == true && !msg.critical) continue;
       if (_sessionDismissed.contains(msg.id) && !msg.critical) continue;
 
-      if (best == null) {
-        best = msg;
-        continue;
-      }
-      if (msg.priority > best.priority) {
-        best = msg;
-        continue;
-      }
-      if (msg.priority == best.priority) {
-        final mc = msg.createdAt;
-        final bc = best.createdAt;
-        if (mc != null && bc != null && mc.isAfter(bc)) best = msg;
-      }
+      active.add(msg);
     }
 
-    _cached = best;
+    active.sort((a, b) {
+      final p = b.priority.compareTo(a.priority);
+      if (p != 0) return p;
+      final ac = a.createdAt;
+      final bc = b.createdAt;
+      if (ac != null && bc != null) return bc.compareTo(ac);
+      return b.id.compareTo(a.id);
+    });
+
+    _cachedList = active;
+    _cached = active.isEmpty ? null : active.first;
     _cacheAt = DateTime.now();
-    return best;
+    return _cachedList;
+  }
+
+  Future<FloatingMessage?> pickBestMessage({bool forceRefresh = false}) async {
+    final list = await listActiveMessages(forceRefresh: forceRefresh);
+    return list.isEmpty ? null : list.first;
   }
 
   bool _isInSchedule(FloatingMessage msg, DateTime now) {
@@ -182,8 +237,25 @@ class FloatingMessageService {
         msg.id.isNotEmpty) {
       await _repo.dismissLegacyInbox(msg.id);
     }
-    _cached = null;
-    await _refresh();
+    _cacheAt = null;
+    await _refresh(force: true);
+  }
+
+  /// Fecha todas as mensagens ativas da fila (drag-to-dismiss em lote).
+  Future<void> dismissAll(Iterable<FloatingMessage> messages) async {
+    final list = messages.toList();
+    if (list.isEmpty) return;
+    for (final msg in list) {
+      _sessionDismissed.add(msg.id);
+      await _repo.markDismissed(msg.id);
+      if (msg.type == FloatingMessageType.adminAd &&
+          msg.imageUrl != null &&
+          msg.id.isNotEmpty) {
+        await _repo.dismissLegacyInbox(msg.id);
+      }
+    }
+    _cacheAt = null;
+    await _refresh(force: true);
   }
 
   Future<void> onActionTapped(FloatingMessage msg) async {

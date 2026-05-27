@@ -28,6 +28,9 @@ abstract final class FeatureAccess {
   /// Horóscopo familiar diário gerado por IA.
   static bool get canUseAiFamilyHoroscope => _premium;
 
+  /// Homilia diária (calendário litúrgico cristão) gerada por IA.
+  static bool get canUseAiFamilyHomily => _premium;
+
   /// Textos de signo solar (pai, mãe, bebê) na árvore Família.
   static bool get canViewFamilyZodiac => _premium;
 

@@ -1,9 +1,16 @@
+import 'dart:async' show unawaited;
+
+import 'package:flutter/foundation.dart';
+
+import '../../controllers/breastfeeding_timer_controller.dart';
 import '../../controllers/current_baby_controller.dart';
 import '../../controllers/sleep_timer_controller.dart';
 import '../../models/ai/voice_record_interpretation.dart';
 import '../../utils/voice_record_clarification.dart' show parseFeedingDurationMinutes;
 import '../../utils/voice_sleep_action.dart' show normalizeVoiceSleepAction, transcriptIndicatesWakeEnd;
 import '../app_database.dart';
+import '../../utils/growth_baseline.dart';
+import '../firebase/profile_cloud_sync.dart';
 import '../firebase/diaper_cloud_sync.dart';
 import '../firebase/feeding_cloud_sync.dart';
 import '../firebase/consultation_cloud_sync.dart';
@@ -12,10 +19,20 @@ import '../firebase/sleep_cloud_sync.dart';
 import '../firebase/symptom_cloud_sync.dart';
 import '../firebase/vaccine_cloud_sync.dart';
 import '../scheduled_local_reminders.dart';
+import '../vaccine_reminder_scheduler.dart';
+import 'feeding_record_verifier.dart';
+
+/// Resultado da gravação local (inclui id quando aplicável).
+class VoiceRecordApplyResult {
+  const VoiceRecordApplyResult(this.kind, {this.localFeedingId});
+
+  final VoiceRecordSaveKind kind;
+  final int? localFeedingId;
+}
 
 /// Persiste registro confirmado pelo usuário (local + sync nuvem).
 class VoiceRecordSaveService {
-  Future<VoiceRecordSaveKind> applyConfirmed({
+  Future<VoiceRecordApplyResult> applyConfirmed({
     required VoiceRecordInterpretation interpretation,
     String transcript = '',
   }) async {
@@ -26,28 +43,32 @@ class VoiceRecordSaveService {
 
     switch (interpretation.type) {
       case 'feeding':
-        await _saveFeeding(babyId, interpretation);
-        return VoiceRecordSaveKind.saved;
+        final feedingId = await _saveFeeding(babyId, interpretation);
+        return VoiceRecordApplyResult(
+          VoiceRecordSaveKind.saved,
+          localFeedingId: feedingId,
+        );
       case 'sleep':
-        return _saveSleep(babyId, interpretation, transcript);
+        final sleepKind = await _saveSleep(babyId, interpretation, transcript);
+        return VoiceRecordApplyResult(sleepKind);
       case 'diaper':
         await _saveDiaper(babyId, interpretation);
-        return VoiceRecordSaveKind.saved;
+        return const VoiceRecordApplyResult(VoiceRecordSaveKind.saved);
       case 'weight':
         await _saveWeight(babyId, interpretation);
-        return VoiceRecordSaveKind.saved;
+        return const VoiceRecordApplyResult(VoiceRecordSaveKind.saved);
       case 'height':
         await _saveHeight(babyId, interpretation);
-        return VoiceRecordSaveKind.saved;
+        return const VoiceRecordApplyResult(VoiceRecordSaveKind.saved);
       case 'symptom':
         await _saveSymptom(babyId, interpretation);
-        return VoiceRecordSaveKind.saved;
+        return const VoiceRecordApplyResult(VoiceRecordSaveKind.saved);
       case 'consultation':
         await _saveConsultation(babyId, interpretation);
-        return VoiceRecordSaveKind.saved;
+        return const VoiceRecordApplyResult(VoiceRecordSaveKind.saved);
       case 'vaccine':
         await _saveVaccine(babyId, interpretation);
-        return VoiceRecordSaveKind.saved;
+        return const VoiceRecordApplyResult(VoiceRecordSaveKind.saved);
       case 'question':
         throw const VoiceRecordSaveException(
           'Isso é uma pergunta — use "Perguntar à IA Babá" em vez de Confirmar.',
@@ -59,13 +80,17 @@ class VoiceRecordSaveService {
     }
   }
 
-  Future<void> _saveFeeding(
+  Future<int> _saveFeeding(
     int babyId,
     VoiceRecordInterpretation interpretation,
   ) async {
+    FeedingRecordVerifier.logSavePayload(
+      babyId: babyId,
+      interpretation: interpretation,
+    );
     final f = interpretation.feeding;
     final now = DateTime.now();
-    final ended = f?.eventTime ?? now;
+    var ended = f?.eventTime ?? now;
     var subtype = (f?.subtype ?? '').trim().toLowerCase();
     if (subtype != 'peito' && subtype != 'mamadeira' && subtype != 'solidos') {
       throw const VoiceRecordSaveException(
@@ -83,9 +108,37 @@ class VoiceRecordSaveService {
     }
     var durationMin = 10;
     final noteText = f?.note ?? '';
-    final parsedMin = parseFeedingDurationMinutes(noteText.toLowerCase());
+    var parsedMin = parseFeedingDurationMinutes(noteText.toLowerCase());
+    if (parsedMin == null && noteText.trim().isNotEmpty) {
+      parsedMin = int.tryParse(noteText.replaceAll(RegExp(r'[^0-9]'), ''));
+      if (parsedMin != null && (parsedMin < 1 || parsedMin > 180)) {
+        parsedMin = null;
+      }
+    }
     if (parsedMin != null) durationMin = parsedMin;
-    final started = ended.subtract(Duration(minutes: durationMin));
+
+    var started = ended.subtract(Duration(minutes: durationMin));
+    final breastTimer = BreastfeedingTimerController.instance;
+    var usedBreastTimer = false;
+    if (subtype == 'peito' &&
+        breastTimer.isRunning &&
+        breastTimer.babyId == babyId &&
+        breastTimer.startedAt != null &&
+        breastTimer.side != null) {
+      final timerSide = breastTimer.side!.toUpperCase();
+      if (side == null || side == timerSide) {
+        side ??= timerSide;
+        final elapsed = breastTimer.elapsedForSide(breastTimer.side!);
+        durationMin = elapsed.inMinutes.clamp(1, 180);
+        started = breastTimer.startedAt!;
+        ended = DateTime.now();
+        usedBreastTimer = true;
+      }
+    }
+    if (usedBreastTimer) {
+      breastTimer.clearSession();
+    }
+
     final qty = f?.quantityMl;
 
     final newId = await AppDatabase.instance.insertFeeding(
@@ -99,6 +152,11 @@ class VoiceRecordSaveService {
       note: f?.note,
     );
     FeedingCloudSync.pushLocalSoon(localBabyId: babyId, localFeedingId: newId);
+    debugPrint(
+      'AiNannySave[feeding]: insertFeeding ok id=$newId '
+      'collection=${FeedingRecordVerifier.collectionPath}',
+    );
+    return newId;
   }
 
   Future<VoiceRecordSaveKind> _saveSleep(
@@ -279,18 +337,7 @@ class VoiceRecordSaveService {
     final deltaG = w?.weightDeltaGrams;
 
     if ((kg == null || kg <= 0) && deltaG != null && deltaG != 0) {
-      final rows = await AppDatabase.instance.listGrowthRecords(
-        babyId: babyId,
-        kind: 'weight',
-        limit: 1,
-      );
-      double? base;
-      if (rows.isNotEmpty) {
-        base = (rows.first['value'] as num?)?.toDouble();
-      }
-      base ??= (CurrentBabyController.instance.currentBabyRow?['weight_kg']
-              as num?)
-          ?.toDouble();
+      final base = await GrowthBaseline.latestWeightKg(babyId);
       if (base == null || base <= 0) {
         throw const VoiceRecordSaveException(
           'Para "ganhou X gramas", cadastre antes um peso no perfil ou em Crescimento.',
@@ -319,6 +366,11 @@ class VoiceRecordSaveService {
       localBabyId: babyId,
       localGrowthId: newId,
     );
+    await GrowthBaseline.syncBabyProfileAfterMeasurement(
+      babyId: babyId,
+      weightKg: kg,
+    );
+    unawaited(ProfileCloudSync.pushBaby(babyId));
   }
 
   Future<void> _saveHeight(
@@ -330,18 +382,7 @@ class VoiceRecordSaveService {
     final delta = h?.heightDeltaCm;
 
     if ((cm == null || cm <= 0) && delta != null && delta > 0) {
-      final rows = await AppDatabase.instance.listGrowthRecords(
-        babyId: babyId,
-        kind: 'height',
-        limit: 1,
-      );
-      double? base;
-      if (rows.isNotEmpty) {
-        base = (rows.first['value'] as num?)?.toDouble();
-      }
-      base ??= (CurrentBabyController.instance.currentBabyRow?['height_cm']
-              as num?)
-          ?.toDouble();
+      final base = await GrowthBaseline.latestHeightCm(babyId);
       if (base == null || base <= 0) {
         throw const VoiceRecordSaveException(
           'Para "cresceu X cm", cadastre antes uma altura (ex.: "altura 60 cm") no perfil ou em Crescimento.',
@@ -367,6 +408,11 @@ class VoiceRecordSaveService {
       localBabyId: babyId,
       localGrowthId: newId,
     );
+    await GrowthBaseline.syncBabyProfileAfterMeasurement(
+      babyId: babyId,
+      heightCm: cm,
+    );
+    unawaited(ProfileCloudSync.pushBaby(babyId));
   }
 
   Future<void> _saveSymptom(
@@ -376,11 +422,6 @@ class VoiceRecordSaveService {
     final s = interpretation.symptom;
     if (s == null) {
       throw const VoiceRecordSaveException('Sintoma não identificado.');
-    }
-    if (s.fever && (s.tempCelsius == null || s.tempCelsius! <= 0)) {
-      throw const VoiceRecordSaveException(
-        'Informe a temperatura (ex.: 38,5) no formulário antes de confirmar.',
-      );
     }
     final any = s.fever ||
         s.crying ||
@@ -462,6 +503,7 @@ class VoiceRecordSaveService {
       localBabyId: babyId,
       localVaccineId: newId,
     );
+    await VaccineReminderScheduler.instance.rescheduleForBaby(babyId);
   }
 }
 

@@ -30,6 +30,7 @@ const { processTextRecord } = require('./src/ai/processTextRecord');
 const { parseAiNannyMessage } = require('./src/ai/parseAiNannyMessage');
 const { manageAiNannyChat } = require('./src/ai/manageAiNannyChat');
 const { createGenerateDailyFamilyHoroscope } = require('./src/ai/generateDailyFamilyHoroscope');
+const { createGenerateDailyFamilyHomily } = require('./src/ai/generateDailyFamilyHomily');
 const { ensureAiInsight } = require('./src/ai/ensureAiInsight');
 
 const SP = 'America/Sao_Paulo';
@@ -1320,6 +1321,14 @@ exports.ensureAiInsight = ensureAiInsight;
 
 /** Horóscopo familiar diário (cache por dia em `family_horoscopes`). */
 exports.generateDailyFamilyHoroscope = createGenerateDailyFamilyHoroscope({
+  onCall,
+  HttpsError,
+  db,
+  openAiApiKey,
+});
+
+/** Homilia familiar diária (calendário litúrgico; cache em `family_homilies`). */
+exports.generateDailyFamilyHomily = createGenerateDailyFamilyHomily({
   onCall,
   HttpsError,
   db,
