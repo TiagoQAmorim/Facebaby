@@ -1,5 +1,6 @@
 import '../../i18n/app_i18n.dart';
 import 'ai_bubble_alert_engine.dart';
+import 'ai_emotional_moment_engine.dart';
 
 /// O que pode entrar no balão flutuante vs. o banner do bebê na Home.
 abstract final class AiBubbleMessagePolicy {
@@ -21,8 +22,14 @@ abstract final class AiBubbleMessagePolicy {
     required DateTime? birthDate,
     required dynamic strings,
   }) async {
-    // Placeholder: o utilizador vai definir regras de IA dedicadas ao balão.
-    return const [];
+    final s = strings is S ? strings : const S(AppLang.pt);
+    return AiEmotionalMomentEngine.buildBubbleAlerts(
+      babyId: babyId,
+      babyName: babyName,
+      babySex: babySex,
+      birthDate: birthDate,
+      strings: s,
+    );
   }
 
   static bool isShownOnHomeBanner(AiBubbleAlert alert) =>

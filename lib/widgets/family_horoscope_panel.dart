@@ -13,14 +13,17 @@ import '../pages/premium/premium_paywall_screen.dart';
 import '../utils/family_zodiac_art.dart';
 import '../utils/zodiac_keys.dart';
 
-/// Guia Horóscopo — conteúdo diário por IA (geração automática, sem refresh).
+/// Guia Horóscopo — conteúdo diário por IA (geração ao abrir a guia).
 class FamilyHoroscopePanel extends StatefulWidget {
   const FamilyHoroscopePanel({
     super.key,
+    required this.requestGeneration,
     required this.fatherRegistered,
     required this.onRegisterFather,
   });
 
+  /// Quando `true`, carrega cache e chama a IA se necessário.
+  final bool requestGeneration;
   final bool fatherRegistered;
   final VoidCallback onRegisterFather;
 
@@ -32,18 +35,30 @@ class _FamilyHoroscopePanelState extends State<FamilyHoroscopePanel> {
   final _service = FamilyHoroscopeService();
   FamilyDailyHoroscope? _horoscope;
   bool _loading = false;
+  bool _generationAttempted = false;
   String? _error;
   StreamSubscription<FamilyDailyHoroscope?>? _watchSub;
+  bool _markedRead = false;
 
   @override
   void initState() {
     super.initState();
     PremiumService.instance.addListener(_onPremium);
     if (FeatureAccess.canUseAiFamilyHoroscope) {
-      _watchSub = _service.watchToday().listen((doc) {
-        if (!mounted) return;
-        setState(() => _horoscope = doc);
-      });
+      _watchSub = _service.watchToday().listen(_onHoroscopeDoc);
+      unawaited(_loadCacheOnly());
+      if (widget.requestGeneration) {
+        unawaited(_bootstrapToday());
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant FamilyHoroscopePanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.requestGeneration &&
+        !oldWidget.requestGeneration &&
+        FeatureAccess.canUseAiFamilyHoroscope) {
       unawaited(_bootstrapToday());
     }
   }
@@ -55,26 +70,52 @@ class _FamilyHoroscopePanelState extends State<FamilyHoroscopePanel> {
     super.dispose();
   }
 
+  void _onHoroscopeDoc(FamilyDailyHoroscope? doc) {
+    if (!mounted) return;
+    setState(() => _horoscope = doc);
+    if (doc != null && doc.motherText.trim().isNotEmpty) {
+      unawaited(_markReadIfNeeded());
+    }
+  }
+
+  Future<void> _markReadIfNeeded() async {
+    if (_markedRead || !widget.requestGeneration) return;
+    _markedRead = true;
+    await FamilyHoroscopeReadPrefs.markTodayRead();
+  }
+
   void _onPremium() {
     if (!mounted) return;
     setState(() {});
     if (FeatureAccess.canUseAiFamilyHoroscope) {
-      _watchSub ??= _service.watchToday().listen((doc) {
-        if (!mounted) return;
-        setState(() => _horoscope = doc);
-      });
-      unawaited(_bootstrapToday());
+      _watchSub ??= _service.watchToday().listen(_onHoroscopeDoc);
+      unawaited(_loadCacheOnly());
+      if (widget.requestGeneration) {
+        unawaited(_bootstrapToday());
+      }
     } else {
       _watchSub?.cancel();
       _watchSub = null;
     }
   }
 
+  Future<void> _loadCacheOnly() async {
+    final cached = await _service.loadTodayCached();
+    if (!mounted || cached == null) return;
+    setState(() => _horoscope = cached);
+    if (cached.motherText.trim().isNotEmpty) {
+      await _markReadIfNeeded();
+    }
+    await FamilyHoroscopeUnreadBadge.refresh();
+  }
+
   Future<void> _bootstrapToday() async {
     if (!FeatureAccess.canUseAiFamilyHoroscope) return;
+    if (_loading) return;
     setState(() {
-      _loading = _horoscope == null;
+      _loading = true;
       _error = null;
+      _generationAttempted = true;
     });
     try {
       final cached = await _service.loadTodayCached();
@@ -84,7 +125,10 @@ class _FamilyHoroscopePanelState extends State<FamilyHoroscopePanel> {
       await FamilyHoroscopeBootstrap.ensureToday();
       if (mounted) {
         final again = await _service.loadTodayCached();
-        if (again != null) setState(() => _horoscope = again);
+        if (again != null) {
+          setState(() => _horoscope = again);
+          await _markReadIfNeeded();
+        }
       }
     } on FamilyHoroscopeException catch (e) {
       if (mounted) {
@@ -113,7 +157,12 @@ class _FamilyHoroscopePanelState extends State<FamilyHoroscopePanel> {
       return _PremiumCard(s: s);
     }
 
-    final showSpinner = _loading && _horoscope == null;
+    final waitingForContent =
+        widget.requestGeneration && _loading && _horoscope == null;
+    final showError = widget.requestGeneration &&
+        !_loading &&
+        _horoscope == null &&
+        _generationAttempted;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -158,10 +207,37 @@ class _FamilyHoroscopePanelState extends State<FamilyHoroscopePanel> {
           ),
           const SizedBox(height: 14),
         ],
-        if (showSpinner)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 32),
-            child: Center(child: CircularProgressIndicator()),
+        if (!widget.requestGeneration)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Text(
+              s.familyHoroscopeOpenTabHint,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.black.withAlpha(130),
+                fontWeight: FontWeight.w600,
+                height: 1.4,
+              ),
+            ),
+          )
+        else if (waitingForContent)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            child: Column(
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text(
+                  s.familyHoroscopeLoading,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.black.withAlpha(150),
+                    fontWeight: FontWeight.w700,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
           )
         else if (_horoscope != null) ...[
           _HoroscopeCard(
@@ -197,11 +273,11 @@ class _FamilyHoroscopePanelState extends State<FamilyHoroscopePanel> {
             body: _horoscope!.familyAdviceText,
             accent: const Color(0xFFE91E8C),
           ),
-        ] else if (!_loading) ...[
+        ] else if (showError) ...[
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
             child: Text(
-              s.familyHoroscopeError('internal'),
+              _error ?? s.familyHoroscopeError('internal'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.black.withAlpha(140),
@@ -210,7 +286,7 @@ class _FamilyHoroscopePanelState extends State<FamilyHoroscopePanel> {
             ),
           ),
         ],
-        if (_error != null) ...[
+        if (_error != null && _horoscope != null) ...[
           const SizedBox(height: 12),
           Text(
             _error!,

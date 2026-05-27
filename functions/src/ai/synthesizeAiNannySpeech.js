@@ -36,12 +36,19 @@ exports.synthesizeAiNannySpeech = onCall(
       );
     }
 
+    const voiceStyle = `${request.data?.voiceStyle || 'gentleNanny'}`.trim();
+    const speechRate =
+      typeof request.data?.speechRate === 'number'
+        ? request.data.speechRate
+        : parseFloat(`${request.data?.speechRate ?? ''}`);
+
     try {
       const { buffer, mimeType, model, voice } = await synthesizeSpeech({
         apiKey,
         text,
         locale,
-        speed: 1.0,
+        voiceStyle,
+        speechRate: Number.isFinite(speechRate) ? speechRate : undefined,
       });
 
       return {
@@ -49,6 +56,8 @@ exports.synthesizeAiNannySpeech = onCall(
         mimeType,
         model,
         voice,
+        voiceStyle,
+        speechRate: Number.isFinite(speechRate) ? speechRate : null,
       };
     } catch (err) {
       console.error('synthesizeAiNannySpeech error', err);

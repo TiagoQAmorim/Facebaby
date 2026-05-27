@@ -143,10 +143,13 @@ abstract final class AiNannyIntentLexicon {
   ];
 
   static const sleepWakeCues = [
-    'acordou', 'despertou', 'acabou de acordar', 'woke up', 'wake up',
-    'just woke', 'despertó', 'desperto', 'réveillé', 'aufgewacht',
-    'svegliato', 'terminou o sono', 'encerrou o sono',
+    'acordou', 'despertou', 'acabou de acordar', 'levantou', 'levantou agora',
+    'woke up', 'wake up', 'just woke', 'despertó', 'desperto', 'réveillé',
+    'aufgewacht', 'svegliato', 'terminou o sono', 'encerrou o sono',
   ];
+
+  static bool textImpliesWake(String low) =>
+      containsAny(low, sleepWakeCues);
 
   static const sleepCompleteCues = [
     'dormiu', 'soneca', 'soninho', 'slept', 'nap', 'napped', 'siesta',
@@ -162,6 +165,9 @@ abstract final class AiNannyIntentLexicon {
   static const weightGainCues = [
     'ganhou', 'gained', 'gain ', 'ganó', 'guadagnato', 'gagné', 'zugenommen',
     'aufgenommen', 'increased by',
+    // PT-BR informal / variações
+    'engordou', 'engordar', 'engordando', 'aumentou de peso', 'subiu de peso',
+    'ganhou peso', 'ganhou de peso', 'mais pesad', 'mais gord',
   ];
 
   static const heightCues = [

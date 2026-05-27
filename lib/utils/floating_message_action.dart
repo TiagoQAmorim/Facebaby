@@ -6,13 +6,7 @@ class FloatingMessageAction {
   FloatingMessageAction._();
 
   static bool isValidHttpsUrl(String? raw) {
-    final u = raw?.trim() ?? '';
-    if (u.isEmpty) return false;
-    final uri = Uri.tryParse(u.contains('://') ? u : 'https://$u');
-    if (uri == null || !uri.hasScheme) return false;
-    if (uri.scheme != 'https') return false;
-    if (uri.host.trim().isEmpty) return false;
-    return true;
+    return httpsUri(raw) != null;
   }
 
   static bool isValidImageUrl(String? raw) {
@@ -28,26 +22,52 @@ class FloatingMessageAction {
         lower.contains('googleusercontent.com');
   }
 
+  /// Normaliza para URI https (aceita `www.site.com` sem esquema).
   static Uri? httpsUri(String? raw) {
-    if (!isValidHttpsUrl(raw)) return null;
-    final u = raw!.trim();
-    return Uri.parse(u.contains('://') ? u : 'https://$u');
+    var u = raw?.trim() ?? '';
+    if (u.isEmpty) return null;
+    if (!u.contains('://')) {
+      u = 'https://$u';
+    }
+    final uri = Uri.tryParse(u);
+    if (uri == null || !uri.hasScheme) return null;
+    if (uri.scheme != 'https') return null;
+    if (uri.host.trim().isEmpty) return null;
+    return uri;
   }
 
   /// Abre [actionUrl] (https). Retorna `false` se falhar.
+  ///
+  /// No Android 11+, [canLaunchUrl] pode retornar `false` mesmo com URL válida
+  /// se o manifest não declarar `<queries>` para https — tentamos [launchUrl]
+  /// mesmo assim.
   static Future<bool> openExternalUrl(String? actionUrl) async {
     final uri = httpsUri(actionUrl);
     if (uri == null) {
-      debugPrint('FloatingMessageAction: URL inválida (https obrigatório)');
+      debugPrint(
+        'FloatingMessageAction: URL inválida (https obrigatório): '
+        '${actionUrl?.trim() ?? '(vazio)'}',
+      );
       return false;
     }
     try {
-      if (!await canLaunchUrl(uri)) {
-        debugPrint('FloatingMessageAction: canLaunchUrl=false $uri');
-        return false;
+      final canLaunch = await canLaunchUrl(uri);
+      if (canLaunch) {
+        final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        if (ok) return true;
       }
-      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      return ok;
+
+      debugPrint(
+        'FloatingMessageAction: canLaunch=$canLaunch, tentando launch direto: $uri',
+      );
+      final direct = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (direct) return true;
+
+      final platform = await launchUrl(uri, mode: LaunchMode.platformDefault);
+      return platform;
     } catch (e, st) {
       debugPrint('FloatingMessageAction.openExternalUrl: $e\n$st');
       return false;

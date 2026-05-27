@@ -218,6 +218,15 @@ service cloud.firestore {
       }
     }
 
+    match /family_homilies/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if false;
+      match /daily/{dateKey} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow write: if false;
+      }
+    }
+
     match /ai_insights/{userId} {
       allow read: if isSignedIn() && request.auth.uid == userId;
       allow write: if false;

@@ -15,16 +15,19 @@ import '../../services/ai/ai_nanny_tts_service.dart';
 import '../../services/ai/voice_record_api_service.dart';
 import '../../services/ai/voice_record_capture_service.dart';
 import '../../services/ai/ai_nanny_turn_service.dart';
+import '../../services/ai/pending_record_session_store.dart';
+import '../../models/ai/pending_record_session.dart';
+import '../../models/ai/detected_baby_record.dart';
+import '../../services/ai/ai_nanny_processing_phase.dart';
 import '../../utils/voice_record_infer.dart';
 import '../../services/ai/ai_chat_session.dart';
 import '../../services/home_prefs.dart';
 import '../../services/ai/ai_nanny_tts_playback_state.dart';
 import '../../widgets/ai/ai_nanny_input_bar.dart';
 import '../../widgets/ai/ai_nanny_listen_button.dart';
-import '../../widgets/ai/voice_record_status_bar.dart';
+import '../../widgets/ai/ai_nanny_voice_processing_bar.dart';
+import '../../widgets/ai/voice_record_status_bar.dart' show VoiceRecordBarPhase;
 import '../../widgets/ai/ai_nanny_records_confirm_sheet.dart';
-import '../../models/ai/ai_nanny_parsed_message.dart';
-import '../../services/ai/ai_nanny_record_confirm_flow.dart';
 import 'ai_baby_history_page.dart';
 
 /// IA Babá — chat (Fase 3: arquitetura com services/repository, resposta mock).
@@ -35,7 +38,7 @@ class AiNannyScreen extends StatefulWidget {
   State<AiNannyScreen> createState() => _AiNannyScreenState();
 }
 
-class _AiNannyScreenState extends State<AiNannyScreen> {
+class _AiNannyScreenState extends State<AiNannyScreen> with WidgetsBindingObserver {
   static const _iconAsset = 'assets/ai/ia_baba_button.png';
 
   final _input = TextEditingController();
@@ -48,11 +51,24 @@ class _AiNannyScreenState extends State<AiNannyScreen> {
 
   bool _typing = false;
   bool _sending = false;
+  AiNannyProcessingPhase _processingPhase = AiNannyProcessingPhase.idle;
   VoiceRecordBarPhase _voicePhase = VoiceRecordBarPhase.idle;
   int _recordSeconds = 0;
   Timer? _recordTimer;
   bool _finishRecordingInProgress = false;
+  int _processingGeneration = 0;
+  bool _audioPipelineActive = false;
+  String? _voicePipelineError;
   StreamSubscription<List<AiMessage>>? _messagesSub;
+  PendingRecordSession? _pendingSession;
+
+  bool _isProcessingCancelled(int generation) =>
+      generation != _processingGeneration;
+
+  bool get _showVoicePipelineBar =>
+      _voicePhase != VoiceRecordBarPhase.idle ||
+      _audioPipelineActive ||
+      _voicePipelineError != null;
 
   AppLang _langOf(BuildContext context) => AppI18nScope.of(context).lang;
 
@@ -65,6 +81,7 @@ class _AiNannyScreenState extends State<AiNannyScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _turn = AiNannyTurnService(nanny: _service);
     _messagesSub = _service.watchMessages().listen((_) {
       if (!mounted) return;
@@ -73,11 +90,27 @@ class _AiNannyScreenState extends State<AiNannyScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       unawaited(_prepareChatSession(S.of(context)));
+      unawaited(_refreshPendingSession());
     });
     _service.watchTyping().listen((typing) {
       if (!mounted) return;
       setState(() => _typing = typing);
       if (!typing) _scrollToEnd();
+    });
+  }
+
+  Future<void> _refreshPendingSession() async {
+    final babyId = CurrentBabyController.instance.currentBabyId;
+    if (babyId == null) {
+      if (mounted) setState(() => _pendingSession = null);
+      return;
+    }
+    await PendingRecordSessionStore.instance.loadForBaby(babyId);
+    if (!mounted) return;
+    final session = PendingRecordSessionStore.instance.active;
+    setState(() {
+      _pendingSession =
+          session != null && session.blocksGenericChat ? session : null;
     });
   }
 
@@ -93,7 +126,36 @@ class _AiNannyScreenState extends State<AiNannyScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      // Só cancela turno em curso — não limpa o histórico ao minimizar o app.
+      _abortInFlightTurn();
+      return;
+    }
+    if (state == AppLifecycleState.resumed && mounted) {
+      unawaited(_refreshPendingSession());
+    }
+  }
+
+  void _abortInFlightTurn() {
+    _processingGeneration++;
+    _service.setTyping(false);
+    if (!mounted) return;
+    setState(() {
+      _sending = false;
+      _typing = false;
+      _processingPhase = AiNannyProcessingPhase.idle;
+      _audioPipelineActive = false;
+      _voicePipelineError = null;
+      _voicePhase = VoiceRecordBarPhase.idle;
+    });
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _messagesSub?.cancel();
     _recordTimer?.cancel();
     unawaited(_voiceCapture.cancelRecording());
@@ -167,12 +229,48 @@ class _AiNannyScreenState extends State<AiNannyScreen> {
   }
 
   Future<void> _cancelRecording(S s) async {
+    _processingGeneration++;
     _recordTimer?.cancel();
     await _voiceCapture.cancelRecording();
     if (!mounted) return;
     setState(() {
       _voicePhase = VoiceRecordBarPhase.idle;
       _recordSeconds = 0;
+      _audioPipelineActive = false;
+      _voicePipelineError = null;
+      _sending = false;
+      _processingPhase = AiNannyProcessingPhase.idle;
+    });
+    _service.setTyping(false);
+  }
+
+  void _dismissVoicePipelineError(S s) {
+    _processingGeneration++;
+    if (!mounted) return;
+    setState(() {
+      _voicePhase = VoiceRecordBarPhase.idle;
+      _audioPipelineActive = false;
+      _voicePipelineError = null;
+      _sending = false;
+      _processingPhase = AiNannyProcessingPhase.idle;
+    });
+    _service.setTyping(false);
+  }
+
+  void _cancelActiveProcessing(S s) {
+    _processingGeneration++;
+    _recordTimer?.cancel();
+    unawaited(_voiceCapture.cancelRecording());
+    unawaited(_tts.stop());
+    _service.setTyping(false);
+    if (!mounted) return;
+    setState(() {
+      _voicePhase = VoiceRecordBarPhase.idle;
+      _recordSeconds = 0;
+      _audioPipelineActive = false;
+      _voicePipelineError = null;
+      _sending = false;
+      _processingPhase = AiNannyProcessingPhase.idle;
     });
   }
 
@@ -193,15 +291,22 @@ class _AiNannyScreenState extends State<AiNannyScreen> {
     }
 
     _finishRecordingInProgress = true;
+    final gen = ++_processingGeneration;
     if (!mounted) {
       _finishRecordingInProgress = false;
       return;
     }
-    setState(() => _voicePhase = VoiceRecordBarPhase.processing);
+    setState(() {
+      _voicePhase = VoiceRecordBarPhase.processing;
+      _audioPipelineActive = true;
+      _voicePipelineError = null;
+      _processingPhase = AiNannyProcessingPhase.transcribing;
+    });
 
     final locale = _langOf(context);
     try {
       final audio = await _voiceCapture.stopRecording();
+      if (_isProcessingCancelled(gen) || !mounted) return;
       if (audio == null) {
         throw const VoiceRecordApiException('Áudio vazio.');
       }
@@ -216,36 +321,134 @@ class _AiNannyScreenState extends State<AiNannyScreen> {
         locale: locale,
       );
 
-      if (!mounted) return;
+      if (_isProcessingCancelled(gen) || !mounted) return;
 
-      final transcript = result.transcript;
+      final transcript = result.transcript.trim();
+      if (transcript.isEmpty) {
+        throw const VoiceRecordApiException('Transcrição vazia.');
+      }
+
       final interp = enhanceVoiceRecordInterpretation(
         interpretation: result.interpretation,
         transcript: transcript,
       );
+
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      final cloudId = CurrentBabyController.instance.currentBabyCloudId;
+
       setState(() {
-        _voicePhase = VoiceRecordBarPhase.idle;
         _recordSeconds = 0;
+        _processingPhase = AiNannyProcessingPhase.understandingRecords;
       });
+      await _service.appendUserMessage(
+        transcript,
+        babyId: cloudId,
+        userId: uid,
+      );
+      if (_isProcessingCancelled(gen) || !mounted) return;
+      _scrollToEnd();
+
       await _handleUserTurn(
         s,
         transcript,
         interpretationHint: interp,
+        appendUserMessage: false,
+        initialPhase: AiNannyProcessingPhase.understandingRecords,
+        processingGeneration: gen,
       );
-    } on FirebaseFunctionsException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? s.aiVoiceRecordFailed)),
-      );
-      setState(() => _voicePhase = VoiceRecordBarPhase.idle);
+      if (_isProcessingCancelled(gen) || !mounted) return;
+    } on FirebaseFunctionsException catch (_) {
+      if (_isProcessingCancelled(gen) || !mounted) return;
+      setState(() {
+        _voicePipelineError = s.aiVoiceTranscriptionFailed;
+        _voicePhase = VoiceRecordBarPhase.processing;
+        _audioPipelineActive = true;
+      });
+    } on VoiceRecordApiException catch (_) {
+      if (_isProcessingCancelled(gen) || !mounted) return;
+      setState(() {
+        _voicePipelineError = s.aiVoiceTranscriptionFailed;
+        _voicePhase = VoiceRecordBarPhase.processing;
+        _audioPipelineActive = true;
+      });
     } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(s.aiVoiceRecordFailed)),
-      );
-      setState(() => _voicePhase = VoiceRecordBarPhase.idle);
+      if (_isProcessingCancelled(gen) || !mounted) return;
+      setState(() {
+        _voicePipelineError = s.aiVoiceTranscriptionFailed;
+        _voicePhase = VoiceRecordBarPhase.processing;
+        _audioPipelineActive = true;
+      });
     } finally {
       _finishRecordingInProgress = false;
+      if (mounted && _voicePipelineError == null) {
+        setState(() {
+          _audioPipelineActive = false;
+          if (_voicePhase == VoiceRecordBarPhase.processing) {
+            _voicePhase = VoiceRecordBarPhase.idle;
+          }
+        });
+      }
+    }
+  }
+
+  void _releaseTurnProcessingUi() {
+    _service.setTyping(false);
+    if (!mounted) return;
+    setState(() {
+      _sending = false;
+      if (!_audioPipelineActive) {
+        _processingPhase = AiNannyProcessingPhase.idle;
+      }
+    });
+  }
+
+  void _scheduleAutoRead(S s, String text, {String? messageId}) {
+    if (kIsWeb || !HomePrefs.aiNannyAutoReadEnabled.value) return;
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    final answer = trimmed;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final id = messageId ??
+          _aiMessageIdForAnswer(answer, _service.messagesSnapshot) ??
+          'tts-${DateTime.now().microsecondsSinceEpoch}';
+      unawaited(_playAutoReadUtterance(s, id, answer));
+    });
+  }
+
+  void _scheduleEphemeralSpeak(S s, String text) {
+    if (kIsWeb || !HomePrefs.aiNannyAutoReadEnabled.value) return;
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    unawaited(_tts.stop());
+    _scheduleAutoRead(
+      s,
+      trimmed,
+      messageId: 'followup-${DateTime.now().microsecondsSinceEpoch}',
+    );
+  }
+
+  Future<void> _playAutoReadUtterance(
+    S s,
+    String messageId,
+    String text,
+  ) async {
+    if (kIsWeb || !HomePrefs.aiNannyAutoReadEnabled.value) return;
+    await _tts.prepare(
+      messageId: messageId,
+      text: text,
+      language: _langOf(context),
+      autoPlay: true,
+    );
+    if (!mounted) return;
+    if (_tts.playbackStateFor(messageId) ==
+        AiNannyTtsPlaybackState.error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(s.aiNannyTtsFailed),
+          duration: const Duration(seconds: 5),
+        ),
+      );
     }
   }
 
@@ -254,15 +457,38 @@ class _AiNannyScreenState extends State<AiNannyScreen> {
     String text, {
     VoiceRecordInterpretation? interpretationHint,
     bool tryRegister = true,
+    bool appendUserMessage = true,
+    AiNannyProcessingPhase initialPhase = AiNannyProcessingPhase.understanding,
+    int? processingGeneration,
   }) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty || _sending || _typing) return;
+    if (trimmed.isEmpty) return;
+    final fromAudioAfterTranscript = !appendUserMessage;
+    if (!fromAudioAfterTranscript && (_sending || _typing)) return;
 
-    setState(() => _sending = true);
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final cloudId = CurrentBabyController.instance.currentBabyCloudId;
+
+    setState(() {
+      _sending = true;
+      _processingPhase = initialPhase;
+    });
+    _service.setTyping(true);
     _scrollToEnd();
 
-    String? answerToSpeak;
+    if (appendUserMessage) {
+      await _service.appendUserMessage(
+        trimmed,
+        babyId: cloudId,
+        userId: uid,
+      );
+    }
+
     try {
+      if (processingGeneration != null &&
+          _isProcessingCancelled(processingGeneration)) {
+        return;
+      }
       final babyRow = CurrentBabyController.instance.currentBabyRow;
       final babyName = (babyRow?['name'] as String?)?.trim();
       final turn = await _turn.processTurn(
@@ -270,30 +496,75 @@ class _AiNannyScreenState extends State<AiNannyScreen> {
         strings: s,
         locale: _langOf(context),
         babyName: babyName,
-        babyCloudId: CurrentBabyController.instance.currentBabyCloudId,
-        userId: FirebaseAuth.instance.currentUser?.uid,
+        babyCloudId: cloudId,
+        userId: uid,
         interpretationHint: interpretationHint,
         tryRegister: tryRegister,
+        onProgress: (phase) {
+          if (!mounted) return;
+          if (processingGeneration != null &&
+              _isProcessingCancelled(processingGeneration)) {
+            return;
+          }
+          final displayPhase = processingGeneration != null &&
+                  phase == AiNannyProcessingPhase.understanding
+              ? AiNannyProcessingPhase.understandingRecords
+              : phase;
+          setState(() => _processingPhase = displayPhase);
+        },
       );
+      if (processingGeneration != null &&
+          _isProcessingCancelled(processingGeneration)) {
+        return;
+      }
       if (!mounted) return;
+      await _refreshPendingSession();
 
-      if (turn.recordsBundle != null) {
+      final assistantText = turn.aiAnswer?.trim();
+      if (assistantText != null && assistantText.isNotEmpty) {
+        await _service.appendAssistantMessage(
+          assistantText,
+          babyId: cloudId,
+          userId: uid,
+        );
+        _scrollToEnd();
+        _scheduleAutoRead(s, assistantText);
+      }
+
+      if (turn.recordsBundle != null && turn.showRecordsConfirmSheet) {
+        if (mounted) {
+          setState(() {
+            _processingPhase = AiNannyProcessingPhase.showingResults;
+            _audioPipelineActive = false;
+          });
+        }
+        _releaseTurnProcessingUi();
+
         final bundle = turn.recordsBundle!;
-        final confirmMode = await showAiNannyRecordsConfirmSheet(
+        final sheetResult = await showAiNannyRecordsConfirmSheet(
           context: context,
           bundle: bundle,
+          onSpeakText: (utterance) => _scheduleEphemeralSpeak(s, utterance),
+          readyToSaveVoiceText: s.aiConfirmReadyToSaveVoice,
         );
+        if (processingGeneration != null &&
+            _isProcessingCancelled(processingGeneration)) {
+          return;
+        }
         if (!mounted) return;
-        if (confirmMode != null) {
+        if (sheetResult != null) {
+          setState(() => _sending = true);
+          _service.setTyping(true);
           final after = await _turn.saveAfterConfirmation(
-            bundle: bundle,
-            mode: confirmMode,
+            bundle: sheetResult.bundle,
+            mode: sheetResult.mode,
             strings: s,
             locale: _langOf(context),
             babyName: babyName,
             babyCloudId: CurrentBabyController.instance.currentBabyCloudId,
             userId: FirebaseAuth.instance.currentUser?.uid,
           );
+          _releaseTurnProcessingUi();
           if (!mounted) return;
           if (after.partialSaveSnack != null) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -312,7 +583,16 @@ class _AiNannyScreenState extends State<AiNannyScreen> {
               SnackBar(content: Text(after.registerSnack!)),
             );
           }
-          answerToSpeak = after.aiAnswer;
+          final afterText = after.aiAnswer?.trim();
+          if (afterText != null && afterText.isNotEmpty) {
+            await _service.appendAssistantMessage(
+              afterText,
+              babyId: cloudId,
+              userId: uid,
+            );
+            _scrollToEnd();
+            _scheduleAutoRead(s, afterText);
+          }
         }
       }
 
@@ -321,7 +601,9 @@ class _AiNannyScreenState extends State<AiNannyScreen> {
           SnackBar(content: Text(turn.partialSaveSnack!)),
         );
       }
-      if (turn.needsClarification && turn.registerSnack != null) {
+      if (turn.needsClarification &&
+          turn.registerSnack != null &&
+          turn.registerSnack!.trim().isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(turn.registerSnack!),
@@ -338,7 +620,6 @@ class _AiNannyScreenState extends State<AiNannyScreen> {
           SnackBar(content: Text(turn.registerError!)),
         );
       }
-      answerToSpeak ??= turn.aiAnswer;
       _scrollToEnd();
     } on AiDailyLimitReachedException {
       if (!mounted) return;
@@ -359,20 +640,7 @@ class _AiNannyScreenState extends State<AiNannyScreen> {
         SnackBar(content: Text(s.aiNannySignInRequired)),
       );
     } finally {
-      if (mounted) setState(() => _sending = false);
-    }
-    if (mounted && answerToSpeak != null && answerToSpeak.isNotEmpty) {
-      final answer = answerToSpeak;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final messageId = _aiMessageIdForAnswer(
-          answer,
-          _service.messagesSnapshot,
-        );
-        if (messageId != null) {
-          unawaited(_startAudioForMessage(messageId, answer, s));
-        }
-      });
+      _releaseTurnProcessingUi();
     }
   }
 
@@ -386,32 +654,6 @@ class _AiNannyScreenState extends State<AiNannyScreen> {
       if (messages[i].isAi) return messages[i].id;
     }
     return null;
-  }
-
-  /// Áudio em paralelo ao texto; auto-play se o toggle estiver ativo.
-  Future<void> _startAudioForMessage(
-    String messageId,
-    String answer,
-    S s,
-  ) async {
-    if (kIsWeb || !HomePrefs.aiNannyAutoReadEnabled.value) return;
-
-    await _tts.prepare(
-      messageId: messageId,
-      text: answer,
-      language: _langOf(context),
-      autoPlay: true,
-    );
-    if (!mounted) return;
-    if (_tts.playbackStateFor(messageId) ==
-        AiNannyTtsPlaybackState.error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(s.aiNannyTtsFailed),
-          duration: const Duration(seconds: 6),
-        ),
-      );
-    }
   }
 
   Future<void> _onListenTap(String messageId, String text, S s) async {
@@ -543,6 +785,34 @@ class _AiNannyScreenState extends State<AiNannyScreen> {
     });
   }
 
+  Widget _buildPendingAnswerChips(S s) {
+    final q = _pendingSession?.currentPendingQuestion;
+    if (q == null ||
+        q.options.isEmpty ||
+        q.inputType != AiFollowUpInputType.choice ||
+        _sending ||
+        _typing) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: q.options
+            .map(
+              (opt) => ActionChip(
+                label: Text(opt),
+                onPressed: () => unawaited(
+                  _handleUserTurn(s, opt, appendUserMessage: true),
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+
   Future<void> _send(S s) async {
     if (_sending || _typing) return;
     final text = _input.text.trim();
@@ -579,6 +849,8 @@ class _AiNannyScreenState extends State<AiNannyScreen> {
                   final messages = msgSnap.data ?? const [];
                   return _HeaderCard(
                     s: s,
+                    tts: _tts,
+                    lang: _langOf(context),
                     showClearChat: _hasDeletableHistory(messages),
                     onOpenProfile: () {
                       Navigator.of(context).push(
@@ -604,12 +876,22 @@ class _AiNannyScreenState extends State<AiNannyScreen> {
                   return ListView.builder(
                     controller: _scroll,
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                    itemCount: messages.length + (_typing ? 1 : 0),
+                    itemCount: messages.length +
+                        (((_typing || _sending) && !_showVoicePipelineBar)
+                            ? 1
+                            : 0),
                     itemBuilder: (context, index) {
-                      if (_typing && index == messages.length) {
+                      if ((_typing || _sending) &&
+                          !_showVoicePipelineBar &&
+                          index == messages.length) {
+                        final phaseLabel = _sending &&
+                                _processingPhase !=
+                                    AiNannyProcessingPhase.idle
+                            ? _processingPhase.label(s)
+                            : s.aiNannyThinking;
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: _TypingBubble(label: s.aiNannyThinking),
+                          child: _TypingBubble(label: phaseLabel),
                         );
                       }
                       final m = messages[index];
@@ -639,10 +921,28 @@ class _AiNannyScreenState extends State<AiNannyScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (_voicePhase == VoiceRecordBarPhase.processing) ...[
-                    const VoiceRecordStatusBar(
-                      phase: VoiceRecordBarPhase.processing,
-                      recordSeconds: 0,
+                  _buildPendingAnswerChips(s),
+                  if (_showVoicePipelineBar) ...[
+                    AiNannyVoiceProcessingBar(
+                      mode: _voicePipelineError != null
+                          ? AiNannyVoicePipelineBarMode.error
+                          : _voicePhase == VoiceRecordBarPhase.recording
+                              ? AiNannyVoicePipelineBarMode.recording
+                              : AiNannyVoicePipelineBarMode.processing,
+                      statusLabel: _voicePipelineError ??
+                          (_processingPhase != AiNannyProcessingPhase.idle
+                              ? _processingPhase.label(s)
+                              : s.aiPhaseTranscribing),
+                      errorMessage: _voicePipelineError,
+                      recordSeconds: _voicePhase ==
+                              VoiceRecordBarPhase.recording
+                          ? _recordSeconds
+                          : null,
+                      onCancel: _voicePipelineError != null
+                          ? () => _dismissVoicePipelineError(s)
+                          : _voicePhase == VoiceRecordBarPhase.recording
+                              ? () => unawaited(_cancelRecording(s))
+                              : () => _cancelActiveProcessing(s),
                     ),
                     const SizedBox(height: 8),
                   ],
@@ -685,6 +985,8 @@ class _AiNannyScreenState extends State<AiNannyScreen> {
 class _HeaderCard extends StatelessWidget {
   const _HeaderCard({
     required this.s,
+    required this.tts,
+    required this.lang,
     required this.onOpenProfile,
     required this.onAutoReadChanged,
     required this.onClearChat,
@@ -692,6 +994,8 @@ class _HeaderCard extends StatelessWidget {
   });
 
   final S s;
+  final AiNannyTtsService tts;
+  final AppLang lang;
   final VoidCallback onOpenProfile;
   final ValueChanged<bool> onAutoReadChanged;
   final VoidCallback onClearChat;

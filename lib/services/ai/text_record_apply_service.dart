@@ -78,10 +78,11 @@ class TextRecordApplyService {
       return null;
     }
 
-    final kind = await _save.applyConfirmed(
+    final applyResult = await _save.applyConfirmed(
       interpretation: interp,
       transcript: trimmed,
     );
+    final kind = applyResult.kind;
 
     final confirmation = _confirmationFor(kind, strings);
     await _appendChat(

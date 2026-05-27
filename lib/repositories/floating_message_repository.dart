@@ -18,12 +18,33 @@ class FloatingMessageRepository {
 
   String? get _uid => _auth.currentUser?.uid;
 
+  static const String settingsCollection = 'floating_message_settings';
+  static const String settingsGlobalDoc = 'global';
+
+  /// Mensagens com `createdAt` anterior a este instante são ignoradas no app.
+  Future<DateTime?> fetchResetBefore() async {
+    try {
+      final snap = await _db
+          .collection(settingsCollection)
+          .doc(settingsGlobalDoc)
+          .get();
+      if (!snap.exists) return null;
+      final raw = snap.data()?['resetBefore'];
+      if (raw is Timestamp) return raw.toDate();
+      if (raw is DateTime) return raw;
+      if (raw is String) return DateTime.tryParse(raw);
+    } catch (e) {
+      debugPrint('FloatingMessageRepository.fetchResetBefore: $e');
+    }
+    return null;
+  }
+
   /// Até [limit] mensagens ativas (filtro de datas no serviço).
-  Future<List<FloatingMessage>> fetchActiveMessages({int limit = 5}) async {
+  Future<List<FloatingMessage>> fetchActiveMessages({int limit = 20}) async {
     final snap = await _db
         .collection('floating_messages')
         .where('active', isEqualTo: true)
-        .limit(limit.clamp(1, 20))
+        .limit(limit.clamp(1, 30))
         .get();
     final items = snap.docs.map(FloatingMessage.fromFirestore).toList();
     items.sort((a, b) {
@@ -37,11 +58,11 @@ class FloatingMessageRepository {
     return items;
   }
 
-  Stream<List<FloatingMessage>> watchActiveMessages({int limit = 5}) {
+  Stream<List<FloatingMessage>> watchActiveMessages({int limit = 20}) {
     return _db
         .collection('floating_messages')
         .where('active', isEqualTo: true)
-        .limit(limit.clamp(1, 20))
+        .limit(limit.clamp(1, 30))
         .snapshots()
         .map((snap) {
       final items = snap.docs.map(FloatingMessage.fromFirestore).toList();

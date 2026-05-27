@@ -326,6 +326,54 @@ class AiNannyService {
     }
   }
 
+  /// Mensagem do utilizador no chat (sem chamar askAiNanny).
+  Future<void> appendUserMessage(
+    String text, {
+    String? babyId,
+    String? userId,
+  }) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    final user = _auth.currentUser;
+    if (user == null) throw const AiNannyNotSignedInException();
+    await _repository.add(
+      AiMessage(
+        id: AiMessage.newId(),
+        text: trimmed,
+        sender: AiMessageSender.user,
+        status: AiMessageStatus.sent,
+        createdAt: DateTime.now(),
+        babyId: babyId,
+        userId: userId ?? user.uid,
+      ),
+    );
+  }
+
+  /// Resposta da assistente no chat (extração / confirmação — sem GPT).
+  Future<void> appendAssistantMessage(
+    String text, {
+    String? babyId,
+    String? userId,
+  }) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    final user = _auth.currentUser;
+    if (user == null) throw const AiNannyNotSignedInException();
+    await _repository.add(
+      AiMessage(
+        id: AiMessage.newId(),
+        text: trimmed,
+        sender: AiMessageSender.ai,
+        status: AiMessageStatus.sent,
+        createdAt: DateTime.now(),
+        babyId: babyId,
+        userId: userId ?? user.uid,
+      ),
+    );
+  }
+
+  void setTyping(bool value) => _typingController.add(value);
+
   Future<void> restoreWelcomeAfterClear(String welcomeText) async {
     await _repository.resetAfterServerClear();
     await ensureWelcomeMessage(welcomeText);

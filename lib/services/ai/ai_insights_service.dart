@@ -208,16 +208,43 @@ class AiInsightsService {
   }
 }
 
-/// Dispara [ensureInsights] uma vez ao abrir a Home (sem bloquear UI).
+/// Dispara [ensureInsights] ao abrir a Home (renova a cada dia civil).
 abstract final class AiInsightsBootstrap {
   AiInsightsBootstrap._();
   static bool _started = false;
+  static String _scheduledDay = '';
 
   static void scheduleIfNeeded(S strings) {
+    final today = aiInsightDayDocId(DateTime.now());
+    if (_scheduledDay != today) {
+      _scheduledDay = today;
+      _started = false;
+    }
     if (_started) return;
     _started = true;
-    unawaited(AiInsightsService().ensureInsights(strings: strings));
+    unawaited(() async {
+      await AiInsightsService().ensureInsights(strings: strings);
+      AiInsightsReadyNotifier.tick();
+    }());
   }
 
-  static void resetForTests() => _started = false;
+  /// Novo dia civil: permite gerar insights de novo.
+  static void resetForNewDay() {
+    _scheduledDay = aiInsightDayDocId(DateTime.now());
+    _started = false;
+  }
+
+  static void resetForTests() {
+    _started = false;
+    _scheduledDay = '';
+  }
+}
+
+/// Balão IA Babá reconstrói a fila quando insights locais/OpenAI ficam prontos.
+abstract final class AiInsightsReadyNotifier {
+  AiInsightsReadyNotifier._();
+
+  static final ValueNotifier<int> generation = ValueNotifier<int>(0);
+
+  static void tick() => generation.value++;
 }

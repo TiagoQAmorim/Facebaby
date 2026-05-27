@@ -1,7 +1,11 @@
 import '../../i18n/app_i18n.dart';
 import '../../models/ai/ai_nanny_parsed_message.dart';
+import '../../models/ai/ai_nanny_system_context.dart';
 import '../../models/ai/voice_record_interpretation.dart';
-import '../../utils/voice_record_clarification.dart';
+import 'ai_nanny_orchestrator.dart';
+import 'ai_nanny_structured_clarification.dart';
+import 'breastfeeding_both_helper.dart';
+import 'detected_record_builder.dart';
 
 /// Converte registros estruturados em [VoiceRecordInterpretation] + rascunhos para UI.
 abstract final class AiNannyStructuredMapper {
@@ -32,9 +36,49 @@ abstract final class AiNannyStructuredMapper {
         return _vaccine(r);
       case 'appointment':
         return _appointment(r);
+      case 'sleep':
+        return _sleep(r);
       default:
         return null;
     }
+  }
+
+  static VoiceRecordInterpretation? _sleep(AiNannyStructuredRecord r) {
+    final action = '${r.fields['action'] ?? 'start'}';
+    DateTime? startedAt;
+    final startedRaw = r.fields['startedAt'];
+    if (startedRaw is String && startedRaw.isNotEmpty) {
+      startedAt = DateTime.tryParse(startedRaw);
+    }
+    final mins = (r.fields['durationMinutes'] as num?)?.toInt();
+    final now = DateTime.now();
+    return VoiceRecordInterpretation(
+      type: 'sleep',
+      summary: 'Sono',
+      sleep: VoiceSleepPayload(
+        action: action,
+        startedAt: startedAt ?? now,
+        endedAt: action == 'end' ? now : null,
+        durationMinutes: mins,
+      ),
+    );
+  }
+
+  /// Reconstrói um card após resposta de follow-up.
+  static AiNannyRecordDraft draftFromRecord(
+    AiNannyStructuredRecord rec, {
+    required S strings,
+    String? sourceText,
+    double? lastWeightKg,
+    double? lastHeightCm,
+  }) {
+    return _draftFor(
+      rec,
+      strings: strings,
+      sourceText: sourceText,
+      lastWeightKg: lastWeightKg,
+      lastHeightCm: lastHeightCm,
+    );
   }
 
   static AiNannyRecordsBundle buildBundle({
@@ -43,6 +87,7 @@ abstract final class AiNannyStructuredMapper {
     required S strings,
     double? lastWeightKg,
     double? lastHeightCm,
+    bool usedExtractionFallback = false,
   }) {
     final drafts = <AiNannyRecordDraft>[];
     for (final rec in parse.records) {
@@ -50,29 +95,131 @@ abstract final class AiNannyStructuredMapper {
         _draftFor(
           rec,
           strings: strings,
+          sourceText: userMessage,
           lastWeightKg: lastWeightKg,
           lastHeightCm: lastHeightCm,
         ),
       );
     }
+    return prepareBundle(
+      bundle: AiNannyRecordsBundle(
+        drafts: drafts,
+        userMessage: userMessage,
+        followUpQuestions: const [],
+        usedExtractionFallback: usedExtractionFallback,
+      ),
+      strings: strings,
+      lastWeightKg: lastWeightKg,
+      lastHeightCm: lastHeightCm,
+    );
+  }
+
+  /// Reaplica [enforce], títulos e follow-ups — nunca devolve bundle sem pergunta se incompleto.
+  static AiNannyRecordsBundle prepareBundle({
+    required AiNannyRecordsBundle bundle,
+    required S strings,
+    double? lastWeightKg,
+    double? lastHeightCm,
+    AiNannySystemContext? systemContext,
+  }) {
+    var drafts = <AiNannyRecordDraft>[];
+    for (final d in bundle.drafts) {
+      final enforced = AiNannyStructuredClarification.enforce(
+        d.structured,
+        bundle.userMessage,
+        systemContext: systemContext,
+      );
+      drafts.add(
+        draftFromRecord(
+          enforced,
+          strings: strings,
+          sourceText: bundle.userMessage,
+          lastWeightKg: lastWeightKg,
+          lastHeightCm: lastHeightCm,
+        ),
+      );
+    }
+    drafts = BreastfeedingBothHelper.expandDrafts(
+      drafts,
+      strings: strings,
+      sourceText: bundle.userMessage,
+      lastWeightKg: lastWeightKg,
+      lastHeightCm: lastHeightCm,
+    );
+    var followUps = DetectedRecordBuilder.followUpsForBundle(drafts, strings);
+    if (followUps.isEmpty) {
+      for (var i = 0; i < drafts.length; i++) {
+        final rec = drafts[i].structured;
+        if (rec.missingFields.isEmpty) continue;
+        final q = DetectedRecordBuilder.firstFollowUpForRecord(rec, i, strings);
+        if (q != null) followUps.add(q);
+      }
+    }
+    followUps = AiNannyOrchestrator.filterFollowUps(followUps, drafts);
     return AiNannyRecordsBundle(
       drafts: drafts,
-      userMessage: userMessage,
+      userMessage: bundle.userMessage,
+      followUpQuestions: followUps,
+      usedExtractionFallback: bundle.usedExtractionFallback,
+    );
+  }
+
+  static AiNannyRecordDraft _finalize(
+    AiNannyRecordDraft base,
+    AiNannyStructuredRecord rec,
+    S strings,
+  ) {
+    final detected = DetectedRecordBuilder.fromStructured(rec, strings);
+    final AiNannyRecordDraftStatus status;
+    if (base.status == AiNannyRecordDraftStatus.needsConfirm) {
+      status = AiNannyRecordDraftStatus.needsConfirm;
+    } else if (rec.missingFields.isNotEmpty ||
+        base.status == AiNannyRecordDraftStatus.incomplete) {
+      status = AiNannyRecordDraftStatus.incomplete;
+    } else {
+      status = AiNannyRecordDraftStatus.complete;
+    }
+    return AiNannyRecordDraft(
+      structured: rec,
+      status: status,
+      displayLine: base.displayLine,
+      title: base.title,
+      detailLines: [...detected.understoodLines, ...detected.missingLines],
+      understoodLines: detected.understoodLines,
+      missingLines: detected.missingLines,
+      followUpQuestion: base.followUpQuestion,
+      detected: detected,
+      growthPreview: base.growthPreview,
     );
   }
 
   static AiNannyRecordDraft _draftFor(
     AiNannyStructuredRecord rec, {
     required S strings,
+    String? sourceText,
     double? lastWeightKg,
     double? lastHeightCm,
   }) {
     final missing = rec.missingFields;
+    final title = AiNannyStructuredClarification.recordTitle(
+      rec,
+      strings,
+      sourceText: sourceText,
+    );
+    final details = AiNannyStructuredClarification.detailLines(rec, strings);
+    final followUp = AiNannyStructuredClarification.followUpQuestion(rec, strings);
     if (missing.isNotEmpty) {
-      return AiNannyRecordDraft(
-        structured: rec,
-        status: AiNannyRecordDraftStatus.incomplete,
-        displayLine: _displayLine(rec, strings),
+      return _finalize(
+        AiNannyRecordDraft(
+          structured: rec,
+          status: AiNannyRecordDraftStatus.incomplete,
+          displayLine: _displayLine(rec, strings),
+          title: title,
+          detailLines: details,
+          followUpQuestion: followUp,
+        ),
+        rec,
+        strings,
       );
     }
 
@@ -80,23 +227,37 @@ abstract final class AiNannyStructuredMapper {
       final grams = (rec.fields['value'] as num?)?.toInt() ?? 0;
       final prev = lastWeightKg ?? 0;
       if (prev <= 0) {
-        return AiNannyRecordDraft(
-          structured: rec,
-          status: AiNannyRecordDraftStatus.incomplete,
-          displayLine: strings.aiGrowthNeedBaselineWeight,
+        return _finalize(
+          AiNannyRecordDraft(
+            structured: rec,
+            status: AiNannyRecordDraftStatus.incomplete,
+            displayLine: strings.aiGrowthNeedBaselineWeight,
+            title: title,
+            detailLines: details,
+            followUpQuestion: followUp,
+          ),
+          rec,
+          strings,
         );
       }
       final next = prev + grams / 1000.0;
-      return AiNannyRecordDraft(
-        structured: rec,
-        status: AiNannyRecordDraftStatus.needsConfirm,
-        displayLine: strings.aiGrowthWeightDeltaPreview(prev, next),
-        growthPreview: AiNannyGrowthPreview(
+      return _finalize(
+        AiNannyRecordDraft(
+          structured: rec,
+          status: AiNannyRecordDraftStatus.needsConfirm,
+          displayLine: strings.aiGrowthWeightDeltaPreview(prev, next),
+          title: title,
+          detailLines: details,
+          followUpQuestion: followUp,
+          growthPreview: AiNannyGrowthPreview(
           measurementType: 'weight',
           previousValue: prev,
           newValue: next,
           unitLabel: 'kg',
         ),
+        ),
+        rec,
+        strings,
       );
     }
 
@@ -104,30 +265,51 @@ abstract final class AiNannyStructuredMapper {
       final delta = (rec.fields['value'] as num?)?.toDouble() ?? 0;
       final prev = lastHeightCm ?? 0;
       if (prev <= 0) {
-        return AiNannyRecordDraft(
-          structured: rec,
-          status: AiNannyRecordDraftStatus.incomplete,
-          displayLine: strings.aiGrowthNeedBaselineHeight,
+        return _finalize(
+          AiNannyRecordDraft(
+            structured: rec,
+            status: AiNannyRecordDraftStatus.incomplete,
+            displayLine: strings.aiGrowthNeedBaselineHeight,
+            title: title,
+            detailLines: details,
+            followUpQuestion: followUp,
+          ),
+          rec,
+          strings,
         );
       }
       final next = prev + delta;
-      return AiNannyRecordDraft(
-        structured: rec,
-        status: AiNannyRecordDraftStatus.needsConfirm,
-        displayLine: strings.aiGrowthHeightDeltaPreview(prev, next),
-        growthPreview: AiNannyGrowthPreview(
-          measurementType: 'height',
-          previousValue: prev,
-          newValue: next,
-          unitLabel: 'cm',
+      return _finalize(
+        AiNannyRecordDraft(
+          structured: rec,
+          status: AiNannyRecordDraftStatus.needsConfirm,
+          displayLine: strings.aiGrowthHeightDeltaPreview(prev, next),
+          title: title,
+          detailLines: details,
+          followUpQuestion: followUp,
+          growthPreview: AiNannyGrowthPreview(
+            measurementType: 'height',
+            previousValue: prev,
+            newValue: next,
+            unitLabel: 'cm',
+          ),
         ),
+        rec,
+        strings,
       );
     }
 
-    return AiNannyRecordDraft(
-      structured: rec,
-      status: AiNannyRecordDraftStatus.complete,
-      displayLine: _displayLine(rec, strings),
+    return _finalize(
+      AiNannyRecordDraft(
+        structured: rec,
+        status: AiNannyRecordDraftStatus.complete,
+        displayLine: _displayLine(rec, strings),
+        title: title,
+        detailLines: details,
+        followUpQuestion: followUp,
+      ),
+      rec,
+      strings,
     );
   }
 
@@ -180,10 +362,31 @@ abstract final class AiNannyStructuredMapper {
         final st = r.fields['status'];
         return st == 'scheduled' ? 'Vacina $name (agendar)' : 'Vacina $name';
       case 'appointment':
-        final sp = r.fields['reasonOrSpecialty'] ?? 'consulta';
-        final date = r.fields['date'] ?? '';
-        final time = r.fields['time'] ?? '';
-        return 'Consulta $sp $date $time'.trim();
+        final sp = '${r.fields['reasonOrSpecialty'] ?? ''}'.trim();
+        final label = sp.isEmpty ? 'Consulta' : sp;
+        final date = '${r.fields['date'] ?? ''}'.trim();
+        final time = '${r.fields['time'] ?? ''}'.trim();
+        if (date.isEmpty) return label;
+        if (time.isNotEmpty && time != 'now') return '$label · $date $time';
+        return '$label · $date';
+      case 'sleep':
+        final action = '${r.fields['action'] ?? ''}';
+        final mins = r.fields['durationMinutes'];
+        final clock = '${r.fields['time'] ?? ''}'.trim();
+        if (action == 'end' || r.fields['sleepStatus'] == 'woke') {
+          return mins != null
+              ? '${strings.aiRecordLabelSleep} · ${strings.aiRecordLineSleepEnd} · $mins min'
+              : strings.aiRecordLabelSleep;
+        }
+        if (mins != null) {
+          final buf = StringBuffer('${strings.aiRecordLabelSleep} · $mins min');
+          if (clock.isNotEmpty && clock != 'now') buf.write(' · $clock');
+          return buf.toString();
+        }
+        if (clock.isNotEmpty && clock != 'now') {
+          return '${strings.aiRecordLabelSleep} · $clock';
+        }
+        return strings.aiRecordLabelSleep;
       default:
         return r.type;
     }
@@ -230,7 +433,7 @@ abstract final class AiNannyStructuredMapper {
       case 'right':
         side = 'D';
       case 'both':
-        side = 'E';
+        return null;
       default:
         side = null;
     }
@@ -269,11 +472,20 @@ abstract final class AiNannyStructuredMapper {
         if (t.contains('refluxo')) reflux = true;
       }
     }
+    final feverReported = r.fields['feverReported'] == true;
+    final feverFromSymptoms = syms is List &&
+        syms.any((s) {
+          final t = '$s'.toLowerCase();
+          return t.contains('fever') || t.contains('temperature');
+        });
+    final hasFever = feverReported ||
+        feverFromSymptoms ||
+        (temp != null && temp >= 37.5);
     return VoiceRecordInterpretation(
       type: 'symptom',
-      summary: 'Sintoma',
+      summary: hasFever ? 'Febre' : 'Sintoma',
       symptom: VoiceSymptomPayload(
-        fever: temp != null && temp >= 37.5,
+        fever: hasFever,
         tempCelsius: temp,
         occurredAt: DateTime.now(),
         crying: crying,
@@ -325,14 +537,50 @@ abstract final class AiNannyStructuredMapper {
     final name = '${r.fields['vaccineName'] ?? ''}'.trim();
     if (name.isEmpty) return null;
     final status = '${r.fields['status'] ?? 'taken'}';
-  final now = DateTime.now();
+    final now = DateTime.now();
+    DateTime? appliedAt;
+    if (status == 'taken') {
+      final dateStr = '${r.fields['date'] ?? ''}'.trim();
+      appliedAt = DateTime.tryParse(dateStr) ?? now;
+      if (dateStr.length <= 10) {
+        appliedAt = DateTime(
+          appliedAt.year,
+          appliedAt.month,
+          appliedAt.day,
+          now.hour,
+          now.minute,
+        );
+      }
+    }
+    DateTime? nextDueAt;
+    final nextDueStr = '${r.fields['nextDueDate'] ?? ''}'.trim();
+    if (nextDueStr.isNotEmpty) {
+      final parsed = DateTime.tryParse(nextDueStr);
+      if (parsed != null) {
+        nextDueAt = DateTime(parsed.year, parsed.month, parsed.day, 9, 0);
+      }
+    }
+    final nextDays = (r.fields['nextDueInDays'] as num?)?.toInt();
+    if (nextDueAt == null && nextDays != null && nextDays > 0) {
+      final base = DateTime(now.year, now.month, now.day);
+      nextDueAt = base.add(Duration(days: nextDays));
+    }
+    if (status == 'scheduled' && nextDueAt == null) {
+      final sched = '${r.fields['date'] ?? ''}'.trim();
+      nextDueAt = DateTime.tryParse(sched) ??
+          now.add(const Duration(days: 7));
+    }
     return VoiceRecordInterpretation(
       type: 'vaccine',
-      summary: 'Vacina $name',
+      summary: nextDueAt != null
+          ? 'Vacina $name (próxima ${nextDueAt.day.toString().padLeft(2, '0')}/'
+              '${nextDueAt.month.toString().padLeft(2, '0')})'
+          : 'Vacina $name',
       vaccine: VoiceVaccinePayload(
         name: name,
-        appliedAt: status == 'taken' ? now : null,
-        nextDueAt: status == 'scheduled' ? now.add(const Duration(days: 7)) : null,
+        dose: r.fields['dose'] as String?,
+        appliedAt: appliedAt,
+        nextDueAt: nextDueAt,
       ),
     );
   }
@@ -354,19 +602,33 @@ abstract final class AiNannyStructuredMapper {
   }
 
   static DateTime? _resolveWhen(AiNannyStructuredRecord r) {
-    final date = '${r.fields['date'] ?? ''}';
-    final time = '${r.fields['time'] ?? ''}';
+    final date = '${r.fields['date'] ?? ''}'.trim();
+    final time = '${r.fields['time'] ?? ''}'.trim();
     final now = DateTime.now();
     var base = DateTime(now.year, now.month, now.day);
+
     if (date == 'tomorrow') {
       base = base.add(const Duration(days: 1));
+    } else if (date == 'today') {
+      // keep today
+    } else if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(date)) {
+      final parsed = DateTime.tryParse(date);
+      if (parsed != null) {
+        base = DateTime(parsed.year, parsed.month, parsed.day);
+      }
+    } else if (date == 'next_monday') {
+      var diff = DateTime.monday - base.weekday;
+      if (diff <= 0) diff += 7;
+      base = base.add(Duration(days: diff));
     }
+
     if (time.contains(':')) {
       final parts = time.split(':');
-      final h = int.tryParse(parts[0]) ?? 12;
+      final h = int.tryParse(parts[0]) ?? 9;
       final m = int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0;
       return DateTime(base.year, base.month, base.day, h, m);
     }
-    return base;
+    // Consulta agendada sem hora → 09:00 no dia indicado.
+    return DateTime(base.year, base.month, base.day, 9, 0);
   }
 }

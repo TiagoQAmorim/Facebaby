@@ -9,16 +9,22 @@ import '../firebase/profile_cloud_sync.dart';
 import '../premium/feature_access.dart';
 import '../premium/premium_service.dart';
 
-/// Garante horóscopo do dia em cache (uma chamada por vez).
+/// Garante horóscopo do dia em cache (uma chamada por vez; vários await compartilham o mesmo Future).
 abstract final class FamilyHoroscopeBootstrap {
   FamilyHoroscopeBootstrap._();
 
-  static bool _inFlight = false;
+  static Future<void>? _ensureFuture;
 
-  static Future<void> ensureToday() async {
-    if (!FeatureAccess.canUseAiFamilyHoroscope) return;
-    if (_inFlight) return;
-    _inFlight = true;
+  static Future<void> ensureToday() {
+    if (!FeatureAccess.canUseAiFamilyHoroscope) {
+      return Future<void>.value();
+    }
+    return _ensureFuture ??= _runEnsureToday().whenComplete(() {
+      _ensureFuture = null;
+    });
+  }
+
+  static Future<void> _runEnsureToday() async {
     try {
       await FamilyHoroscopeReadPrefs.clearIfNewDay();
       final svc = FamilyHoroscopeService();
@@ -37,8 +43,6 @@ abstract final class FamilyHoroscopeBootstrap {
       await FamilyHoroscopeUnreadBadge.refresh();
     } catch (_) {
       await FamilyHoroscopeUnreadBadge.refresh();
-    } finally {
-      _inFlight = false;
     }
   }
 }

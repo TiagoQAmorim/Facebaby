@@ -81,6 +81,23 @@ class AiNannyTtsService extends ChangeNotifier {
     _lang = lang;
   }
 
+  /// Dispara síntese/reprodução sem bloquear o chamador.
+  void scheduleAutoPlay({
+    required String messageId,
+    required String text,
+    AppLang? language,
+  }) {
+    if (kIsWeb) return;
+    unawaited(
+      prepare(
+        messageId: messageId,
+        text: text,
+        language: language,
+        autoPlay: true,
+      ),
+    );
+  }
+
   /// Pré-carrega áudio; com [autoPlay], toca assim que estiver pronto.
   Future<void> prepare({
     required String messageId,
@@ -258,6 +275,20 @@ class AiNannyTtsService extends ChangeNotifier {
     _activeMessageId = null;
   }
 
+  void clearCache() {
+    _cache.clear();
+    debugPrint('AiNannyTts: audio cache cleared');
+  }
+
+  /// Pré-escuta do estilo de voz actual (mesmo idioma da app).
+  Future<void> previewCurrentVoice(String sampleText) async {
+    if (kIsWeb || sampleText.trim().isEmpty) return;
+    clearCache();
+    await stop();
+    final id = 'voice-preview-${_lang.name}-${DateTime.now().millisecondsSinceEpoch}';
+    await prepare(messageId: id, text: sampleText, autoPlay: true);
+  }
+
   @override
   Future<void> dispose() async {
     _generation++;
@@ -348,6 +379,9 @@ class AiNannyTtsService extends ChangeNotifier {
     final result = await callable.call({
       'text': text,
       'locale': appLocaleApiCode(_lang),
+      // Fixado: Babá gentil, velocidade 1.08 (pedido do produto).
+      'voiceStyle': 'gentleNanny',
+      'speechRate': 1.08,
     });
 
     final data = result.data;

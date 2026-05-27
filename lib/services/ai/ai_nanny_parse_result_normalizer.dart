@@ -1,5 +1,6 @@
 import '../../models/ai/ai_nanny_parsed_message.dart';
 import '../../utils/ai_nanny_parse_normalize.dart';
+import 'ai_nanny_structured_clarification.dart';
 
 /// Pós-processamento do JSON (cloud ou local) para valores canónicos.
 abstract final class AiNannyParseResultNormalizer {
@@ -57,10 +58,14 @@ abstract final class AiNannyParseResultNormalizer {
       if (t != null) fields['time'] = t;
     }
 
-    return AiNannyStructuredRecord(
-      type: r.type,
-      missingFields: r.missingFields,
-      fields: fields,
+    final type = AiNannyParseNormalize.canonicalRecordType(r.type, fields);
+    return AiNannyStructuredClarification.enforce(
+      AiNannyStructuredRecord(
+        type: type,
+        missingFields: r.missingFields,
+        fields: fields,
+      ),
+      text,
     );
   }
 

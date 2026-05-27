@@ -6,11 +6,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../i18n/app_i18n.dart';
 import '../../models/ai/ai_insight_model.dart';
 import '../../controllers/sleep_timer_controller.dart';
+import '../../controllers/current_baby_controller.dart';
+import '../../models/family_message_prefs.dart';
+import '../../pages/family_tree_page.dart';
 import '../../services/ai/ai_bubble_message_policy.dart';
+import '../../services/ai/ai_bubble_routine_insights.dart';
 import '../../services/ai/ai_insight_local_engine.dart';
 import '../../services/admin_broadcast_inbox_service.dart';
 import '../../services/ai/ai_insights_service.dart';
+import '../../services/family_homily_read_prefs.dart';
+import '../../services/family_horoscope_read_prefs.dart';
 import '../../services/home_prefs.dart';
+import '../../utils/family_page_tabs.dart';
+import '../../utils/portal_page_route.dart';
 import 'ai_floating_message_bubble.dart';
 
 class _BubbleMessage {
@@ -22,6 +30,8 @@ class _BubbleMessage {
     this.actionUrl,
     this.actionButtonLabel,
     this.adminCampaignId,
+    this.hasActionButton = false,
+    this.onActionTap,
   });
 
   final String id;
@@ -32,6 +42,8 @@ class _BubbleMessage {
   final String? actionButtonLabel;
   /// Quando preenchido, dismiss grava em Firestore (mensagem do admin).
   final String? adminCampaignId;
+  final bool hasActionButton;
+  final VoidCallback? onActionTap;
 }
 
 /// Host flutuante: carrega insights, fila de mensagens, posição e dismiss.
@@ -58,6 +70,9 @@ class _AiFloatingInsightsHostState extends State<AiFloatingInsightsHost> {
   StreamSubscription<AiInsight?>? _dailySub;
   StreamSubscription<List<AdminBroadcastInboxItem>>? _adminInboxSub;
   Timer? _refreshTimer;
+  VoidCallback? _horoscopeReadyListener;
+  VoidCallback? _homilyReadyListener;
+  VoidCallback? _insightsReadyListener;
   List<AdminBroadcastInboxItem> _adminInbox = [];
 
   final List<_BubbleMessage> _queue = [];
@@ -96,6 +111,22 @@ class _AiFloatingInsightsHostState extends State<AiFloatingInsightsHost> {
       if (!mounted) return;
       unawaited(_rebuildQueue());
     });
+    _horoscopeReadyListener = () {
+      if (!mounted) return;
+      unawaited(_rebuildQueue());
+    };
+    FamilyHoroscopeReadyNotifier.generation
+        .addListener(_horoscopeReadyListener!);
+    _homilyReadyListener = () {
+      if (!mounted) return;
+      unawaited(_rebuildQueue());
+    };
+    FamilyHomilyReadyNotifier.generation.addListener(_homilyReadyListener!);
+    _insightsReadyListener = () {
+      if (!mounted) return;
+      unawaited(_rebuildQueue());
+    };
+    AiInsightsReadyNotifier.generation.addListener(_insightsReadyListener!);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final s = S.of(context);
@@ -119,6 +150,19 @@ class _AiFloatingInsightsHostState extends State<AiFloatingInsightsHost> {
     HomePrefs.sleepAlertsEnabled.removeListener(_onRoutineChanged);
     HomePrefs.diaperAlertsEnabled.removeListener(_onRoutineChanged);
     HomePrefs.growthHealthAlertsEnabled.removeListener(_onRoutineChanged);
+    final horoscopeListener = _horoscopeReadyListener;
+    if (horoscopeListener != null) {
+      FamilyHoroscopeReadyNotifier.generation
+          .removeListener(horoscopeListener);
+    }
+    final homilyListener = _homilyReadyListener;
+    if (homilyListener != null) {
+      FamilyHomilyReadyNotifier.generation.removeListener(homilyListener);
+    }
+    final insightsListener = _insightsReadyListener;
+    if (insightsListener != null) {
+      AiInsightsReadyNotifier.generation.removeListener(insightsListener);
+    }
     super.dispose();
   }
 
@@ -129,42 +173,38 @@ class _AiFloatingInsightsHostState extends State<AiFloatingInsightsHost> {
   static String _dismissKey(String prefsKey, int babyId, String day) =>
       '${prefsKey}_${babyId}_$day';
 
-  Future<void> _loadPosition(Size area) async {
+  Future<void> _loadPosition(Size area, EdgeInsets safePadding) async {
+    var pos = AiFloatingMessageBubble.defaultCollapsedTopLeft(
+      viewport: area,
+      safePadding: safePadding,
+    );
     final bid = widget.babyId;
-    if (bid == null) {
-      _position = Offset(area.width - 72, area.height * 0.62);
-      _positionLoaded = true;
-      return;
+    if (bid != null) {
+      final prefs = await SharedPreferences.getInstance();
+      final key = _posKey(bid);
+      final dx = prefs.getDouble('${key}_dx');
+      final dy = prefs.getDouble('${key}_dy');
+      if (dx != null && dy != null) {
+        pos = AiFloatingMessageBubble.clampCollapsedTopLeft(
+          topLeft: Offset(dx, dy),
+          viewport: area,
+          bottomReserve: 24,
+        );
+      }
     }
-    final prefs = await SharedPreferences.getInstance();
-    final fx = prefs.getDouble('${_posKey(bid)}_fx');
-    final fy = prefs.getDouble('${_posKey(bid)}_fy');
-    const collapsed = AiFloatingMessageBubble.collapsedSize;
-    if (fx != null && fy != null) {
-      _position = AiFloatingMessageBubble.clampTopLeft(
-        topLeft: Offset(fx * area.width, fy * area.height),
-        bubbleSize: const Size(collapsed, collapsed),
-        viewport: area,
-        bottomReserve: 24,
-      );
-    } else {
-      _position = AiFloatingMessageBubble.clampTopLeft(
-        topLeft: Offset(area.width - collapsed - 16, area.height * 0.52),
-        bubbleSize: const Size(collapsed, collapsed),
-        viewport: area,
-        bottomReserve: 24,
-      );
-    }
+    if (!mounted) return;
+    _position = pos;
     _positionLoaded = true;
-    if (mounted) setState(() {});
+    setState(() {});
   }
 
-  Future<void> _savePosition(Size area) async {
+  Future<void> _persistPosition() async {
     final bid = widget.babyId;
     if (bid == null) return;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble('${_posKey(bid)}_fx', _position.dx / area.width);
-    await prefs.setDouble('${_posKey(bid)}_fy', _position.dy / area.height);
+    final key = _posKey(bid);
+    await prefs.setDouble('${key}_dx', _position.dx);
+    await prefs.setDouble('${key}_dy', _position.dy);
   }
 
   Future<void> _rebuildQueue() async {
@@ -205,6 +245,30 @@ class _AiFloatingInsightsHostState extends State<AiFloatingInsightsHost> {
       return;
     }
 
+    await _service.ensureInsights(strings: s);
+
+    const briefPrefsKey = AiBubbleRoutineInsights.prefsKey;
+    final briefDismissed =
+        prefs.getBool(_dismissKey(briefPrefsKey, bid, stamp)) ?? false;
+    if (!briefDismissed) {
+      final brief = await AiBubbleRoutineInsights.yesterdayAndCuriosity(
+        babyId: bid,
+        babyName: widget.babyName,
+        babySex: widget.babySex,
+        birthDate: widget.birthDate,
+        strings: s,
+      );
+      if (brief != null && brief.trim().isNotEmpty) {
+        items.add(
+          _BubbleMessage(
+            id: briefPrefsKey,
+            text: brief,
+            prefsKey: briefPrefsKey,
+          ),
+        );
+      }
+    }
+
     // Alertas de rotina (mamada/sono/fralda/consulta/vacina) ficam só no banner da Home.
     // No balão: campanhas admin + resumos IA; regras extras em [AiBubbleMessagePolicy].
     final extraAi = await AiBubbleMessagePolicy.buildExtraAiAlerts(
@@ -227,6 +291,13 @@ class _AiFloatingInsightsHostState extends State<AiFloatingInsightsHost> {
       );
     }
 
+    final familyPrefs = FamilyMessagePrefs.fromMother(
+      CurrentBabyController.instance.currentMotherRow,
+    );
+    final homilyTab = FamilyPageTabs.homily(familyPrefs);
+    const homilyPrefsKey = 'family_homily_ready';
+    final homilyDismissed =
+        prefs.getBool(_dismissKey(homilyPrefsKey, bid, stamp)) ?? false;
     final dailyDismissed =
         prefs.getBool(_dismissKey('daily', bid, stamp)) ?? false;
     if (!dailyDismissed) {
@@ -245,7 +316,7 @@ class _AiFloatingInsightsHostState extends State<AiFloatingInsightsHost> {
         items.add(
           _BubbleMessage(
             id: 'daily',
-            text: text,
+            text: '${s.homeAiInsightDailyTitle}\n\n$text',
             prefsKey: 'daily',
           ),
         );
@@ -258,8 +329,60 @@ class _AiFloatingInsightsHostState extends State<AiFloatingInsightsHost> {
       final weekly = await _service.loadThisWeek();
       final text = weekly?.text.trim() ?? '';
       if (text.isNotEmpty) {
-        items.add(_BubbleMessage(id: 'weekly', text: text, prefsKey: 'weekly'));
+        items.add(
+          _BubbleMessage(
+            id: 'weekly',
+            text: '${s.homeAiInsightWeeklyTitle}\n\n$text',
+            prefsKey: 'weekly',
+          ),
+        );
       }
+    }
+
+    if (homilyTab != null &&
+        !homilyDismissed &&
+        await FamilyHomilyBubbleAlert.shouldShowInBubble()) {
+      items.add(
+        _BubbleMessage(
+          id: 'family_homily_ready',
+          text: s.aiBubbleHomilyReady,
+          prefsKey: homilyPrefsKey,
+          actionButtonLabel: s.aiBubbleHomilyOpenLink,
+          hasActionButton: true,
+          onActionTap: () {
+            if (!context.mounted) return;
+            pushPortalPage<void>(
+              context,
+              FamilyTreePage(initialTabIndex: homilyTab),
+            );
+          },
+        ),
+      );
+    }
+
+    final horoscopeTab = FamilyPageTabs.horoscope(familyPrefs);
+    const horoscopePrefsKey = 'family_horoscope_ready';
+    final horoscopeDismissed =
+        prefs.getBool(_dismissKey(horoscopePrefsKey, bid, stamp)) ?? false;
+    if (horoscopeTab != null &&
+        !horoscopeDismissed &&
+        await FamilyHoroscopeBubbleAlert.shouldShowInBubble()) {
+      items.add(
+        _BubbleMessage(
+          id: 'family_horoscope_ready',
+          text: s.aiBubbleHoroscopeReady,
+          prefsKey: horoscopePrefsKey,
+          actionButtonLabel: s.aiBubbleHoroscopeOpenLink,
+          hasActionButton: true,
+          onActionTap: () {
+            if (!context.mounted) return;
+            pushPortalPage<void>(
+              context,
+              FamilyTreePage(initialTabIndex: horoscopeTab),
+            );
+          },
+        ),
+      );
     }
 
     if (!mounted) return;
@@ -325,6 +448,12 @@ class _AiFloatingInsightsHostState extends State<AiFloatingInsightsHost> {
     if (item.adminCampaignId != null) {
       await AdminBroadcastInboxService.instance.dismiss(item.adminCampaignId!);
     }
+    if (item.prefsKey == 'family_homily_ready') {
+      await FamilyHomilyBubbleAlert.dismissForToday();
+    }
+    if (item.prefsKey == 'family_horoscope_ready') {
+      await FamilyHoroscopeBubbleAlert.dismissForToday();
+    }
     if (bid != null) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(
@@ -346,6 +475,8 @@ class _AiFloatingInsightsHostState extends State<AiFloatingInsightsHost> {
     _prefsDay = day;
     _index = 0;
     _expanded = false;
+    _isFirstQueueLoad = true;
+    AiInsightsBootstrap.resetForNewDay();
     unawaited(_rebuildQueue());
   }
 
@@ -370,7 +501,7 @@ class _AiFloatingInsightsHostState extends State<AiFloatingInsightsHost> {
       builder: (context, constraints) {
         final area = Size(constraints.maxWidth, constraints.maxHeight);
         if (!_positionLoaded) {
-          unawaited(_loadPosition(area));
+          unawaited(_loadPosition(area, MediaQuery.paddingOf(context)));
         }
 
         final msg = _queue[_index.clamp(0, _queue.length - 1)].text;
@@ -388,11 +519,22 @@ class _AiFloatingInsightsHostState extends State<AiFloatingInsightsHost> {
           });
         }
 
+        final horoscopeAction = current.onActionTap;
+        final actionLabel = current.actionButtonLabel?.trim().isNotEmpty == true
+            ? current.actionButtonLabel!.trim()
+            : (horoscopeAction != null
+                ? (current.prefsKey == 'family_homily_ready'
+                    ? S.of(context).aiBubbleHomilyOpenLink
+                    : S.of(context).aiBubbleHoroscopeOpenLink)
+                : promoButtonLabel);
+
         return AiFloatingMessageBubble(
           message: msg,
           attachmentImageUrl: current.imageUrl,
           actionUrl: current.actionUrl,
-          actionLinkLabel: promoButtonLabel,
+          actionLinkLabel: actionLabel,
+          hasActionButton: current.hasActionButton || isPromo,
+          onActionTap: horoscopeAction,
           promoLayout: isPromo,
           position: _position,
           expanded: _expanded,
@@ -433,16 +575,27 @@ class _AiFloatingInsightsHostState extends State<AiFloatingInsightsHost> {
             if (!_dragging) setState(() => _dragging = true);
           },
           onPositionChanged: (next) {
-            final est = _bubbleEstimate(area, current, expanded: _expanded);
-            final clamped = AiFloatingMessageBubble.clampTopLeft(
-              topLeft: next,
-              bubbleSize: est,
-              viewport: area,
-              bottomReserve: _dragging
-                  ? AiFloatingMessageBubble.dismissStripHeight
-                  : 24,
-            );
-            setState(() => _position = clamped);
+            setState(() {
+              if (!_expanded) {
+                _position = AiFloatingMessageBubble.clampCollapsedTopLeft(
+                  topLeft: next,
+                  viewport: area,
+                  bottomReserve: _dragging
+                      ? AiFloatingMessageBubble.dismissStripHeight
+                      : 24,
+                );
+              } else {
+                final est = _bubbleEstimate(area, current, expanded: true);
+                _position = AiFloatingMessageBubble.clampTopLeft(
+                  topLeft: next,
+                  bubbleSize: est,
+                  viewport: area,
+                  bottomReserve: _dragging
+                      ? AiFloatingMessageBubble.dismissStripHeight
+                      : 24,
+                );
+              }
+            });
           },
           onPositionClamp: (bubbleSize, viewport) {
             final clamped = AiFloatingMessageBubble.clampTopLeft(
@@ -463,7 +616,9 @@ class _AiFloatingInsightsHostState extends State<AiFloatingInsightsHost> {
           },
           onDragEnded: () {
             setState(() => _dragging = false);
-            unawaited(_savePosition(area));
+            if (!_expanded) {
+              unawaited(_persistPosition());
+            }
           },
         );
       },
