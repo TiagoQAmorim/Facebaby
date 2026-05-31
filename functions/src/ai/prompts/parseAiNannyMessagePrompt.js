@@ -32,6 +32,8 @@ Multilingual intent (examples — same JSON):
 Rules:
 - Infer intent semantically; do not require exact words (informal speech, slang, broken phrases OK).
 - Multiple records in one sentence → multiple objects (e.g. feeding AND diaper = 2 records; "mamou e está com febre" = feeding + health_symptom with fever).
+- "acordou/despertou … e cresceu X cm" → sleep action end + growth_height mode delta value X — TWO records, never pick only one.
+- "acordou … e ganhou X gramas" → sleep end + growth_weight mode delta — TWO records.
 - "está com febre" / "com febre" without number: health_symptom symptoms ["fever"], missingFields ["temperatureCelsius"] — never drop fever when feeding is also present.
 - missingFields: list REQUIRED fields still absent — NEVER invent breastSide, amountMl, diaper pee/poop, sleep start time, vaccine date, etc.
 - If time is unknown, use "now" in fields AND do NOT mark time as missing (user may edit before save).

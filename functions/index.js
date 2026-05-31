@@ -31,7 +31,9 @@ const { parseAiNannyMessage } = require('./src/ai/parseAiNannyMessage');
 const { manageAiNannyChat } = require('./src/ai/manageAiNannyChat');
 const { createGenerateDailyFamilyHoroscope } = require('./src/ai/generateDailyFamilyHoroscope');
 const { createGenerateDailyFamilyHomily } = require('./src/ai/generateDailyFamilyHomily');
+const { runWarmDailyFamilyContent } = require('./src/ai/warmDailyFamilyContent');
 const { ensureAiInsight } = require('./src/ai/ensureAiInsight');
+const { createAdminGetDashboardStats } = require('./src/admin/adminDashboardStats');
 
 const SP = 'America/Sao_Paulo';
 
@@ -1300,6 +1302,9 @@ const adminBroadcast = createAdminBroadcastHandlers({
 exports.previewAdminBroadcastAudience = adminBroadcast.previewAdminBroadcastAudience;
 exports.publishAdminBroadcast = adminBroadcast.publishAdminBroadcast;
 
+/** Admin — dashboard agregado (count queries, escala a 100k+ users). */
+exports.adminGetDashboardStats = createAdminGetDashboardStats({ onCall, db });
+
 /** IA Babá — chat (Premium + limite diário no servidor). */
 exports.askAiNanny = askAiNanny;
 
@@ -1334,3 +1339,24 @@ exports.generateDailyFamilyHomily = createGenerateDailyFamilyHomily({
   db,
   openAiApiKey,
 });
+
+/** Aquece cache partilhado homilia + 12 signos (7h30 America/Sao_Paulo). */
+exports.scheduleDailyFamilyContentWarmup = onSchedule(
+  {
+    schedule: '30 7 * * *',
+    timeZone: 'America/Sao_Paulo',
+    region: 'southamerica-east1',
+    secrets: [openAiApiKey],
+    timeoutSeconds: 540,
+    memory: '512MiB',
+  },
+  async () => {
+    const apiKey = openAiApiKey.value();
+    if (!apiKey) {
+      console.warn('scheduleDailyFamilyContentWarmup: OPENAI_API_KEY missing');
+      return;
+    }
+    const summary = await runWarmDailyFamilyContent({ db, apiKey });
+    console.log('scheduleDailyFamilyContentWarmup', JSON.stringify(summary));
+  },
+);

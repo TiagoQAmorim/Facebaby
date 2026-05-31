@@ -4,22 +4,15 @@ const { chatCompletion } = require('./openAiClient');
 const {
   FAMILY_HOMILY_SYSTEM,
   buildFamilyHomilyUserPrompt,
+  HOMILY_MAX_TOKENS,
 } = require('./prompts/familyHomilyPrompt');
+const {
+  languageLabelFromCode,
+  normalizeLangCode,
+  sharedHomilyRef,
+} = require('./familySharedCache');
 
 const SP = 'America/Sao_Paulo';
-
-function languageLabelFromCode(code) {
-  const c = `${code || ''}`.trim().toLowerCase();
-  const map = {
-    pt: 'português do Brasil',
-    en: 'English',
-    es: 'español',
-    fr: 'français',
-    de: 'Deutsch',
-    it: 'italiano',
-  };
-  return map[c] || map.pt;
-}
 
 function createGenerateDailyFamilyHomily({ onCall, HttpsError, db, openAiApiKey }) {
   return onCall(
@@ -35,7 +28,7 @@ function createGenerateDailyFamilyHomily({ onCall, HttpsError, db, openAiApiKey 
 
       const uid = request.auth.uid;
       const forceRefresh = request.data?.forceRefresh === true;
-      const langCode = `${request.data?.languageCode || request.data?.lang || 'pt'}`.trim();
+      const langCode = normalizeLangCode(request.data?.languageCode || request.data?.lang);
 
       const userRef = db.collection('users').doc(uid);
       const userSnap = await userRef.get();
@@ -55,22 +48,39 @@ function createGenerateDailyFamilyHomily({ onCall, HttpsError, db, openAiApiKey 
         .doc(uid)
         .collection('daily')
         .doc(dateKey);
+      const sharedRef = sharedHomilyRef(db, langCode, dateKey);
 
       if (!forceRefresh) {
-        const cached = await dailyRef.get();
-        if (cached.exists) {
-          const data = cached.data();
-          return { ...data, cached: true, dateKey };
+        const userCached = await dailyRef.get();
+        if (userCached.exists) {
+          const data = userCached.data();
+          if (`${data?.homilyText || ''}`.trim()) {
+            return { ...data, cached: true, dateKey, shared: false };
+          }
+        }
+        const sharedCached = await sharedRef.get();
+        if (sharedCached.exists) {
+          const data = sharedCached.data();
+          if (`${data?.homilyText || ''}`.trim()) {
+            const copy = { ...data, cached: true, shared: true };
+            await dailyRef.set(copy, { merge: true });
+            return { ...copy, dateKey };
+          }
         }
       }
-
-      const client = request.data?.profile || {};
-      const motherName = `${client.motherName || user.name || user.mother_name || 'Mamãe'}`.trim();
-      const babyName = `${client.babyName || 'Bebê'}`.trim() || 'Bebê';
 
       const apiKey = openAiApiKey.value();
       if (!apiKey) {
         throw new HttpsError('failed-precondition', 'IA temporariamente indisponível.');
+      }
+
+      if (!forceRefresh) {
+        const sharedAgain = await sharedRef.get();
+        if (sharedAgain.exists && `${sharedAgain.data()?.homilyText || ''}`.trim()) {
+          const data = sharedAgain.data();
+          await dailyRef.set({ ...data, cached: true, shared: true }, { merge: true });
+          return { ...data, cached: true, dateKey, shared: true };
+        }
       }
 
       const dateLabel = nowSp.toFormat('dd/MM/yyyy');
@@ -78,8 +88,6 @@ function createGenerateDailyFamilyHomily({ onCall, HttpsError, db, openAiApiKey 
       const userPrompt = buildFamilyHomilyUserPrompt({
         dateLabel,
         isoDate,
-        motherName,
-        babyName,
         languageLabel: languageLabelFromCode(langCode),
       });
 
@@ -89,7 +97,7 @@ function createGenerateDailyFamilyHomily({ onCall, HttpsError, db, openAiApiKey 
           apiKey,
           system: FAMILY_HOMILY_SYSTEM,
           user: userPrompt,
-          maxTokens: 1100,
+          maxTokens: HOMILY_MAX_TOKENS,
         });
         const raw = result.text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '');
         parsed = JSON.parse(raw);
@@ -104,17 +112,30 @@ function createGenerateDailyFamilyHomily({ onCall, HttpsError, db, openAiApiKey 
         gospelReference: `${parsed.gospelReference || ''}`.trim(),
         homilyText: `${parsed.homilyText || ''}`.trim(),
         familyReflection: `${parsed.familyReflection || ''}`.trim(),
-        languageCode: langCode || 'pt',
+        languageCode: langCode,
         createdAt: FieldValue.serverTimestamp(),
         generatedByAi: true,
         cached: false,
+        shared: true,
       };
 
       if (!doc.homilyText) {
         throw new HttpsError('internal', 'Não foi possível gerar a homilia agora.');
       }
 
-      await dailyRef.set(doc, { merge: true });
+      try {
+        await sharedRef.create(doc);
+      } catch (e) {
+        const existing = await sharedRef.get();
+        if (existing.exists) {
+          Object.assign(doc, existing.data());
+          doc.cached = true;
+        } else {
+          await sharedRef.set(doc, { merge: true });
+        }
+      }
+
+      await dailyRef.set({ ...doc, cached: true }, { merge: true });
       return doc;
     },
   );

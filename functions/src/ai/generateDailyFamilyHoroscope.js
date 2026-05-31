@@ -1,11 +1,11 @@
 const { FieldValue } = require('firebase-admin/firestore');
 const { DateTime } = require('luxon');
-const { chatCompletion } = require('./openAiClient');
-const {
-  FAMILY_HOROSCOPE_SYSTEM,
-  buildFamilyHoroscopeUserPrompt,
-} = require('./prompts/familyHoroscopePrompt');
 const { signFromProfile, SP } = require('./babyContext');
+const {
+  normalizeLangCode,
+  ensureSharedSignDailyText,
+  ensureSharedCompatTexts,
+} = require('./familySharedCache');
 
 function createGenerateDailyFamilyHoroscope({ onCall, HttpsError, db, openAiApiKey }) {
   return onCall(
@@ -21,6 +21,7 @@ function createGenerateDailyFamilyHoroscope({ onCall, HttpsError, db, openAiApiK
 
       const uid = request.auth.uid;
       const forceRefresh = request.data?.forceRefresh === true;
+      const langCode = normalizeLangCode(request.data?.languageCode || request.data?.lang);
 
       const userRef = db.collection('users').doc(uid);
       const userSnap = await userRef.get();
@@ -33,7 +34,9 @@ function createGenerateDailyFamilyHoroscope({ onCall, HttpsError, db, openAiApiK
         );
       }
 
-      const dateKey = DateTime.now().setZone(SP).toFormat('yyyyMMdd');
+      const nowSp = DateTime.now().setZone(SP);
+      const dateKey = nowSp.toFormat('yyyyMMdd');
+      const dateLabel = nowSp.toFormat('dd/MM/yyyy');
       const dailyRef = db
         .collection('family_horoscopes')
         .doc(uid)
@@ -44,13 +47,14 @@ function createGenerateDailyFamilyHoroscope({ onCall, HttpsError, db, openAiApiK
         const cached = await dailyRef.get();
         if (cached.exists) {
           const data = cached.data();
-          return { ...data, cached: true, dateKey };
+          if (`${data?.motherText || ''}`.trim()) {
+            return { ...data, cached: true, dateKey };
+          }
         }
       }
 
       const client = request.data?.profile || {};
 
-      const motherName = `${client.motherName || user.name || user.mother_name || 'Mamãe'}`.trim();
       const motherSign = signFromProfile({
         birthDate:
           client.motherBirthDate ||
@@ -65,9 +69,6 @@ function createGenerateDailyFamilyHoroscope({ onCall, HttpsError, db, openAiApiK
         user.registerFather === true ||
         `${client.fatherName || user.father_name || user.fatherName || ''}`.trim().length > 0;
 
-      const fatherName = fatherRegistered
-        ? `${client.fatherName || user.father_name || user.fatherName || 'Papai'}`.trim()
-        : null;
       const fatherSign = fatherRegistered
         ? signFromProfile({
             birthDate:
@@ -79,7 +80,6 @@ function createGenerateDailyFamilyHoroscope({ onCall, HttpsError, db, openAiApiK
         : null;
 
       const selectedBabyId = `${client.babyId || user.selectedBabyId || user.selected_baby_id || ''}`.trim();
-      let babyName = `${client.babyName || 'Bebê'}`.trim() || 'Bebê';
       let babySign = signFromProfile({
         birthDate: client.babyBirthDate || null,
         storedSign: client.babyZodiacSign || null,
@@ -89,7 +89,6 @@ function createGenerateDailyFamilyHoroscope({ onCall, HttpsError, db, openAiApiK
         const babySnap = await userRef.collection('babies').doc(selectedBabyId).get();
         if (babySnap.exists) {
           const baby = babySnap.data() || {};
-          babyName = `${baby.name || babyName}`.trim();
           babySign = signFromProfile({
             birthDate: baby.birth_date || baby.birthDate,
             storedSign: baby.zodiac_sign || baby.zodiacSign,
@@ -99,7 +98,6 @@ function createGenerateDailyFamilyHoroscope({ onCall, HttpsError, db, openAiApiK
         const babiesSnap = await userRef.collection('babies').limit(1).get();
         if (!babiesSnap.empty) {
           const baby = babiesSnap.docs[0].data() || {};
-          babyName = `${baby.name || babyName}`.trim();
           babySign = signFromProfile({
             birthDate: baby.birth_date || baby.birthDate,
             storedSign: baby.zodiac_sign || baby.zodiacSign,
@@ -119,44 +117,68 @@ function createGenerateDailyFamilyHoroscope({ onCall, HttpsError, db, openAiApiK
         throw new HttpsError('failed-precondition', 'IA temporariamente indisponível.');
       }
 
-      const dateLabel = DateTime.now().setZone(SP).toFormat('dd/MM/yyyy');
-      const userPrompt = buildFamilyHoroscopeUserPrompt({
-        dateLabel,
-        motherName,
-        motherSign: motherSign || 'não informado',
-        fatherName,
-        fatherSign,
-        babyName,
-        babySign: babySign || 'não informado',
-      });
+      const signLabels = [motherSign, fatherSign, babySign].filter(Boolean);
 
-      let parsed;
-      try {
-        const result = await chatCompletion({
+      let motherText = '';
+      let fatherText = '';
+      let babyText = '';
+
+      if (motherSign) {
+        motherText = await ensureSharedSignDailyText({
+          db,
           apiKey,
-          system: FAMILY_HOROSCOPE_SYSTEM,
-          user: userPrompt,
-          maxTokens: 1200,
+          langCode,
+          dateKey,
+          dateLabel,
+          signLabel: motherSign,
         });
-        const raw = result.text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '');
-        parsed = JSON.parse(raw);
-      } catch (e) {
-        throw new HttpsError('internal', 'Não foi possível gerar o horóscopo agora.');
       }
+      if (fatherSign) {
+        fatherText = await ensureSharedSignDailyText({
+          db,
+          apiKey,
+          langCode,
+          dateKey,
+          dateLabel,
+          signLabel: fatherSign,
+        });
+      }
+      if (babySign) {
+        babyText = await ensureSharedSignDailyText({
+          db,
+          apiKey,
+          langCode,
+          dateKey,
+          dateLabel,
+          signLabel: babySign,
+        });
+      }
+
+      const { familyCompatibilityText, familyAdviceText } =
+        await ensureSharedCompatTexts({
+          db,
+          apiKey,
+          langCode,
+          dateKey,
+          dateLabel,
+          signLabels,
+        });
 
       const doc = {
         dateKey,
+        languageCode: langCode,
         motherSign: motherSign || '',
         fatherSign: fatherSign || '',
         babySign: babySign || '',
-        motherText: `${parsed.motherText || ''}`.trim(),
-        fatherText: `${parsed.fatherText || ''}`.trim(),
-        babyText: `${parsed.babyText || ''}`.trim(),
-        familyCompatibilityText: `${parsed.familyCompatibilityText || ''}`.trim(),
-        familyAdviceText: `${parsed.familyAdviceText || ''}`.trim(),
+        motherText,
+        fatherText,
+        babyText,
+        familyCompatibilityText,
+        familyAdviceText,
         createdAt: FieldValue.serverTimestamp(),
         generatedByAi: true,
         cached: false,
+        sharedBySign: true,
       };
 
       await dailyRef.set(doc, { merge: true });

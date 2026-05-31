@@ -13,6 +13,10 @@ const {
   getUsageCount,
 } = require('./aiUsageLimiter');
 const { trimAiChatHistory } = require('./aiChatRetention');
+const {
+  classifyAiNannyQuestion,
+  offTopicRefusalMessage,
+} = require('./aiNannyTopicGuard');
 
 const openAiApiKey = defineSecret('OPENAI_API_KEY');
 
@@ -127,6 +131,7 @@ exports.askAiNanny = onCall(
       const uid = request.auth.uid;
       const question = `${request.data?.question || ''}`.trim();
       const agentHint = `${request.data?.agentHint || ''}`.trim();
+      const growthCurveContext = `${request.data?.growthCurveContext || ''}`.trim();
       const babyIdInput = request.data?.babyId;
       const locale = `${request.data?.locale || request.data?.language || 'pt'}`.trim();
 
@@ -139,8 +144,32 @@ exports.askAiNanny = onCall(
       if (agentHint.length > 1500) {
         throw new HttpsError('invalid-argument', 'Instrução interna muito longa.');
       }
+      if (growthCurveContext.length > 2500) {
+        throw new HttpsError('invalid-argument', 'Contexto de crescimento muito longo.');
+      }
 
       const db = getFirestore();
+
+      const topicClass = classifyAiNannyQuestion(question);
+      if (topicClass === 'off_topic') {
+        const refusal = offTopicRefusalMessage(locale);
+        const messageId = await saveChatMessage(db, uid, {
+          babyId: null,
+          question,
+          answer: refusal,
+          status: 'sent',
+          source: 'guard',
+          errorMessage: null,
+        });
+        const count = await getUsageCount(db, uid);
+        return {
+          answer: refusal,
+          messageId,
+          babyId: null,
+          remainingToday: Math.max(0, DAILY_MESSAGE_LIMIT - count),
+          dailyLimit: DAILY_MESSAGE_LIMIT,
+        };
+      }
 
       try {
         await assertCanSend(db, uid);
@@ -156,7 +185,7 @@ exports.askAiNanny = onCall(
       const defaultContextBlock =
         'Nenhum bebê cadastrado ou selecionado. Responda de forma geral e acolhedora; peça mais detalhes se necessário.';
 
-      const [contextBlock, familyHistoryBlock, historyMessages] = await Promise.all([
+      const [contextBlockRaw, familyHistoryBlock, historyMessages] = await Promise.all([
         resolvedBabyId
           ? buildBabyContextBlock(db, uid, resolvedBabyId)
               .then((ctx) => ctx.block)
@@ -172,6 +201,10 @@ exports.askAiNanny = onCall(
         loadRecentChatHistory(db, uid),
       ]);
 
+      const contextBlock = growthCurveContext
+        ? `${contextBlockRaw}\n\n${growthCurveContext}`
+        : contextBlockRaw;
+
       if (familyHistoryBlock) {
         console.log(
           'askAiNanny ai_profiles promptChars=',
@@ -184,6 +217,7 @@ exports.askAiNanny = onCall(
         agentHint,
         contextBlock,
         familyHistoryBlock,
+        conversationInProgress: historyMessages.length > 0,
       });
       let answer = '';
       let status = 'sent';

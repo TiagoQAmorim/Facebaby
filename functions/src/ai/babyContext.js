@@ -546,13 +546,21 @@ async function buildBabyContextBlock(db, uid, babyId) {
 
     weight != null
 
-      ? `Peso atual (kg): ${weight}${latestWeight != null ? ' (última medição no app)' : ' (cadastro)'}`
+      ? latestWeight != null
+
+          ? `Última medição de peso (kg): ${weight}`
+
+          : `Peso no cadastro / nascimento (kg): ${weight} — NÃO trate como peso após ganho recente.`
 
       : null,
 
     height != null
 
-      ? `Altura atual (cm): ${height}${latestHeight != null ? ' (última medição no app)' : ' (cadastro)'}`
+      ? latestHeight != null
+
+          ? `Última medição de altura (cm): ${height}`
+
+          : `Altura no cadastro (cm): ${height} — não confunda com medição recente.`
 
       : null,
 
