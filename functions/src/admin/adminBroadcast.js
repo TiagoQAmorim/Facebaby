@@ -373,6 +373,7 @@ function createAdminBroadcastHandlers({ onCall, db, admin }) {
 
       const payload = {
         text,
+        title,
         imageUrl: imageUrl || null,
         actionUrl,
         actionButtonLabel,
