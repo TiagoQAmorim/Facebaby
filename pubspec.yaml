@@ -1,5 +1,5 @@
 name: facebaby_flutter
-version: 1.0.35+171
+version: 1.0.35+173
 publish_to: 'none'
 description: MVP Flutter do FaceBaby, organizado com Page Objects/Screens, widgets, models, services e controllers.
 
@@ -39,6 +39,7 @@ dependencies:
   flutter_timezone: ^5.0.2
   firebase_core: ^3.15.2
   firebase_auth: ^5.7.0
+  app_links: ^6.4.0
   cloud_firestore: ^5.6.11
   cloud_functions: ^5.6.2
   firebase_storage: ^12.4.10

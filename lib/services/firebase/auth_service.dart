@@ -284,16 +284,21 @@ class AuthService {
   /// Google/Apple: acesso imediato. E-mail/senha: exige [User.emailVerified].
   bool mustVerifyEmail(User? user) => EmailVerificationPolicy.mustVerify(user);
 
-  /// Abre no browser (página Hosting) — sem deep link Android/iOS para evitar
-  /// falha em firebaseapp.com/__/auth/action no telemóvel.
   ActionCodeSettings _webAuthActionSettings(String continueUrl) =>
       ActionCodeSettings(
         url: continueUrl,
         handleCodeInApp: false,
       );
 
-  ActionCodeSettings get _emailActionCodeSettings =>
-      _webAuthActionSettings(emailVerificationActionUrl);
+  /// Confirmação de e-mail: abre o app quando instalado (oobCode no Flutter).
+  ActionCodeSettings get _emailActionCodeSettings => ActionCodeSettings(
+        url: emailVerificationActionUrl,
+        handleCodeInApp: true,
+        androidPackageName: 'com.facebaby.app',
+        androidInstallApp: true,
+        androidMinimumVersion: '21',
+        iOSBundleId: 'com.facebaby.app',
+      );
 
   Future<void> sendEmailVerificationToCurrentUser() async {
     final user = _auth.currentUser;

@@ -10,7 +10,14 @@ import '../../widgets/auth_screen_background.dart';
 import '../../widgets/language_picker.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  const LoginPage({
+    super.key,
+    this.initialEmail,
+    this.bannerMessage,
+  });
+
+  final String? initialEmail;
+  final String? bannerMessage;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -18,11 +25,17 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  String _email = '';
+  late String _email;
   String _password = '';
   bool _busy = false;
   String? _error;
   bool _didPrecacheBackgrounds = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _email = widget.initialEmail?.trim() ?? '';
+  }
 
   @override
   void didChangeDependencies() {
@@ -303,8 +316,25 @@ class _LoginPageState extends State<LoginPage> {
                                                     fontWeight:
                                                         FontWeight.w900),
                                           ),
+                                          if (widget.bannerMessage
+                                                  ?.trim()
+                                                  .isNotEmpty ==
+                                              true) ...[
+                                            const SizedBox(height: 12),
+                                            Text(
+                                              widget.bannerMessage!.trim(),
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                height: 1.4,
+                                                fontWeight: FontWeight.w600,
+                                                color: const Color(0xFF2E7D4E),
+                                              ),
+                                            ),
+                                          ],
                                           const SizedBox(height: 8),
                                           TextFormField(
+                                            initialValue: _email,
                                             decoration:
                                                 fieldDeco(s.authEmailLabel),
                                             keyboardType:

@@ -9,6 +9,7 @@ import '../widgets/loading_scope.dart';
 import '../widgets/loading_navigator_observer.dart';
 import '../pages/auth/auth_gate.dart';
 import '../providers/premium_provider.dart';
+import '../widgets/email_verification_link_host.dart';
 
 class FaceBabyApp extends StatelessWidget {
   const FaceBabyApp({super.key});
@@ -75,7 +76,9 @@ class FaceBabyApp extends StatelessWidget {
               return supported.first;
             },
             home: PremiumScope(
-              child: const AuthGate(child: LoadingScope(child: AppGate())),
+              child: const EmailVerificationLinkHost(
+                child: AuthGate(child: LoadingScope(child: AppGate())),
+              ),
             ),
           );
         },
