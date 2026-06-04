@@ -12,6 +12,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../utils/login_platform.dart';
 import '../premium/premium_service.dart';
 import 'auth_registration_exception.dart';
+import 'email_verification_policy.dart';
 import 'google_sign_in_helpers.dart';
 
 String _sha256Hex(String input) {
@@ -144,7 +145,17 @@ class AuthService {
       await cred.user?.updateDisplayName(name);
       await cred.user?.reload();
     }
-    await PremiumService.instance.markNewAccountFreeInCloud();
+    try {
+      await cred.user?.sendEmailVerification(_emailActionCodeSettings);
+      _lastVerificationEmailSent = DateTime.now();
+    } catch (e, st) {
+      developer.log(
+        'sendEmailVerification after register failed',
+        name: 'AuthService',
+        error: e,
+        stackTrace: st,
+      );
+    }
     return cred;
   }
 
@@ -250,24 +261,86 @@ class AuthService {
 
   /// Página de redefinição com logo (Firebase Hosting). Deploy: `firebase deploy --only hosting`
   static const passwordResetActionUrl =
-      'https://facebaby-afc41.web.app/auth/reset.html';
+      'https://facebaby-afc41.firebaseapp.com/auth/reset.html';
 
   /// Instruções de exclusão de conta (App Store / Google Play). Deploy: `firebase deploy --only hosting`
   static const accountDeletionInfoUrl =
-      'https://facebaby-afc41.web.app/auth/delete-account.html';
+      'https://facebaby-afc41.firebaseapp.com/auth/delete-account.html';
+
+  /// Página de confirmação de e-mail (Firebase Hosting).
+  static const emailVerificationActionUrl =
+      'https://facebaby-afc41.firebaseapp.com/auth/verify-email.html';
+
+  DateTime? _lastVerificationEmailSent;
+
+  Duration? get verificationResendCooldownRemaining {
+    final sent = _lastVerificationEmailSent;
+    if (sent == null) return null;
+    final left = EmailVerificationPolicy.resendCooldown - DateTime.now().difference(sent);
+    if (left <= Duration.zero) return Duration.zero;
+    return left;
+  }
+
+  /// Google/Apple: acesso imediato. E-mail/senha: exige [User.emailVerified].
+  bool mustVerifyEmail(User? user) => EmailVerificationPolicy.mustVerify(user);
+
+  /// Abre no browser (página Hosting) — sem deep link Android/iOS para evitar
+  /// falha em firebaseapp.com/__/auth/action no telemóvel.
+  ActionCodeSettings _webAuthActionSettings(String continueUrl) =>
+      ActionCodeSettings(
+        url: continueUrl,
+        handleCodeInApp: false,
+      );
+
+  ActionCodeSettings get _emailActionCodeSettings =>
+      _webAuthActionSettings(emailVerificationActionUrl);
+
+  Future<void> sendEmailVerificationToCurrentUser() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'user-not-found',
+        message: 'No signed-in user',
+      );
+    }
+    final remaining = verificationResendCooldownRemaining;
+    if (remaining != null && remaining > Duration.zero) {
+      throw EmailVerificationCooldownException(remaining);
+    }
+    try {
+      await user.sendEmailVerification(_emailActionCodeSettings);
+      _lastVerificationEmailSent = DateTime.now();
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'too-many-requests') {
+        _lastVerificationEmailSent = DateTime.now();
+      }
+      rethrow;
+    }
+  }
+
+  Future<bool> reloadAndCheckEmailVerified() async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    await user.reload();
+    final refreshed = _auth.currentUser;
+    if (refreshed == null) return false;
+    if (refreshed.emailVerified) {
+      await refreshed.getIdToken(true);
+    }
+    return refreshed.emailVerified;
+  }
+
+  /// Perfil cloud inicial após confirmação (adiado desde o registo).
+  Future<void> onEmailVerifiedBootstrap() async {
+    await PremiumService.instance.markNewAccountFreeInCloud();
+  }
 
   Future<void> sendPasswordResetEmail(String email) async {
     final e = normalizeEmail(email);
     if (e.isEmpty) throw StateError('Email inválido');
     await _auth.sendPasswordResetEmail(
       email: e,
-      actionCodeSettings: ActionCodeSettings(
-        url: passwordResetActionUrl,
-        handleCodeInApp: false,
-        androidPackageName: 'com.facebaby.app',
-        androidInstallApp: true,
-        iOSBundleId: 'com.example.facebabyFlutter',
-      ),
+      actionCodeSettings: _webAuthActionSettings(passwordResetActionUrl),
     );
   }
 

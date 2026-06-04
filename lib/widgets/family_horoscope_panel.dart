@@ -112,17 +112,19 @@ class _FamilyHoroscopePanelState extends State<FamilyHoroscopePanel> {
   Future<void> _bootstrapToday() async {
     if (!FeatureAccess.canUseAiFamilyHoroscope) return;
     if (_loading) return;
+    final s = S.of(context);
     setState(() {
       _loading = true;
       _error = null;
       _generationAttempted = true;
     });
     try {
+      final lang = FamilyHoroscopeService.languageCodeFromApp(s);
       final cached = await _service.loadTodayCached();
       if (cached != null && mounted) {
         setState(() => _horoscope = cached);
       }
-      await FamilyHoroscopeBootstrap.ensureToday();
+      await FamilyHoroscopeBootstrap.ensureToday(languageCode: lang);
       if (mounted) {
         final again = await _service.loadTodayCached();
         if (again != null) {

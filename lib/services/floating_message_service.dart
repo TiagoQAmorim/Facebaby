@@ -1,10 +1,14 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../controllers/current_baby_controller.dart';
 import '../models/floating_message_model.dart';
 import '../repositories/floating_message_repository.dart';
+import '../services/firebase/firestore_user_repository.dart';
+import '../utils/floating_message_eligibility.dart';
 import 'admin_broadcast_inbox_service.dart';
 import 'premium/premium_service.dart';
 
@@ -50,6 +54,8 @@ class FloatingMessageService {
   FloatingMessage? _cached;
   List<FloatingMessage> _cachedList = const [];
   DateTime? _cacheAt;
+  DateTime? _cachedUserSince;
+  String? _cachedUserSinceUid;
   static const _cacheTtl = Duration(seconds: 45);
 
   StreamSubscription<List<FloatingMessage>>? _messagesSub;
@@ -86,7 +92,7 @@ class FloatingMessageService {
 
   void _ensureWatching() {
     if (_messagesSub != null) return;
-    _messagesSub = _repo.watchActiveMessages(limit: 20).listen((_) {
+    _messagesSub = _repo.watchActiveMessages(limit: 40).listen((_) {
       unawaited(_refresh(force: true));
     });
     _inboxSub = AdminBroadcastInboxService.instance.watchActive().listen((_) {
@@ -131,8 +137,9 @@ class FloatingMessageService {
     final now = DateTime.now();
     final ctx = await FloatingMessageUserContext.load();
     final resetBefore = await _repo.fetchResetBefore();
+    final userSince = await _resolveUserAccountSince();
 
-    final global = await _repo.fetchActiveMessages(limit: 20);
+    final global = await _repo.fetchActiveMessages(limit: 40);
     List<FloatingMessage> legacy = const [];
     try {
       legacy = await _repo.fetchLegacyInbox();
@@ -158,9 +165,11 @@ class FloatingMessageService {
     final active = <FloatingMessage>[];
     for (final msg in candidates) {
       if (!msg.active && global.any((g) => g.id == msg.id)) continue;
-      if (resetBefore != null &&
-          msg.createdAt != null &&
-          msg.createdAt!.isBefore(resetBefore)) {
+      if (!FloatingMessageEligibility.isVisibleToUser(
+        message: msg,
+        userAccountSince: userSince,
+        resetBefore: resetBefore,
+      )) {
         continue;
       }
       if (!_isInSchedule(msg, now)) continue;
@@ -191,6 +200,40 @@ class FloatingMessageService {
   Future<FloatingMessage?> pickBestMessage({bool forceRefresh = false}) async {
     final list = await listActiveMessages(forceRefresh: forceRefresh);
     return list.isEmpty ? null : list.first;
+  }
+
+  /// Só mensagens criadas no ou após o registo (evita fila legada para contas novas).
+  Future<DateTime?> _resolveUserAccountSince() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return null;
+    if (_cachedUserSinceUid == user.uid && _cachedUserSince != null) {
+      return _cachedUserSince;
+    }
+
+    DateTime? since = user.metadata.creationTime;
+    try {
+      final profile =
+          await FirestoreUserRepository.instance.getUserProfile(user.uid);
+      final raw = profile?['createdAt'];
+      if (raw is Timestamp) {
+        final profileAt = raw.toDate();
+        if (since == null || profileAt.isAfter(since)) {
+          since = profileAt;
+        }
+      } else if (raw is String) {
+        final profileAt = DateTime.tryParse(raw);
+        if (profileAt != null &&
+            (since == null || profileAt.isAfter(since))) {
+          since = profileAt;
+        }
+      }
+    } catch (e) {
+      debugPrint('FloatingMessageService user createdAt: $e');
+    }
+
+    _cachedUserSinceUid = user.uid;
+    _cachedUserSince = since;
+    return since;
   }
 
   bool _isInSchedule(FloatingMessage msg, DateTime now) {
@@ -232,9 +275,7 @@ class FloatingMessageService {
   Future<void> dismiss(FloatingMessage msg) async {
     _sessionDismissed.add(msg.id);
     await _repo.markDismissed(msg.id);
-    if (msg.type == FloatingMessageType.adminAd &&
-        msg.imageUrl != null &&
-        msg.id.isNotEmpty) {
+    if (msg.type.isAdmin && msg.id.isNotEmpty) {
       await _repo.dismissLegacyInbox(msg.id);
     }
     _cacheAt = null;
@@ -248,9 +289,7 @@ class FloatingMessageService {
     for (final msg in list) {
       _sessionDismissed.add(msg.id);
       await _repo.markDismissed(msg.id);
-      if (msg.type == FloatingMessageType.adminAd &&
-          msg.imageUrl != null &&
-          msg.id.isNotEmpty) {
+      if (msg.type.isAdmin && msg.id.isNotEmpty) {
         await _repo.dismissLegacyInbox(msg.id);
       }
     }

@@ -10,6 +10,7 @@ import '../../controllers/current_baby_controller.dart';
 import '../../utils/growth_baseline.dart';
 import '../../utils/ai_nanny_locale_codes.dart';
 import 'ai_nanny_local_message_parser.dart';
+import 'ai_nanny_parse_merge.dart';
 import 'ai_nanny_parse_result_normalizer.dart';
 import 'ai_nanny_processing_phase.dart';
 import 'ai_nanny_service.dart';
@@ -80,8 +81,12 @@ class ParseAiNannyMessageService {
         growth: growth,
       );
       final cloud = await cloudFuture.timeout(_cloudTimeout);
-      if (cloud.hasRecords) {
-        return cloud;
+      final normalizedCloud = cloud.hasRecords
+          ? cloud
+          : const AiNannyParseResult(classification: 'chat_only');
+      final merged = AiNannyParseMerge.merge(normalizedCloud, local, text);
+      if (merged.hasRecords) {
+        return merged;
       }
     } catch (e, st) {
       debugPrint('ParseAiNannyMessageService: cloud fallback local: $e\n$st');

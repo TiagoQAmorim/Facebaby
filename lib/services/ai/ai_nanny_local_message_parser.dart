@@ -298,7 +298,10 @@ abstract final class AiNannyLocalMessageParser {
 
     final missing = <String>[];
     if (name == null || name.isEmpty) missing.add('vaccineName');
-    if (status == 'scheduled' && dateIso == null && nextDueIso == null) {
+    if (status == 'scheduled' &&
+        dateIso == null &&
+        nextDueIso == null &&
+        nextDays == null) {
       missing.add('date');
     }
 
@@ -358,9 +361,9 @@ abstract final class AiNannyLocalMessageParser {
     final low = text.toLowerCase();
     if (!AiNannyIntentLexicon.hasSleepCue(low)) return null;
 
-    // "acabou de acordar e mamou" = contexto, não fim de sono sem intenção clara.
+    // "acordou e mamou" = contexto duplo; "acordou com fome" ainda é fim de sono.
     if (AiNannyIntentLexicon.textImpliesWake(low) &&
-        (AiNannyIntentLexicon.hasFeedingCue(low) ||
+        (AiNannyIntentLexicon.hasExplicitFeedingIntent(low) ||
             AiNannyIntentLexicon.hasTemperatureCue(low) ||
             AiNannyIntentLexicon.hasDiaperCue(low))) {
       return null;

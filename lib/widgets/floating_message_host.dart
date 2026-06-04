@@ -29,6 +29,8 @@ class _FloatingMessageHostState extends State<FloatingMessageHost> {
   bool _expanded = false;
   bool _dragging = false;
   Offset _position = const Offset(280, 420);
+  Offset? _anchoredCollapsedTopLeft;
+  Size? _lastViewportSize;
   bool _positionLoaded = false;
   bool _newAlert = false;
   bool _seenMarked = false;
@@ -43,6 +45,7 @@ class _FloatingMessageHostState extends State<FloatingMessageHost> {
   @override
   void initState() {
     super.initState();
+    _anchoredCollapsedTopLeft = _position;
     // Lista ativa é a fonte de verdade — evita sumir ao expandir (watchBestMessage
     // podia emitir null transitório e limpar _message).
     _listSub =
@@ -87,6 +90,11 @@ class _FloatingMessageHostState extends State<FloatingMessageHost> {
         _expanded = false;
         _dragging = false;
         _newAlert = true;
+        _position = AiFloatingMessageBubble.snapToCollapsedAnchor(
+          anchor: _anchoredCollapsedTopLeft,
+          fallback: _position,
+          viewport: _lastViewportSize,
+        );
       } else if (prevId == null && !_expanded) {
         _newAlert = true;
       }
@@ -135,8 +143,48 @@ class _FloatingMessageHostState extends State<FloatingMessageHost> {
     }
     if (!mounted) return;
     _position = pos;
+    _anchoredCollapsedTopLeft = pos;
     _positionLoaded = true;
     setState(() {});
+  }
+
+  void _syncAnchoredCollapsedTopLeft(
+    Size area, {
+    double bottomReserve = 24,
+  }) {
+    final topLeft = _expanded
+        ? (_anchoredCollapsedTopLeft ?? _position)
+        : AiFloatingMessageBubble.snapToCollapsedAnchor(
+            anchor: _anchoredCollapsedTopLeft,
+            fallback: _position,
+            viewport: area,
+            bottomReserve: bottomReserve,
+          );
+    _anchoredCollapsedTopLeft = AiFloatingMessageBubble.clampCollapsedTopLeft(
+      topLeft: topLeft,
+      viewport: area,
+      bottomReserve: bottomReserve,
+    );
+  }
+
+  void _snapToCollapsedAnchor({double bottomReserve = 24}) {
+    _position = AiFloatingMessageBubble.snapToCollapsedAnchor(
+      anchor: _anchoredCollapsedTopLeft,
+      fallback: _position,
+      viewport: _lastViewportSize,
+      bottomReserve: bottomReserve,
+    );
+  }
+
+  /// Expandido usa `_position`; minimizado usa sempre o anchor guardado.
+  Offset _bubblePosition(Size area, {required double bottomReserve}) {
+    if (_expanded) return _position;
+    return AiFloatingMessageBubble.snapToCollapsedAnchor(
+      anchor: _anchoredCollapsedTopLeft,
+      fallback: _position,
+      viewport: area,
+      bottomReserve: bottomReserve,
+    );
   }
 
   Future<void> _persistPosition() async {
@@ -150,14 +198,17 @@ class _FloatingMessageHostState extends State<FloatingMessageHost> {
     final msg = _currentMessage;
     if (msg == null) return;
     _markSeenOnce(msg);
+    if (mounted) {
+      setState(() {
+        _snapToCollapsedAnchor(
+          bottomReserve: _dragging ? 0 : 24,
+        );
+        _expanded = false;
+        _dragging = false;
+        _newAlert = false;
+      });
+    }
     await FloatingMessageService.instance.dismiss(msg);
-    if (!mounted) return;
-    setState(() {
-      _expanded = false;
-      _dragging = false;
-      _newAlert = false;
-      // Lista atualizada pelo stream — não forçar null local (evita flash).
-    });
   }
 
   Future<void> _dismissAllActive() async {
@@ -234,6 +285,7 @@ class _FloatingMessageHostState extends State<FloatingMessageHost> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final area = Size(constraints.maxWidth, constraints.maxHeight);
+        _lastViewportSize = area;
         final safe = MediaQuery.paddingOf(context);
         if (!_positionLoaded) unawaited(_loadPosition(area, safe));
 
@@ -254,7 +306,7 @@ class _FloatingMessageHostState extends State<FloatingMessageHost> {
           bannerLayout: isBanner,
           showCloseButton: allowsClose,
           allowDragDismiss: allowsDrag,
-          position: _position,
+          position: _bubblePosition(area, bottomReserve: bottomDragReserve),
           expanded: _expanded,
           messageAlert: _newAlert && !_expanded,
           showDismissZone: allowsDrag && _dragging,
@@ -271,6 +323,7 @@ class _FloatingMessageHostState extends State<FloatingMessageHost> {
               ? null
               : () {
                   setState(() {
+                    _snapToCollapsedAnchor();
                     _index = (_index - 1) < 0 ? _messages.length - 1 : _index - 1;
                     _message = _messages[_index];
                     _newAlert = false;
@@ -281,6 +334,7 @@ class _FloatingMessageHostState extends State<FloatingMessageHost> {
               ? null
               : () {
                   setState(() {
+                    _snapToCollapsedAnchor();
                     _index = (_index + 1) % _messages.length;
                     _message = _messages[_index];
                     _newAlert = false;
@@ -289,14 +343,23 @@ class _FloatingMessageHostState extends State<FloatingMessageHost> {
                 },
           onToggleExpanded: () {
             final willExpand = !_expanded;
+            final bottomReserve =
+                allowsDrag && _dragging ? 0.0 : bottomDragReserve;
+            if (willExpand) {
+              _syncAnchoredCollapsedTopLeft(
+                area,
+                bottomReserve: bottomReserve,
+              );
+            }
             setState(() {
               _expanded = willExpand;
               if (willExpand) {
                 _newAlert = false;
                 _dragging = false;
+              } else {
+                _snapToCollapsedAnchor(bottomReserve: bottomDragReserve);
               }
             });
-            // Marca visto após o frame de expansão — evita refresh que some o balão.
             if (willExpand) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) _markSeenOnce(msg);
@@ -314,6 +377,7 @@ class _FloatingMessageHostState extends State<FloatingMessageHost> {
                   viewport: area,
                   bottomReserve: bottomDragReserve,
                 );
+                _anchoredCollapsedTopLeft = _position;
               } else {
                 final est = AiFloatingMessageBubble.estimatedSize(
                   expanded: true,
@@ -356,6 +420,7 @@ class _FloatingMessageHostState extends State<FloatingMessageHost> {
           onDragEnded: () {
             setState(() => _dragging = false);
             if (!_expanded) {
+              _syncAnchoredCollapsedTopLeft(area, bottomReserve: bottomDragReserve);
               unawaited(_persistPosition());
             }
           },

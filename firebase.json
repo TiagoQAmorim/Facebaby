@@ -4,6 +4,31 @@
   },
   "hosting": [
     {
+      "target": "app",
+      "public": "public",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "headers": [
+        {
+          "source": "/auth/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache, no-store, must-revalidate"
+            }
+          ]
+        },
+        {
+          "source": "/brand/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public,max-age=604800"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "target": "admin",
       "public": "build/admin_web",
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
@@ -72,7 +97,8 @@
     }
   ],
   "firestore": {
-    "rules": "firestore.rules"
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
   },
   "storage": {
     "rules": "storage.rules"

@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../controllers/current_baby_controller.dart';
 import '../../i18n/app_i18n.dart';
+import '../../data/growth_curves.dart';
 import '../../models/pediatric_report_snapshot.dart';
 import '../../services/pediatric_report_service.dart';
 import '../../services/premium/feature_access.dart';
@@ -16,9 +17,12 @@ import '../../services/weekly_report_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/measurement_format.dart';
 import '../../utils/memory_share_transport.dart';
+import '../../utils/pediatric_growth_chart_pdf.dart';
 import '../../utils/pediatric_report_pdf.dart';
 import '../../utils/pediatric_report_symptom_lines.dart';
+import '../../utils/pediatric_report_text.dart';
 import '../../utils/portal_layout.dart';
+import '../../widgets/growth_chart_widget.dart';
 import '../premium/premium_paywall_screen.dart';
 import 'report_page_shell.dart';
 
@@ -168,18 +172,94 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
 
   String _weightGainLabel(PediatricReportSnapshot snap) {
     final g = snap.weightDeltaGrams;
-    if (g == null) return '—';
+    if (g == null) return PediatricReportText.na;
     if (g >= 0) return '+$g g';
     return '$g g';
   }
 
   String _heightGainLabel(PediatricReportSnapshot snap) {
     final cm = snap.heightDeltaCm;
-    if (cm == null) return '—';
+    if (cm == null) return PediatricReportText.na;
     final text = MeasurementFormat.length(cm.abs(), decimalsCm: 1);
     if (cm > 0) return '+$text';
     if (cm < 0) return '-$text';
     return text;
+  }
+
+  PediatricGrowthChartPdfLabels _growthChartPdfLabels(S s) {
+    return PediatricGrowthChartPdfLabels(
+      sectionTitle: s.reportPediatricSectionGrowthCurve,
+      heightTitle: s.labelHeight,
+      weightTitle: s.labelWeight,
+      axisMonths: s.growthCurveAxisMonths,
+      legendMin: s.growthCurveLegendMin,
+      legendAvg: s.growthCurveLegendAvg,
+      legendMax: s.growthCurveLegendMax,
+      legendBaby: s.growthCurveLegendBaby,
+      disclaimer: s.growthCurveDisclaimer,
+      emptyHeight: s.growthEmpty(s.labelHeight),
+      emptyWeight: s.growthEmpty(s.labelWeight),
+    );
+  }
+
+  Widget _growthCurveCard(S s, PediatricReportSnapshot snap) {
+    if (!snap.hasGrowthChartData &&
+        snap.growthInsightLines.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final sexUnknown =
+        (_babyCtrl.currentBabyRow?['sex'] as String?)?.trim().isEmpty ?? true;
+    return _fullWidthCard(
+        title: s.reportPediatricSectionGrowthCurve,
+        children: [
+          if (snap.heightMeasurements.isNotEmpty) ...[
+            GrowthChartWidget(
+              sex: snap.growthCurveSex,
+              measurements: snap.heightMeasurements,
+              strings: s,
+              metric: GrowthChartMetric.height,
+              showSexHint: sexUnknown,
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (snap.weightMeasurements.isNotEmpty)
+            GrowthChartWidget(
+              sex: snap.growthCurveSex,
+              measurements: snap.weightMeasurements,
+              strings: s,
+              metric: GrowthChartMetric.weight,
+              showSexHint: sexUnknown && snap.heightMeasurements.isEmpty,
+            ),
+          if (snap.growthInsightLines.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              s.reportPediatricGrowthInsights,
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: portalSp(context, 13),
+                color: _clinicalPurple,
+              ),
+            ),
+            const SizedBox(height: 6),
+            ...snap.growthInsightLines.map(
+              (line) => SizedBox(
+                width: double.infinity,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    '${PediatricReportText.bulletPrefix}$line',
+                    style: TextStyle(
+                      fontSize: portalSp(context, 13),
+                      height: 1.35,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+    );
   }
 
   PediatricReportPdfStrings _pdfStrings(S s) {
@@ -220,6 +300,7 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
       footerDisclaimer: s.reportPediatricPdfFooter,
       noneRegistered: s.reportPediatricNone,
       sectionGrowthInsights: s.reportPediatricGrowthInsights,
+      sectionGrowthCurve: s.reportPediatricSectionGrowthCurve,
     );
   }
 
@@ -232,9 +313,13 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
     final name = (babyRow?['name'] as String?)?.trim();
     final babyName =
         (name == null || name.isEmpty) ? s.placeholderBabyName : name;
-    final birthFmt = birth == null ? '—' : DateFormat.yMd(loc).format(birth);
+    final birthFmt = birth == null
+        ? s.reportPediatricNa
+        : DateFormat.yMd(loc).format(birth);
     final periodEnd = snap.periodEndInclusive;
-    final ageLine = birth == null ? '—' : s.babyAgeLabel(birth, periodEnd);
+    final ageLine = birth == null
+        ? s.reportPediatricNa
+        : s.babyAgeLabel(birth, periodEnd);
     final periodLine =
         _periodRangeLabel(context, snap.periodStart, snap.periodEndInclusive);
 
@@ -258,6 +343,9 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
       sleepPatternText: _sleepPattern(s, snap),
       symptomDetailBlocks: symptomBlocks,
       str: _pdfStrings(s),
+      growthChartLabels: snap.hasGrowthChartData
+          ? _growthChartPdfLabels(s)
+          : null,
     );
   }
 
@@ -330,6 +418,16 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
     await _sharePdf(s);
   }
 
+  Widget _fullWidthCard({
+    required String title,
+    required List<Widget> children,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: _clinicalCard(title: title, children: children),
+    );
+  }
+
   Widget _clinicalCard(
       {required String title, required List<Widget> children}) {
     return Container(
@@ -356,7 +454,9 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
   }
 
   Widget _row(String label, String value, S s) {
-    return Padding(
+    return SizedBox(
+      width: double.infinity,
+      child: Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -382,6 +482,7 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -490,10 +591,13 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
     final babyName =
         (name == null || name.isEmpty) ? s.placeholderBabyName : name;
     final loc = Localizations.localeOf(context).toString();
-    final birthFmt = birth == null ? '—' : DateFormat.yMd(loc).format(birth);
+    final birthFmt =
+        birth == null ? s.reportPediatricNa : DateFormat.yMd(loc).format(birth);
 
     final ageRefEnd = snap == null ? _rangeEnd : snap.periodEndInclusive;
-    final ageLine = birth == null ? '—' : s.babyAgeLabel(birth, ageRefEnd);
+    final ageLine = birth == null
+        ? s.reportPediatricNa
+        : s.babyAgeLabel(birth, ageRefEnd);
 
     final reportBg = reportScaffoldBackground();
 
@@ -545,7 +649,7 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
                                 color: AppTheme.textSecondary,
                                 fontWeight: FontWeight.w600)),
                         const SizedBox(height: 18),
-                        _clinicalCard(
+                        _fullWidthCard(
                           title: s.reportPediatricSectionGeneral,
                           children: [
                             _row(s.reportPediatricLabelName, babyName, s),
@@ -558,7 +662,7 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        _clinicalCard(
+                        _fullWidthCard(
                           title: s.reportPediatricSectionSummary,
                           children: [
                             _row(
@@ -577,31 +681,6 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
                                 MeasurementFormat.length(snap.heightEndCm), s),
                             _row(s.reportPediatricHeightGain,
                                 _heightGainLabel(snap), s),
-                            if (snap.growthInsightLines.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                s.reportPediatricGrowthInsights,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: portalSp(context, 13),
-                                  color: _clinicalPurple,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              ...snap.growthInsightLines.map(
-                                (line) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 6),
-                                  child: Text(
-                                    '• $line',
-                                    style: TextStyle(
-                                      fontSize: portalSp(context, 13),
-                                      height: 1.35,
-                                      color: AppTheme.textPrimary,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
                             _row(s.reportPediatricAvgFeeds,
                                 snap.avgFeedingsPerDay.toStringAsFixed(1), s),
                             _row(
@@ -620,8 +699,9 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
                             ),
                           ],
                         ),
+                        _growthCurveCard(s, snap),
                         const SizedBox(height: 12),
-                        _clinicalCard(
+                        _fullWidthCard(
                           title: s.reportPediatricSectionSleep,
                           children: [
                             _row(
@@ -632,7 +712,7 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
                             _row(
                               s.reportPediatricSleepAwakenings,
                               snap.sleepAwakeningsAvg <= 0
-                                  ? '—'
+                                  ? s.reportPediatricNa
                                   : snap.sleepAwakeningsAvg.toStringAsFixed(1),
                               s,
                             ),
@@ -647,28 +727,28 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        _clinicalCard(
+                        _fullWidthCard(
                           title: s.reportPediatricSectionFeeding,
                           children: [
                             _row(
                               '${s.reportPediatricFeedingBreast} (${s.reportPediatricFeedingSessions})',
-                              '${snap.breastfeedingSessions} · ${s.reportPediatricFeedingAvgDur}: ${snap.avgBreastMinutes == null ? '—' : '${snap.avgBreastMinutes!.round()} min'}',
+                              '${snap.breastfeedingSessions}${PediatricReportText.midDot}${s.reportPediatricFeedingAvgDur}: ${snap.avgBreastMinutes == null ? s.reportPediatricNa : '${snap.avgBreastMinutes!.round()} min'}',
                               s,
                             ),
                             _row(
                               '${s.reportPediatricFeedingFormula} (${s.reportPediatricFeedingSessions})',
-                              '${snap.formulaSessions} · ${s.reportPediatricFeedingAvgDur}: ${snap.avgFormulaMinutes == null ? '—' : '${snap.avgFormulaMinutes!.round()} min'}',
+                              '${snap.formulaSessions}${PediatricReportText.midDot}${s.reportPediatricFeedingAvgDur}: ${snap.avgFormulaMinutes == null ? s.reportPediatricNa : '${snap.avgFormulaMinutes!.round()} min'}',
                               s,
                             ),
                             _row(
                               '${s.reportPediatricFeedingSolid} (${s.reportPediatricFeedingSessions})',
-                              '${snap.solidFoodSessions} · ${s.reportPediatricFeedingAvgDur}: ${snap.avgSolidMinutes == null ? '—' : '${snap.avgSolidMinutes!.round()} min'}',
+                              '${snap.solidFoodSessions}${PediatricReportText.midDot}${s.reportPediatricFeedingAvgDur}: ${snap.avgSolidMinutes == null ? s.reportPediatricNa : '${snap.avgSolidMinutes!.round()} min'}',
                               s,
                             ),
                           ],
                         ),
                         const SizedBox(height: 12),
-                        _clinicalCard(
+                        _fullWidthCard(
                           title: s.reportPediatricSectionSymptoms,
                           children: [
                             if (!PediatricReportSymptomLines.hasAnyOccurrence(
@@ -685,10 +765,11 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
                               ...PediatricReportSymptomLines.buildBlocks(
                                       s, snap.symptomOccurrencesByKind, loc)
                                   .map(
-                                (block) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 14),
-                                  child: Align(
-                                    alignment: Alignment.centerLeft,
+                                (block) => SizedBox(
+                                  width: double.infinity,
+                                  child: Padding(
+                                    padding:
+                                        const EdgeInsets.only(bottom: 14),
                                     child: Text(
                                       block,
                                       style: TextStyle(
@@ -704,7 +785,7 @@ class _PediatricReportPageState extends State<PediatricReportPage> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        _clinicalCard(
+                        _fullWidthCard(
                           title: s.reportPediatricSectionObservations,
                           children: [
                             TextField(

@@ -11,6 +11,8 @@ import '../models/vaccine_record.dart';
 import 'app_database.dart';
 import 'diaper_events.dart';
 import 'feeding_events.dart';
+import 'growth_curve_alert_ack.dart';
+import 'growth_curve_alert_service.dart';
 import 'growth_events.dart';
 import 'home_critical_notifications.dart';
 import 'home_prefs.dart';
@@ -172,6 +174,34 @@ class ReminderMonitor {
         }
       } else {
         _lastWeightLossNotifiedRecordId = null;
+      }
+
+      final babyRow = await AppDatabase.instance.getBabyById(babyId);
+      final birthStr = babyRow?['birth_date'] as String?;
+      final birth = DateTime.tryParse(birthStr ?? '');
+      final sex = babyRow?['sex'] as String?;
+      if (birth != null) {
+        final outOfBand = await const GrowthCurveAlertService().outOfBandForBaby(
+          babyId: babyId,
+          babySex: sex,
+          birthDate: birth,
+        );
+        final pending = await GrowthCurveAlertAck.filterPending(
+          babyId: babyId,
+          items: outOfBand,
+        );
+        for (final item in pending) {
+          await LocalNotificationsService.instance.showGrowthAlert(
+            id: GrowthCurveAlertService.notifyId(item),
+            title: GrowthCurveAlertService.notifyTitle(item, strings),
+            body: GrowthCurveAlertService.notifyBody(item, strings),
+            payload: NotificationNav.payloadGrowth,
+          );
+          await GrowthCurveAlertAck.markNotified(
+            babyId: babyId,
+            signature: item.signature,
+          );
+        }
       }
 
       // Mais de 30 dias sem qualquer medição de crescimento (peso, altura ou cabeça).

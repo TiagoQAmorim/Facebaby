@@ -1,3 +1,4 @@
+import '../models/ai/ai_nanny_parsed_message.dart';
 import '../services/ai/ai_nanny_intent_lexicon.dart';
 
 /// Normalização de números, horas e unidades (independente do idioma da frase).
@@ -243,6 +244,42 @@ abstract final class AiNannyParseNormalize {
     return int.tryParse(m.group(1)!);
   }
 
+  /// Cloud às vezes manda `{ value: 200, unit: "g" }` com `mode: total` — vira delta.
+  static void normalizeGrowthWeightFields(
+    Map<String, dynamic> fields,
+    String sourceText,
+  ) {
+    final wVal = fields['value'];
+    if (wVal == null) return;
+
+    final unit = '${fields['unit'] ?? ''}'.toLowerCase();
+    final mode = '${fields['mode'] ?? 'total'}';
+    if (unit == 'g' || mode == 'delta') {
+      fields['mode'] = 'delta';
+      fields['unit'] = 'g';
+      return;
+    }
+
+    final low = sourceText.toLowerCase();
+    final hasGainCue = AiNannyIntentLexicon.containsAny(
+      low,
+      AiNannyIntentLexicon.weightGainCues,
+    );
+    if (!hasGainCue || mode != 'total') return;
+
+    final n = (wVal is num) ? wVal.toDouble() : double.tryParse('$wVal');
+    if (n == null) return;
+
+    final mentionsGrams = RegExp(
+      r'\d+\s*(?:g|gramas?|grams?)\b',
+      caseSensitive: false,
+    ).hasMatch(low);
+    if (mentionsGrams && n >= 20 && n <= 5000) {
+      fields['mode'] = 'delta';
+      fields['unit'] = 'g';
+    }
+  }
+
   static double? parseHeightCmTotal(String text) {
     final low = text.toLowerCase();
     final m = RegExp(
@@ -262,7 +299,7 @@ abstract final class AiNannyParseNormalize {
       return null;
     }
     final m = RegExp(
-      r'(\d+(?:[,.]\d+)?)\s*(?:cm|centimeter|centimetre|centimetri)',
+      r'(\d+(?:[,.]\d+)?)\s*(?:cm|centimetros?|centímetros?|centimeter|centimetre|centimetri)',
       caseSensitive: false,
     ).firstMatch(low);
     if (m == null) return null;
@@ -417,6 +454,21 @@ abstract final class AiNannyParseNormalize {
     return raw[0].toUpperCase() + raw.substring(1);
   }
 
+  /// Converte inteiros vindos do JSON cloud (`"25"`, `25.0`, etc.).
+  static int? coercePositiveInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value > 0 ? value : null;
+    if (value is num) {
+      final n = value.toInt();
+      return n > 0 ? n : null;
+    }
+    if (value is String) {
+      final n = int.tryParse(value.trim());
+      return n != null && n > 0 ? n : null;
+    }
+    return null;
+  }
+
   /// Dias até a próxima dose: "daqui a 60 dias", "próxima em 30 dias".
   static int? parseVaccineNextDueInDays(String text) {
     final low = text.toLowerCase();
@@ -433,6 +485,10 @@ abstract final class AiNannyParseNormalize {
       ),
       RegExp(
         r'(?:só\s+)?(?:daqui\s+a|daqui\s+à|em)\s*(\d{1,3})\s*dias',
+        caseSensitive: false,
+      ),
+      RegExp(
+        r'(?:para\s+)?daqui\s+(?:a\s+|à\s+)?(\d{1,3})\s*dias',
         caseSensitive: false,
       ),
       RegExp(
@@ -454,16 +510,25 @@ abstract final class AiNannyParseNormalize {
   static String? parseVaccineNextDueDateIso(String text, {DateTime? now}) {
     final days = parseVaccineNextDueInDays(text);
     if (days == null) return null;
+    return nextDueIsoFromDays(days, now: now);
+  }
+
+  static String nextDueIsoFromDays(int days, {DateTime? now}) {
     final base = now ?? DateTime.now();
-    final due = DateTime(base.year, base.month, base.day).add(Duration(days: days));
+    final due =
+        DateTime(base.year, base.month, base.day).add(Duration(days: days));
     return '${due.year.toString().padLeft(4, '0')}-'
         '${due.month.toString().padLeft(2, '0')}-'
         '${due.day.toString().padLeft(2, '0')}';
   }
 
-  /// `taken` quando tomou/aplicou hoje; `scheduled` só se pediu agendamento futuro.
+  /// `taken` quando tomou/aplicou hoje; `scheduled` para lembrete/agenda futura.
   static String inferVaccineStatus(String text) {
     final low = text.toLowerCase();
+    final futureDays = parseVaccineNextDueInDays(text);
+    final futureDue = futureDays != null ||
+        RegExp(r'\bdaqui\b', caseSensitive: false).hasMatch(low) ||
+        RegExp(r'\bpara\s+daqui\b', caseSensitive: false).hasMatch(low);
     final taken = AiNannyIntentLexicon.containsAny(
       low,
       AiNannyIntentLexicon.takenCues,
@@ -472,8 +537,18 @@ abstract final class AiNannyParseNormalize {
       low,
       AiNannyIntentLexicon.scheduleCues,
     );
+    final createRecord = (low.contains('criar') || low.contains('crie')) &&
+        (low.contains('registro') || low.contains('lembrete'));
+    final registerFuture = (low.contains('registr') || low.contains('agend')) &&
+        futureDue &&
+        !taken;
     if (taken) return 'taken';
-    if (scheduled) return 'scheduled';
+    if (scheduled ||
+        registerFuture ||
+        (futureDue && !taken) ||
+        (createRecord && futureDue)) {
+      return 'scheduled';
+    }
     if (AiNannyIntentLexicon.containsAny(low, AiNannyIntentLexicon.todayCues) ||
         low.contains('aplicad') ||
         low.contains('recebeu')) {
@@ -561,6 +636,9 @@ abstract final class AiNannyParseNormalize {
     Map<String, dynamic> fields,
   ) {
     var t = type.trim().toLowerCase();
+    if (t == 'wake' || t == 'woke' || t == 'awake' || t == 'awakening') {
+      return 'sleep';
+    }
     if (t == 'height' || t == 'altura') return 'growth_height';
     if (t == 'weight' || t == 'peso') return 'growth_weight';
 
@@ -573,6 +651,31 @@ abstract final class AiNannyParseNormalize {
       if (unit == 'kg' || unit == 'g') return 'growth_weight';
     }
     return t;
+  }
+
+  static const knownRecordTypes = {
+    'diaper',
+    'feeding',
+    'sleep',
+    'health_symptom',
+    'growth_weight',
+    'growth_height',
+    'vaccine',
+    'appointment',
+    'memory',
+  };
+
+  /// Cloud às vezes devolve só `{ time: now }` sem tipo útil.
+  static bool isLowInformationRecord(AiNannyStructuredRecord r) {
+    final canonical = canonicalRecordType(r.type, r.fields);
+    if (!knownRecordTypes.contains(canonical)) return true;
+    final substantive = r.fields.keys.where(
+      (k) => k != 'time' && k != 'sleepStatus' && r.fields[k] != null,
+    );
+    if (substantive.isEmpty && r.missingFields.isEmpty) {
+      return canonical != 'sleep';
+    }
+    return false;
   }
 
   /// Remove campos obrigatórios de outros tipos (ex.: `pee` num registro de altura).

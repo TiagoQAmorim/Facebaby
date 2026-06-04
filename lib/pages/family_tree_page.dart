@@ -59,17 +59,25 @@ class _FamilyTreePageState extends State<FamilyTreePage>
   DateTime? _lastDiaperChangedAt;
   DateTime? _lastSleepEndedAt;
 
-  int get _tabCount => FamilyPageTabs.tabCount(_messagePrefs);
+  bool get _showAiFamilyContent => FeatureAccess.canUseAnyAi;
+
+  FamilyMessagePrefs get _displayMessagePrefs =>
+      _showAiFamilyContent ? _messagePrefs : FamilyMessagePrefs.none;
+
+  int get _tabCount => FamilyPageTabs.tabCount(
+        _displayMessagePrefs,
+        showAiHistory: _showAiFamilyContent,
+      );
 
   @override
   void initState() {
     super.initState();
     _messagePrefs = FamilyMessagePrefs.fromMother(_current.currentMotherRow);
     final initialTab = widget.initialTabIndex.clamp(0, _tabCount - 1);
-    if (FamilyPageTabs.homily(_messagePrefs) == initialTab) {
+    if (FamilyPageTabs.homily(_displayMessagePrefs) == initialTab) {
       _homilyGenerationRequested = true;
     }
-    if (FamilyPageTabs.horoscope(_messagePrefs) == initialTab) {
+    if (FamilyPageTabs.horoscope(_displayMessagePrefs) == initialTab) {
       _horoscopeGenerationRequested = true;
     }
     _tabController = TabController(
@@ -94,12 +102,12 @@ class _FamilyTreePageState extends State<FamilyTreePage>
     if (_tabController.indexIsChanging) return;
     final idx = _tabController.index;
     var changed = false;
-    if (FamilyPageTabs.homily(_messagePrefs) == idx &&
+    if (FamilyPageTabs.homily(_displayMessagePrefs) == idx &&
         !_homilyGenerationRequested) {
       _homilyGenerationRequested = true;
       changed = true;
     }
-    if (FamilyPageTabs.horoscope(_messagePrefs) == idx &&
+    if (FamilyPageTabs.horoscope(_displayMessagePrefs) == idx &&
         !_horoscopeGenerationRequested) {
       _horoscopeGenerationRequested = true;
       changed = true;
@@ -150,6 +158,7 @@ class _FamilyTreePageState extends State<FamilyTreePage>
     _loadZodiacContentIfPremium();
     unawaited(FamilyHomilyUnreadBadge.refresh());
     unawaited(FamilyHoroscopeUnreadBadge.refresh());
+    _recreateTabControllerIfNeeded();
     if (mounted) setState(() {});
   }
 
@@ -411,16 +420,23 @@ class _FamilyTreePageState extends State<FamilyTreePage>
                             controller: _tabController,
                             isScrollable: true,
                             tabAlignment: TabAlignment.start,
-                            labelColor: const Color(0xFF6A1B9A),
-                            unselectedLabelColor: Colors.black.withAlpha(120),
-                            indicatorColor: AppTheme.primaryPink,
+                            labelColor: atNight
+                                ? PortalTimeOfDay.nightOutlinedTextColor
+                                : const Color(0xFF6A1B9A),
+                            unselectedLabelColor: atNight
+                                ? PortalTimeOfDay.nightOutlinedTextColor
+                                    .withAlpha(200)
+                                : Colors.black.withAlpha(120),
+                            indicatorColor: atNight
+                                ? PortalTimeOfDay.nightOutlinedTextColor
+                                : AppTheme.primaryPink,
                             labelStyle: const TextStyle(
                               fontWeight: FontWeight.w800,
                               fontSize: 13,
                             ),
                             tabs: [
                               Tab(text: s.familyTabTree),
-                              if (_messagePrefs.showChristian)
+                              if (_displayMessagePrefs.showChristian)
                                 ValueListenableBuilder<bool>(
                                   valueListenable:
                                       FamilyHomilyUnreadBadge.show,
@@ -445,7 +461,7 @@ class _FamilyTreePageState extends State<FamilyTreePage>
                                     ),
                                   ),
                                 ),
-                              if (_messagePrefs.showHoroscope)
+                              if (_displayMessagePrefs.showHoroscope)
                                 ValueListenableBuilder<bool>(
                                   valueListenable:
                                       FamilyHoroscopeUnreadBadge.show,
@@ -470,7 +486,8 @@ class _FamilyTreePageState extends State<FamilyTreePage>
                                     ),
                                   ),
                                 ),
-                              Tab(text: s.familyTabAiHistory),
+                              if (_showAiFamilyContent)
+                                Tab(text: s.familyTabAiHistory),
                             ],
                           ),
                         ],
@@ -499,13 +516,13 @@ class _FamilyTreePageState extends State<FamilyTreePage>
                                     zodiacUnlocked: zodiacUnlocked,
                                     zodiacReady: _zodiacContentReady,
                                     showChristianMessages:
-                                        _messagePrefs.showChristian,
+                                        _displayMessagePrefs.showChristian,
                                     showHoroscopeMessages:
-                                        _messagePrefs.showHoroscope,
+                                        _displayMessagePrefs.showHoroscope,
                                     showSpiritistMessages:
-                                        _messagePrefs.showSpiritist,
+                                        _displayMessagePrefs.showSpiritist,
                                     showJewishMessages:
-                                        _messagePrefs.showJewish,
+                                        _displayMessagePrefs.showJewish,
                                     christianReady: _christianContentReady,
                                     spiritistReady: _spiritistContentReady,
                                     jewishReady: _jewishContentReady,
@@ -549,14 +566,14 @@ class _FamilyTreePageState extends State<FamilyTreePage>
                                     lastSleepEndedAt: _lastSleepEndedAt,
                                   ),
                                 ),
-                                if (_messagePrefs.showChristian)
+                                if (_displayMessagePrefs.showChristian)
                                   tabScroll(
                                     child: FamilyHomilyPanel(
                                       requestGeneration:
                                           _homilyGenerationRequested,
                                     ),
                                   ),
-                                if (_messagePrefs.showHoroscope)
+                                if (_displayMessagePrefs.showHoroscope)
                                   tabScroll(
                                     child: FamilyHoroscopePanel(
                                       requestGeneration:
@@ -567,9 +584,10 @@ class _FamilyTreePageState extends State<FamilyTreePage>
                                       ),
                                     ),
                                   ),
-                                tabScroll(
-                                  child: const FamilyAiBabyHistoryPanel(),
-                                ),
+                                if (_showAiFamilyContent)
+                                  tabScroll(
+                                    child: const FamilyAiBabyHistoryPanel(),
+                                  ),
                               ],
                             ),
                     ),

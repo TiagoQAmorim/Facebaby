@@ -6,7 +6,7 @@ import '../i18n/app_i18n.dart';
 import '../services/portal_layout_prefs.dart';
 import '../utils/portal_time_of_day.dart';
 
-/// Seletor Automático / Diurno / Noturno (Preferências › Meu Perfil).
+/// Seletor Auto / Diurno / Noturno (Preferências › Meu Perfil).
 class PortalLayoutPreferenceControl extends StatelessWidget {
   const PortalLayoutPreferenceControl({super.key});
 

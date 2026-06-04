@@ -17,7 +17,9 @@ class FamilyDetailsPage extends StatefulWidget {
 
 class _FamilyDetailsPageState extends State<FamilyDetailsPage> {
   FamilyDetails? _data;
+  UserAiUsageStats? _aiUsage;
   bool _loading = true;
+  String? _aiError;
 
   @override
   void initState() {
@@ -26,9 +28,20 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _aiError = null;
+    });
     try {
-      _data = await AdminRepository.instance.fetchFamily(widget.uid);
+      final results = await Future.wait([
+        AdminRepository.instance.fetchFamily(widget.uid),
+        AdminRepository.instance.fetchUserAiUsage(widget.uid),
+      ]);
+      _data = results[0] as FamilyDetails;
+      _aiUsage = results[1] as UserAiUsageStats;
+    } catch (e) {
+      _data ??= await AdminRepository.instance.fetchFamily(widget.uid);
+      _aiError = e.toString();
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -97,6 +110,32 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage> {
                 _line('Public memories', '${d.publicMemoriesCount}'),
                 _line('Weekly submissions', '${d.weeklySubmissions}'),
               ]),
+              if (_aiUsage != null)
+                _section('Uso de IA (hoje)', [
+                  _line('Chamadas', '${_aiUsage!.todayCalls}'),
+                  _line(
+                    'Tokens',
+                    NumberFormat.decimalPattern().format(_aiUsage!.todayTokens),
+                  ),
+                  ..._aiUsage!.todayByFeature.take(5).map(
+                        (r) => _line(
+                          r.label,
+                          '${r.calls} · ${NumberFormat.decimalPattern().format(r.totalTokens)} tok',
+                        ),
+                      ),
+                ]),
+              if (_aiUsage != null)
+                _section('Uso de IA (mês ${_aiUsage!.monthKey})', [
+                  _line('Chamadas', '${_aiUsage!.monthCalls}'),
+                  _line(
+                    'Tokens',
+                    NumberFormat.decimalPattern().format(_aiUsage!.monthTokens),
+                  ),
+                ]),
+              if (_aiError != null)
+                _section('Uso de IA', [
+                  _line('Erro', _aiError!),
+                ]),
             ],
           ),
         ],

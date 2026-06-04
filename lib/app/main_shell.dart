@@ -26,6 +26,7 @@ import '../services/local_notifications_service.dart';
 import '../services/reminder_monitor.dart';
 import '../services/update_service.dart';
 import '../widgets/app_update_banner.dart';
+import '../services/ai/family_daily_prefetch.dart';
 import '../services/scheduled_local_reminders.dart';
 import '../services/firebase/profile_cloud_sync.dart';
 import '../services/measurement_units_prefs.dart';
@@ -34,7 +35,10 @@ import '../widgets/ai_overlay.dart';
 import '../widgets/loading_scope.dart';
 import '../widgets/loading_navigator_observer.dart';
 import '../widgets/weekly_photo_winner_congrats_host.dart';
-import '../widgets/floating_message_host.dart';
+import '../widgets/ai/ai_nanny_bubble_host.dart';
+import '../services/premium/feature_access.dart';
+import '../services/premium/premium_service.dart';
+import '../pages/premium/premium_paywall_screen.dart';
 import 'shell_nested_nav.dart';
 
 class MainShell extends StatefulWidget {
@@ -92,6 +96,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       LocalNotificationsService.instance.requestPermissionOnceOnFirstLaunch();
       unawaited(UpdateService.instance.checkForUpdateIfNeeded());
+      FamilyDailyPrefetch.scheduleIfNeeded(S(kAppLanguage.lang));
     });
     unawaited(_bootstrapRemindersPipeline());
     _aiMicListener = () {
@@ -156,6 +161,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       // Reagenda lembretes locais (não depender só da Home puxada para refresh).
       ReminderMonitor.instance.onAppResumed();
       unawaited(UpdateService.instance.checkForUpdateIfNeeded());
+      FamilyDailyPrefetch.scheduleIfNeeded(S(kAppLanguage.lang));
     }
   }
 
@@ -230,6 +236,10 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   }
 
   void _onDestinationSelected(int index) {
+    if (index == 2 && !FeatureAccess.canUseAnyAi) {
+      openPremiumPaywall(context);
+      return;
+    }
     // Sem isto, ao voltar ao Início o [selectedIndex] pode ser 0 mas o topo da pilha continua
     // a ser Amamentação / outro ecrã empilhado — parece que o botão Início “abre” outro sítio.
     _popTabToRoot(index);
@@ -289,6 +299,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           aiController,
           currentBaby,
           kAppLanguage,
+          PremiumService.instance,
           PortalLayoutPrefs.instance,
           HomePrefs.aiMicEnabled,
           MeasurementUnitsPrefs.length,
@@ -463,6 +474,14 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                         return ShellBottomNavigation(
                           selectedIndex: selectedIndex,
                           onSelected: _onDestinationSelected,
+                          aiLocked: !FeatureAccess.canUseAnyAi,
+                          onAiTap: () {
+                            if (!FeatureAccess.canUseAnyAi) {
+                              openPremiumPaywall(context);
+                              return;
+                            }
+                            _onDestinationSelected(2);
+                          },
                           hideHomeActiveState: hideHomeActiveState,
                           navBarBackground:
                               AppTheme.navigationBarSurfaceForTint(bg),
@@ -471,17 +490,12 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                     ),
                   ),
                 ),
-                if (aiController.isActive)
+                if (FeatureAccess.canUseAnyAi && aiController.isActive)
                   AiOverlay(
                     state: aiController.state,
                     onClose: aiController.close,
                   ),
                 const WeeklyPhotoWinnerCongratsHost(),
-                Positioned.fill(
-                  child: FloatingMessageHost(
-                    babyId: currentBaby.currentBabyId,
-                  ),
-                ),
                 const Positioned(
                   top: 0,
                   left: 0,
@@ -491,6 +505,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                     child: AppUpdateBanner(),
                   ),
                 ),
+                if (FeatureAccess.canUseAnyAi)
+                  const Positioned.fill(child: AiNannyBubbleHost()),
               ],
             ),
           );

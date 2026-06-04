@@ -1,3 +1,113 @@
 FaceBaby — Politique de Confidentialité
 
-Cette politique explique comment FaceBaby collecte, stocke et protège les données personnelles.
+FR - Dernière mise à jour : Mai 2026
+
+1. Introduction
+Bienvenue sur FaceBaby.
+FaceBaby est une application destinée à l’enregistrement, au suivi et à l’organisation d’informations liées
+au développement de l’enfant, notamment les enregistrements d’alimentation, de sommeil, de
+changements de couches, de croissance, d’étapes de développement, de souvenirs, de photographies,
+de rapports et de fonctionnalités assistées par Intelligence Artificielle.
+La présente Politique de Confidentialité décrit la manière dont nous collectons, utilisons, stockons,
+partageons et protégeons les données des utilisateurs. En utilisant FaceBaby, vous acceptez la présente
+Politique de Confidentialité.
+2. Données Collectées
+Nous pouvons collecter les données suivantes :
+Données du Compte
+• Nom
+• Adresse e-mail
+• Identifiant du compte
+• Photo de profil, lorsqu’elle est fournie
+• Méthode d’authentification utilisée
+Données du Bébé
+• Nom du bébé
+• Date de naissance
+• Sexe
+• Poids
+• Taille
+• Informations de développement
+• Enregistrements d’alimentation
+• Enregistrements de sommeil
+• Enregistrements de changements de couches
+• Étapes importantes
+• Informations saisies volontairement par les responsables
+Photographies et Contenu Envoyé
+• Photographies
+• Descriptions
+• Légendes
+• Commentaires
+• Souvenirs enregistrés
+Données Techniques
+• Modèle de l’appareil
+• Système d’exploitation
+• Version de l’application
+• Journaux d’erreurs
+• Informations de diagnostic
+• Adresse IP
+• Données de performance
+Données d’Abonnement
+
+Le cas échéant, nous pouvons traiter le statut de l’abonnement, le type de forfait et la date de
+renouvellement. FaceBaby ne stocke pas les données complètes de cartes de crédit. Les paiements sont
+traités par Google Play, Apple App Store ou des prestataires autorisés.
+3. Utilisation des Informations
+Les données collectées peuvent être utilisées pour le fonctionnement de l’application, la synchronisation
+dans le cloud, la sauvegarde des informations, la génération de rapports, la création de livres de
+souvenirs, la personnalisation de l’expérience, l’envoi de notifications, l’assistance aux utilisateurs,
+l’amélioration du produit, la sécurité de la plateforme, la prévention des fraudes et le respect des
+obligations légales.
+4. Intelligence Artificielle
+FaceBaby peut proposer des ressources d’Intelligence Artificielle afin d’aider les utilisateurs. Ces
+ressources peuvent analyser les enregistrements d’alimentation, de sommeil, de croissance, les
+événements enregistrés et les informations fournies par l’utilisateur.
+Les réponses générées par l’Intelligence Artificielle ont un caractère exclusivement informatif, ne
+constituent pas un avis médical, ne remplacent pas une consultation médicale, ne remplacent pas un
+diagnostic professionnel et ne doivent pas être utilisées comme unique base pour des décisions liées à la
+santé. Consultez toujours des professionnels qualifiés pour toute question médicale.
+5. Partage de Contenu Public
+Certaines fonctionnalités peuvent permettre aux utilisateurs de partager volontairement du contenu
+public, comme la Photo de la Semaine, des souvenirs publics et des mises en avant de la communauté.
+En rendant un contenu public, l’utilisateur accepte qu’il puisse être consulté par d’autres utilisateurs de
+FaceBaby. L’utilisateur peut supprimer ou modifier la visibilité de ces contenus lorsque la fonctionnalité
+est disponible.
+6. Modération du Contenu
+FaceBaby se réserve le droit de supprimer les contenus inappropriés, de restreindre les publications, de
+suspendre des comptes ou de clôturer les comptes qui violent les Conditions d’Utilisation. Les contenus
+illégaux, offensants, discriminatoires, violents, pornographiques ou exposant des tiers sans autorisation
+sont interdits.
+7. Stockage des Données
+Les données peuvent être stockées dans des services tiers, notamment Firebase Authentication, Cloud
+Firestore, Firebase Storage et Google Cloud Platform. Les serveurs peuvent être situés dans différents
+pays. En utilisant FaceBaby, l’utilisateur accepte le transfert international des données nécessaire au
+fonctionnement du service.
+8. Sécurité
+Nous adoptons des mesures techniques et administratives raisonnables pour protéger les informations
+des utilisateurs, notamment une authentification sécurisée, le chiffrement en transit, le contrôle des
+accès, la surveillance de la sécurité et les sauvegardes. Aucun système n’est totalement sécurisé et nous
+ne pouvons garantir une sécurité absolue.
+9. Enfants et Mineurs
+FaceBaby est destiné aux parents, responsables légaux et aidants. Les données saisies concernant les
+enfants sont fournies par les responsables. FaceBaby ne collecte pas intentionnellement de données
+directement auprès d’enfants sans la participation de leurs responsables légaux.
+10. Droits de l’Utilisateur
+
+L’utilisateur peut demander l’accès à ses données, la correction des informations, la suppression du
+compte, la suppression des données stockées, l’exportation des informations et la révocation des
+consentements applicables. Les demandes peuvent être effectuées par les canaux officiels d’assistance.
+11. Suppression du Compte
+L’utilisateur peut demander la suppression du compte. Après la suppression, les données peuvent être
+supprimées définitivement, certaines informations peuvent être conservées lorsque la loi l’exige et les
+sauvegardes peuvent rester pendant une période limitée.
+12. Modifications de cette Politique
+Cette Politique peut être mise à jour périodiquement. Lorsque des modifications importantes sont
+apportées, les utilisateurs peuvent être informés par l’application ou par d’autres canaux appropriés. La
+poursuite de l’utilisation de FaceBaby après les modifications vaut acceptation de la nouvelle version de
+la Politique.
+13. Contact
+Pour toute question relative à la confidentialité ou à la protection des données, contactez :
+suporte@facebaby.app, ou utilisez les canaux officiels disponibles dans l’application.
+14. Conformité Légale
+Cette Politique vise à respecter les lois applicables en matière de protection des données, notamment la
+Loi Générale brésilienne sur la Protection des Données (LGPD), le Règlement Général sur la Protection
+des Données (GDPR - Union européenne) et les autres lois applicables selon la région de l’utilisateur. En
+cas de conflit entre les législations, celle qui est obligatoire pour la juridiction applicable prévaudra.

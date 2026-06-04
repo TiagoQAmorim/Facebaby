@@ -119,6 +119,7 @@ class AiNannyRecordConfirmFlow {
             interpretation: interp,
             babyName: babyName,
             strings: strings,
+            transcript: transcript,
           ),
         );
       } else {
@@ -216,6 +217,7 @@ class AiNannyRecordConfirmFlow {
             interpretation: interp,
             babyName: babyName,
             strings: strings,
+            transcript: transcript.isNotEmpty ? transcript : bundle.userMessage,
           ),
         );
         savedLabels.add(_draftStatusLine(draft, strings, saved: true));

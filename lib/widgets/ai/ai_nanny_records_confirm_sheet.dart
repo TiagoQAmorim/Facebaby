@@ -8,6 +8,7 @@ import '../../models/ai/detected_baby_record.dart';
 import '../../services/ai/ai_nanny_record_confirm_flow.dart';
 import '../../services/ai/ai_nanny_structured_clarification.dart';
 import '../../services/ai/ai_nanny_structured_mapper.dart';
+import '../../services/ai/breastfeeding_both_helper.dart';
 import '../../services/ai/detected_record_builder.dart';
 import '../../services/ai/pending_record_session_store.dart';
 
@@ -95,18 +96,60 @@ class _AiNannyRecordsConfirmSheetState extends State<_AiNannyRecordsConfirmSheet
     if (_followUpIndex >= _followUps.length) return;
     final q = _followUps[_followUpIndex];
     final s = S.of(context);
+    final sourceText = widget.initial.userMessage;
+    final beforeMissing = _followUps.length;
+
+    if (q.field == 'durationMinutes') {
+      final dual = BreastfeedingBothHelper.tryApplyDualDurations(
+        drafts: _drafts,
+        sourceText: value,
+        strings: s,
+      );
+      if (dual != null) {
+        _drafts = dual;
+        setState(() {
+          _followUpIndex = 0;
+          _rebuildFollowUps();
+          _textAnswer.clear();
+        });
+        unawaited(
+          PendingRecordSessionStore.instance.updateBundle(_currentBundle),
+        );
+        _scheduleFollowUpVoice();
+        return;
+      }
+    }
+
     final old = _drafts[q.recordIndex];
-    final updated = DetectedRecordBuilder.applyAnswer(
+    var updated = DetectedRecordBuilder.applyAnswer(
       rec: old.structured,
       field: q.field,
       value: value,
-      sourceText: widget.initial.userMessage,
+      sourceText: sourceText,
     );
-    _drafts[q.recordIndex] = AiNannyStructuredMapper.draftFromRecord(
-      updated,
-      strings: s,
-      sourceText: widget.initial.userMessage,
-    );
+
+    if (q.field == 'breastSide' && updated.fields['breastSide'] == 'both') {
+      _drafts = BreastfeedingBothHelper.expandAtIndex(
+        _drafts,
+        q.recordIndex,
+        resolved: updated,
+        strings: s,
+        sourceText: sourceText,
+      );
+    } else {
+      _drafts[q.recordIndex] = AiNannyStructuredMapper.draftFromRecord(
+        updated,
+        strings: s,
+        sourceText: sourceText,
+      );
+    }
+
+    final afterMissing = DetectedRecordBuilder.followUpsForBundle(_drafts, s).length;
+    if (afterMissing >= beforeMissing && q.field == 'durationMinutes') {
+      setState(() => _textAnswer.clear());
+      return;
+    }
+
     setState(() {
       _followUpIndex = 0;
       _rebuildFollowUps();
@@ -289,6 +332,10 @@ class _RecordCard extends StatelessWidget {
             sourceText: sourceText,
           );
 
+    final category = _recordCategory(draft, s);
+
+    final growthLine = _growthPreviewLine(draft, s);
+
     final understood = draft.understoodLines.isNotEmpty
         ? draft.understoodLines
         : draft.detailLines
@@ -300,6 +347,8 @@ class _RecordCard extends StatelessWidget {
         : draft.detailLines
             .where((l) => l.contains(s.aiRecordFieldMissing))
             .toList();
+
+    final summary = draft.displayLine.trim();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -341,6 +390,41 @@ class _RecordCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (category.isNotEmpty && category != title) ...[
+              const SizedBox(height: 4),
+              Text(
+                category,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black.withAlpha(140),
+                ),
+              ),
+            ],
+            if (summary.isNotEmpty &&
+                !understood.any((l) => l.contains(summary))) ...[
+              const SizedBox(height: 8),
+              Text(
+                summary,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  height: 1.35,
+                  color: Color(0xFF311B92),
+                ),
+              ),
+            ],
+            if (growthLine != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                growthLine,
+                style: const TextStyle(
+                  fontSize: 13,
+                  height: 1.35,
+                  color: Color(0xFF4527A0),
+                ),
+              ),
+            ],
             if (understood.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
@@ -387,6 +471,29 @@ class _RecordCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String? _growthPreviewLine(AiNannyRecordDraft draft, S s) {
+    final g = draft.growthPreview;
+    if (g == null) return null;
+    if (g.measurementType == 'weight') {
+      return s.aiGrowthWeightDeltaPreview(g.previousValue, g.newValue);
+    }
+    return s.aiGrowthHeightDeltaPreview(g.previousValue, g.newValue);
+  }
+
+  String _recordCategory(AiNannyRecordDraft draft, S s) {
+    final type = draft.structured.type;
+    return switch (type) {
+      'growth_weight' || 'growth_height' => s.shortcutGrowthHomeSub,
+      'feeding' => s.shortcutMilkHomeSub,
+      'diaper' => s.aiRecordLabelDiaper,
+      'sleep' => s.shortcutSleepHomeSub,
+      'health_symptom' => s.aiRecordLabelSymptom,
+      'vaccine' => s.aiRecordLabelVaccine,
+      'appointment' => s.aiRecordLabelAppointment,
+      _ => '',
+    };
   }
 }
 

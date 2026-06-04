@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../models/bubble_queue_settings.dart';
 import '../models/floating_message_model.dart';
 import '../services/admin_broadcast_inbox_service.dart';
 
@@ -23,28 +24,51 @@ class FloatingMessageRepository {
 
   /// Mensagens com `createdAt` anterior a este instante são ignoradas no app.
   Future<DateTime?> fetchResetBefore() async {
+    return (await fetchBubbleQueueSettings()).resetBefore;
+  }
+
+  Future<BubbleQueueSettings> fetchBubbleQueueSettings() async {
     try {
       final snap = await _db
           .collection(settingsCollection)
           .doc(settingsGlobalDoc)
           .get();
-      if (!snap.exists) return null;
-      final raw = snap.data()?['resetBefore'];
-      if (raw is Timestamp) return raw.toDate();
-      if (raw is DateTime) return raw;
-      if (raw is String) return DateTime.tryParse(raw);
+      if (!snap.exists) {
+        return const BubbleQueueSettings();
+      }
+      final data = snap.data() ?? {};
+      final raw = data['resetBefore'];
+      DateTime? resetBefore;
+      if (raw is Timestamp) {
+        resetBefore = raw.toDate();
+      } else if (raw is DateTime) {
+        resetBefore = raw;
+      } else if (raw is String) {
+        resetBefore = DateTime.tryParse(raw);
+      }
+      final genRaw = data['localQueueGeneration'];
+      final generation = switch (genRaw) {
+        int g => g,
+        num g => g.toInt(),
+        String g => int.tryParse(g) ?? 0,
+        _ => 0,
+      };
+      return BubbleQueueSettings(
+        resetBefore: resetBefore,
+        localQueueGeneration: generation,
+      );
     } catch (e) {
-      debugPrint('FloatingMessageRepository.fetchResetBefore: $e');
+      debugPrint('FloatingMessageRepository.fetchBubbleQueueSettings: $e');
+      return const BubbleQueueSettings();
     }
-    return null;
   }
 
   /// Até [limit] mensagens ativas (filtro de datas no serviço).
-  Future<List<FloatingMessage>> fetchActiveMessages({int limit = 20}) async {
+  Future<List<FloatingMessage>> fetchActiveMessages({int limit = 40}) async {
     final snap = await _db
         .collection('floating_messages')
         .where('active', isEqualTo: true)
-        .limit(limit.clamp(1, 30))
+        .limit(limit.clamp(1, 50))
         .get();
     final items = snap.docs.map(FloatingMessage.fromFirestore).toList();
     items.sort((a, b) {
@@ -58,11 +82,11 @@ class FloatingMessageRepository {
     return items;
   }
 
-  Stream<List<FloatingMessage>> watchActiveMessages({int limit = 20}) {
+  Stream<List<FloatingMessage>> watchActiveMessages({int limit = 40}) {
     return _db
         .collection('floating_messages')
         .where('active', isEqualTo: true)
-        .limit(limit.clamp(1, 30))
+        .limit(limit.clamp(1, 50))
         .snapshots()
         .map((snap) {
       final items = snap.docs.map(FloatingMessage.fromFirestore).toList();
@@ -80,18 +104,17 @@ class FloatingMessageRepository {
 
   /// Legado: inbox por usuário até migração completa.
   Future<List<FloatingMessage>> fetchLegacyInbox() async {
-    final inbox = await AdminBroadcastInboxService.instance
-        .watchActive()
-        .first
-        .timeout(const Duration(seconds: 8), onTimeout: () => const []);
+    final inbox = await AdminBroadcastInboxService.instance.fetchActiveOnce();
     return inbox
         .map(
           (e) => FloatingMessage.fromInboxBroadcast(
             campaignId: e.campaignId,
             text: e.text,
+            title: e.title,
             imageUrl: e.imageUrl,
             actionUrl: e.actionUrl,
             actionButtonLabel: e.actionButtonLabel,
+            createdAt: e.createdAt,
           ),
         )
         .toList();

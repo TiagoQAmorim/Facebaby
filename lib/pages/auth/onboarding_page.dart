@@ -472,8 +472,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
             unit: _weightUnitLabel,
             decimalDigits: _weightUnit == WeightUnit.lb ? 1 : 2,
             icon: Icons.monitor_weight_outlined,
-            dragPixelsPerFullRange: growthRulerDragPixelsOnboarding,
-            quantizeDuringDrag: true,
             subjectLabel: _draft.babyName.trim().isEmpty
                 ? s.onb('BabyFallback')
                 : _draft.babyName.trim(),
@@ -839,6 +837,25 @@ class _OnboardingPageState extends State<OnboardingPage> {
       unawaited(applyKinds(next));
     }
 
+    void togglePhilosophical() {
+      final next = Set<String>.from(kinds);
+      final active = next.contains(FamilyMessageKind.spiritist) ||
+          next.contains(FamilyMessageKind.jewish);
+      if (active) {
+        next
+          ..remove(FamilyMessageKind.spiritist)
+          ..remove(FamilyMessageKind.jewish);
+      } else {
+        next
+          ..add(FamilyMessageKind.spiritist)
+          ..add(FamilyMessageKind.jewish);
+      }
+      unawaited(applyKinds(next));
+    }
+
+    final philosophicalOn = kinds.contains(FamilyMessageKind.spiritist) ||
+        kinds.contains(FamilyMessageKind.jewish);
+
     return _QuestionScaffold(
       title: s.onb('MessagePrefTitle'),
       subtitle: s.onb('MessagePrefSubtitle'),
@@ -862,14 +879,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
             onTap: () => toggleKind(FamilyMessageKind.horoscope),
           ),
           _OptionTile(
-            label: s.onb('MessagePrefSpiritist'),
-            selected: kinds.contains(FamilyMessageKind.spiritist),
-            onTap: () => toggleKind(FamilyMessageKind.spiritist),
-          ),
-          _OptionTile(
-            label: s.onb('MessagePrefJewish'),
-            selected: kinds.contains(FamilyMessageKind.jewish),
-            onTap: () => toggleKind(FamilyMessageKind.jewish),
+            label: s.onb('MessagePrefPhilosophical'),
+            selected: philosophicalOn,
+            onTap: togglePhilosophical,
           ),
         ],
       ),

@@ -248,8 +248,8 @@ class _GrowthRulerPickerState extends State<GrowthRulerPicker> {
       builder: (ctx) {
         return AlertDialog(
           title: Text(
-            _subjectTrimmed != null
-                ? '$_subjectTrimmed · $unitLabel'
+            _subjectDisplay != null
+                ? '$_subjectDisplay · $unitLabel'
                 : unitLabel,
           ),
           content: TextField(
@@ -310,6 +310,13 @@ class _GrowthRulerPickerState extends State<GrowthRulerPicker> {
     return (t == null || t.isEmpty) ? null : t;
   }
 
+  /// Oculta rótulo com nome parcial (< 3 caracteres) do passo de cadastro.
+  String? get _subjectDisplay {
+    final t = _subjectTrimmed;
+    if (t == null || t.length < 3) return null;
+    return t;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -339,9 +346,9 @@ class _GrowthRulerPickerState extends State<GrowthRulerPicker> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (_subjectTrimmed != null) ...[
+                            if (_subjectDisplay != null) ...[
                               Text(
-                                _subjectTrimmed!.toLowerCase(),
+                                _subjectDisplay!,
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w900,

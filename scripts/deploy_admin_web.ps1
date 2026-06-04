@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 $Project = "facebaby-afc41"
-$BuildLabel = "Admin build v5"
+$BuildLabel = "Admin build v8"
 
 Write-Host "Cleaning old admin web build..."
 Remove-Item -Recurse -Force "build\admin_web" -ErrorAction SilentlyContinue
@@ -23,7 +23,7 @@ if ($html -notmatch "FaceBaby Admin") {
 }
 
 Write-Host "Deploying admin functions + hosting:admin..."
-firebase deploy --only "functions:ensureAdminPanelAccess,functions:adminGetPhotoBytes,functions:previewAdminBroadcastAudience,functions:publishAdminBroadcast,hosting:admin" --project $Project
+firebase deploy --only "functions:ensureAdminPanelAccess,functions:adminGetPhotoBytes,functions:adminGetDashboardStats,functions:previewAdminBroadcastAudience,functions:publishAdminBroadcast,hosting:admin" --project $Project
 
 Write-Host "Done."
 Write-Host "Open: https://facebaby-admin.web.app/#/login"

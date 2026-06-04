@@ -42,6 +42,20 @@ class PendingRecordSessionStore {
 
   bool hasActive([int? babyId]) => blocksGenericChat(babyId);
 
+  /// Rascunho pronto para gravar (crescimento, vacina, consulta, etc.).
+  bool hasAwaitingConfirm([int? babyId]) {
+    final bid = babyId ?? CurrentBabyController.instance.currentBabyId;
+    if (bid == null || _babyId != bid || _active == null) return false;
+    final s = _active!;
+    if (s.status != PendingRecordSessionStatus.readyToConfirm) return false;
+    return s.canSave && s.bundle.drafts.isNotEmpty;
+  }
+
+  AiNannyRecordsBundle? awaitingConfirmBundle([int? babyId]) {
+    if (!hasAwaitingConfirm(babyId)) return null;
+    return _active!.bundle;
+  }
+
   PendingRecordSession? get active => _active;
 
   Future<PendingRecordSession> createFromBundle({
@@ -362,6 +376,7 @@ class PendingRecordSessionStore {
       drafts = BreastfeedingBothHelper.expandAtIndex(
         drafts,
         q.recordIndex,
+        resolved: updated,
         strings: strings,
         sourceText: fullSource,
         lastWeightKg: lastWeightKg,
@@ -579,6 +594,47 @@ class PendingRecordSessionStore {
     await clear(reason: 'saved');
   }
 
+  /// Guarda rascunho só com confirmação pendente (ex.: +150 g) para "registra isso".
+  Future<void> stashAwaitingConfirm({
+    required AiNannyRecordsBundle bundle,
+    required int babyId,
+    S? strings,
+    double? lastWeightKg,
+    double? lastHeightCm,
+  }) async {
+    if (bundle.drafts.isEmpty || bundle.confirmCount == 0) return;
+    if (!bundle.allRequiredFilled) return;
+
+    AiNannySystemContext? ctx;
+    if (strings != null) {
+      ctx = await AiNannySystemContextService.load(babyId: babyId);
+    }
+    final synced = strings != null
+        ? AiNannyStructuredMapper.prepareBundle(
+            bundle: bundle,
+            strings: strings,
+            lastWeightKg: lastWeightKg,
+            lastHeightCm: lastHeightCm,
+            systemContext: ctx,
+          )
+        : bundle;
+
+    final next = PendingRecordSession(
+      sessionId: _active?.sessionId ?? 'prs_${DateTime.now().millisecondsSinceEpoch}',
+      bundle: synced,
+      createdAt: _active?.createdAt ?? DateTime.now(),
+      currentQuestionIndex: 0,
+      status: PendingRecordSessionStatus.readyToConfirm,
+    );
+    _babyId = babyId;
+    _active = next;
+    await _persist();
+    debugPrint(
+      'PendingRecordSession: stashed awaiting confirm '
+      'records=${synced.drafts.length} confirm=${synced.confirmCount}',
+    );
+  }
+
   /// Mantém só registros ainda incompletos após gravação parcial.
   Future<void> continueWithBundle({
     required AiNannyRecordsBundle bundle,
@@ -587,7 +643,21 @@ class PendingRecordSessionStore {
     double? lastWeightKg,
     double? lastHeightCm,
   }) async {
-    if (bundle.drafts.isEmpty || bundle.allRequiredFilled) {
+    if (bundle.drafts.isEmpty) {
+      await markSaved();
+      return;
+    }
+    if (bundle.confirmCount > 0 && bundle.incompleteCount == 0) {
+      await stashAwaitingConfirm(
+        bundle: bundle,
+        babyId: babyId,
+        strings: strings,
+        lastWeightKg: lastWeightKg,
+        lastHeightCm: lastHeightCm,
+      );
+      return;
+    }
+    if (bundle.allRequiredFilled && bundle.confirmCount == 0) {
       await markSaved();
       return;
     }

@@ -1847,7 +1847,12 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
             unawaited(_loadVaccineBannerChipDismissed());
           }
           final sleepRem = _sleepCountdownRemaining();
+          final sleepTimer = SleepTimerController.instance;
+          final sleepInActiveSession = sleepTimer.isTracking &&
+              sleepTimer.babyId == widget.babyId;
           final sleepOverdue = sleepRem != null && sleepRem.isNegative;
+          final wakeSessionOverdue = sleepInActiveSession && sleepOverdue;
+          final awakeWindowOverdue = !sleepInActiveSession && sleepOverdue;
           final feedRem = _feedingCountdownRemaining();
           final feedOverdue = feedRem != null && feedRem.isNegative;
 
@@ -2003,7 +2008,15 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
               onTap: widget.onTapFeedNow,
             ));
           }
-          if (sleepOverdue) {
+          if (wakeSessionOverdue) {
+            critical.add(_CriticalBannerAlert(
+              kind: _CriticalBannerAlertKind.sleep,
+              icon: Icons.wb_sunny_rounded,
+              title: s.homeCriticalWakeTitle,
+              subtitle: s.homeCriticalWakeSubtitle,
+              onTap: widget.onTapOpenSleepBanner,
+            ));
+          } else if (awakeWindowOverdue) {
             critical.add(_CriticalBannerAlert(
               kind: _CriticalBannerAlertKind.sleep,
               icon: Icons.nights_stay_rounded,
@@ -2035,7 +2048,7 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
               HomeCriticalNotifications.instance.kickFromBannerVisible(
                 babyId: widget.babyId,
                 feedingCritical: timeToFeedNow || feedOverdue,
-                sleepCritical: sleepOverdue,
+                sleepCritical: awakeWindowOverdue,
                 diaperCritical: widget.bannerDiaperAlert,
               ),
             );

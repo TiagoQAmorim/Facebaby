@@ -19,5 +19,17 @@ void main() {
       AiNannyParseNormalize.parseVaccineNextDueInDays('tomou BCG hoje'),
       isNull,
     );
+    expect(
+      AiNannyParseNormalize.parseVaccineNextDueInDays(
+        'criar um registro de vacina B1 para daqui 30 dias',
+      ),
+      30,
+    );
+    expect(
+      AiNannyParseNormalize.parseVaccineNextDueInDays(
+        'vacina B1 daqui 30 dias',
+      ),
+      30,
+    );
   });
 }

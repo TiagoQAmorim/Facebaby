@@ -136,8 +136,17 @@ class FloatingMessage {
     return hasInternalRoute ? actionRoute!.trim() : null;
   }
 
+  /// Texto para o balão (corpo + título quando o painel envia só título).
+  String get displayText {
+    final body = message.trim();
+    final t = title.trim();
+    if (body.isEmpty) return t;
+    if (t.isEmpty) return body;
+    return '$t\n\n$body';
+  }
+
   bool get hasRenderableContent =>
-      message.trim().isNotEmpty || (imageUrl?.trim().isNotEmpty ?? false);
+      displayText.isNotEmpty || (imageUrl?.trim().isNotEmpty ?? false);
 
   bool get isBannerLayout =>
       type == FloatingMessageType.promoBanner &&
@@ -188,13 +197,15 @@ class FloatingMessage {
   factory FloatingMessage.fromInboxBroadcast({
     required String campaignId,
     required String text,
+    String? title,
     String? imageUrl,
     String? actionUrl,
     String? actionButtonLabel,
+    DateTime? createdAt,
   }) {
     return FloatingMessage(
       id: campaignId,
-      title: '',
+      title: title?.trim() ?? '',
       message: text,
       type: FloatingMessageType.adminAd,
       imageUrl: imageUrl,
@@ -202,6 +213,7 @@ class FloatingMessage {
       actionLabel: actionButtonLabel,
       priority: 50,
       dismissMode: FloatingMessageDismissMode.both,
+      createdAt: createdAt,
     );
   }
 

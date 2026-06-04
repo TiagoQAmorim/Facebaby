@@ -1,3 +1,106 @@
 FaceBaby — Política de Privacidad
 
-Esta política explica cómo FaceBaby recopila, almacena y protege los datos personales y familiares.
+ES - Última actualización: Mayo de 2026
+
+1. Introducción
+Bienvenido a FaceBaby.
+FaceBaby es una aplicación destinada al registro, seguimiento y organización de información relacionada
+con el desarrollo infantil, incluidos registros de alimentación, sueño, cambios de pañal, crecimiento, hitos
+del desarrollo, recuerdos, fotografías, informes y funcionalidades asistidas por Inteligencia Artificial.
+Esta Política de Privacidad describe cómo recopilamos, utilizamos, almacenamos, compartimos y
+protegemos los datos de los usuarios. Al utilizar FaceBaby, usted acepta esta Política de Privacidad.
+2. Datos Recopilados
+Podemos recopilar los siguientes datos:
+Datos de la Cuenta
+• Nombre
+• Dirección de correo electrónico
+• Identificador de la cuenta
+• Foto de perfil, cuando se proporcione
+• Método de autenticación utilizado
+Datos del Bebé
+• Nombre del bebé
+• Fecha de nacimiento
+• Sexo
+• Peso
+• Altura
+• Información de desarrollo
+• Registros de alimentación
+• Registros de sueño
+• Registros de cambios de pañal
+• Hitos importantes
+• Información introducida voluntariamente por los responsables
+Fotografías y Contenido Enviado
+• Fotografías
+• Descripciones
+• Leyendas
+• Comentarios
+• Recuerdos registrados
+Datos Técnicos
+• Modelo del dispositivo
+• Sistema operativo
+• Versión de la aplicación
+• Registros de errores
+• Información de diagnóstico
+• Dirección IP
+• Datos de rendimiento
+Datos de Suscripción
+Cuando corresponda, podemos tratar el estado de la suscripción, el tipo de plan y la fecha de renovación.
+FaceBaby no almacena datos completos de tarjetas de crédito. Los pagos son procesados por Google
+
+Play, Apple App Store o proveedores autorizados.
+3. Uso de la Información
+Los datos recopilados pueden utilizarse para el funcionamiento de la aplicación, sincronización en la
+nube, copia de seguridad de la información, generación de informes, creación de libros de recuerdos,
+personalización de la experiencia, envío de notificaciones, atención al usuario, mejoras del producto,
+seguridad de la plataforma, prevención de fraudes y cumplimiento de obligaciones legales.
+4. Inteligencia Artificial
+FaceBaby puede ofrecer recursos de Inteligencia Artificial para ayudar a los usuarios. Estos recursos
+pueden analizar registros de alimentación, sueño, crecimiento, eventos registrados e información
+proporcionada por el usuario.
+Las respuestas generadas por la Inteligencia Artificial tienen carácter exclusivamente informativo, no
+constituyen asesoramiento médico, no sustituyen consultas médicas, no sustituyen un diagnóstico
+profesional y no deben utilizarse como única base para decisiones relacionadas con la salud. Consulte
+siempre a profesionales cualificados para cuestiones médicas.
+5. Compartición de Contenido Público
+Algunas funcionalidades pueden permitir que los usuarios compartan voluntariamente contenido público,
+como Foto de la Semana, recuerdos públicos y destacados de la comunidad. Al hacer público un
+contenido, el usuario acepta que pueda ser visto por otros usuarios de FaceBaby. El usuario puede
+eliminar o cambiar la visibilidad de dicho contenido cuando la funcionalidad esté disponible.
+6. Moderación de Contenido
+FaceBaby se reserva el derecho de eliminar contenido inapropiado, restringir publicaciones, suspender
+cuentas o cerrar cuentas que violen los Términos de Uso. Están prohibidos los contenidos ilegales,
+ofensivos, discriminatorios, violentos, pornográficos o que expongan a terceros sin autorización.
+7. Almacenamiento de los Datos
+Los datos pueden almacenarse en servicios de terceros, incluidos Firebase Authentication, Cloud
+Firestore, Firebase Storage y Google Cloud Platform. Los servidores pueden estar ubicados en diferentes
+países. Al utilizar FaceBaby, el usuario acepta la transferencia internacional de datos necesaria para el
+funcionamiento del servicio.
+8. Seguridad
+Adoptamos medidas técnicas y administrativas razonables para proteger la información de los usuarios,
+incluida autenticación segura, cifrado en tránsito, control de acceso, monitoreo de seguridad y copias de
+seguridad. Ningún sistema es completamente seguro y no podemos garantizar seguridad absoluta.
+9. Niños y Menores de Edad
+FaceBaby está destinado a padres, madres, responsables legales y cuidadores. Los datos introducidos
+sobre niños son proporcionados por los responsables. FaceBaby no recopila intencionalmente datos
+directamente de niños sin la participación de sus responsables legales.
+10. Derechos del Usuario
+El usuario podrá solicitar acceso a sus datos, corrección de información, eliminación de la cuenta,
+eliminación de datos almacenados, exportación de información y revocación de consentimientos
+aplicables. Las solicitudes podrán realizarse a través de los canales oficiales de soporte.
+11. Eliminación de la Cuenta
+El usuario podrá solicitar la eliminación de la cuenta. Después de la eliminación, los datos podrán
+eliminarse permanentemente, cierta información podrá conservarse cuando lo exija la ley y las copias de
+
+seguridad podrán permanecer durante un período limitado.
+12. Cambios en esta Política
+Esta Política podrá actualizarse periódicamente. Cuando se realicen cambios relevantes, los usuarios
+podrán ser notificados a través de la aplicación u otros canales apropiados. El uso continuado de
+FaceBaby después de los cambios representa la aceptación de la nueva versión de la Política.
+13. Contacto
+Para preguntas relacionadas con privacidad o protección de datos, póngase en contacto en:
+suporte@facebaby.app, o por los canales oficiales disponibles en la aplicación.
+14. Cumplimiento Legal
+Esta Política busca cumplir con las leyes aplicables de protección de datos, incluida la Ley General de
+Protección de Datos de Brasil (LGPD), el Reglamento General de Protección de Datos (GDPR - Unión
+Europea) y demás legislaciones aplicables según la región del usuario. En caso de conflicto entre
+legislaciones, prevalecerá aquella obligatoria para la jurisdicción aplicable.

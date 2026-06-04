@@ -54,6 +54,29 @@ void main() {
     );
   });
 
+  test('status inquiry does not auto-register', () {
+    const inquiry =
+        'Oi, como que a Maitê tá hoje? Me fala como ela está agora, '
+        'o que eu precisava fazer ou registrar?';
+    expect(shouldSkipRoutineAutoRegister(inquiry), isTrue);
+    expect(
+      interpretationShouldAskAi(type: 'sleep', transcript: inquiry),
+      isTrue,
+    );
+    expect(
+      interpretationShouldAskAi(type: 'feeding', transcript: inquiry),
+      isTrue,
+    );
+    expect(
+      transcriptLooksLikeQuestion('Maitê mamou 120 ml de mamadeira agora'),
+      isFalse,
+    );
+    expect(
+      shouldSkipRoutineAutoRegister('Maitê mamou 120 ml de mamadeira agora'),
+      isFalse,
+    );
+  });
+
   test('interpretationShouldAskAi routes questions', () {
     expect(
       interpretationShouldAskAi(

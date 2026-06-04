@@ -2,6 +2,8 @@ import '../../i18n/app_i18n.dart';
 import '../../models/ai/ai_nanny_parsed_message.dart';
 import '../../models/ai/ai_nanny_system_context.dart';
 import '../../models/ai/voice_record_interpretation.dart';
+import '../../utils/ai_nanny_parse_normalize.dart';
+import 'ai_nanny_local_message_parser.dart';
 import 'ai_nanny_orchestrator.dart';
 import 'ai_nanny_structured_clarification.dart';
 import 'breastfeeding_both_helper.dart';
@@ -89,8 +91,9 @@ abstract final class AiNannyStructuredMapper {
     double? lastHeightCm,
     bool usedExtractionFallback = false,
   }) {
+    final records = _recordsForBundle(parse.records, userMessage);
     final drafts = <AiNannyRecordDraft>[];
-    for (final rec in parse.records) {
+    for (final rec in records) {
       drafts.add(
         _draftFor(
           rec,
@@ -113,6 +116,51 @@ abstract final class AiNannyStructuredMapper {
       lastHeightCm: lastHeightCm,
     );
   }
+
+  static List<AiNannyStructuredRecord> _recordsForBundle(
+    List<AiNannyStructuredRecord> records,
+    String userMessage,
+  ) {
+    if (records.isEmpty) return records;
+
+    final local = AiNannyLocalMessageParser.parse(userMessage);
+
+    if (records.every(AiNannyParseNormalize.isLowInformationRecord)) {
+      if (local.hasRecords) return local.records;
+      return records;
+    }
+
+    if (local.hasRecords &&
+        records.any(AiNannyParseNormalize.isLowInformationRecord)) {
+      final merged = records
+          .where((r) => !AiNannyParseNormalize.isLowInformationRecord(r))
+          .toList();
+      final seen = merged
+          .map((r) => AiNannyParseNormalize.canonicalRecordType(r.type, r.fields))
+          .toSet();
+      for (final r in local.records) {
+        final key =
+            AiNannyParseNormalize.canonicalRecordType(r.type, r.fields);
+        if (seen.add(key)) merged.add(r);
+      }
+      if (merged.isNotEmpty) return merged;
+    }
+
+    if (records.length == 1 &&
+        AiNannyParseNormalize.isLowInformationRecord(records.first)) {
+      if (local.hasRecords) return local.records;
+    }
+
+    return records;
+  }
+
+  /// Linha resumo para cards de confirmação (exportada para [DetectedRecordBuilder]).
+  static String displayLineForRecord(
+    AiNannyStructuredRecord r,
+    S strings, {
+    String? sourceText,
+  }) =>
+      _displayLine(r, strings, sourceText: sourceText);
 
   /// Reaplica [enforce], títulos e follow-ups — nunca devolve bundle sem pergunta se incompleto.
   static AiNannyRecordsBundle prepareBundle({
@@ -179,17 +227,35 @@ abstract final class AiNannyStructuredMapper {
     } else {
       status = AiNannyRecordDraftStatus.complete;
     }
+
+    var understood = detected.understoodLines;
+    final missing = detected.missingLines;
+    final summary = base.displayLine.trim();
+    if (summary.isNotEmpty && _understoodIsOnlyTime(understood, strings)) {
+      understood = ['• $summary', ...understood.where((l) => !l.contains(strings.aiRecordFieldTime))];
+    }
+
     return AiNannyRecordDraft(
       structured: rec,
       status: status,
       displayLine: base.displayLine,
       title: base.title,
-      detailLines: [...detected.understoodLines, ...detected.missingLines],
-      understoodLines: detected.understoodLines,
-      missingLines: detected.missingLines,
+      detailLines: [...understood, ...missing],
+      understoodLines: understood,
+      missingLines: missing,
       followUpQuestion: base.followUpQuestion,
       detected: detected,
       growthPreview: base.growthPreview,
+    );
+  }
+
+  static bool _understoodIsOnlyTime(List<String> lines, S strings) {
+    if (lines.isEmpty) return true;
+    if (lines.length > 2) return false;
+    return lines.every(
+      (l) =>
+          l.contains(strings.aiRecordFieldTime) ||
+          l.contains(strings.aiRecordFieldNow),
     );
   }
 
@@ -213,7 +279,7 @@ abstract final class AiNannyStructuredMapper {
         AiNannyRecordDraft(
           structured: rec,
           status: AiNannyRecordDraftStatus.incomplete,
-          displayLine: _displayLine(rec, strings),
+          displayLine: _displayLine(rec, strings, sourceText: sourceText),
           title: title,
           detailLines: details,
           followUpQuestion: followUp,
@@ -223,7 +289,9 @@ abstract final class AiNannyStructuredMapper {
       );
     }
 
-    if (rec.type == 'growth_weight' && rec.fields['mode'] == 'delta') {
+    if (rec.type == 'growth_weight' &&
+        (rec.fields['mode'] == 'delta' ||
+            '${rec.fields['unit'] ?? ''}'.toLowerCase() == 'g')) {
       final grams = (rec.fields['value'] as num?)?.toInt() ?? 0;
       final prev = lastWeightKg ?? 0;
       if (prev <= 0) {
@@ -303,7 +371,7 @@ abstract final class AiNannyStructuredMapper {
       AiNannyRecordDraft(
         structured: rec,
         status: AiNannyRecordDraftStatus.complete,
-        displayLine: _displayLine(rec, strings),
+        displayLine: _displayLine(rec, strings, sourceText: sourceText),
         title: title,
         detailLines: details,
         followUpQuestion: followUp,
@@ -313,7 +381,11 @@ abstract final class AiNannyStructuredMapper {
     );
   }
 
-  static String _displayLine(AiNannyStructuredRecord r, S strings) {
+  static String _displayLine(
+    AiNannyStructuredRecord r,
+    S strings, {
+    String? sourceText,
+  }) {
     switch (r.type) {
       case 'diaper':
         final pee = r.fields['pee'] == true;
@@ -350,13 +422,18 @@ abstract final class AiNannyStructuredMapper {
       case 'growth_weight':
         final mode = r.fields['mode'];
         final v = r.fields['value'];
-        if (mode == 'delta') return 'Peso +$v g';
-        return 'Peso $v kg';
+        final unit = '${r.fields['unit'] ?? ''}'.toLowerCase();
+        if (mode == 'delta' || unit == 'g') {
+          return '${strings.growthTabWeight}: +$v g';
+        }
+        return '${strings.growthTabWeight}: $v kg';
       case 'growth_height':
         final mode = r.fields['mode'];
         final v = r.fields['value'];
-        if (mode == 'delta') return 'Altura +$v cm';
-        return 'Altura $v cm';
+        if (mode == 'delta') {
+          return '${strings.growthTabHeight}: +$v cm';
+        }
+        return '${strings.growthTabHeight}: $v cm';
       case 'vaccine':
         final name = r.fields['vaccineName'] ?? '?';
         final st = r.fields['status'];
@@ -376,7 +453,7 @@ abstract final class AiNannyStructuredMapper {
         if (action == 'end' || r.fields['sleepStatus'] == 'woke') {
           return mins != null
               ? '${strings.aiRecordLabelSleep} · ${strings.aiRecordLineSleepEnd} · $mins min'
-              : strings.aiRecordLabelSleep;
+              : '${strings.aiRecordLabelSleep} · ${strings.aiSleepOptionAlreadyWoke}';
         }
         if (mins != null) {
           final buf = StringBuffer('${strings.aiRecordLabelSleep} · $mins min');
@@ -388,7 +465,14 @@ abstract final class AiNannyStructuredMapper {
         }
         return strings.aiRecordLabelSleep;
       default:
-        return r.type;
+        if (sourceText != null) {
+          final local = AiNannyLocalMessageParser.parse(sourceText);
+          if (local.records.length == 1) {
+            return _displayLine(local.records.first, strings);
+          }
+        }
+        final generic = strings.aiRecordLineGeneric;
+        return generic;
     }
   }
 
@@ -536,7 +620,14 @@ abstract final class AiNannyStructuredMapper {
   static VoiceRecordInterpretation? _vaccine(AiNannyStructuredRecord r) {
     final name = '${r.fields['vaccineName'] ?? ''}'.trim();
     if (name.isEmpty) return null;
-    final status = '${r.fields['status'] ?? 'taken'}';
+    final hasFutureDue =
+        AiNannyParseNormalize.coercePositiveInt(r.fields['nextDueInDays']) !=
+            null ||
+        '${r.fields['nextDueDate'] ?? ''}'.trim().isNotEmpty;
+    final statusRaw = '${r.fields['status'] ?? ''}'.trim();
+    final status = statusRaw.isEmpty
+        ? (hasFutureDue ? 'scheduled' : 'taken')
+        : statusRaw;
     final now = DateTime.now();
     DateTime? appliedAt;
     if (status == 'taken') {
@@ -560,15 +651,18 @@ abstract final class AiNannyStructuredMapper {
         nextDueAt = DateTime(parsed.year, parsed.month, parsed.day, 9, 0);
       }
     }
-    final nextDays = (r.fields['nextDueInDays'] as num?)?.toInt();
-    if (nextDueAt == null && nextDays != null && nextDays > 0) {
-      final base = DateTime(now.year, now.month, now.day);
+    final nextDays =
+        AiNannyParseNormalize.coercePositiveInt(r.fields['nextDueInDays']);
+    if (nextDueAt == null && nextDays != null) {
+      final base = DateTime(now.year, now.month, now.day, 9, 0);
       nextDueAt = base.add(Duration(days: nextDays));
     }
     if (status == 'scheduled' && nextDueAt == null) {
       final sched = '${r.fields['date'] ?? ''}'.trim();
-      nextDueAt = DateTime.tryParse(sched) ??
-          now.add(const Duration(days: 7));
+      final parsed = DateTime.tryParse(sched);
+      if (parsed != null) {
+        nextDueAt = DateTime(parsed.year, parsed.month, parsed.day, 9, 0);
+      }
     }
     return VoiceRecordInterpretation(
       type: 'vaccine',

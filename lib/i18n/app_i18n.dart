@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/memory_badge.dart';
 import '../services/firebase/auth_registration_exception.dart';
+import '../services/firebase/email_verification_policy.dart';
 import '../utils/zodiac_element.dart';
 import '../utils/zodiac_keys.dart';
 import 'ai_family_growth_locale_extras.dart';
@@ -795,6 +796,10 @@ class S {
   String get settingsSoonTitle => _t('settingsSoonTitle');
   String get settingsSoonBadge => _t('settingsSoonBadge');
   String get settingsRateUs => _t('settingsRateUs');
+  String get settingsVersion => _t('settingsVersion');
+  String get settingsVersionDialogTitle => _t('settingsVersionDialogTitle');
+  String get settingsVersionCopy => _t('settingsVersionCopy');
+  String get settingsVersionCopied => _t('settingsVersionCopied');
   String get settingsTermsOfUse => _t('settingsTermsOfUse');
   String get termsLoadError => _t('termsLoadError');
   String get settingsPrivacyPolicy => _t('settingsPrivacyPolicy');
@@ -870,6 +875,18 @@ class S {
   String get authErrLoginCancelled => _t('authErrLoginCancelled');
   String get authErrUnexpected => _t('authErrUnexpected');
 
+  String get emailVerifyTitle => _t('emailVerifyTitle');
+  String get emailVerifyLead => _t('emailVerifyLead');
+  String get emailVerifyWhy => _t('emailVerifyWhy');
+  String get emailVerifyResendButton => _t('emailVerifyResendButton');
+  String get emailVerifyConfirmedButton => _t('emailVerifyConfirmedButton');
+  String get emailVerifySignOut => _t('emailVerifySignOut');
+  String get emailVerifySent => _t('emailVerifySent');
+  String get emailVerifyStillPending => _t('emailVerifyStillPending');
+  String get authErrEmailVerifyTooMany => _t('authErrEmailVerifyTooMany');
+  String emailVerifyResendWait(int seconds) =>
+      _t('emailVerifyResendWait').replaceAll('{seconds}', '$seconds');
+
   String onb(String key) => _t('onb$key');
   String onbWithName(String key, String name) =>
       _t('onb$key').replaceAll('{name}', name);
@@ -902,6 +919,10 @@ class S {
 
   /// Mensagens de erro de login/registo alinhadas ao idioma atual.
   String userFacingAuthError(Object error) {
+    if (error is EmailVerificationCooldownException) {
+      final s = error.remaining.inSeconds;
+      return emailVerifyResendWait(s);
+    }
     if (error is EmailAlreadyRegisteredException) {
       return authEmailInUseHintForProviders(error.signInMethods);
     }
@@ -927,6 +948,8 @@ class S {
         case 'invalid-verification-code':
         case 'invalid-verification-id':
           return authErrInvalidCredential;
+        case 'too-many-requests':
+          return authErrEmailVerifyTooMany;
         default:
           return authErrCredentialsGeneric;
       }
@@ -1373,6 +1396,8 @@ class S {
   String get homeCriticalDiaperTitle => _t('homeCriticalDiaperTitle');
   String get homeCriticalFeedingSubtitle => _t('homeCriticalFeedingSubtitle');
   String get homeCriticalSleepSubtitle => _t('homeCriticalSleepSubtitle');
+  String get homeCriticalWakeTitle => _t('homeCriticalWakeTitle');
+  String get homeCriticalWakeSubtitle => _t('homeCriticalWakeSubtitle');
   String get homeCriticalDiaperSubtitle => _t('homeCriticalDiaperSubtitle');
   String get homeSleepBarAwakeTitle => _t('homeSleepBarAwakeTitle');
   String get homeSleepBarSleepTitle => _t('homeSleepBarSleepTitle');
@@ -1526,6 +1551,50 @@ class S {
       _t('aiBubbleDiaperCritical').replaceAll('{name}', name);
   String aiBubbleWeightDown(String name) =>
       _t('aiBubbleWeightDown').replaceAll('{name}', name);
+  String aiBubbleGrowthWeightBelow(
+    String name,
+    String value,
+    String min,
+    String max,
+  ) =>
+      _t('aiBubbleGrowthWeightBelow')
+          .replaceAll('{name}', name)
+          .replaceAll('{value}', value)
+          .replaceAll('{min}', min)
+          .replaceAll('{max}', max);
+  String aiBubbleGrowthWeightAbove(
+    String name,
+    String value,
+    String min,
+    String max,
+  ) =>
+      _t('aiBubbleGrowthWeightAbove')
+          .replaceAll('{name}', name)
+          .replaceAll('{value}', value)
+          .replaceAll('{min}', min)
+          .replaceAll('{max}', max);
+  String aiBubbleGrowthHeightBelow(
+    String name,
+    String value,
+    String min,
+    String max,
+  ) =>
+      _t('aiBubbleGrowthHeightBelow')
+          .replaceAll('{name}', name)
+          .replaceAll('{value}', value)
+          .replaceAll('{min}', min)
+          .replaceAll('{max}', max);
+  String aiBubbleGrowthHeightAbove(
+    String name,
+    String value,
+    String min,
+    String max,
+  ) =>
+      _t('aiBubbleGrowthHeightAbove')
+          .replaceAll('{name}', name)
+          .replaceAll('{value}', value)
+          .replaceAll('{min}', min)
+          .replaceAll('{max}', max);
   String aiBubbleGrowthStale(String name, int days) =>
       _t('aiBubbleGrowthStale')
           .replaceAll('{name}', name)
@@ -1642,6 +1711,30 @@ class S {
       _t('growthEmpty').replaceAll('{label}', label);
   String get notifyGrowthWeightDownTitle => _t('notifyGrowthWeightDownTitle');
   String get notifyGrowthWeightDownBody => _t('notifyGrowthWeightDownBody');
+  String get notifyGrowthWeightBelowTitle => _t('notifyGrowthWeightBelowTitle');
+  String notifyGrowthWeightBelowBody(String value, String min, String max) =>
+      _t('notifyGrowthWeightBelowBody')
+          .replaceAll('{value}', value)
+          .replaceAll('{min}', min)
+          .replaceAll('{max}', max);
+  String get notifyGrowthWeightAboveTitle => _t('notifyGrowthWeightAboveTitle');
+  String notifyGrowthWeightAboveBody(String value, String min, String max) =>
+      _t('notifyGrowthWeightAboveBody')
+          .replaceAll('{value}', value)
+          .replaceAll('{min}', min)
+          .replaceAll('{max}', max);
+  String get notifyGrowthHeightBelowTitle => _t('notifyGrowthHeightBelowTitle');
+  String notifyGrowthHeightBelowBody(String value, String min, String max) =>
+      _t('notifyGrowthHeightBelowBody')
+          .replaceAll('{value}', value)
+          .replaceAll('{min}', min)
+          .replaceAll('{max}', max);
+  String get notifyGrowthHeightAboveTitle => _t('notifyGrowthHeightAboveTitle');
+  String notifyGrowthHeightAboveBody(String value, String min, String max) =>
+      _t('notifyGrowthHeightAboveBody')
+          .replaceAll('{value}', value)
+          .replaceAll('{min}', min)
+          .replaceAll('{max}', max);
   String get notifyGrowthStaleTitle => _t('notifyGrowthStaleTitle');
   String notifyGrowthStaleBody(int days) =>
       _t('notifyGrowthStaleBody').replaceAll('{days}', '$days');
@@ -1752,11 +1845,17 @@ class S {
         _ => 'growthInsightVelocityUnknown',
       });
   String get reportPediatricGrowthInsights => _t('reportPediatricGrowthInsights');
+  String get reportPediatricSectionGrowthCurve =>
+      _t('reportPediatricSectionGrowthCurve');
   String get aiNannyNavLabel => _t('aiNannyNavLabel');
   String get aiNannyPhase1Hint => _t('aiNannyPhase1Hint');
   String get aiNannyTitle => _t('aiNannyTitle');
   String get aiNannySubtitle => _t('aiNannySubtitle');
   String get aiNannyWelcomeMessage => _t('aiNannyWelcomeMessage');
+  String get aiNannyGrowthCurveContextHeader =>
+      _t('aiNannyGrowthCurveContextHeader');
+  String get aiNannyGrowthCurveContextFooter =>
+      _t('aiNannyGrowthCurveContextFooter');
   String aiEmotionalMonthiversary(String name, int months, String hint) {
     final unit = months == 1
         ? _t('aiEmotionalMonthSingular')
@@ -1878,12 +1977,23 @@ class S {
   String get aiRecordLineWeight => _t('aiRecordLineWeight');
   String get aiRecordLineHeight => _t('aiRecordLineHeight');
   String get aiRecordLineSymptom => _t('aiRecordLineSymptom');
+  String aiRecordLineConsultation(String title) =>
+      _t('aiRecordLineConsultation').replaceAll('{title}', title);
+  String get aiRecordLineConsultationGeneric =>
+      _t('aiRecordLineConsultationGeneric');
+  String aiRecordLineVaccine(String name) =>
+      _t('aiRecordLineVaccine').replaceAll('{name}', name);
+  String get aiRecordLineVaccineGeneric => _t('aiRecordLineVaccineGeneric');
   String get aiRecordLineGeneric => _t('aiRecordLineGeneric');
   String aiRecordConfirmedPrefix(String name, String line, String time) =>
       _t('aiRecordConfirmedPrefix')
           .replaceAll('{name}', name)
           .replaceAll('{line}', line)
           .replaceAll('{time}', time);
+  String aiVaccineScheduledConfirmed(String vaccineName, String dateLabel) =>
+      _t('aiVaccineScheduledConfirmed')
+          .replaceAll('{name}', vaccineName)
+          .replaceAll('{date}', dateLabel);
   String aiBreastfeedingSavedSuccess(String sideLabel, int minutes) =>
       _t('aiBreastfeedingSavedSuccess')
           .replaceAll('{side}', sideLabel)
@@ -1900,6 +2010,7 @@ class S {
   String get aiClarifyVaccineDate => _t('aiClarifyVaccineDate');
   String get aiClarifyAppointmentReason => _t('aiClarifyAppointmentReason');
   String get aiClarifyAppointmentWhen => _t('aiClarifyAppointmentWhen');
+  String get aiClarifyAppointmentAddress => _t('aiClarifyAppointmentAddress');
   String get aiClarifySymptomDetails => _t('aiClarifySymptomDetails');
   String get aiClarifyFeverTemperature => _t('aiClarifyFeverTemperature');
   String aiActionFirstNeedData(int n) =>
@@ -2141,6 +2252,7 @@ class S {
   String get aiBubbleHomilyReady => _t('aiBubbleHomilyReady');
   String get aiBubbleHomilyOpenLink => _t('aiBubbleHomilyOpenLink');
   String get aiBubbleCuriosityTitle => _t('aiBubbleCuriosityTitle');
+  String get aiBubbleDailyBriefTitle => _t('aiBubbleDailyBriefTitle');
 
   String familyHomilyError(String code, {String? serverMessage}) {
     switch (code) {
@@ -2380,6 +2492,7 @@ class S {
   String get profileFamilyMessagesTitle => _t('profileFamilyMessagesTitle');
   String get profileShowChristian => _t('profileShowChristian');
   String get profileShowHoroscope => _t('profileShowHoroscope');
+  String get profileShowPhilosophical => _t('profileShowPhilosophical');
   String get profileShowSpiritist => _t('profileShowSpiritist');
   String get profileShowJewish => _t('profileShowJewish');
   String get motherProfileAddBaby => _t('motherProfileAddBaby');
@@ -3240,7 +3353,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricIrritUnknown': 'Sem dados',
     'reportPediatricYes': 'Sim',
     'reportPediatricNo': 'Não',
-    'reportPediatricNa': '—',
+    'reportPediatricNa': '-',
     'reportPediatricJournalNote': 'Diários do dia',
     'reportPediatricJournalNoteHint': 'Deteção por palavras nos textos livres.',
     'reportPediatricObsHint':
@@ -3437,6 +3550,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'settingsSoonTitle': 'Em breve',
     'settingsSoonBadge': 'Em breve',
     'settingsRateUs': 'Avalie-nos',
+    'settingsVersion': 'Versão',
+    'settingsVersionDialogTitle': 'Versão do app',
+    'settingsVersionCopy': 'Copiar',
+    'settingsVersionCopied': 'Informações da versão copiadas',
     'settingsTermsOfUse': 'Termos de uso',
     'termsLoadError': 'Não foi possível carregar os termos.',
     'settingsPrivacyPolicy': 'Política de privacidade',
@@ -3530,6 +3647,20 @@ const Map<AppLang, Map<String, String>> _strings = {
     'authErrAppleUnavailable':
         'Entrar com a Apple só está disponível no iPhone ou iPad.',
     'authErrUnexpected': 'Ocorreu um erro inesperado.',
+    'emailVerifyTitle': 'Confirme seu e-mail',
+    'emailVerifyLead':
+        'Verifique seu endereço de e-mail antes de continuar. Enviamos um link para a sua caixa de entrada.',
+    'emailVerifyWhy':
+        'A confirmação protege os dados do bebê, permite recuperar a conta e reduz cadastros falsos.',
+    'emailVerifyResendButton': 'Reenviar e-mail de verificação',
+    'emailVerifyResendWait': 'Aguarde {seconds}s para reenviar',
+    'emailVerifyConfirmedButton': 'Já verifiquei meu e-mail',
+    'emailVerifySignOut': 'Sair da conta',
+    'emailVerifySent': 'E-mail enviado! Verifique também a pasta de spam.',
+    'emailVerifyStillPending':
+        'Ainda não confirmamos seu e-mail. Abra o link que enviamos e tente de novo.',
+    'authErrEmailVerifyTooMany':
+        'Muitas tentativas. Aguarde alguns minutos antes de pedir outro e-mail.',
     'onbSelectDate': 'Selecionar data',
     'onbBabyFallback': 'bebê',
     'onbMomFallback': 'mamãe',
@@ -3628,8 +3759,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'onbGoalMemoryBook': 'Criar livro de memórias',
     'onbMessagePrefTitle': 'Mamãe espiritualizada, bebê feliz.',
     'onbMessagePrefSubtitle': 'Deseja receber mensagens diárias?',
-    'onbMessagePrefChristian': 'Cristãs',
-    'onbMessagePrefHoroscope': 'Horóscopo',
+    'onbMessagePrefChristian': 'Cristã',
+    'onbMessagePrefHoroscope': 'Astrológica',
+    'onbMessagePrefPhilosophical': 'Filosófica / Ecumênica',
     'onbMessagePrefSpiritist': 'Espíritas',
     'onbMessagePrefJewish': 'Judias',
     'onbMessagePrefAll': 'Todas',
@@ -3995,6 +4127,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeCriticalFeedingSubtitle':
         'Passou do horário esperado desde a última mamada.',
     'homeCriticalSleepSubtitle': 'A janela de sono pode ter sido ultrapassada.',
+    'homeCriticalWakeTitle': 'Passou da hora de acordar',
+    'homeCriticalWakeSubtitle':
+        'A sessão de sono pode ter ultrapassado o tempo recomendado.',
     'homeCriticalDiaperSubtitle': 'Já faz um tempo desde a última troca.',
     'homeSleepBarAwakeTitle': 'Acordado · janela até dormir',
     'homeSleepBarSleepTitle': 'A dormir · tempo da sessão',
@@ -4097,6 +4232,14 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Pode ser hora de trocar a fralda de {name}.',
     'aiBubbleWeightDown':
         'Último peso de {name} ficou abaixo do registro anterior — vale acompanhar.',
+    'aiBubbleGrowthWeightBelow':
+        'Urgente: o peso de {name} ({value} kg) está abaixo da curva de referência para a idade ({min}–{max} kg). Confira o registro. Neste tipo de alerta, procure um médico ou pediatra para avaliar.',
+    'aiBubbleGrowthWeightAbove':
+        'Urgente: o peso de {name} ({value} kg) está acima da curva de referência para a idade ({min}–{max} kg). Confira o registro. Neste tipo de alerta, procure um médico ou pediatra para avaliar.',
+    'aiBubbleGrowthHeightBelow':
+        'Urgente: a altura de {name} ({value} cm) está abaixo da curva de referência para a idade ({min}–{max} cm). Confira o registro. Neste tipo de alerta, procure um médico ou pediatra para avaliar.',
+    'aiBubbleGrowthHeightAbove':
+        'Urgente: a altura de {name} ({value} cm) está acima da curva de referência para a idade ({min}–{max} cm). Confira o registro. Neste tipo de alerta, procure um médico ou pediatra para avaliar.',
     'aiBubbleGrowthStale':
         'Há {days} dias sem medir peso ou altura de {name}.',
     'aiBubbleGrowthNone':
@@ -4211,13 +4354,21 @@ const Map<AppLang, Map<String, String>> _strings = {
     'growthInsightVelocityUnknown':
         'Adicione pelo menos duas medições para estimar a velocidade de crescimento.',
     'reportPediatricGrowthInsights': 'Tendências de crescimento (informativo)',
+    'reportPediatricSectionGrowthCurve': 'Curva de crescimento (referência)',
     'aiNannyNavLabel': 'IA Babá',
     'aiNannyPhase1Hint': 'O chat chega na próxima fase. Por agora, o atalho já está no menu.',
     'aiNannyTitle': 'IA Babá 24h com você',
     'aiNannySubtitle':
-        'Respostas inteligentes e orientações personalizadas para a rotina do seu bebê.',
+        'Conselheira acolhedora para mãe, pai e família — rotina do bebê e apoio emocional.',
     'aiNannyWelcomeMessage':
-        '🤖 Olá! Eu sou a IA Babá 💜\nPosso ajudar com mamadas, sono, fraldas, saúde, crescimento e muito mais ✨',
+        '🤖 Olá! Eu sou a IA Babá 💜\n\n'
+        'Sou sua companheira e conselheira: posso ajudar a registrar a rotina (mamadas, sono, vacinas…), '
+        'tirar dúvidas sobre o bebê ou a gestação, e ouvir mãe, pai e família quando precisarem desabafar. '
+        'Estou aqui com você ✨',
+    'aiNannyGrowthCurveContextHeader':
+        'ALERTA DE CRESCIMENTO (obrigatório): o bebê está com medição fora da curva de referência para a idade. Se a família perguntar como ele(a) está, sobre peso, altura, saúde ou crescimento, mencione este alerta com carinho — não ignore só para dar uma resposta positiva.',
+    'aiNannyGrowthCurveContextFooter':
+        'Oriente a conferir se o registro está correto e a procurar o pediatra para avaliar.',
     'aiEmotionalMonthiversary':
         '🤖 Hoje {name} completa {months} {unit} ❤️\n{hint}',
     'aiEmotionalMonthSingular': 'mês',
@@ -4485,6 +4636,8 @@ const Map<AppLang, Map<String, String>> _strings = {
         '🤖 Não consegui salvar o registro agora. Tente novamente ou registre manualmente.',
     'aiRecordConfirmedPrefix':
         'Pronto, registrei {line} para {name} às {time}.',
+    'aiVaccineScheduledConfirmed':
+        'Agendei a vacina {name} para {date} (coluna Próxima na carteirinha).',
     'aiBreastfeedingSavedSuccess':
         '✅ Registrei a mamada no peito {side} por {minutes} minutos.',
     'aiBreastfeedingSaveFailed':
@@ -4500,7 +4653,13 @@ const Map<AppLang, Map<String, String>> _strings = {
     'aiRecordLineWeight': 'peso',
     'aiRecordLineHeight': 'altura',
     'aiRecordLineSymptom': 'sintoma em Saúde',
+    'aiRecordLineConsultation': 'a consulta ({title})',
+    'aiRecordLineConsultationGeneric': 'a consulta médica',
+    'aiRecordLineVaccine': 'a vacina {name}',
+    'aiRecordLineVaccineGeneric': 'a vacina',
     'aiRecordLineGeneric': 'registro',
+    'aiClarifyAppointmentAddress':
+        'Qual o endereço do consultório? Se souber, me envie aqui para eu anotar no registro.',
     'aiRoutineRegisterSkipped': 'Ok, não vou registrar esse evento.',
     'aiVoiceSavedFeeding': 'Mamada registrada.',
     'aiVoiceSleepStarted': 'Sono iniciado — use a tela Sono ou diga "acordou" quando acordar.',
@@ -4593,6 +4752,7 @@ const Map<AppLang, Map<String, String>> _strings = {
         '✝️ A homilia de hoje está pronta! Toque abaixo para ler na Família.',
     'aiBubbleHomilyOpenLink': 'Ver homilia',
     'aiBubbleCuriosityTitle': 'Curiosidade do dia ✨',
+    'aiBubbleDailyBriefTitle': 'IA Babá · seu dia',
     'familyHomilyErrorGeneric':
         'Não foi possível gerar a homilia agora. Tente novamente.',
     'familyHomilyErrorNotFound':
@@ -4634,6 +4794,18 @@ const Map<AppLang, Map<String, String>> _strings = {
     'notifyGrowthWeightDownTitle': 'Peso menor que antes',
     'notifyGrowthWeightDownBody':
         'O último registro de peso está abaixo do anterior. Em caso de dúvida, fale com o pediatra.',
+    'notifyGrowthWeightBelowTitle': 'Peso abaixo da curva',
+    'notifyGrowthWeightBelowBody':
+        'Último peso: {value} kg (curva saudável: {min}–{max} kg). Confira o registro. Neste tipo de alerta, procure um médico ou pediatra.',
+    'notifyGrowthWeightAboveTitle': 'Peso acima da curva',
+    'notifyGrowthWeightAboveBody':
+        'Último peso: {value} kg (curva saudável: {min}–{max} kg). Confira o registro. Neste tipo de alerta, procure um médico ou pediatra.',
+    'notifyGrowthHeightBelowTitle': 'Altura abaixo da curva',
+    'notifyGrowthHeightBelowBody':
+        'Última altura: {value} cm (curva saudável: {min}–{max} cm). Confira o registro. Neste tipo de alerta, procure um médico ou pediatra.',
+    'notifyGrowthHeightAboveTitle': 'Altura acima da curva',
+    'notifyGrowthHeightAboveBody':
+        'Última altura: {value} cm (curva saudável: {min}–{max} cm). Confira o registro. Neste tipo de alerta, procure um médico ou pediatra.',
     'notifyGrowthStaleTitle': 'Há tempo sem registar o crescimento',
     'notifyGrowthStaleBody':
         'Passaram mais de 30 dias desde a última medição (peso, altura ou cabeça). Já são {days} dias — atualize nos registros.',
@@ -4771,7 +4943,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'profileLayoutTitle': 'Layout do app',
     'profileLayoutSubtitle':
         'Modo diurno, noturno ou automático conforme o horário.',
-    'profileLayoutAutomatic': 'Automático',
+    'profileLayoutAutomatic': 'Auto',
     'profileLayoutDay': 'Diurno',
     'profileLayoutNight': 'Noturno',
     'profileLayoutUpdating': 'Atualizando layout…',
@@ -4784,8 +4956,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'motherProfileFieldHeight': 'Altura',
     'motherProfileFieldFatherHeight': 'Altura do pai',
     'profileFamilyMessagesTitle': 'Mensagens na tela Família',
-    'profileShowChristian': 'Mensagens cristãs',
-    'profileShowHoroscope': 'Horóscopo',
+    'profileShowChristian': 'Cristã',
+    'profileShowHoroscope': 'Astrológica',
+    'profileShowPhilosophical': 'Filosófica / Ecumênica',
     'profileShowSpiritist': 'Mensagens espíritas',
     'profileShowJewish': 'Mensagens judaicas',
     'motherProfileAddBaby': 'Adicionar outro bebê',
@@ -5962,7 +6135,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricIrritUnknown': 'No data',
     'reportPediatricYes': 'Yes',
     'reportPediatricNo': 'No',
-    'reportPediatricNa': '—',
+    'reportPediatricNa': '-',
     'reportPediatricJournalNote': 'Daily journals',
     'reportPediatricJournalNoteHint': 'Keyword detection in free text.',
     'reportPediatricObsHint':
@@ -6156,6 +6329,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'settingsSoonTitle': 'Coming soon',
     'settingsSoonBadge': 'Soon',
     'settingsRateUs': 'Rate us',
+    'settingsVersion': 'Version',
+    'settingsVersionDialogTitle': 'App version',
+    'settingsVersionCopy': 'Copy',
+    'settingsVersionCopied': 'Version info copied',
     'settingsTermsOfUse': 'Terms of use',
     'termsLoadError': 'Could not load the terms.',
     'settingsPrivacyPolicy': 'Privacy policy',
@@ -6246,6 +6423,20 @@ const Map<AppLang, Map<String, String>> _strings = {
     'authErrAppleUnavailable':
         'Sign in with Apple is only available on iPhone or iPad.',
     'authErrUnexpected': 'Something went wrong.',
+    'emailVerifyTitle': 'Verify your email',
+    'emailVerifyLead':
+        'Please verify your email address before continuing. We sent a link to your inbox.',
+    'emailVerifyWhy':
+        'Verification helps protect baby data, recover your account, and prevent fake sign-ups.',
+    'emailVerifyResendButton': 'Resend verification email',
+    'emailVerifyResendWait': 'Wait {seconds}s to resend',
+    'emailVerifyConfirmedButton': "I've verified my email",
+    'emailVerifySignOut': 'Sign out',
+    'emailVerifySent': 'Email sent! Check your spam folder too.',
+    'emailVerifyStillPending':
+        'Your email is not verified yet. Open the link we sent and try again.',
+    'authErrEmailVerifyTooMany':
+        'Too many attempts. Wait a few minutes before requesting another email.',
     'onbSelectDate': 'Select date',
     'onbBabyFallback': 'baby',
     'onbMomFallback': 'mom',
@@ -6343,7 +6534,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'onbMessagePrefTitle': 'Spiritual mom, happy baby.',
     'onbMessagePrefSubtitle': 'Would you like to receive daily messages?',
     'onbMessagePrefChristian': 'Christian',
-    'onbMessagePrefHoroscope': 'Horoscope',
+    'onbMessagePrefHoroscope': 'Astrological',
+    'onbMessagePrefPhilosophical': 'Philosophical / Ecumenical',
     'onbMessagePrefSpiritist': 'Spiritist',
     'onbMessagePrefJewish': 'Jewish',
     'onbMessagePrefAll': 'All',
@@ -6702,6 +6894,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeCriticalFeedingSubtitle':
         'It may have passed the expected time since the last feeding.',
     'homeCriticalSleepSubtitle': 'The awake window may have been exceeded.',
+    'homeCriticalWakeTitle': 'Past wake-up time',
+    'homeCriticalWakeSubtitle':
+        'The sleep session may have exceeded the recommended duration.',
     'homeCriticalDiaperSubtitle':
         'It may have been a while since the last change.',
     'homeSleepBarAwakeTitle': 'Awake · window until sleep',
@@ -6800,6 +6995,14 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Diaper change? It\'s been a while since {name}\'s last change.',
     'aiBubbleWeightDown':
         '{name}\'s latest weight is below the previous entry — worth watching.',
+    'aiBubbleGrowthWeightBelow':
+        'Urgent: {name}\'s weight ({value} kg) is below the reference curve for this age ({min}–{max} kg). Verify the entry. For this type of alert, see a doctor or pediatrician.',
+    'aiBubbleGrowthWeightAbove':
+        'Urgent: {name}\'s weight ({value} kg) is above the reference curve for this age ({min}–{max} kg). Verify the entry. For this type of alert, see a doctor or pediatrician.',
+    'aiBubbleGrowthHeightBelow':
+        'Urgent: {name}\'s height ({value} cm) is below the reference curve for this age ({min}–{max} cm). Verify the entry. For this type of alert, see a doctor or pediatrician.',
+    'aiBubbleGrowthHeightAbove':
+        'Urgent: {name}\'s height ({value} cm) is above the reference curve for this age ({min}–{max} cm). Verify the entry. For this type of alert, see a doctor or pediatrician.',
     'aiBubbleGrowthStale':
         'No weight or height logged for {name} in {days} days.',
     'aiBubbleGrowthNone':
@@ -6915,13 +7118,21 @@ const Map<AppLang, Map<String, String>> _strings = {
     'growthInsightVelocityUnknown':
         'Add at least two measurements to estimate growth velocity.',
     'reportPediatricGrowthInsights': 'Growth trends (informational)',
+    'reportPediatricSectionGrowthCurve': 'Growth curve (reference)',
     'aiNannyNavLabel': 'AI Nanny',
     'aiNannyPhase1Hint': 'Chat arrives in the next phase. The shortcut is already in the menu.',
     'aiNannyTitle': 'AI Nanny 24/7 with you',
     'aiNannySubtitle':
-        'Smart answers and personalized guidance for your baby\'s routine.',
+        'A caring counselor for mom, dad and family — baby routine and emotional support.',
     'aiNannyWelcomeMessage':
-        '🤖 Hi! I\'m AI Nanny 💜\nI can help with feeds, sleep, diapers, health, growth and more ✨',
+        '🤖 Hi! I\'m AI Nanny 💜\n\n'
+        'I\'m your companion and counselor: I can help log routine (feeds, sleep, vaccines…), '
+        'answer questions about your baby or pregnancy, and listen when mom, dad or family need to vent. '
+        'I\'m here for you ✨',
+    'aiNannyGrowthCurveContextHeader':
+        'GROWTH ALERT (required): the baby has a measurement outside the healthy reference curve for their age. If the family asks how the baby is doing, about weight, height, health, or growth, mention this alert gently — do not skip it just to sound positive.',
+    'aiNannyGrowthCurveContextFooter':
+        'Suggest verifying the log entry and seeing a pediatrician for evaluation.',
     'aiEmotionalMonthiversary':
         '🤖 Today {name} turns {months} {unit} ❤️\n{hint}',
     'aiEmotionalMonthSingular': 'month',
@@ -7043,6 +7254,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'aiClarifyVaccineDate': 'What is the vaccine date?',
     'aiClarifyAppointmentReason': 'Which specialty or reason?',
     'aiClarifyAppointmentWhen': 'When is the appointment (date and time)?',
+    'aiClarifyAppointmentAddress':
+        'What is the clinic address? Send it here and I will add it to the record.',
     'aiClarifySymptomDetails': 'Which symptoms or temperature should I log?',
     'aiClarifyFeverTemperature':
         'What is the temperature now, in degrees? (e.g. 38.5)',
@@ -7182,6 +7395,8 @@ const Map<AppLang, Map<String, String>> _strings = {
     'aiRecordSaveFailed':
         '🤖 I could not save the record now. Please try again or log it manually.',
     'aiRecordConfirmedPrefix': 'Done — logged {line} for {name} at {time}.',
+    'aiVaccineScheduledConfirmed':
+        'Scheduled the {name} vaccine for {date} (see Next column).',
     'aiBreastfeedingSavedSuccess':
         '✅ Logged breastfeeding on the {side} breast for {minutes} minutes.',
     'aiBreastfeedingSaveFailed':
@@ -7197,6 +7412,10 @@ const Map<AppLang, Map<String, String>> _strings = {
     'aiRecordLineWeight': 'weight',
     'aiRecordLineHeight': 'height',
     'aiRecordLineSymptom': 'symptom in Health',
+    'aiRecordLineConsultation': 'the appointment ({title})',
+    'aiRecordLineConsultationGeneric': 'the medical appointment',
+    'aiRecordLineVaccine': 'the {name} vaccine',
+    'aiRecordLineVaccineGeneric': 'the vaccine',
     'aiRecordLineGeneric': 'entry',
     'aiRoutineRegisterSkipped': 'OK, I will not log that event.',
     'aiVoiceSavedFeeding': 'Feeding logged.',
@@ -7288,6 +7507,7 @@ const Map<AppLang, Map<String, String>> _strings = {
         '✝️ Today\'s homily is ready! Tap below to read it in Family.',
     'aiBubbleHomilyOpenLink': 'View homily',
     'aiBubbleCuriosityTitle': 'Daily curiosity ✨',
+    'aiBubbleDailyBriefTitle': 'AI Nanny · your day',
     'familyHomilyErrorGeneric':
         'Could not generate the homily right now. Please try again.',
     'familyHomilyErrorNotFound': 'Homily not found. Try generating again.',
@@ -7326,6 +7546,18 @@ const Map<AppLang, Map<String, String>> _strings = {
     'notifyGrowthWeightDownTitle': 'Weight lower than before',
     'notifyGrowthWeightDownBody':
         'The latest weight entry is below the previous one. When in doubt, contact your pediatrician.',
+    'notifyGrowthWeightBelowTitle': 'Weight below the curve',
+    'notifyGrowthWeightBelowBody':
+        'Latest weight: {value} kg (healthy range: {min}–{max} kg). Verify the entry. For this type of alert, see a doctor or pediatrician.',
+    'notifyGrowthWeightAboveTitle': 'Weight above the curve',
+    'notifyGrowthWeightAboveBody':
+        'Latest weight: {value} kg (healthy range: {min}–{max} kg). Verify the entry. For this type of alert, see a doctor or pediatrician.',
+    'notifyGrowthHeightBelowTitle': 'Height below the curve',
+    'notifyGrowthHeightBelowBody':
+        'Latest height: {value} cm (healthy range: {min}–{max} cm). Verify the entry. For this type of alert, see a doctor or pediatrician.',
+    'notifyGrowthHeightAboveTitle': 'Height above the curve',
+    'notifyGrowthHeightAboveBody':
+        'Latest height: {value} cm (healthy range: {min}–{max} cm). Verify the entry. For this type of alert, see a doctor or pediatrician.',
     'notifyGrowthStaleTitle': 'No growth log in a while',
     'notifyGrowthStaleBody':
         'It has been over 30 days since the last growth measurement (weight, height, or head). It has been {days} days — add a new entry.',
@@ -7475,8 +7707,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'motherProfileFieldHeight': 'Height',
     'motherProfileFieldFatherHeight': "Father's height",
     'profileFamilyMessagesTitle': 'Messages on Family screen',
-    'profileShowChristian': 'Christian messages',
-    'profileShowHoroscope': 'Horoscope',
+    'profileShowChristian': 'Christian',
+    'profileShowHoroscope': 'Astrological',
+    'profileShowPhilosophical': 'Philosophical / Ecumenical',
     'profileShowSpiritist': 'Spiritist messages',
     'profileShowJewish': 'Jewish messages',
     'motherProfileAddBaby': 'Add another baby',
@@ -8490,7 +8723,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricIrritUnknown': 'Sin datos',
     'reportPediatricYes': 'Sí',
     'reportPediatricNo': 'No',
-    'reportPediatricNa': '—',
+    'reportPediatricNa': '-',
     'reportPediatricJournalNote': 'Diarios del día',
     'reportPediatricJournalNoteHint': 'Detección por palabras en texto libre.',
     'reportPediatricObsHint':
@@ -8687,8 +8920,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'motherProfileFieldHeight': 'Altura',
     'motherProfileFieldFatherHeight': 'Altura del papá',
     'profileFamilyMessagesTitle': 'Mensajes en la pantalla Familia',
-    'profileShowChristian': 'Mensajes cristianos',
-    'profileShowHoroscope': 'Horóscopo',
+    'profileShowChristian': 'Cristiana',
+    'profileShowHoroscope': 'Astrológica',
+    'profileShowPhilosophical': 'Filosófica / Ecuménica',
     'profileShowSpiritist': 'Mensajes espíritas',
     'profileShowJewish': 'Mensajes judías',
     'motherProfileAddBaby': 'Agregar otro bebé',
@@ -8925,8 +9159,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'onbGoalMemoryBook': 'Crear libro de recuerdos',
     'onbMessagePrefTitle': 'Mamá espiritualizada, bebé feliz.',
     'onbMessagePrefSubtitle': '¿Deseas recibir mensajes diarios?',
-    'onbMessagePrefChristian': 'Cristianas',
-    'onbMessagePrefHoroscope': 'Horóscopo',
+    'onbMessagePrefChristian': 'Cristiana',
+    'onbMessagePrefHoroscope': 'Astrológica',
+    'onbMessagePrefPhilosophical': 'Filosófica / Ecuménica',
     'onbMessagePrefSpiritist': 'Espíritas',
     'onbMessagePrefJewish': 'Judías',
     'onbMessagePrefAll': 'Todas',
@@ -9661,8 +9896,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'onbMessagePrefTitle': 'Maman spiritualisée, bébé heureux.',
     'onbMessagePrefSubtitle':
         'Souhaitez-vous recevoir des messages quotidiens ?',
-    'onbMessagePrefChristian': 'Chrétiennes',
-    'onbMessagePrefHoroscope': 'Horoscope',
+    'onbMessagePrefChristian': 'Chrétienne',
+    'onbMessagePrefHoroscope': 'Astrologique',
+    'onbMessagePrefPhilosophical': 'Philosophique / Œcuménique',
     'onbMessagePrefSpiritist': 'Spiritistes',
     'onbMessagePrefJewish': 'Juives',
     'onbMessagePrefAll': 'Toutes',
@@ -9923,7 +10159,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricIrritUnknown': 'Pas de données',
     'reportPediatricYes': 'Oui',
     'reportPediatricNo': 'Non',
-    'reportPediatricNa': '—',
+    'reportPediatricNa': '-',
     'reportPediatricJournalNote': 'Journaux du jour',
     'reportPediatricJournalNoteHint':
         'Détection par mots-clés dans le texte libre.',
@@ -10100,8 +10336,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'motherProfileFieldHeight': 'Taille',
     'motherProfileFieldFatherHeight': 'Taille de papa',
     'profileFamilyMessagesTitle': 'Messages sur l’écran Famille',
-    'profileShowChristian': 'Messages chrétiens',
-    'profileShowHoroscope': 'Horoscope',
+    'profileShowChristian': 'Chrétienne',
+    'profileShowHoroscope': 'Astrologique',
+    'profileShowPhilosophical': 'Philosophique / Œcuménique',
     'profileShowSpiritist': 'Messages spiritistes',
     'profileShowJewish': 'Messages juives',
     'motherProfileAddBaby': 'Ajouter un autre bébé',
@@ -10984,8 +11221,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'onbGoalMemoryBook': 'Erinnerungsbuch erstellen',
     'onbMessagePrefTitle': 'Spirituelle Mama, glückliches Baby.',
     'onbMessagePrefSubtitle': 'Möchtest du tägliche Nachrichten erhalten?',
-    'onbMessagePrefChristian': 'Christliche',
-    'onbMessagePrefHoroscope': 'Horoskop',
+    'onbMessagePrefChristian': 'Christlich',
+    'onbMessagePrefHoroscope': 'Astrologisch',
+    'onbMessagePrefPhilosophical': 'Philosophisch / Ökumenisch',
     'onbMessagePrefSpiritist': 'Spiritistische',
     'onbMessagePrefJewish': 'Jüdische',
     'onbMessagePrefAll': 'Alle',
@@ -11247,7 +11485,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricIrritUnknown': 'Keine Daten',
     'reportPediatricYes': 'Ja',
     'reportPediatricNo': 'Nein',
-    'reportPediatricNa': '—',
+    'reportPediatricNa': '-',
     'reportPediatricJournalNote': 'Tagebucheinträge',
     'reportPediatricJournalNoteHint': 'Erkennung per Stichwort im Freitext.',
     'reportPediatricObsHint':
@@ -11475,8 +11713,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'motherProfileFieldHeight': 'Größe',
     'motherProfileFieldFatherHeight': 'Größe des Papas',
     'profileFamilyMessagesTitle': 'Nachrichten auf der Familienseite',
-    'profileShowChristian': 'Christliche Nachrichten',
-    'profileShowHoroscope': 'Horoskop',
+    'profileShowChristian': 'Christlich',
+    'profileShowHoroscope': 'Astrologisch',
+    'profileShowPhilosophical': 'Philosophisch / Ökumenisch',
     'profileShowSpiritist': 'Spiritistische Nachrichten',
     'profileShowJewish': 'Jüdische Nachrichten',
     'motherProfileAddBaby': 'Weiteres Baby hinzufügen',
@@ -11696,6 +11935,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'homeCriticalFeedingSubtitle':
         'Seit der letzten Mahlzeit ist möglicherweise mehr Zeit als erwartet vergangen.',
     'homeCriticalSleepSubtitle': 'Das Wachfenster könnte überschritten sein.',
+    'homeCriticalWakeTitle': 'Aufwachzeit überschritten',
+    'homeCriticalWakeSubtitle':
+        'Die Schlafsession könnte die empfohlene Dauer überschritten haben.',
     'homeCriticalDiaperSubtitle':
         'Seit dem letzten Wechsel ist möglicherweise eine Weile vergangen.',
     'homeSleepBarAwakeTitle': 'Wach · Fenster bis zum Schlaf',
@@ -12413,7 +12655,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricIrritUnknown': 'Nessun dato',
     'reportPediatricYes': 'Sì',
     'reportPediatricNo': 'No',
-    'reportPediatricNa': '—',
+    'reportPediatricNa': '-',
     'reportPediatricJournalNote': 'Diari del giorno',
     'reportPediatricJournalNoteHint':
         'Rilevamento parole chiave nel testo libero.',
@@ -12880,8 +13122,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'onbGoalMemoryBook': 'Creare libro dei ricordi',
     'onbMessagePrefTitle': 'Mamma spiritualizzata, bebè felice.',
     'onbMessagePrefSubtitle': 'Vuoi ricevere messaggi quotidiani?',
-    'onbMessagePrefChristian': 'Cristiane',
-    'onbMessagePrefHoroscope': 'Oroscopo',
+    'onbMessagePrefChristian': 'Cristiana',
+    'onbMessagePrefHoroscope': 'Astrologica',
+    'onbMessagePrefPhilosophical': 'Filosofica / Ecumenica',
     'onbMessagePrefSpiritist': 'Spiritiste',
     'onbMessagePrefJewish': 'Ebraiche',
     'onbMessagePrefAll': 'Tutte',
@@ -13011,8 +13254,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'motherProfileFieldHeight': 'Altezza',
     'motherProfileFieldFatherHeight': 'Altezza del papà',
     'profileFamilyMessagesTitle': 'Messaggi nella schermata Famiglia',
-    'profileShowChristian': 'Messaggi cristiani',
-    'profileShowHoroscope': 'Oroscopo',
+    'profileShowChristian': 'Cristiana',
+    'profileShowHoroscope': 'Astrologica',
+    'profileShowPhilosophical': 'Filosofica / Ecumenica',
     'profileShowSpiritist': 'Messaggi spiritisti',
     'profileShowJewish': 'Messaggi ebraici',
     'motherProfileAddBaby': 'Aggiungi un altro bimbo',
@@ -13262,6 +13506,9 @@ const Map<AppLang, Map<String, String>> _strings = {
         'Potrebbe essere passato il tempo previsto dall’ultima poppata.',
     'homeCriticalSleepSubtitle':
         'La finestra di veglia potrebbe essere stata superata.',
+    'homeCriticalWakeTitle': 'Oltre l\'ora di sveglia',
+    'homeCriticalWakeSubtitle':
+        'La sessione di sonno potrebbe aver superato la durata consigliata.',
     'homeCriticalDiaperSubtitle':
         'Potrebbe essere passato un po’ dall’ultimo cambio.',
     'homeSleepBarAwakeTitle': 'Sveglio · finestra fino al sonno',
@@ -13996,7 +14243,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricIrritUnknown': 'कोई डेटा नहीं',
     'reportPediatricYes': 'हाँ',
     'reportPediatricNo': 'नहीं',
-    'reportPediatricNa': '—',
+    'reportPediatricNa': '-',
     'reportPediatricJournalNote': 'दिन की डायरी',
     'reportPediatricJournalNoteHint': 'मुक्त पाठ में कीवर्ड पहचान।',
     'reportPediatricObsHint':
@@ -14237,7 +14484,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricIrritUnknown': 'Tidak ada data',
     'reportPediatricYes': 'Ya',
     'reportPediatricNo': 'Tidak',
-    'reportPediatricNa': '—',
+    'reportPediatricNa': '-',
     'reportPediatricJournalNote': 'Jurnal harian',
     'reportPediatricJournalNoteHint': 'Deteksi kata kunci dalam teks bebas.',
     'reportPediatricObsHint':
@@ -14414,7 +14661,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricIrritUnknown': 'データなし',
     'reportPediatricYes': 'はい',
     'reportPediatricNo': 'いいえ',
-    'reportPediatricNa': '—',
+    'reportPediatricNa': '-',
     'reportPediatricJournalNote': 'その日の日記',
     'reportPediatricJournalNoteHint': '自由記述からキーワード検出。',
     'reportPediatricObsHint': '受診用メモ：症状、薬、行動の変化など…',
@@ -14640,7 +14887,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricIrritUnknown': '데이터 없음',
     'reportPediatricYes': '예',
     'reportPediatricNo': '아니오',
-    'reportPediatricNa': '—',
+    'reportPediatricNa': '-',
     'reportPediatricJournalNote': '하루 일지',
     'reportPediatricJournalNoteHint': '자유 텍스트 키워드 감지.',
     'reportPediatricObsHint': '진료 메모: 증상, 약물, 행동 변화 등…',
@@ -14875,7 +15122,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricIrritUnknown': 'Нет данных',
     'reportPediatricYes': 'Да',
     'reportPediatricNo': 'Нет',
-    'reportPediatricNa': '—',
+    'reportPediatricNa': '-',
     'reportPediatricJournalNote': 'Дневные записи',
     'reportPediatricJournalNoteHint': 'Поиск ключевых слов в свободном тексте.',
     'reportPediatricObsHint':
@@ -15058,7 +15305,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricIrritUnknown': 'Veri yok',
     'reportPediatricYes': 'Evet',
     'reportPediatricNo': 'Hayır',
-    'reportPediatricNa': '—',
+    'reportPediatricNa': '-',
     'reportPediatricJournalNote': 'Günlük notlar',
     'reportPediatricJournalNoteHint':
         'Serbest metinde anahtar kelime algılama.',
@@ -15235,7 +15482,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'reportPediatricIrritUnknown': '无数据',
     'reportPediatricYes': '是',
     'reportPediatricNo': '否',
-    'reportPediatricNa': '—',
+    'reportPediatricNa': '-',
     'reportPediatricJournalNote': '当日日记',
     'reportPediatricJournalNoteHint': '自由文本关键词检测。',
     'reportPediatricObsHint': '就诊备注：症状、用药、行为变化等…',

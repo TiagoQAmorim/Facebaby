@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'pages/ai_usage_page.dart';
 import 'pages/audit_logs_page.dart';
 import 'pages/access_denied_page.dart';
 import 'pages/dashboard_page.dart';
@@ -46,6 +47,7 @@ class _AdminAppState extends State<AdminApp> {
         routes: [
           GoRoute(path: '/', builder: (_, __) => const DashboardPage()),
           GoRoute(path: '/users', builder: (_, __) => const UsersPage()),
+          GoRoute(path: '/ai-usage', builder: (_, __) => const AiUsagePage()),
           GoRoute(
             path: '/users/:uid',
             builder: (_, state) {

@@ -127,7 +127,7 @@ abstract final class AiNannyOrchestrator {
           d.status == AiNannyRecordDraftStatus.needsConfirm &&
           d.growthPreview != null,
     );
-    if (growthConfirm.length == 1) {
+    if (growthConfirm.isNotEmpty) {
       final explained = PendingRecordsExplanation.buildPendingRecordsExplanation(
         bundle: bundle,
         strings: strings,
@@ -141,6 +141,20 @@ abstract final class AiNannyOrchestrator {
           d.status == AiNannyRecordDraftStatus.needsConfirm,
     );
     if (hasOnlyComplete && bundle.confirmCount == bundle.drafts.length) {
+      final explained = PendingRecordsExplanation.buildPendingRecordsExplanation(
+        bundle: bundle,
+        strings: strings,
+      );
+      if (explained != null) return explained;
+    }
+
+    final hasGrowthDelta = bundle.drafts.any(
+      (d) =>
+          d.structured.type == 'growth_weight' &&
+          (d.structured.fields['mode'] == 'delta' ||
+              '${d.structured.fields['unit'] ?? ''}'.toLowerCase() == 'g'),
+    );
+    if (hasGrowthDelta) {
       final explained = PendingRecordsExplanation.buildPendingRecordsExplanation(
         bundle: bundle,
         strings: strings,

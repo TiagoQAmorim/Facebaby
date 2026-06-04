@@ -1,7 +1,9 @@
 import 'package:facebaby_flutter/i18n/app_i18n.dart';
 import 'package:facebaby_flutter/models/ai/ai_nanny_parsed_message.dart';
+import 'package:facebaby_flutter/services/ai/ai_nanny_intent_lexicon.dart';
 import 'package:facebaby_flutter/services/ai/ai_nanny_local_message_parser.dart';
 import 'package:facebaby_flutter/services/ai/ai_nanny_structured_mapper.dart';
+import 'package:facebaby_flutter/services/ai/routine_record_interpreter.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -89,6 +91,34 @@ void main() {
       expect('${v.fields['vaccineName']}', contains('pentavalente'));
       expect(v.fields['date'], 'next_monday');
       expect(v.fields['time'], '10:00');
+    });
+  });
+
+  group('rotina e confirmação', () {
+    test('"e ganhou 150g" dispara extração estruturada', () {
+      expect(
+        RoutineRecordInterpreter.transcriptHasRoutineCue('e ganhou 150g'),
+        isTrue,
+      );
+      final r = AiNannyLocalMessageParser.parse('e ganhou 150g');
+      expect(r.hasRecords, isTrue);
+      expect(findRecord(r, 'growth_weight')!.fields['value'], 150);
+    });
+
+    test('"registra isso" pede confirmação de gravação', () {
+      expect(AiNannyIntentLexicon.wantsConfirmSave('registra isso'), isTrue);
+      expect(AiNannyIntentLexicon.wantsConfirmSave('oi tudo bem'), isFalse);
+    });
+
+    test('acordou + cresceu 1 cm → sono e altura', () {
+      const msg =
+          'a bebe acordou feliz agora, parece estar com fome, ah e cresceu 1 cm';
+      final r = AiNannyLocalMessageParser.parse(msg);
+      expect(r.hasRecords, isTrue);
+      expect(r.records.length, greaterThanOrEqualTo(2));
+      expect(findRecord(r, 'sleep'), isNotNull);
+      expect(findRecord(r, 'growth_height'), isNotNull);
+      expect(findRecord(r, 'growth_height')!.fields['value'], closeTo(1, 0.01));
     });
   });
 

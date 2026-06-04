@@ -448,7 +448,7 @@ abstract final class PediatricReportService {
         try {
           final dlab =
               '${appliedDay.day.toString().padLeft(2, '0')}/${appliedDay.month.toString().padLeft(2, '0')}/${appliedDay.year}';
-          vaccineLines.add('$line — $dlab');
+          vaccineLines.add('$line - $dlab');
         } catch (_) {
           vaccineLines.add(line);
         }
@@ -523,6 +523,9 @@ abstract final class PediatricReportService {
       customMedicationHints: medHints.take(6).toList(),
       symptomOccurrencesByKind: byKind,
       growthInsightLines: growthInsights,
+      growthCurveSex: sex,
+      heightMeasurements: heightPoints,
+      weightMeasurements: weightPoints,
     );
   }
 }

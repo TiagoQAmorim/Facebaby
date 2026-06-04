@@ -3,16 +3,22 @@ import '../../models/ai/ai_nanny_parsed_message.dart';
 import '../../models/ai/detected_baby_record.dart';
 import '../../utils/ai_nanny_parse_normalize.dart';
 import 'ai_nanny_structured_clarification.dart';
+import 'ai_nanny_structured_mapper.dart';
 import 'breastfeeding_both_helper.dart';
 
 /// Converte [AiNannyStructuredRecord] → [DetectedBabyRecord] + perguntas.
 abstract final class DetectedRecordBuilder {
+  static bool _lineAlreadyPresent(List<String> lines, String summary) {
+    final norm = summary.toLowerCase();
+    return lines.any((l) => l.toLowerCase().contains(norm));
+  }
+
   static DetectedBabyRecord fromStructured(
     AiNannyStructuredRecord rec,
     S s, {
     double confidence = 0.92,
   }) {
-    final understood = <String>[];
+    var understood = <String>[];
     final missing = <String>[];
 
     for (final line in AiNannyStructuredClarification.detailLines(rec, s)) {
@@ -23,8 +29,37 @@ abstract final class DetectedRecordBuilder {
       }
     }
 
-    if (understood.isEmpty) {
+    final summary = AiNannyStructuredMapper.displayLineForRecord(rec, s);
+    if (summary.trim().isNotEmpty &&
+        summary != s.aiRecordLineGeneric &&
+        !_lineAlreadyPresent(understood, summary)) {
+      understood.insert(0, '• $summary');
+    }
+
+    final substantive = understood
+        .where(
+          (l) =>
+              !l.contains(s.aiRecordFieldTime) &&
+              !l.contains(s.aiRecordFieldNow) &&
+              !l.contains(s.aiRecordFieldMissing),
+        )
+        .toList();
+    if (substantive.isEmpty && understood.isEmpty) {
       understood.add('• ${s.aiRecordFieldTime}: ${s.aiRecordFieldNow}');
+    } else if (substantive.isEmpty) {
+      // Só horário — mantém uma linha de tempo no fim.
+      final timeLines = understood
+          .where(
+            (l) =>
+                l.contains(s.aiRecordFieldTime) ||
+                l.contains(s.aiRecordFieldNow),
+          )
+          .toList();
+      understood = [
+        if (summary.trim().isNotEmpty && summary != s.aiRecordLineGeneric)
+          '• $summary',
+        ...timeLines,
+      ];
     }
 
     final canSave = rec.missingFields.isEmpty;

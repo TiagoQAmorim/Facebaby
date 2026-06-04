@@ -282,8 +282,8 @@ class _UsersPageState extends State<UsersPage> {
               DataCell(Text(r.createdAt != null ? fmt.format(r.createdAt!) : '—')),
               DataCell(Text(r.lastLoginAt != null ? fmt.format(r.lastLoginAt!) : '—')),
               DataCell(Text(r.babyName)),
-              DataCell(Text('${r.memoriesCount}')),
-              DataCell(Text('${r.publicMemoriesCount}')),
+              DataCell(Text(r.memoriesCount < 0 ? '—' : '${r.memoriesCount}')),
+              DataCell(Text(r.publicMemoriesCount < 0 ? '—' : '${r.publicMemoriesCount}')),
               DataCell(
                 PopupMenuButton<String>(
                   onSelected: (v) async {
@@ -337,6 +337,7 @@ class _UsersPageState extends State<UsersPage> {
         ),
         selectionBar: _selectionBar(),
         footer: _paginationBar(),
+        tableMinScrollWidth: 1420,
         table: table,
       ),
     );

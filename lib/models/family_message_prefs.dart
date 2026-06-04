@@ -17,6 +17,27 @@ class FamilyMessagePrefs {
   bool get hasAny =>
       showChristian || showHoroscope || showSpiritist || showJewish;
 
+  bool get showPhilosophical => showSpiritist || showJewish;
+
+  FamilyMessagePrefs copyWith({
+    bool? showChristian,
+    bool? showHoroscope,
+    bool? showSpiritist,
+    bool? showJewish,
+  }) {
+    return FamilyMessagePrefs(
+      showChristian: showChristian ?? this.showChristian,
+      showHoroscope: showHoroscope ?? this.showHoroscope,
+      showSpiritist: showSpiritist ?? this.showSpiritist,
+      showJewish: showJewish ?? this.showJewish,
+    );
+  }
+
+  FamilyMessagePrefs withPhilosophical(bool on) => copyWith(
+        showSpiritist: on,
+        showJewish: on,
+      );
+
   static const horoscopeOnly = FamilyMessagePrefs(
     showChristian: false,
     showHoroscope: true,

@@ -5,6 +5,9 @@
   "targets": {
     "facebaby-afc41": {
       "hosting": {
+        "app": [
+          "facebaby-afc41"
+        ],
         "admin": [
           "facebaby-admin"
         ]

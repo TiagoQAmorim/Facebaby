@@ -6,6 +6,8 @@ import '../../models/vaccine_record.dart';
 import '../../services/app_database.dart';
 import '../../services/consultation_reminder_scheduler.dart';
 import '../../services/home_prefs.dart';
+import '../../services/growth_curve_alert_ack.dart';
+import '../../services/growth_curve_alert_service.dart';
 import '../../services/home_yesterday_baba_service.dart';
 import '../../services/sleep_routine.dart';
 /// Aviso contextual para o balão flutuante na Home (prioridade menor = mais urgente).
@@ -199,6 +201,34 @@ abstract final class AiBubbleAlertEngine {
 
     // --- Crescimento ---
     if (HomePrefs.growthHealthAlertsEnabled.value) {
+      var hasCurveOffBand = false;
+      if (birthDate != null) {
+        final curveOff = await const GrowthCurveAlertService().outOfBandForBaby(
+          babyId: babyId,
+          babySex: babySex,
+          birthDate: birthDate,
+        );
+        final curvePending = await GrowthCurveAlertAck.filterPending(
+          babyId: babyId,
+          items: curveOff,
+        );
+        for (final item in curvePending) {
+          hasCurveOffBand = true;
+          out.add(
+            AiBubbleAlert(
+              id: 'growth_curve_${item.kind}_${item.band.name}',
+              prefsKey: 'alert_growth_curve_${item.signature}',
+              priority: GrowthCurveAlertService.bubblePriority(item),
+              text: GrowthCurveAlertService.bubbleText(
+                item: item,
+                babyName: name,
+                strings: strings,
+              ),
+            ),
+          );
+        }
+      }
+
       final weights =
           await db.listGrowthRecords(babyId: babyId, kind: 'weight', limit: 2);
       if (weights.length >= 2) {
@@ -247,21 +277,23 @@ abstract final class AiBubbleAlertEngine {
         );
       }
 
-      final growthHint = await _growthWatchHint(
-        strings: strings,
-        babyId: babyId,
-        babySex: babySex,
-        birthDate: birthDate,
-      );
-      if (growthHint != null) {
-        out.add(
-          AiBubbleAlert(
-            id: 'growth_watch',
-            prefsKey: 'alert_growth_watch',
-            priority: 70,
-            text: strings.aiBubbleGrowthWatch(name, growthHint),
-          ),
+      if (!hasCurveOffBand) {
+        final growthHint = await _growthWatchHint(
+          strings: strings,
+          babyId: babyId,
+          babySex: babySex,
+          birthDate: birthDate,
         );
+        if (growthHint != null) {
+          out.add(
+            AiBubbleAlert(
+              id: 'growth_watch',
+              prefsKey: 'alert_growth_watch',
+              priority: 70,
+              text: strings.aiBubbleGrowthWatch(name, growthHint),
+            ),
+          );
+        }
       }
     }
 

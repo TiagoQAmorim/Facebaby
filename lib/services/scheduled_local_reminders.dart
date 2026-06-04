@@ -102,12 +102,24 @@ abstract final class ScheduledLocalReminders {
   ///
   /// Importante: **não** cancelar todos os IDs no início e depois falhar em re-agendar — o [ReminderMonitor]
   /// corre ~1/min com a app aberta e apagava o alarme de amamentação quando estava overdue + mesma assinatura (noop).
+  static DateTime? _lastSyncAt;
+  static int? _lastSyncBabyId;
+
   static Future<void> sync({required int? babyId}) async {
     if (kIsWeb) return;
     if (defaultTargetPlatform != TargetPlatform.android &&
         defaultTargetPlatform != TargetPlatform.iOS) {
       return;
     }
+
+    final now = DateTime.now();
+    if (_lastSyncBabyId == babyId &&
+        _lastSyncAt != null &&
+        now.difference(_lastSyncAt!) < const Duration(seconds: 3)) {
+      return;
+    }
+    _lastSyncAt = now;
+    _lastSyncBabyId = babyId;
 
     final svc = LocalNotificationsService.instance;
 
@@ -123,7 +135,6 @@ abstract final class ScheduledLocalReminders {
         LocalNotificationsService.legacyImmediateReminderIds);
 
     final strings = S(kAppLanguage.lang);
-    final now = DateTime.now();
 
     if (HomePrefs.feedingAlertsEnabled.value) {
       final lastFeed = await AppDatabase.instance

@@ -1,7 +1,7 @@
 /** Classificação rápida de perguntas off-topic (sem OpenAI). */
 
 const BABY_CONTEXT_RE =
-  /\b(beb[eê]|beb[eê]s|nen[eé]m|filh[oa]s?|filhinho|mam[aeã]|mamar|amament|peito|frald|sono|dormir|dorme|dormindo|pediatr|vacina|consulta|peso|altura|crescimento|refluxo|c[oó]lica|febre|assadur|leite|papai|mam[ãa]e|gesta|gestante|gestacao|gestacional|gravidez|gravida|gravidas|gravid|prenatal|pre.?natal|trimestre|puerp[eé]rio|parto|cesarea|cesariana|obstetr|ginecolog|ultrassom|ecografia|enjoo|utero|utero|placenta|contra[cç][aã]o|beb[eê].?a.?caminho|embaraz|embarazo|pregnant|pregnancy|grossesse|enceinte|schwanger|schwangerschaft|gravidanza|incinta|rec[eé]m.?nascid|salto|desenvolvimento|crianc[aã]|infancia|educa|escola|alfabetiz|disciplina|aprendiz|brincadeir|bercario|maternal|creche|parental|paternidade|maternidade|criar.?filhos|limites|rotina.?escolar|comportamento.?infantil|enxoval)\b/i;
+  /\b(beb[eê]|beb[eê]s|nen[eé]m|filh[oa]s?|filhinho|mam[aeã]|mamar|amament|peito|frald|sono|dormir|dorme|dormindo|pediatr|vacina|consulta|peso|altura|crescimento|refluxo|c[oó]lica|febre|assadur|leite|papai|pai\b|mam[ãa]e|gesta|gestante|gestacao|gestacional|gravidez|gravida|gravidas|gravid|prenatal|pre.?natal|trimestre|puerp[eé]rio|parto|cesarea|cesariana|obstetr|ginecolog|ultrassom|ecografia|enjoo|utero|utero|placenta|contra[cç][aã]o|beb[eê].?a.?caminho|embaraz|embarazo|pregnant|pregnancy|grossesse|enceinte|schwanger|schwangerschaft|gravidanza|incinta|rec[eé]m.?nascid|salto|desenvolvimento|crianc[aã]|infancia|educa|escola|alfabetiz|disciplina|aprendiz|brincadeir|bercario|maternal|creche|parental|paternidade|maternidade|criar.?filhos|limites|rotina.?escolar|comportamento.?infantil|enxoval|fam[ií]lia|desabaf|ansiedad|ansiedade|depress|culpa|solid[aã]o|solida|burnout|exaust|cansad|sa[uú]de.?mental|emocional|psicol[oó]g|conselh|apoio.?emocional|parceir|relacionamento|casal|triste|medo|insegur|culpad|chorando|sobrecarreg|sozinha|sozinho|cuidador|av[oó]s?)\b/i;
 
 const PREGNANCY_HEALTH_RE =
   /\b(rem[eé]dio|medicamento|vitamina|[aá]cido.?folico|paracetamol|dipirona|ibuprofeno|exerc[ií]cio|alimenta|dieta|suplemento)\b.*\b(gr[aá]vida|gestante|gestacao|gravidez|embarazo|pregnant)\b|\b(gr[aá]vida|gestante|gestacao|gravidez|embarazo|pregnant)\b.*\b(rem[eé]dio|medicamento|vitamina|[aá]cido.?folico|paracetamol|dipirona|ibuprofeno|exerc[ií]cio|alimenta|dieta|suplemento)\b/i;
@@ -14,17 +14,17 @@ const OFF_TOPIC_RE =
 
 const REFUSAL_BY_LOCALE = {
   pt:
-    'Sou a IA Babá do FaceBaby 💜 Só consigo ajudar com gestação, bebê, crianças, educação infantil, rotina, maternidade/paternidade e saúde infantil. Reformule a pergunta nesse sentido?',
+    'Sou a IA Babá do FaceBaby 💜 Ajudo com gestação, bebê, crianças, rotina, maternidade/paternidade, saúde infantil e apoio emocional da família. Reformule nesse sentido?',
   en:
-    "I'm FaceBaby's AI Nanny 💜 I can only help with pregnancy, baby, children, child education, daily care, parenting, and common child health. Please ask again in that context.",
+    "I'm FaceBaby's AI Nanny 💜 I help with pregnancy, baby, children, daily care, parenting, child health, and family emotional support. Please ask again in that context.",
   es:
-    'Soy la IA Niñera de FaceBaby 💜 Solo puedo ayudar con embarazo, bebé, niños, educación infantil, rutina, maternidad/paternidad y salud infantil. ¿Puedes reformular la pregunta?',
+    'Soy la IA Niñera de FaceBaby 💜 Ayudo con embarazo, bebé, niños, rutina, maternidad/paternidad, salud infantil y apoyo emocional familiar. ¿Reformulas la pregunta?',
   fr:
-    "Je suis l'IA Nounou FaceBaby 💜 Je ne peux aider qu'avec grossesse, bébé, enfants, éducation infantile, routine, parentalité et santé infantile. Reformulez votre question.",
+    "Je suis l'IA Nounou FaceBaby 💜 J'aide avec grossesse, bébé, enfants, routine, parentalité, santé infantile et soutien émotionnel de la famille. Reformulez votre question.",
   de:
-    'Ich bin die KI-Babysitterin von FaceBaby 💜 Ich helfe nur bei Schwangerschaft, Baby, Kindern, Kindererziehung, Routine, Elternschaft und Kindergesundheit. Bitte formulieren Sie die Frage neu.',
+    'Ich bin die KI-Babysitterin von FaceBaby 💜 Ich helfe bei Schwangerschaft, Baby, Kindern, Routine, Elternschaft, Kindergesundheit und emotionalem Familiensupport. Bitte Frage neu formulieren.',
   it:
-    'Sono la IA Tata di FaceBaby 💜 Posso aiutare solo con gravidanza, bebè, bambini, educazione infantile, routine, genitorialità e salute infantile. Riformula la domanda.',
+    'Sono la IA Tata di FaceBaby 💜 Aiuto con gravidanza, bebè, bambini, routine, genitorialità, salute infantile e supporto emotivo della famiglia. Riformula la domanda.',
 };
 
 function normalizeLocale(locale) {

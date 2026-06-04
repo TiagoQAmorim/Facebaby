@@ -57,6 +57,48 @@ void main() {
     expect(due.month, expected.month);
   });
 
+  test('criar registro vacina B1 para daqui 30 dias é complete', () {
+    const msg = 'criar um registro de vacina B1 para daqui 30 dias';
+    final parse = AiNannyLocalMessageParser.parse(msg);
+    expect(parse.hasRecords, isTrue);
+    final rec = parse.records.firstWhere((r) => r.type == 'vaccine');
+    expect(rec.fields['vaccineName'], 'B1');
+    expect(rec.fields['nextDueInDays'], 30);
+    expect(rec.missingFields, isEmpty);
+
+    final bundle = AiNannyStructuredMapper.prepareBundle(
+      bundle: AiNannyStructuredMapper.buildBundle(
+        parse: parse,
+        userMessage: msg,
+        strings: s,
+      ),
+      strings: s,
+    );
+    expect(bundle.incompleteCount, 0);
+    expect(bundle.drafts.first.status, AiNannyRecordDraftStatus.complete);
+  });
+
+  test('registra vacina B5 para daqui 25 dias — agendada sem data aplicada', () {
+    const msg = 'registra uma vacina b5 para daqui 25 dias';
+    expect(AiNannyParseNormalize.parseVaccineNextDueInDays(msg), 25);
+    final parse = AiNannyLocalMessageParser.parse(msg);
+    final rec = parse.records.firstWhere((r) => r.type == 'vaccine');
+    expect(rec.fields['vaccineName'], 'B5');
+    final enforced = AiNannyStructuredClarification.enforce(rec, msg);
+    expect(enforced.fields['status'], 'scheduled');
+    expect(enforced.fields['nextDueInDays'], 25);
+    expect(enforced.fields['date'], isNull);
+
+    final interp = AiNannyStructuredMapper.toInterpretation(enforced);
+    expect(interp?.vaccine?.appliedAt, isNull);
+    expect(interp?.vaccine?.nextDueAt, isNotNull);
+    final due = interp!.vaccine!.nextDueAt!;
+    final expected = DateTime.now().add(const Duration(days: 25));
+    expect(due.year, expected.year);
+    expect(due.month, expected.month);
+    expect(due.day, expected.day);
+  });
+
   test('bundle vacina B1 é complete', () {
     const msg = 'tomou a vacina B1 hoje';
     final parse = AiNannyLocalMessageParser.parse(msg);

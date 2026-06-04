@@ -2,14 +2,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../utils/admin_photo_loader.dart' show photoFromMap;
 
-enum UserPlan { free, premium, aiNanny }
+enum UserPlan { free, premium }
 
 enum UserStatus { active, suspended }
 
 UserPlan planFromData(Map<String, dynamic>? data) {
   final override = (data?['adminPlan'] as String?)?.trim().toLowerCase();
-  if (override == 'ai_nanny' || override == 'ai-nanny') return UserPlan.aiNanny;
-  if (override == 'premium') return UserPlan.premium;
+  if (override == 'premium' || override == 'paid' || override == 'plus') {
+    return UserPlan.premium;
+  }
   if (data?['premiumLifetime'] == true) return UserPlan.premium;
   return UserPlan.free;
 }
@@ -22,7 +23,6 @@ UserStatus statusFromData(Map<String, dynamic>? data) {
 String planLabel(UserPlan p) => switch (p) {
       UserPlan.free => 'free',
       UserPlan.premium => 'premium',
-      UserPlan.aiNanny => 'ai_nanny',
     };
 
 class AdminUserRow {
@@ -79,9 +79,11 @@ class DashboardStats {
     this.aiNannyUsers = 0,
     this.suspendedUsers = 0,
     this.newUsersThisWeek = 0,
-    this.totalBabies = 0,
-    this.totalMemories = 0,
+    this.totalBabies,
+    this.totalMemories,
     this.totalPublicMemories = 0,
+    this.aiCallsToday = 0,
+    this.aiTokensToday = 0,
     this.weeklyWinnerName = '—',
   });
 
@@ -92,10 +94,182 @@ class DashboardStats {
   final int aiNannyUsers;
   final int suspendedUsers;
   final int newUsersThisWeek;
-  final int totalBabies;
-  final int totalMemories;
+  final int? totalBabies;
+  final int? totalMemories;
   final int totalPublicMemories;
+  final int aiCallsToday;
+  final int aiTokensToday;
   final String weeklyWinnerName;
+}
+
+class AiUsageFeatureRow {
+  const AiUsageFeatureRow({
+    required this.feature,
+    required this.label,
+    required this.calls,
+    required this.totalTokens,
+    this.promptTokens = 0,
+    this.completionTokens = 0,
+    this.whisperSeconds = 0,
+  });
+
+  final String feature;
+  final String label;
+  final int calls;
+  final int totalTokens;
+  final int promptTokens;
+  final int completionTokens;
+  final int whisperSeconds;
+
+  factory AiUsageFeatureRow.fromMap(Map<String, dynamic> m) {
+    return AiUsageFeatureRow(
+      feature: '${m['feature'] ?? ''}',
+      label: '${m['label'] ?? m['feature'] ?? '—'}',
+      calls: (m['calls'] as num?)?.toInt() ?? 0,
+      totalTokens: (m['totalTokens'] as num?)?.toInt() ?? 0,
+      promptTokens: (m['promptTokens'] as num?)?.toInt() ?? 0,
+      completionTokens: (m['completionTokens'] as num?)?.toInt() ?? 0,
+      whisperSeconds: (m['whisperSeconds'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class AiUsageTopUserRow {
+  const AiUsageTopUserRow({
+    required this.rank,
+    required this.uid,
+    required this.email,
+    required this.name,
+    required this.totalCalls,
+    required this.totalTokens,
+    required this.topFeatureLabel,
+  });
+
+  final int rank;
+  final String uid;
+  final String email;
+  final String name;
+  final int totalCalls;
+  final int totalTokens;
+  final String topFeatureLabel;
+
+  factory AiUsageTopUserRow.fromMap(Map<String, dynamic> m) {
+    return AiUsageTopUserRow(
+      rank: (m['rank'] as num?)?.toInt() ?? 0,
+      uid: '${m['uid'] ?? ''}',
+      email: '${m['email'] ?? ''}',
+      name: '${m['name'] ?? '—'}',
+      totalCalls: (m['totalCalls'] as num?)?.toInt() ?? 0,
+      totalTokens: (m['totalTokens'] as num?)?.toInt() ?? 0,
+      topFeatureLabel: '${m['topFeatureLabel'] ?? '—'}',
+    );
+  }
+}
+
+class AiUsageStats {
+  const AiUsageStats({
+    required this.dateKey,
+    required this.totalCalls,
+    required this.totalTokens,
+    required this.totalPromptTokens,
+    required this.totalCompletionTokens,
+    required this.totalWhisperSeconds,
+    required this.activeUsers,
+    required this.byFeature,
+    required this.topUsers,
+  });
+
+  final String dateKey;
+  final int totalCalls;
+  final int totalTokens;
+  final int totalPromptTokens;
+  final int totalCompletionTokens;
+  final int totalWhisperSeconds;
+  final int activeUsers;
+  final List<AiUsageFeatureRow> byFeature;
+  final List<AiUsageTopUserRow> topUsers;
+
+  factory AiUsageStats.fromMap(Map<String, dynamic> m) {
+    final summary = m['summary'] is Map
+        ? Map<String, dynamic>.from(m['summary'] as Map)
+        : <String, dynamic>{};
+    final features = m['byFeature'] is List
+        ? (m['byFeature'] as List)
+            .whereType<Map>()
+            .map((e) => AiUsageFeatureRow.fromMap(Map<String, dynamic>.from(e)))
+            .toList()
+        : <AiUsageFeatureRow>[];
+    final users = m['topUsers'] is List
+        ? (m['topUsers'] as List)
+            .whereType<Map>()
+            .map((e) => AiUsageTopUserRow.fromMap(Map<String, dynamic>.from(e)))
+            .toList()
+        : <AiUsageTopUserRow>[];
+    return AiUsageStats(
+      dateKey: '${m['dateKey'] ?? ''}',
+      totalCalls: (summary['totalCalls'] as num?)?.toInt() ?? 0,
+      totalTokens: (summary['totalTokens'] as num?)?.toInt() ?? 0,
+      totalPromptTokens: (summary['totalPromptTokens'] as num?)?.toInt() ?? 0,
+      totalCompletionTokens:
+          (summary['totalCompletionTokens'] as num?)?.toInt() ?? 0,
+      totalWhisperSeconds: (summary['totalWhisperSeconds'] as num?)?.toInt() ?? 0,
+      activeUsers: (summary['activeUsers'] as num?)?.toInt() ?? 0,
+      byFeature: features,
+      topUsers: users,
+    );
+  }
+}
+
+class UserAiUsageStats {
+  const UserAiUsageStats({
+    required this.uid,
+    required this.dateKey,
+    required this.todayCalls,
+    required this.todayTokens,
+    required this.todayByFeature,
+    required this.monthKey,
+    required this.monthCalls,
+    required this.monthTokens,
+    required this.monthByFeature,
+  });
+
+  final String uid;
+  final String dateKey;
+  final int todayCalls;
+  final int todayTokens;
+  final List<AiUsageFeatureRow> todayByFeature;
+  final String monthKey;
+  final int monthCalls;
+  final int monthTokens;
+  final List<AiUsageFeatureRow> monthByFeature;
+
+  factory UserAiUsageStats.fromMap(Map<String, dynamic> m) {
+    final today = m['today'] is Map
+        ? Map<String, dynamic>.from(m['today'] as Map)
+        : <String, dynamic>{};
+    final month = m['month'] is Map
+        ? Map<String, dynamic>.from(m['month'] as Map)
+        : <String, dynamic>{};
+    List<AiUsageFeatureRow> rows(dynamic list) {
+      if (list is! List) return const [];
+      return list
+          .whereType<Map>()
+          .map((e) => AiUsageFeatureRow.fromMap(Map<String, dynamic>.from(e)))
+          .toList();
+    }
+
+    return UserAiUsageStats(
+      uid: '${m['uid'] ?? ''}',
+      dateKey: '${m['dateKey'] ?? ''}',
+      todayCalls: (today['totalCalls'] as num?)?.toInt() ?? 0,
+      todayTokens: (today['totalTokens'] as num?)?.toInt() ?? 0,
+      todayByFeature: rows(today['byFeature']),
+      monthKey: '${month['monthKey'] ?? ''}',
+      monthCalls: (month['totalCalls'] as num?)?.toInt() ?? 0,
+      monthTokens: (month['totalTokens'] as num?)?.toInt() ?? 0,
+      monthByFeature: rows(month['byFeature']),
+    );
+  }
 }
 
 class FamilyDetails {

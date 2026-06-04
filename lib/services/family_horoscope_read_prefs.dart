@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../utils/family_date_keys.dart';
 import 'ai/family_horoscope_service.dart';
 import 'premium/feature_access.dart';
 
@@ -32,7 +32,7 @@ abstract final class FamilyHoroscopeBubbleAlert {
 
   static const _dismissKey = 'facebaby_family_horoscope_bubble_dismiss_v1';
 
-  static String _todayKey() => DateFormat('yyyyMMdd').format(DateTime.now());
+  static String _todayKey() => FamilyDateKeys.todayCompact();
 
   static Future<void> onHoroscopeReady() async {
     if (!FeatureAccess.canUseAiFamilyHoroscope) return;
@@ -73,7 +73,7 @@ abstract final class FamilyHoroscopeReadPrefs {
 
   static const _readDateKey = 'facebaby_family_horoscope_read_date_v1';
 
-  static String _todayKey() => DateFormat('yyyyMMdd').format(DateTime.now());
+  static String _todayKey() => FamilyDateKeys.todayCompact();
 
   static Future<bool> isTodayRead() async {
     final prefs = await SharedPreferences.getInstance();

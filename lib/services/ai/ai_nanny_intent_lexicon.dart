@@ -166,7 +166,8 @@ abstract final class AiNannyIntentLexicon {
     'ganhou', 'gained', 'gain ', 'ganó', 'guadagnato', 'gagné', 'zugenommen',
     'aufgenommen', 'increased by',
     // PT-BR informal / variações
-    'engordou', 'engordar', 'engordando', 'aumentou de peso', 'subiu de peso',
+    'engordou', 'engordar', 'engordando', 'aumentou', 'aumentou de peso',
+    'subiu de peso',
     'ganhou peso', 'ganhou de peso', 'mais pesad', 'mais gord',
   ];
 
@@ -261,6 +262,29 @@ abstract final class AiNannyIntentLexicon {
     'deixa assim', 'cancela o registro', 'esquece o registro',
   ];
 
+  /// Pedido explícito para gravar o que já foi entendido (ex.: após "ganhou 150g").
+  static const confirmSaveCues = [
+    'registra isso',
+    'registra isto',
+    'registrar isso',
+    'salva isso',
+    'salvar isso',
+    'pode registrar',
+    'pode salvar',
+    'confirma',
+    'confirmar',
+    'grava isso',
+    'gravar isso',
+    'anota isso',
+    'anotar isso',
+    'save it',
+    'register it',
+    'confirm it',
+    'guardalo',
+    'regístralo',
+    'registralo',
+  ];
+
   /// União para [RoutineRecordInterpreter.transcriptHasRoutineCue].
   static List<String> get allRoutineCues => [
         ...feedingCues,
@@ -269,7 +293,9 @@ abstract final class AiNannyIntentLexicon {
         ...pooCues,
         ...sleepCues,
         ...weightCues,
+        ...weightGainCues,
         ...heightCues,
+        ...heightGainCues,
         ...temperatureCues,
         ...medicineCues,
         ...bathCues,
@@ -280,6 +306,19 @@ abstract final class AiNannyIntentLexicon {
       ];
 
   static bool hasFeedingCue(String low) => containsAny(low, feedingCues);
+
+  /// Mamada para registrar — não "parece com fome" sem ação.
+  static bool hasExplicitFeedingIntent(String low) {
+    if (containsAny(low, [
+      'mamou', 'mamei', 'mamada', 'mamar', 'amament',
+      'nursed', 'breastfed', 'fed the baby', 'just fed', 'deu mamar',
+      'mamadeira', 'tomou leite', ' ml', 'ml ',
+    ])) {
+      return true;
+    }
+    return hasFeedingCue(low) &&
+        !RegExp(r'\b(com fome|parece.*fome|hungry|hambre)\b').hasMatch(low);
+  }
 
   static bool hasDiaperCue(String low) =>
       containsAny(low, diaperCues) ||
@@ -333,6 +372,35 @@ abstract final class AiNannyIntentLexicon {
       return 'D';
     }
     return null;
+  }
+
+  /// "Registra isso", "salva", etc. — após rascunho de crescimento pendente.
+  static bool wantsConfirmSave(String transcript) {
+    final low = transcript.trim().toLowerCase();
+    if (low.isEmpty) return false;
+    if (containsAny(low, confirmSaveCues)) return true;
+    if (RegExp(
+      r'\b(pode|podem)\s+(registrar|registar|salvar|gravar|anotar)\b',
+    ).hasMatch(low)) {
+      return true;
+    }
+    if (RegExp(r'\b(registra|registrar|salva|salvar|grava|gravar|anota|anotar)\b')
+        .hasMatch(low)) {
+      return low.contains('isso') ||
+          low.contains('isto') ||
+          low.contains('aí') ||
+          low.contains('ai') ||
+          low.contains('peso') ||
+          low.contains('crescimento') ||
+          low.contains('vacin') ||
+          low.contains('remédio') ||
+          low.contains('remedio') ||
+          low.contains('medicamento') ||
+          low.contains('consulta') ||
+          low.contains('então') ||
+          low.contains('entao');
+    }
+    return false;
   }
 
   static bool confirmsAffirmative(String transcript) {
