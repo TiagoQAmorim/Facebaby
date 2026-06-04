@@ -115,23 +115,44 @@ class AiFloatingMessageBubble extends StatefulWidget {
   static const double dismissStripMaxHeight = 100;
   static const double dismissStripWidthFraction = 0.88;
   static const double dismissStripBottomGap = 16;
+  /// Altura do menu inferior do app ([ShellBottomNavigation]).
+  static const double shellBottomNavHeight = 72;
   // (removido) _avatarAsset: não usado após redesign do minimizado.
 
+  /// Espaço ocupado pelo menu do app + barra de gestos do Android.
+  static double shellBottomObstruction(BuildContext context) {
+    final pad = MediaQuery.paddingOf(context);
+    return pad.bottom + shellBottomNavHeight + dismissStripBottomGap;
+  }
+
+  /// Distância do fundo do viewport até a base da faixa vermelha.
+  static double dismissStripBottomFromViewportEdge(
+    BuildContext context,
+  ) =>
+      shellBottomObstruction(context);
+
+  /// Altura total da faixa (menu inferior + área do texto/ícone).
+  static double dismissStripTotalHeight(double bottomObstruction) =>
+      bottomObstruction + dismissStripHeight;
+
   /// Topo da faixa vermelha (coordenadas do viewport do balão).
-  static double dismissStripTop(Size viewport) =>
-      viewport.height -
-      dismissStripBottomGap -
-      dismissStripHeight;
+  static double dismissStripTop(
+    Size viewport, {
+    double bottomObstruction = 0,
+  }) =>
+      viewport.height - dismissStripTotalHeight(bottomObstruction);
 
   /// O balão entrou na faixa de soltar para fechar.
   static bool isInDismissStrip({
     required Offset topLeft,
     required Size bubbleSize,
     required Size viewport,
+    double bottomObstruction = 0,
     double overlapPx = 10,
   }) {
     return topLeft.dy + bubbleSize.height >
-        dismissStripTop(viewport) + overlapPx;
+        dismissStripTop(viewport, bottomObstruction: bottomObstruction) +
+            overlapPx;
   }
 
   /// Posição fixa do ícone minimizado — canto superior-direito do card do bebê.
@@ -165,6 +186,21 @@ class AiFloatingMessageBubble extends StatefulWidget {
     return Offset(left, top);
   }
 
+  static Offset snapToCollapsedAnchor({
+    required Offset? anchor,
+    required Offset fallback,
+    Size? viewport,
+    double bottomReserve = 24,
+  }) {
+    if (anchor == null) return fallback;
+    if (viewport == null) return anchor;
+    return clampCollapsedTopLeft(
+      topLeft: anchor,
+      viewport: viewport,
+      bottomReserve: bottomReserve,
+    );
+  }
+
   /// Mantém o orb minimizado dentro da área útil (safe horizontal 8px).
   static Offset clampCollapsedTopLeft({
     required Offset topLeft,
@@ -187,13 +223,15 @@ class AiFloatingMessageBubble extends StatefulWidget {
   static bool isDroppedInDismissZone({
     required Offset topLeft,
     required Size viewport,
-    double bubbleSize = collapsedSize,
+    double bubbleSize = 76,
+    double bottomObstruction = 0,
     double overlapPx = 8,
   }) {
     return isInDismissStrip(
       topLeft: topLeft,
       bubbleSize: Size(bubbleSize, bubbleSize),
       viewport: viewport,
+      bottomObstruction: bottomObstruction,
       overlapPx: overlapPx,
     );
   }
@@ -466,11 +504,14 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
             viewport: area,
             bottomReserve: draggingDismiss ? 0 : 24,
           );
+    final obstruction =
+        AiFloatingMessageBubble.shellBottomObstruction(context);
     final near = widget.allowDragDismiss &&
         AiFloatingMessageBubble.isInDismissStrip(
           topLeft: next,
           bubbleSize: bubble,
           viewport: area,
+          bottomObstruction: obstruction,
         );
     if (near != _nearDismissZone) {
       if (near && !_hapticDismissFired) {
@@ -494,10 +535,13 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
       return;
     }
     final releasePos = _lastDragTopLeft ?? widget.position;
+    final obstruction =
+        AiFloatingMessageBubble.shellBottomObstruction(context);
     final droppedInDismissZone = widget.allowDragDismiss &&
         AiFloatingMessageBubble.isDroppedInDismissZone(
           topLeft: releasePos,
           viewport: area,
+          bottomObstruction: obstruction,
         );
     // Fecha ao soltar na faixa vermelha — não exige showDismissZone no frame final.
     if (droppedInDismissZone) {
@@ -818,13 +862,17 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
     );
   }
 
-  Widget _dismissStrip(Size area) {
+  Widget _dismissStrip(Size area, double bottomFromEdge) {
     final label = (widget.closeZoneLabel ?? 'Solte aqui para fechar').trim();
     final hot = _nearDismissZone && _isDragActive;
-    final stripW = area.width * AiFloatingMessageBubble.dismissStripWidthFraction;
-    final left = (area.width - stripW) / 2;
     const stripH = AiFloatingMessageBubble.dismissStripHeight;
+    final contentH = stripH.clamp(
+      90.0,
+      AiFloatingMessageBubble.dismissStripMaxHeight,
+    );
+    final totalH = bottomFromEdge + contentH;
     final hotScale = 1.0 + (hot ? 0.045 : 0.0);
+    const topRadius = Radius.circular(22);
 
     return AnimatedBuilder(
       animation: _dismissStripCtrl,
@@ -833,86 +881,97 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
           return const SizedBox.shrink();
         }
         return Positioned(
-          left: left,
-          width: stripW,
-          bottom: AiFloatingMessageBubble.dismissStripBottomGap,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: totalH,
           child: IgnorePointer(
             child: SlideTransition(
               position: _dismissStripSlide,
               child: FadeTransition(
                 opacity: _dismissStripFade,
-                child: Transform.scale(
-                  scale: hotScale,
-                  alignment: Alignment.bottomCenter,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(28),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Color.lerp(
-                            const Color(0xFFFFEBEE).withAlpha(185),
-                            const Color(0xFFEF9A9A).withAlpha(200),
-                            hot ? 0.75 : 0.35,
-                          )!,
-                          borderRadius: BorderRadius.circular(28),
-                          border: Border.all(
-                            color: Colors.white.withAlpha(hot ? 200 : 140),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: topRadius),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Color.lerp(
+                          const Color(0xFFFFEBEE).withAlpha(200),
+                          const Color(0xFFEF9A9A).withAlpha(215),
+                          hot ? 0.8 : 0.45,
+                        )!,
+                        border: Border(
+                          top: BorderSide(
+                            color: Colors.white.withAlpha(hot ? 210 : 150),
                             width: 1.25,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFE53935)
-                                  .withAlpha(hot ? 55 : 35),
-                              blurRadius: hot ? 18 : 12,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
                         ),
-                        child: SizedBox(
-                          height: stripH.clamp(
-                            90.0,
-                            AiFloatingMessageBubble.dismissStripMaxHeight,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFE53935)
+                                .withAlpha(hot ? 70 : 45),
+                            blurRadius: hot ? 20 : 14,
+                            offset: const Offset(0, -4),
                           ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.delete_outline_rounded,
-                                size: hot ? 32 : 28,
-                                color: hot
-                                    ? const Color(0xFFB71C1C)
-                                    : const Color(0xFFC62828),
-                              ),
-                              const SizedBox(height: 6),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 14),
-                                child: DefaultTextStyle(
-                                  style: const TextStyle(
-                                    decoration: TextDecoration.none,
-                                    decorationThickness: 0,
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: contentH,
+                            child: Transform.scale(
+                              scale: hotScale,
+                              alignment: Alignment.center,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.delete_outline_rounded,
+                                    size: hot ? 32 : 28,
+                                    color: hot
+                                        ? const Color(0xFFB71C1C)
+                                        : const Color(0xFFC62828),
                                   ),
-                                  child: Text(
-                                    label,
-                                    textAlign: TextAlign.center,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: const Color(0xFFB71C1C),
-                                      fontSize: portalSp(context, hot ? 16.5 : 16),
-                                      fontWeight: hot ? FontWeight.w800 : FontWeight.w700,
-                                      letterSpacing: 0.2,
-                                      height: 1.25,
-                                      decoration: TextDecoration.none,
-                                      decorationColor: Colors.transparent,
+                                  const SizedBox(height: 6),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                    ),
+                                    child: DefaultTextStyle(
+                                      style: const TextStyle(
+                                        decoration: TextDecoration.none,
+                                        decorationThickness: 0,
+                                      ),
+                                      child: Text(
+                                        label,
+                                        textAlign: TextAlign.center,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: const Color(0xFFB71C1C),
+                                          fontSize: portalSp(
+                                            context,
+                                            hot ? 16.5 : 16,
+                                          ),
+                                          fontWeight: hot
+                                              ? FontWeight.w800
+                                              : FontWeight.w700,
+                                          letterSpacing: 0.2,
+                                          height: 1.25,
+                                          decoration: TextDecoration.none,
+                                          decorationColor: Colors.transparent,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
-                        ),
+                          if (bottomFromEdge > 0)
+                            SizedBox(height: bottomFromEdge),
+                        ],
                       ),
                     ),
                   ),
@@ -982,18 +1041,27 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
     final layout = AiFloatingMessageBubble.collapsedLayoutSize;
     final emoji = widget.collapsedIcon?.trim() ?? '';
     final fontSize = diameter * 0.5;
-    final scale = 1.0 + (0.06 * alertT);
+    final alertScale = 1.0 + (0.06 * alertT);
+    final dragScale = _isDragActive
+        ? (dragDismissHot ? 1.1 : 0.9)
+        : alertScale;
+    final dragBorder = _isDragActive
+        ? (dragDismissHot
+            ? const Color(0xFFE53935)
+            : const Color(0xFF9C27B0))
+        : Colors.white.withAlpha(240);
 
     return SizedBox(
       width: layout,
       height: layout,
       child: Center(
-        child: SizedBox(
-          width: diameter,
-          height: diameter,
-          child: Transform.scale(
-            scale: scale,
-            alignment: Alignment.center,
+        child: AnimatedScale(
+          scale: dragScale,
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOutCubic,
+          child: SizedBox(
+            width: diameter,
+            height: diameter,
             child: Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.center,
@@ -1005,10 +1073,12 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFFFFF8FC),
+                        color: _isDragActive
+                            ? const Color(0xFFFFF0F7)
+                            : const Color(0xFFFFF8FC),
                         border: Border.all(
-                          color: Colors.white.withAlpha(240),
-                          width: 2,
+                          color: dragBorder,
+                          width: _isDragActive ? 2.75 : 2,
                         ),
                         boxShadow: _collapsedOrbShadows(
                           dragDismissHot: dragDismissHot,
@@ -1069,13 +1139,18 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
     );
   }
 
+  VoidCallback? get _effectiveCloseTap =>
+      widget.onCloseTap ??
+      (widget.showCloseButton ? widget.onToggleExpanded : null);
+
   Widget _premiumCloseButton({VoidCallback? onTap}) {
+    final effective = onTap ?? _effectiveCloseTap;
     return ClipRRect(
       borderRadius: BorderRadius.circular(999),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: InkWell(
-          onTap: onTap,
+          onTap: effective,
           borderRadius: BorderRadius.circular(999),
           child: Container(
             width: 34,
@@ -1495,22 +1570,30 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
     required double maxW,
     required double viewportHeight,
   }) {
+    final close = _effectiveCloseTap;
     return Stack(
       key: const Key('floating_message_expanded_layer'),
       fit: StackFit.expand,
       children: [
         Positioned.fill(
-          child: ColoredBox(
+          child: GestureDetector(
             key: const Key('floating_message_expanded_scrim'),
-            color: Colors.black.withValues(
-              alpha: AiFloatingMessageBubble.expandedScrimOpacity,
+            behavior: HitTestBehavior.opaque,
+            onTap: close,
+            child: ColoredBox(
+              color: Colors.black.withValues(
+                alpha: AiFloatingMessageBubble.expandedScrimOpacity,
+              ),
             ),
           ),
         ),
         Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: AnimatedBuilder(
+            child: GestureDetector(
+              onTap: () {},
+              behavior: HitTestBehavior.opaque,
+              child: AnimatedBuilder(
               animation: _expandCurve,
               builder: (context, _) {
                 final t = _expandCurve.value;
@@ -1532,6 +1615,7 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
                 );
               },
             ),
+            ),
           ),
         ),
       ],
@@ -1552,34 +1636,42 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
       bottomReserve: bottomReserve,
     );
 
+    final bottomObstruction =
+        AiFloatingMessageBubble.shellBottomObstruction(context);
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        _dismissStrip(area),
+        if (widget.showDismissZone)
+          _dismissStrip(area, bottomObstruction),
         Positioned(
           left: clampedPos.dx,
           top: clampedPos.dy,
-          child: GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onTap: widget.onToggleExpanded,
-            onPanStart: _onPanStart,
-            onPanUpdate: (d) => _onPanUpdate(d, area),
-            onPanEnd: (d) => _onPanEnd(d, area),
-            child: AnimatedBuilder(
-              animation: Listenable.merge([_expandCurve, _alertPulse]),
-              builder: (context, child) {
-                final alertT = widget.messageAlert ? _alertPulse.value : 0.0;
-                return _buildBubbleSurface(
-                  msg: msg,
-                  banner: banner,
-                  promo: promo,
-                  maxW: maxW,
-                  viewportHeight: area.height,
-                  alertT: alertT,
-                  collapsed: true,
-                  expandT: 0,
-                );
-              },
+          child: Material(
+            type: MaterialType.transparency,
+            elevation: _isDragActive ? 28 : 0,
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: widget.onToggleExpanded,
+              onPanStart: _onPanStart,
+              onPanUpdate: (d) => _onPanUpdate(d, area),
+              onPanEnd: (d) => _onPanEnd(d, area),
+              child: AnimatedBuilder(
+                animation: Listenable.merge([_expandCurve, _alertPulse]),
+                builder: (context, child) {
+                  final alertT = widget.messageAlert ? _alertPulse.value : 0.0;
+                  return _buildBubbleSurface(
+                    msg: msg,
+                    banner: banner,
+                    promo: promo,
+                    maxW: maxW,
+                    viewportHeight: area.height,
+                    alertT: alertT,
+                    collapsed: true,
+                    expandT: 0,
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -1595,38 +1687,46 @@ class _AiFloatingMessageBubbleState extends State<AiFloatingMessageBubble>
       return const SizedBox.shrink();
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final area = Size(constraints.maxWidth, constraints.maxHeight);
-        final promo = widget.promoLayout && !widget.bannerLayout;
-        final banner = widget.bannerLayout;
-        final maxW = (promo || banner
-                ? (area.width - 16).clamp(200.0, area.width - 16)
-                : (area.width - AiFloatingMessageBubble.edgePadding * 2)
-                    .clamp(200.0, AiFloatingMessageBubble.expandedMaxWidth))
-            .toDouble();
+    return PopScope(
+      canPop: !widget.expanded,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop || !widget.expanded) return;
+        final close = _effectiveCloseTap;
+        if (close != null) close();
+      },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final area = Size(constraints.maxWidth, constraints.maxHeight);
+          final promo = widget.promoLayout && !widget.bannerLayout;
+          final banner = widget.bannerLayout;
+          final maxW = (promo || banner
+                  ? (area.width - 16).clamp(200.0, area.width - 16)
+                  : (area.width - AiFloatingMessageBubble.edgePadding * 2)
+                      .clamp(200.0, AiFloatingMessageBubble.expandedMaxWidth))
+              .toDouble();
 
-        if (widget.expanded) {
-          return _buildExpandedModal(
+          if (widget.expanded) {
+            return _buildExpandedModal(
+              msg: msg,
+              banner: banner,
+              promo: promo,
+              maxW: maxW,
+              viewportHeight: area.height,
+            );
+          }
+
+          final bottomReserve =
+              widget.allowDragDismiss && widget.showDismissZone ? 0.0 : 24.0;
+          return _buildCollapsedLayer(
             msg: msg,
             banner: banner,
             promo: promo,
             maxW: maxW,
-            viewportHeight: area.height,
+            area: area,
+            bottomReserve: bottomReserve,
           );
-        }
-
-        final bottomReserve =
-            widget.allowDragDismiss && widget.showDismissZone ? 0.0 : 24.0;
-        return _buildCollapsedLayer(
-          msg: msg,
-          banner: banner,
-          promo: promo,
-          maxW: maxW,
-          area: area,
-          bottomReserve: bottomReserve,
-        );
-      },
+        },
+      ),
     );
   }
 }

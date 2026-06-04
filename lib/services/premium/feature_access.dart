@@ -3,15 +3,20 @@ import '../../models/baby_memory.dart';
 import 'premium_constants.dart';
 import 'premium_service.dart';
 
-/// Regras **Free vs Premium** (o que é grátis, o que exige Premium).
+/// Regras **Free vs pago (Plus)**.
 ///
-/// O modelo de pagamento passou de assinatura mensal para **compra única vitalícia**;
-/// as flags e limites abaixo **mantêm-se** — só mudou como o utilizador desbloqueia
-/// o Premium ([PremiumService] / IAP `facebaby_premium`).
+/// Plano **free**: rotinas, registos e memórias básicas — **sem qualquer IA**.
+/// Plano **pago**: mensal, anual ou vitalício ([PremiumService.isPremium]).
 abstract final class FeatureAccess {
   FeatureAccess._();
 
   static bool get _premium => PremiumService.instance.isPremium;
+
+  /// Plano pago ativo (mensal, anual ou legado vitalício).
+  static bool get hasPaidPlan => _premium;
+
+  /// IA Babá, insights, avisos inteligentes, guias Família (homilia/horóscopo), etc.
+  static bool get canUseAnyAi => _premium;
 
   static bool get canExportPdf => _premium;
   static bool get canExportBadges => _premium;

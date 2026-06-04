@@ -126,7 +126,10 @@ abstract final class RoutineRecordMatcher {
     if (interp.type == 'question') return false;
 
     final t = transcript.trim().toLowerCase();
-    if (t.contains('registr')) return true;
+    if (shouldSkipRoutineAutoRegister(transcript)) return false;
+    if (t.contains('registr') && !transcriptIsMetaRegisterGuidance(transcript)) {
+      return true;
+    }
 
     if (interpretationShouldAskAi(type: interp.type, transcript: transcript)) {
       return false;

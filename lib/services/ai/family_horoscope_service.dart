@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
-
 import '../../controllers/current_baby_controller.dart';
+import '../../utils/family_date_keys.dart';
+import '../../i18n/app_i18n.dart';
 import '../family_horoscope_read_prefs.dart';
 import '../firebase/profile_cloud_sync.dart';
 import '../premium/feature_access.dart';
@@ -15,16 +15,17 @@ abstract final class FamilyHoroscopeBootstrap {
 
   static Future<void>? _ensureFuture;
 
-  static Future<void> ensureToday() {
+  static Future<void> ensureToday({required String languageCode}) {
     if (!FeatureAccess.canUseAiFamilyHoroscope) {
       return Future<void>.value();
     }
-    return _ensureFuture ??= _runEnsureToday().whenComplete(() {
+    return _ensureFuture ??=
+        _runEnsureToday(languageCode: languageCode).whenComplete(() {
       _ensureFuture = null;
     });
   }
 
-  static Future<void> _runEnsureToday() async {
+  static Future<void> _runEnsureToday({required String languageCode}) async {
     try {
       await FamilyHoroscopeReadPrefs.clearIfNewDay();
       final svc = FamilyHoroscopeService();
@@ -39,7 +40,7 @@ abstract final class FamilyHoroscopeBootstrap {
       if (motherId != null) {
         await ProfileCloudSync.pushMother(motherId);
       }
-      await svc.generateToday();
+      await svc.generateToday(languageCode: languageCode);
       await FamilyHoroscopeUnreadBadge.refresh();
     } catch (_) {
       await FamilyHoroscopeUnreadBadge.refresh();
@@ -62,7 +63,7 @@ class FamilyHoroscopeService {
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
 
-  String _todayKey() => DateFormat('yyyyMMdd').format(DateTime.now());
+  String _todayKey() => FamilyDateKeys.todayCompact();
 
   DocumentReference<Map<String, dynamic>>? get _todayDoc {
     final uid = _auth.currentUser?.uid;
@@ -122,13 +123,17 @@ class FamilyHoroscopeService {
     return payload;
   }
 
-  Future<FamilyDailyHoroscope> generateToday({bool forceRefresh = false}) async {
+  Future<FamilyDailyHoroscope> generateToday({
+    bool forceRefresh = false,
+    required String languageCode,
+  }) async {
     try {
       final profile = buildProfilePayload();
       final result = await _functions
           .httpsCallable('generateDailyFamilyHoroscope')
           .call<Map<String, dynamic>>({
         'forceRefresh': forceRefresh,
+        'languageCode': languageCode,
         if (profile.isNotEmpty) 'profile': profile,
       });
       return FamilyDailyHoroscope.fromMap(
@@ -142,6 +147,16 @@ class FamilyHoroscopeService {
       );
     }
   }
+
+  static String languageCodeFromApp(S strings) => switch (strings.lang) {
+        AppLang.pt => 'pt',
+        AppLang.en => 'en',
+        AppLang.es => 'es',
+        AppLang.fr => 'fr',
+        AppLang.de => 'de',
+        AppLang.it => 'it',
+        _ => 'pt',
+      };
 }
 
 class FamilyHoroscopeException implements Exception {

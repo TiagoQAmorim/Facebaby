@@ -5,11 +5,15 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const s = S(AppLang.pt);
 
-  test('boas-vindas curtas (2–4 linhas)', () {
+  test('boas-vindas explicam registros, dúvidas e desabafo', () {
     final msg = s.aiNannyWelcomeMessage;
-    expect(msg.split('\n').length, lessThanOrEqualTo(4));
-    expect(msg.length, lessThan(200));
+    expect(msg.split('\n').length, lessThanOrEqualTo(6));
+    expect(msg.length, lessThan(320));
     expect(msg, contains('IA Babá'));
+    expect(msg, contains('registrar'));
+    expect(msg, contains('dúvidas'));
+    expect(msg, contains('conselheira'));
+    expect(msg, contains('desabafar'));
     expect(msg, isNot(contains('alarmismo')));
   });
 

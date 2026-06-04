@@ -1,5 +1,8 @@
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../i18n/app_i18n.dart';
 import 'ai_bubble_alert_engine.dart';
+import 'ai_bubble_queue_lifecycle.dart';
 import 'ai_emotional_moment_engine.dart';
 
 /// O que pode entrar no balão flutuante vs. o banner do bebê na Home.
@@ -23,13 +26,27 @@ abstract final class AiBubbleMessagePolicy {
     required dynamic strings,
   }) async {
     final s = strings is S ? strings : const S(AppLang.pt);
-    return AiEmotionalMomentEngine.buildBubbleAlerts(
+    final prefs = await SharedPreferences.getInstance();
+    final anchor = await AiBubbleQueueLifecycle.ensureAnchorDay(
+      babyId: babyId,
+      prefs: prefs,
+    );
+    final daysOnApp =
+        DateTime.now().difference(anchor).inDays.clamp(0, 9999);
+    if (daysOnApp < 1) return const [];
+
+    final alerts = await AiEmotionalMomentEngine.buildBubbleAlerts(
       babyId: babyId,
       babyName: babyName,
       babySex: babySex,
       birthDate: birthDate,
       strings: s,
+      anchorDay: anchor,
+      daysOnApp: daysOnApp,
     );
+    return alerts
+        .where((a) => a.prefsKey != 'emotional_spont_dev')
+        .toList();
   }
 
   static bool isShownOnHomeBanner(AiBubbleAlert alert) =>

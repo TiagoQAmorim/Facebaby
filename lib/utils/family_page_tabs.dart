@@ -6,10 +6,14 @@ abstract final class FamilyPageTabs {
 
   static const int tree = 0;
 
-  static int tabCount(FamilyMessagePrefs prefs) {
-    var n = 2;
+  static int tabCount(
+    FamilyMessagePrefs prefs, {
+    bool showAiHistory = true,
+  }) {
+    var n = 1;
     if (prefs.showChristian) n++;
     if (prefs.showHoroscope) n++;
+    if (showAiHistory) n++;
     return n;
   }
 
@@ -23,7 +27,11 @@ abstract final class FamilyPageTabs {
     return idx;
   }
 
-  static int history(FamilyMessagePrefs prefs) {
+  static int? history(
+    FamilyMessagePrefs prefs, {
+    bool showAiHistory = true,
+  }) {
+    if (!showAiHistory) return null;
     var idx = 1;
     if (prefs.showChristian) idx++;
     if (prefs.showHoroscope) idx++;

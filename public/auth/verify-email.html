@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FaceBaby — Confirmar e-mail</title>
+  <style>
+    :root {
+      --bg: #f7f8fc;
+      --card: #ffffff;
+      --text: #1f1f2e;
+      --muted: #74717f;
+      --error: #c62828;
+      --ok: #2e7d4e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(165deg, #fff8f0 0%, var(--bg) 45%, #e8f4ff 100%);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: var(--card);
+      border-radius: 24px;
+      padding: 32px 28px 28px;
+      box-shadow: 0 12px 40px rgba(31, 31, 46, 0.08);
+      border: 1px solid rgba(31, 31, 46, 0.06);
+      text-align: center;
+    }
+    .logo {
+      width: 120px;
+      height: auto;
+      margin: 0 auto 20px;
+      display: block;
+    }
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 800;
+      margin: 0 0 8px;
+      color: #163b68;
+    }
+    p.lead {
+      margin: 0 0 24px;
+      font-size: 0.95rem;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+    .msg {
+      margin-top: 16px;
+      font-size: 0.9rem;
+      line-height: 1.4;
+      padding: 12px;
+      border-radius: 12px;
+    }
+    .msg.error { background: #ffebee; color: var(--error); }
+    .msg.ok { background: #e8f6ee; color: var(--ok); }
+    .hidden { display: none !important; }
+    .footer {
+      margin-top: 20px;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <img class="logo" src="/brand/logo.png" alt="FaceBaby" width="120" height="120" />
+    <h1 id="title">Confirmar e-mail</h1>
+    <p class="lead" id="subtitle">A confirmar o seu endereço de e-mail…</p>
+    <div id="msg" class="msg hidden" role="alert"></div>
+    <p class="footer">FaceBaby — cuidando do seu ninho com carinho</p>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+    import {
+      getAuth,
+      applyActionCode,
+      checkActionCode,
+    } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+
+    const firebaseConfig = {
+      apiKey: 'AIzaSyCAH2I67pZXfJGPI2BMObe3GWg0IA_FR9o',
+      authDomain: 'facebaby-afc41.firebaseapp.com',
+      projectId: 'facebaby-afc41',
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    function readParams() {
+      const fromSearch = new URLSearchParams(location.search);
+      const hashRaw = location.hash.startsWith('#')
+        ? location.hash.slice(1)
+        : location.hash;
+      const fromHash = new URLSearchParams(hashRaw);
+      const get = (key) => fromSearch.get(key) || fromHash.get(key);
+
+      let mode = get('mode');
+      let oobCode = get('oobCode') || get('oob_code');
+
+      if (!oobCode) {
+        const href = location.href;
+        const m =
+          href.match(/[?&#]oobCode=([^&#]+)/i) ||
+          href.match(/[?&#]oob_code=([^&#]+)/i);
+        if (m) oobCode = decodeURIComponent(m[1]);
+      }
+      if (!mode) {
+        const m = location.href.match(/[?&#]mode=([^&#]+)/i);
+        if (m) mode = decodeURIComponent(m[1]);
+      }
+
+      return {
+        mode: mode || '',
+        oobCode: oobCode || '',
+        lang: get('lang') || 'pt',
+      };
+    }
+
+    const { mode, oobCode, lang } = readParams();
+    const modeNorm = mode.toLowerCase();
+
+    const title = document.getElementById('title');
+    const subtitle = document.getElementById('subtitle');
+    const msg = document.getElementById('msg');
+
+    const en = lang.startsWith('en');
+    const copy = en
+      ? {
+          titlePending: 'Confirm your email',
+          titleOk: 'Email verified',
+          titleError: 'Could not verify',
+          working: 'Verifying your email…',
+          ok: 'Email confirmed! Return to the FaceBaby app and tap “I\'ve verified my email”.',
+          already:
+            'This email was already confirmed. Return to the FaceBaby app and tap “I\'ve verified my email”.',
+          redirectedOk:
+            'If you opened this page after tapping the email link, your address may already be confirmed. Return to the FaceBaby app and tap “I\'ve verified my email”.',
+          invalid:
+            'This link is invalid or has expired. Open the latest email from FaceBaby or request a new one in the app.',
+          wrongType:
+            'This link is not for email verification. Request a new email from the app.',
+        }
+      : {
+          titlePending: 'Confirmar e-mail',
+          titleOk: 'E-mail confirmado',
+          titleError: 'Não foi possível confirmar',
+          working: 'A confirmar o seu e-mail…',
+          ok: 'E-mail confirmado! Volte ao app FaceBaby e toque em «Já verifiquei meu e-mail».',
+          already:
+            'Este e-mail já foi confirmado. Volte ao app FaceBaby e toque em «Já verifiquei meu e-mail».',
+          redirectedOk:
+            'Se abriu esta página depois de tocar no link do e-mail, o endereço pode já estar confirmado. Volte ao app FaceBaby e toque em «Já verifiquei meu e-mail».',
+          invalid:
+            'Este link é inválido ou expirou. Abra o e-mail mais recente do FaceBaby ou peça um novo no app.',
+          wrongType:
+            'Este link não é de confirmação de e-mail. Peça um novo e-mail no app.',
+        };
+
+    title.textContent = copy.titlePending;
+    subtitle.textContent = copy.working;
+
+    function showMessage(text, type) {
+      msg.textContent = text;
+      msg.className = 'msg ' + type;
+      msg.classList.remove('hidden');
+    }
+
+    function finishOk(text) {
+      title.textContent = copy.titleOk;
+      subtitle.classList.add('hidden');
+      showMessage(text, 'ok');
+    }
+
+    function finishError(text) {
+      title.textContent = copy.titleError;
+      subtitle.classList.add('hidden');
+      showMessage(text, 'error');
+    }
+
+    async function verifyCode(code) {
+      const info = await checkActionCode(auth, code);
+      const op = `${info?.operation || ''}`.toUpperCase();
+      if (op && op !== 'VERIFY_EMAIL') {
+        finishError(copy.wrongType);
+        return;
+      }
+      await applyActionCode(auth, code);
+      finishOk(copy.ok);
+    }
+
+    (async () => {
+      if (!oobCode) {
+        if (modeNorm === 'verifyemail' || modeNorm === '') {
+          finishOk(copy.redirectedOk);
+        } else if (modeNorm) {
+          finishError(copy.wrongType);
+        } else {
+          finishError(copy.invalid);
+        }
+        return;
+      }
+
+      if (modeNorm && modeNorm !== 'verifyemail') {
+        finishError(copy.wrongType);
+        return;
+      }
+
+      try {
+        await verifyCode(oobCode);
+      } catch (err) {
+        const code = `${err?.code || ''}`;
+        if (code === 'auth/invalid-action-code') {
+          finishOk(copy.already);
+          return;
+        }
+        finishError(copy.invalid);
+      }
+    })();
+  </script>
+</body>
+</html>
+

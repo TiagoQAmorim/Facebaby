@@ -111,6 +111,63 @@ bool transcriptLooksLikeQuestion(String transcript) {
   return false;
 }
 
+/// Pergunta sobre como está o bebê / o que falta registrar — não é pedido para gravar agora.
+bool transcriptIsMetaRegisterGuidance(String transcript) {
+  final t = transcript.trim().toLowerCase();
+  if (t.isEmpty) return false;
+  return RegExp(
+    r'(o\s+)?que\s+.{0,50}(preciso|devo|tenho\s+que).{0,40}registr',
+    caseSensitive: false,
+  ).hasMatch(t) ||
+      RegExp(
+        r'preciso\s+(fazer|registrar)|devo\s+registrar|o\s+que\s+fazer\s+ou\s+registrar',
+        caseSensitive: false,
+      ).hasMatch(t) ||
+      RegExp(
+        r'como\s+(ela|ele|o\s+beb[eê]|a\s+.{0,20})\s+est[aá]',
+        caseSensitive: false,
+      ).hasMatch(t) &&
+          t.contains('registr');
+}
+
+/// Evento de rotina já ocorrido (passado) — pode registrar se o resto da frase couber.
+bool transcriptDescribesPastRoutineEvent(String transcript) {
+  const pastEventCues = [
+    'mamou',
+    'mamei',
+    'mamada',
+    'amament',
+    'dormiu',
+    'dormindo',
+    'dormiu ',
+    'foi dormir',
+    'acordou',
+    'despertou',
+    'troquei',
+    'trocou a fralda',
+    'fez xixi',
+    'fez cocô',
+    'fez coco',
+    'mijou',
+    'pesou',
+    ' mediu ',
+    'ganhou ',
+    ' cresceu',
+    'tomou ',
+    ' ml',
+    'ml ',
+  ];
+  final t = transcript.trim().toLowerCase();
+  return pastEventCues.any(t.contains);
+}
+
+/// Não extrair nem gravar rotina automaticamente — só conversar / orientar.
+bool shouldSkipRoutineAutoRegister(String transcript) {
+  if (transcriptIsMetaRegisterGuidance(transcript)) return true;
+  if (!transcriptLooksLikeQuestion(transcript)) return false;
+  return !transcriptDescribesPastRoutineEvent(transcript);
+}
+
 bool interpretationShouldAskAi({
   required String type,
   required String transcript,
@@ -124,6 +181,7 @@ bool interpretationShouldAskAi({
       type == 'diaper' ||
       type == 'weight' ||
       type == 'height') {
+    if (shouldSkipRoutineAutoRegister(transcript)) return true;
     return false;
   }
 

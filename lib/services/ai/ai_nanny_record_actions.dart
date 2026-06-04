@@ -132,15 +132,58 @@ class AiNannyRecordActions {
     required String babyName,
     required S strings,
     DateTime? at,
+    String? transcript,
   }) {
     if (interpretation.type == 'feeding') {
       final breast = _breastfeedingSuccessMessage(interpretation, strings);
       if (breast != null) return breast;
     }
+    if (interpretation.type == 'vaccine') {
+      final v = interpretation.vaccine;
+      final next = v?.nextDueAt;
+      final applied = v?.appliedAt;
+      final vName = v?.name?.trim() ?? '';
+      if (vName.isNotEmpty && next != null && applied == null) {
+        final dateLabel = DateFormat.yMd().format(next);
+        return '🤖 ${strings.aiVaccineScheduledConfirmed(vName, dateLabel)}';
+      }
+    }
     final name = babyName.trim().isEmpty ? 'o bebê' : babyName.trim();
     final when = DateFormat('HH:mm').format(at ?? DateTime.now());
     final line = _recordLine(interpretation, strings);
-    return '🤖 ${strings.aiRecordConfirmedPrefix(name, line, when)}';
+    var msg = '🤖 ${strings.aiRecordConfirmedPrefix(name, line, when)}';
+    if (interpretation.type == 'consultation' &&
+        _needsConsultationAddress(interpretation, transcript)) {
+      msg = '$msg\n\n${strings.aiClarifyAppointmentAddress}';
+    }
+    return msg;
+  }
+
+  static bool _needsConsultationAddress(
+    VoiceRecordInterpretation interpretation,
+    String? transcript,
+  ) {
+    final addr = interpretation.consultation?.address?.trim() ?? '';
+    if (addr.isNotEmpty) return false;
+    return !_transcriptMentionsAddress(transcript);
+  }
+
+  static bool _transcriptMentionsAddress(String? transcript) {
+    if (transcript == null || transcript.trim().isEmpty) return false;
+    final low = transcript.toLowerCase();
+    return low.contains('endereço') ||
+        low.contains('endereco') ||
+        low.contains('endereço do') ||
+        low.contains('rua ') ||
+        low.contains(' rua') ||
+        low.contains('av.') ||
+        low.contains('avenida') ||
+        low.contains('consultório na') ||
+        low.contains('consultorio na') ||
+        low.contains('clínica na') ||
+        low.contains('clinica na') ||
+        RegExp(r'\bcep\b').hasMatch(low) ||
+        RegExp(r'\b\d{5}-?\d{3}\b').hasMatch(low);
   }
 
   static String? _breastfeedingSuccessMessage(
@@ -193,6 +236,18 @@ class AiNannyRecordActions {
         return strings.aiRecordLineHeight;
       case 'symptom':
         return strings.aiRecordLineSymptom;
+      case 'consultation':
+        final title = i.consultation?.title?.trim() ?? '';
+        if (title.isNotEmpty) {
+          return strings.aiRecordLineConsultation(title);
+        }
+        return strings.aiRecordLineConsultationGeneric;
+      case 'vaccine':
+        final vaccineName = i.vaccine?.name?.trim() ?? '';
+        if (vaccineName.isNotEmpty) {
+          return strings.aiRecordLineVaccine(vaccineName);
+        }
+        return strings.aiRecordLineVaccineGeneric;
       default:
         return strings.aiRecordLineGeneric;
     }
@@ -254,6 +309,24 @@ class AiNannyRecordActions {
       return pendingFallback();
     }
 
+    if (!saved &&
+        pendingBundle != null &&
+        pendingBundle.allRequiredFilled &&
+        pendingBundle.confirmCount > 0) {
+      final explained = PendingRecordsExplanation.buildPendingRecordsExplanation(
+        bundle: pendingBundle,
+        strings: strings,
+      );
+      if (explained != null && explained.isNotEmpty) return explained;
+      if (ai != null &&
+          ai.isNotEmpty &&
+          !_claimsRegistration(ai) &&
+          !_impliesRecordsCompleteWithoutSave(ai)) {
+        return ai;
+      }
+      return clarify.isNotEmpty ? clarify : (ai ?? '');
+    }
+
     if (error != null && error.trim().isNotEmpty && !saved) {
       if (_claimsRegistration(ai)) return strings.aiRecordSaveFailed;
       if (ai != null && ai.isNotEmpty) {
@@ -266,7 +339,36 @@ class AiNannyRecordActions {
       return strings.aiRecordSaveFailed;
     }
 
+    if (!saved && _impliesRecordsCompleteWithoutSave(ai)) {
+      if (pendingBundle != null &&
+          pendingBundle.allRequiredFilled &&
+          pendingBundle.confirmCount > 0) {
+        final explained = PendingRecordsExplanation.buildPendingRecordsExplanation(
+          bundle: pendingBundle,
+          strings: strings,
+        );
+        if (explained != null && explained.isNotEmpty) return explained;
+      }
+      final explained = pendingBundle != null
+          ? PendingRecordsExplanation.buildPendingRecordsExplanation(
+              bundle: pendingBundle,
+              strings: strings,
+            )
+          : null;
+      if (explained != null && explained.isNotEmpty) return explained;
+      if (error != null && error.trim().isNotEmpty) return error;
+      return strings.aiRecordSaveFailed;
+    }
+
     return ai ?? confirm ?? '';
+  }
+
+  static bool _impliesRecordsCompleteWithoutSave(String? text) {
+    if (text == null || text.trim().isEmpty) return false;
+    final low = text.toLowerCase();
+    return low.contains('registros estão completos') ||
+        low.contains('records are complete') ||
+        low.contains('os registros estao completos');
   }
 
   /// Compatível com testes legados — delega para [resolveChatAnswer].
@@ -386,7 +488,11 @@ class AiNannyRecordActions {
         low.contains('vaccine') ||
         low.contains('peso') ||
         low.contains('weight') ||
-        low.contains('grama');
+        low.contains('grama') ||
+        low.contains('endereço') ||
+        low.contains('endereco') ||
+        low.contains('consultório') ||
+        low.contains('consultorio');
   }
 
   /// Verifica se a resposta da IA já cobre os pontos do roteiro de esclarecimento.

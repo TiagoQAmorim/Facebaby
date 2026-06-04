@@ -253,8 +253,7 @@ class _PreferencesTab extends StatefulWidget {
 class _PreferencesTabState extends State<_PreferencesTab> {
   late bool _showChristian;
   late bool _showHoroscope;
-  late bool _showSpiritist;
-  late bool _showJewish;
+  late bool _showPhilosophical;
   bool _savingMessagePrefs = false;
 
   @override
@@ -273,30 +272,26 @@ class _PreferencesTabState extends State<_PreferencesTab> {
     final prefs = FamilyMessagePrefs.fromMother(widget.motherRow);
     _showChristian = prefs.showChristian;
     _showHoroscope = prefs.showHoroscope;
-    _showSpiritist = prefs.showSpiritist;
-    _showJewish = prefs.showJewish;
+    _showPhilosophical = prefs.showPhilosophical;
   }
 
   Future<void> _setMessagePref({
     bool? showChristian,
     bool? showHoroscope,
-    bool? showSpiritist,
-    bool? showJewish,
+    bool? showPhilosophical,
   }) async {
     final motherId = (widget.motherRow['id'] as num?)?.toInt();
     if (motherId == null || _savingMessagePrefs) return;
 
     final nextChristian = showChristian ?? _showChristian;
     final nextHoroscope = showHoroscope ?? _showHoroscope;
-    final nextSpiritist = showSpiritist ?? _showSpiritist;
-    final nextJewish = showJewish ?? _showJewish;
+    final nextPhilosophical = showPhilosophical ?? _showPhilosophical;
 
     setState(() {
       _savingMessagePrefs = true;
       _showChristian = nextChristian;
       _showHoroscope = nextHoroscope;
-      _showSpiritist = nextSpiritist;
-      _showJewish = nextJewish;
+      _showPhilosophical = nextPhilosophical;
     });
 
     try {
@@ -304,8 +299,8 @@ class _PreferencesTabState extends State<_PreferencesTab> {
         motherId: motherId,
         showChristian: nextChristian,
         showHoroscope: nextHoroscope,
-        showSpiritist: nextSpiritist,
-        showJewish: nextJewish,
+        showSpiritist: nextPhilosophical,
+        showJewish: nextPhilosophical,
       );
       await ProfileCloudSync.pushMother(motherId);
       await CurrentBabyController.instance.refresh();
@@ -373,24 +368,13 @@ class _PreferencesTabState extends State<_PreferencesTab> {
                 SwitchListTile.adaptive(
                   contentPadding: EdgeInsets.zero,
                   title: Text(
-                    s.profileShowSpiritist,
+                    s.profileShowPhilosophical,
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
-                  value: _showSpiritist,
+                  value: _showPhilosophical,
                   onChanged: _savingMessagePrefs
                       ? null
-                      : (v) => _setMessagePref(showSpiritist: v),
-                ),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    s.profileShowJewish,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  value: _showJewish,
-                  onChanged: _savingMessagePrefs
-                      ? null
-                      : (v) => _setMessagePref(showJewish: v),
+                      : (v) => _setMessagePref(showPhilosophical: v),
                 ),
               ],
             ),

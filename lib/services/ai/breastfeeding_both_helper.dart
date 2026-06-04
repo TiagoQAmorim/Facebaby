@@ -77,18 +77,23 @@ abstract final class BreastfeedingBothHelper {
   }
 
   /// Substitui o rascunho no índice [atIndex] por dois (após escolher «ambos»).
+  ///
+  /// [resolved] — registro já com `breastSide: both` (o rascunho em [atIndex]
+  /// ainda pode não ter o lado preenchido).
   static List<AiNannyRecordDraft> expandAtIndex(
     List<AiNannyRecordDraft> drafts,
     int atIndex, {
+    AiNannyStructuredRecord? resolved,
     required S strings,
     required String sourceText,
     double? lastWeightKg,
     double? lastHeightCm,
   }) {
     if (atIndex < 0 || atIndex >= drafts.length) return drafts;
-    if (!shouldSplit(drafts[atIndex].structured)) return drafts;
+    final base = resolved ?? drafts[atIndex].structured;
+    if (!shouldSplit(base)) return drafts;
 
-    final split = splitToLeftRight(drafts[atIndex].structured);
+    final split = splitToLeftRight(base);
     final replacement = split
         .map(
           (rec) => AiNannyStructuredMapper.draftFromRecord(

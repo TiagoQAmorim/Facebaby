@@ -43,7 +43,8 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
     if (_nullVerifyInFlight) return;
     _nullVerifyInFlight = true;
     try {
-      for (var k = 0; k < 35; k++) {
+      // Android pode demorar alguns segundos a ler a sessão do disco após cold start.
+      for (var k = 0; k < 60; k++) {
         if (k > 0) {
           await Future<void>.delayed(const Duration(milliseconds: 100));
         }
@@ -70,8 +71,9 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
       _setSignedIn(u);
       return;
     }
-    if (AuthService.instance.consumeTrustAuthNullImmediately() ||
-        FirebaseAuth.instance.currentUser == null) {
+    // Só confiar em null imediato após logout explícito — nunca só porque
+    // `currentUser` ainda é null enquanto o SDK restaura a sessão do disco.
+    if (AuthService.instance.consumeTrustAuthNullImmediately()) {
       setState(() {
         _user = null;
         _ready = true;
@@ -99,16 +101,12 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
     if (initial != null) {
       _user = initial;
       _ready = true;
+    } else {
+      unawaited(_verifyStreamNullAgainstPersistence());
     }
 
     _authSub = FirebaseAuth.instance.authStateChanges().listen(_onAuthState);
     _idTokenSub = FirebaseAuth.instance.idTokenChanges().listen(_onIdToken);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final cu = FirebaseAuth.instance.currentUser;
-      if (cu != null) _setSignedIn(cu);
-    });
   }
 
   @override
@@ -123,7 +121,13 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
     final cu = FirebaseAuth.instance.currentUser;
-    if (cu != null) _setSignedIn(cu);
+    if (cu != null) {
+      _setSignedIn(cu);
+      return;
+    }
+    if (_user == null && _ready) {
+      unawaited(_verifyStreamNullAgainstPersistence());
+    }
   }
 
   @override

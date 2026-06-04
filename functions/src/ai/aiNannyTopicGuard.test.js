@@ -20,6 +20,14 @@ assert.strictEqual(
   classifyAiNannyQuestion('Filme calmo para ver com bebê de 3 meses'),
   'allowed',
 );
+assert.strictEqual(
+  classifyAiNannyQuestion('Estou exausta e com culpa, preciso desabafar'),
+  'allowed',
+);
+assert.strictEqual(
+  classifyAiNannyQuestion('Meu marido não ajuda com o bebê'),
+  'allowed',
+);
 assert.ok(offTopicRefusalMessage('pt').includes('FaceBaby'));
 
 console.log('aiNannyTopicGuard.test.js: OK');

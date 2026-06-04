@@ -1,3 +1,5 @@
+import '../data/growth_curves.dart';
+import 'growth_measurement_point.dart';
 import 'pediatric_symptom_occurrence.dart';
 
 /// Resumo clínico agregado para o relatório pediátrico (intervalo de dias civis).
@@ -29,6 +31,9 @@ class PediatricReportSnapshot {
     required this.customMedicationHints,
     required this.symptomOccurrencesByKind,
     this.growthInsightLines = const [],
+    this.growthCurveSex = GrowthCurveSex.female,
+    this.heightMeasurements = const [],
+    this.weightMeasurements = const [],
   });
 
   /// Primeiro dia do período (data civil, início do dia).
@@ -85,4 +90,15 @@ class PediatricReportSnapshot {
 
   /// Mensagens informativas da curva de crescimento (não diagnóstico).
   final List<String> growthInsightLines;
+
+  /// Sexo para a curva de referência (menino/menina).
+  final GrowthCurveSex growthCurveSex;
+
+  /// Medições até ao fim do período (para gráficos de altura/peso).
+  final List<GrowthMeasurementPoint> heightMeasurements;
+
+  final List<GrowthMeasurementPoint> weightMeasurements;
+
+  bool get hasGrowthChartData =>
+      heightMeasurements.isNotEmpty || weightMeasurements.isNotEmpty;
 }

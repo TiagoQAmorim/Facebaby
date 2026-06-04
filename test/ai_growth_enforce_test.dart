@@ -101,14 +101,132 @@ void main() {
     expect(detected.canSave, isTrue);
   });
 
-  test('alias height vira growth_height', () {
-    const msg = 'cresceu 3 cm';
+  test('card de confirmação mostra sono e altura legíveis', () {
+    const msg =
+        'a bebe acordou feliz agora, parece estar com fome, ah e cresceu 1 cm';
+    final parse = AiNannyLocalMessageParser.parse(msg);
+    final bundle = AiNannyStructuredMapper.prepareBundle(
+      bundle: AiNannyStructuredMapper.buildBundle(
+        parse: parse,
+        userMessage: msg,
+        strings: s,
+      ),
+      strings: s,
+      lastHeightCm: 50,
+    );
+    expect(bundle.drafts.length, 2);
+
+    final sleep = bundle.drafts.firstWhere((d) => d.structured.type == 'sleep');
+    expect(sleep.title, s.aiRecordLabelSleep);
+    expect(sleep.displayLine, contains(s.aiSleepOptionAlreadyWoke));
+    expect(
+      sleep.understoodLines.any((l) => l.contains(s.aiSleepOptionAlreadyWoke)),
+      isTrue,
+    );
+
+    final height =
+        bundle.drafts.firstWhere((d) => d.structured.type == 'growth_height');
+    expect(height.title, s.growthTabHeight);
+    expect(height.displayLine, contains('1'));
+    expect(height.displayLine, contains('cm'));
+    expect(height.understoodLines.any((l) => l.contains('1')), isTrue);
+  });
+
+  test('dois registros genéricos da cloud viram cards tipados', () {
+    const msg = 'a bebe acordou agora e cresceu 1 cm';
+    final bundle = AiNannyStructuredMapper.prepareBundle(
+      bundle: AiNannyStructuredMapper.buildBundle(
+        parse: AiNannyParseResult(
+          classification: 'create_records',
+          records: [
+            AiNannyStructuredRecord(type: 'record', fields: {'time': 'now'}),
+            AiNannyStructuredRecord(type: 'record', fields: {'time': 'now'}),
+          ],
+          needsConfirmation: true,
+        ),
+        userMessage: msg,
+        strings: s,
+      ),
+      strings: s,
+      lastHeightCm: 50,
+    );
+    expect(bundle.drafts.length, 2);
+    expect(
+      bundle.drafts.any((d) => d.title == s.aiRecordLabelSleep),
+      isTrue,
+    );
+    expect(
+      bundle.drafts.any((d) => d.title == s.growthTabHeight),
+      isTrue,
+    );
+    for (final d in bundle.drafts) {
+      expect(d.title, isNot(s.aiRecordLineGeneric));
+      expect(d.displayLine.trim(), isNotEmpty);
+      expect(
+        d.understoodLines.any((l) => !l.contains(s.aiRecordFieldNow)) ||
+            d.displayLine.contains('cm') ||
+            d.displayLine.contains(s.aiSleepOptionAlreadyWoke),
+        isTrue,
+      );
+    }
+  });
+
+  test('cloud genérico cai no parse local no bundle', () {
+    const msg = 'a bebe acordou feliz agora, ah e cresceu 1 cm';
+    final bundle = AiNannyStructuredMapper.buildBundle(
+      parse: AiNannyParseResult(
+        classification: 'create_records',
+        records: [
+          AiNannyStructuredRecord(
+            type: 'record',
+            fields: {'time': 'now'},
+          ),
+        ],
+        needsConfirmation: true,
+      ),
+      userMessage: msg,
+      strings: s,
+    );
+    expect(bundle.drafts.length, greaterThanOrEqualTo(2));
+    expect(
+      bundle.drafts.any((d) => d.structured.type == 'sleep'),
+      isTrue,
+    );
+    expect(
+      bundle.drafts.any((d) => d.structured.type == 'growth_height'),
+      isTrue,
+    );
+  });
+
+  test('cloud value 200g mode total vira delta e pede confirmação', () {
+    const msg = 'a bebe engordou 200g';
     const rec = AiNannyStructuredRecord(
-      type: 'height',
-      fields: {'value': 3, 'mode': 'delta', 'unit': 'cm'},
+      type: 'growth_weight',
+      fields: {
+        'measurementType': 'weight',
+        'value': 200,
+        'unit': 'g',
+        'mode': 'total',
+      },
     );
     final enforced = AiNannyStructuredClarification.enforce(rec, msg);
-    expect(enforced.type, 'growth_height');
-    expect(enforced.missingFields, isEmpty);
+    expect(enforced.fields['mode'], 'delta');
+    expect(enforced.fields['unit'], 'g');
+
+    final bundle = AiNannyStructuredMapper.prepareBundle(
+      bundle: AiNannyStructuredMapper.buildBundle(
+        parse: AiNannyParseResult(
+          classification: 'create_records',
+          records: [enforced],
+          needsConfirmation: true,
+        ),
+        userMessage: msg,
+        strings: s,
+      ),
+      strings: s,
+      lastWeightKg: 5.0,
+    );
+    expect(bundle.drafts.single.status, AiNannyRecordDraftStatus.needsConfirm);
+    expect(bundle.drafts.single.growthPreview?.newValue, closeTo(5.2, 0.001));
   });
 }

@@ -12,12 +12,16 @@ class ShellBottomNavigation extends StatelessWidget {
     required this.onSelected,
     required this.hideHomeActiveState,
     required this.navBarBackground,
+    this.aiLocked = false,
+    this.onAiTap,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onSelected;
   final bool hideHomeActiveState;
   final Color navBarBackground;
+  final bool aiLocked;
+  final VoidCallback? onAiTap;
 
   @override
   Widget build(BuildContext context) {
@@ -55,12 +59,13 @@ class ShellBottomNavigation extends StatelessWidget {
               Expanded(
                 flex: 14,
                 child: GestureDetector(
-                  onTap: () => onSelected(2),
+                  onTap: onAiTap ?? () => onSelected(2),
                   behavior: HitTestBehavior.opaque,
                   child: Transform.translate(
                     offset: const Offset(0, -10),
                     child: AiNannyNavButton(
-                      selected: selectedIndex == 2,
+                      selected: !aiLocked && selectedIndex == 2,
+                      locked: aiLocked,
                       label: s.aiNannyNavLabel,
                     ),
                   ),

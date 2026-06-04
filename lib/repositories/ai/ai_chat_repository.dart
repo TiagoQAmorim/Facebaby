@@ -120,22 +120,31 @@ class AiChatRepository {
   }
 
   List<AiMessage> _merged() {
-    final firestoreQuestions = _fromFirestore
+    final overlayUserTexts = _overlay
         .where((m) => m.isUser)
         .map((m) => m.text.trim())
+        .where((t) => t.isNotEmpty)
         .toSet();
     final firestoreAiTexts = _fromFirestore
         .where((m) => m.isAi)
         .map((m) => m.text.trim())
         .toSet();
 
+    final firestore = _fromFirestore.where((m) {
+      if (m.isUser && overlayUserTexts.contains(m.text.trim())) return false;
+      return true;
+    }).toList();
+
+    final seenOverlay = <String>{};
     final overlay = _overlay.where((m) {
       final text = m.text.trim();
-      if (m.isUser) return !firestoreQuestions.contains(text);
+      final dedupeKey = '${m.sender.name}:$text';
+      if (!seenOverlay.add(dedupeKey)) return false;
+      if (m.isUser) return true;
       return !firestoreAiTexts.contains(text);
     }).toList();
 
-    final merged = [...overlay, ..._fromFirestore]
+    final merged = [...overlay, ...firestore]
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     return List.unmodifiable(merged);
   }

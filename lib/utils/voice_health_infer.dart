@@ -1,5 +1,9 @@
+import '../models/ai/ai_nanny_parsed_message.dart';
 import '../models/ai/voice_record_interpretation.dart';
 import '../services/ai/ai_nanny_intent_lexicon.dart';
+import '../services/ai/ai_nanny_local_message_parser.dart';
+import '../services/ai/ai_nanny_structured_clarification.dart';
+import '../services/ai/ai_nanny_structured_mapper.dart';
 
 /// Frase relata sintoma para registrar (mesmo com "não sei o porquê" no meio).
 bool transcriptHasSymptomRegisterCue(String transcript) {
@@ -297,47 +301,16 @@ VoiceConsultationPayload? _parseConsultation(String t) {
 
 VoiceVaccinePayload? _parseVaccine(String t) {
   if (!t.contains('vacin')) return null;
-
-  String? name;
-  final known = [
-    ('bcg', 'BCG'),
-    ('pentavalente', 'Pentavalente'),
-    ('hexa', 'Hexavalente'),
-    ('pneumo', 'Pneumocócica'),
-    ('rotavírus', 'Rotavírus'),
-    ('rotavirus', 'Rotavírus'),
-    ('meningo', 'Meningocócica'),
-    ('gripe', 'Gripe'),
-    ('influenza', 'Gripe'),
-    ('covid', 'COVID-19'),
-    ('tríplice', 'Tríplice viral'),
-    ('triplice', 'Tríplice viral'),
-    ('dpt', 'DTP'),
-    ('polio', 'Poliomielite'),
-    ('sarampo', 'Sarampo'),
-  ];
-  for (final k in known) {
-    if (t.contains(k.$1)) {
-      name = k.$2;
+  AiNannyStructuredRecord? vaccineRec;
+  for (final r in AiNannyLocalMessageParser.parse(t).records) {
+    if (r.type == 'vaccine') {
+      vaccineRec = r;
       break;
     }
   }
-  name ??= 'Vacina';
-
-  String? dose;
-  final doseM = RegExp(r'(\d)[ªa]?\s*dose').firstMatch(t);
-  if (doseM != null) dose = '${doseM.group(1)}ª dose';
-
-  return VoiceVaccinePayload(
-    name: name,
-    dose: dose,
-    appliedAt: t.contains('tomou') || t.contains('aplicou') || t.contains('recebeu')
-        ? DateTime.now()
-        : null,
-    nextDueAt: t.contains('próxima') || t.contains('proxima') || t.contains('agendar')
-        ? DateTime.now().add(const Duration(days: 30))
-        : null,
-  );
+  if (vaccineRec == null) return null;
+  final enforced = AiNannyStructuredClarification.enforce(vaccineRec, t);
+  return AiNannyStructuredMapper.toInterpretation(enforced)?.vaccine;
 }
 
 String _symptomSummary(VoiceSymptomPayload s) {

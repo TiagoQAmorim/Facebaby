@@ -286,6 +286,50 @@ class _MessagingPageState extends State<MessagingPage> {
     }
   }
 
+  Future<void> _resetBubbleQueue() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Limpar fila do balão?'),
+        content: const Text(
+          'Isto desativa todas as campanhas ativas em floating_messages, '
+          'apaga o histórico local da fila nos telemóveis (na próxima abertura) '
+          'e só voltam a aparecer mensagens novas publicadas depois deste momento.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Limpar tudo'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() {
+      _sending = true;
+      _error = null;
+    });
+    try {
+      final n = await AdminRepository.instance.resetBubbleQueueForAllUsers();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Fila limpa. $n campanha(s) desativada(s). Só novas mensagens serão exibidas.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_canManage) {
@@ -314,6 +358,12 @@ class _MessagingPageState extends State<MessagingPage> {
             Text(
               'Balão flutuante no portal (FloatingMessageBubble). Grava em floating_messages + inbox legado.',
               style: TextStyle(color: Colors.black.withValues(alpha: 0.55)),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _sending ? null : _resetBubbleQueue,
+              icon: const Icon(Icons.cleaning_services_outlined),
+              label: const Text('Limpar fila de testes (todos os utilizadores)'),
             ),
             const SizedBox(height: 20),
             Text(

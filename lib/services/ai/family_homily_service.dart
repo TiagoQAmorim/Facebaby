@@ -1,9 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
-
 import '../../controllers/current_baby_controller.dart';
+import '../../utils/family_date_keys.dart';
 import '../../i18n/app_i18n.dart';
 import '../family_homily_read_prefs.dart';
 import '../firebase/profile_cloud_sync.dart';
@@ -64,7 +63,7 @@ class FamilyHomilyService {
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
 
-  String _todayKey() => DateFormat('yyyyMMdd').format(DateTime.now());
+  String _todayKey() => FamilyDateKeys.todayCompact();
 
   DocumentReference<Map<String, dynamic>>? get _todayDoc {
     final uid = _auth.currentUser?.uid;

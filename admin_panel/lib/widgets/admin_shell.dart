@@ -14,6 +14,7 @@ class AdminShell extends StatelessWidget {
   static const _items = [
     ('/', 'Dashboard', Icons.dashboard_rounded),
     ('/users', 'Users', Icons.people_rounded),
+    ('/ai-usage', 'Uso de IA', Icons.smart_toy_rounded),
     ('/weekly-photo', 'Weekly Photo', Icons.emoji_events_rounded),
     ('/weekly-photo-reports', 'Denuncias', Icons.report_rounded),
     ('/public-memories', 'Public Memories', Icons.photo_library_rounded),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:intl/intl.dart';
+
 import '../models/admin_models.dart';
 import '../services/admin_repository.dart';
 import '../widgets/admin_layout.dart';
@@ -86,11 +88,22 @@ class _DashboardPageState extends State<DashboardPage> {
                       _StatCard(title: 'Active users', value: '${_stats!.activeUsers}'),
                       _StatCard(title: 'Premium users', value: '${_stats!.premiumUsers}'),
                       _StatCard(title: 'Free users', value: '${_stats!.freeUsers}'),
-                      _StatCard(title: 'AI Nanny users', value: '${_stats!.aiNannyUsers}'),
+                      _StatCard(title: 'AI Nanny users (today)', value: '${_stats!.aiNannyUsers}'),
+                      _StatCard(title: 'AI calls today', value: '${_stats!.aiCallsToday}'),
+                      _StatCard(
+                        title: 'AI tokens today',
+                        value: NumberFormat.decimalPattern().format(_stats!.aiTokensToday),
+                      ),
                       _StatCard(title: 'Suspended users', value: '${_stats!.suspendedUsers}'),
                       _StatCard(title: 'New this week', value: '${_stats!.newUsersThisWeek}'),
-                      _StatCard(title: 'Total babies', value: '${_stats!.totalBabies}'),
-                      _StatCard(title: 'Total memories', value: '${_stats!.totalMemories}'),
+                      _StatCard(
+                        title: 'Total babies',
+                        value: _stats!.totalBabies?.toString() ?? '—',
+                      ),
+                      _StatCard(
+                        title: 'Total memories',
+                        value: _stats!.totalMemories?.toString() ?? '—',
+                      ),
                       _StatCard(title: 'Public memories', value: '${_stats!.totalPublicMemories}'),
                       _StatCard(
                         title: 'Weekly winner',

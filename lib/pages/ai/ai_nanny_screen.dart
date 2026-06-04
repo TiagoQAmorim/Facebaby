@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../../app/app_locale.dart';
 import '../../controllers/current_baby_controller.dart';
 import '../../i18n/app_i18n.dart';
 import '../../models/ai/ai_message_model.dart';
@@ -28,6 +29,9 @@ import '../../widgets/ai/ai_nanny_listen_button.dart';
 import '../../widgets/ai/ai_nanny_voice_processing_bar.dart';
 import '../../widgets/ai/voice_record_status_bar.dart' show VoiceRecordBarPhase;
 import '../../widgets/ai/ai_nanny_records_confirm_sheet.dart';
+import '../../services/premium/feature_access.dart';
+import '../../services/premium/premium_service.dart';
+import '../../widgets/ai/ai_nanny_plus_gate.dart';
 import 'ai_baby_history_page.dart';
 
 /// IA Babá — chat (Fase 3: arquitetura com services/repository, resposta mock).
@@ -61,6 +65,7 @@ class _AiNannyScreenState extends State<AiNannyScreen> with WidgetsBindingObserv
   String? _voicePipelineError;
   StreamSubscription<List<AiMessage>>? _messagesSub;
   PendingRecordSession? _pendingSession;
+  VoidCallback? _langListener;
 
   bool _isProcessingCancelled(int generation) =>
       generation != _processingGeneration;
@@ -87,10 +92,16 @@ class _AiNannyScreenState extends State<AiNannyScreen> with WidgetsBindingObserv
       if (!mounted) return;
       _scrollToEnd(jump: true);
     });
+    _langListener = () {
+      if (!mounted) return;
+      unawaited(
+        _service.syncWelcomeMessage(S.of(context).aiNannyWelcomeMessage),
+      );
+    };
+    kAppLanguage.addListener(_langListener!);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      unawaited(_prepareChatSession(S.of(context)));
-      unawaited(_refreshPendingSession());
+      unawaited(_bootstrapAiScreen(S.of(context)));
     });
     _service.watchTyping().listen((typing) {
       if (!mounted) return;
@@ -114,12 +125,22 @@ class _AiNannyScreenState extends State<AiNannyScreen> with WidgetsBindingObserv
     });
   }
 
+  Future<void> _bootstrapAiScreen(S s) async {
+    await _prepareChatSession(s);
+    if (!mounted) return;
+    await _refreshPendingSession();
+  }
+
   Future<void> _prepareChatSession(S s) async {
     if (AiChatSession.needsFreshChatOnOpen) {
       AiChatSession.markChatPreparedForLaunch();
-      unawaited(_service.resetForNewAppSession(s.aiNannyWelcomeMessage));
+      await PendingRecordSessionStore.instance.clearAllSessions(
+        reason: 'new app launch — fresh IA Babá chat',
+      );
+      if (mounted) setState(() => _pendingSession = null);
+      await _service.resetForNewAppSession(s.aiNannyWelcomeMessage);
     } else {
-      await _service.ensureWelcomeMessage(s.aiNannyWelcomeMessage);
+      await _service.syncWelcomeMessage(s.aiNannyWelcomeMessage);
     }
     if (!mounted) return;
     _scrollToEnd(jump: true);
@@ -156,6 +177,9 @@ class _AiNannyScreenState extends State<AiNannyScreen> with WidgetsBindingObserv
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    if (_langListener != null) {
+      kAppLanguage.removeListener(_langListener!);
+    }
     _messagesSub?.cancel();
     _recordTimer?.cancel();
     unawaited(_voiceCapture.cancelRecording());
@@ -520,8 +544,15 @@ class _AiNannyScreenState extends State<AiNannyScreen> with WidgetsBindingObserv
       if (!mounted) return;
       await _refreshPendingSession();
 
+      final deferAssistantUntilAfterSheet =
+          turn.recordsBundle != null &&
+          turn.showRecordsConfirmSheet &&
+          !turn.registerApplied;
+
       final assistantText = turn.aiAnswer?.trim();
-      if (assistantText != null && assistantText.isNotEmpty) {
+      if (assistantText != null &&
+          assistantText.isNotEmpty &&
+          !deferAssistantUntilAfterSheet) {
         await _service.appendAssistantMessage(
           assistantText,
           babyId: cloudId,
@@ -593,6 +624,14 @@ class _AiNannyScreenState extends State<AiNannyScreen> with WidgetsBindingObserv
             _scrollToEnd();
             _scheduleAutoRead(s, afterText);
           }
+        } else if (assistantText != null && assistantText.isNotEmpty) {
+          await _service.appendAssistantMessage(
+            assistantText,
+            babyId: cloudId,
+            userId: uid,
+          );
+          _scrollToEnd();
+          _scheduleAutoRead(s, assistantText);
         }
       }
 
@@ -615,7 +654,8 @@ class _AiNannyScreenState extends State<AiNannyScreen> with WidgetsBindingObserv
           SnackBar(content: Text(turn.registerSnack!)),
         );
       } else if (turn.registerError != null &&
-          turn.registerError!.trim().isNotEmpty) {
+          turn.registerError!.trim().isNotEmpty &&
+          !deferAssistantUntilAfterSheet) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(turn.registerError!)),
         );
@@ -702,7 +742,11 @@ class _AiNannyScreenState extends State<AiNannyScreen> with WidgetsBindingObserv
 
     try {
       await _service.clearConversation();
+      await PendingRecordSessionStore.instance.clearAllSessions(
+        reason: 'user cleared IA Babá chat',
+      );
       if (!mounted) return;
+      setState(() => _pendingSession = null);
       await _service.restoreWelcomeAfterClear(s.aiNannyWelcomeMessage);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -823,6 +867,18 @@ class _AiNannyScreenState extends State<AiNannyScreen> with WidgetsBindingObserv
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: PremiumService.instance,
+      builder: (context, _) {
+        if (!FeatureAccess.canUseAiNanny) {
+          return const AiNannyPlusGate();
+        }
+        return _buildChat(context);
+      },
+    );
+  }
+
+  Widget _buildChat(BuildContext context) {
     final s = S.of(context);
     final bottomInset = MediaQuery.of(context).padding.bottom;
     // Texto/enviar só no idle; microfone também ativo enquanto grava (toque para parar).
@@ -841,7 +897,7 @@ class _AiNannyScreenState extends State<AiNannyScreen> with WidgetsBindingObserv
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
               child: StreamBuilder<List<AiMessage>>(
                 stream: _service.watchMessages(),
                 initialData: const [],
@@ -866,7 +922,7 @@ class _AiNannyScreenState extends State<AiNannyScreen> with WidgetsBindingObserv
                 },
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             Expanded(
               child: StreamBuilder<List<AiMessage>>(
                 stream: _service.watchMessages(),
@@ -1008,24 +1064,24 @@ class _HeaderCard extends StatelessWidget {
       elevation: 0,
       shadowColor: const Color(0xFF9C27B0).withAlpha(40),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         side: BorderSide(color: const Color(0xFFE1BEE7).withAlpha(120)),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 52,
-              height: 52,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFE91E8C).withAlpha(55),
-                    blurRadius: 14,
-                    spreadRadius: 1,
+                    color: const Color(0xFFE91E8C).withAlpha(45),
+                    blurRadius: 10,
+                    spreadRadius: 0,
                   ),
                 ],
               ),
@@ -1036,12 +1092,12 @@ class _HeaderCard extends StatelessWidget {
                   errorBuilder: (_, __, ___) => const Icon(
                     Icons.auto_awesome_rounded,
                     color: Color(0xFF8E24AA),
-                    size: 30,
+                    size: 24,
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1049,58 +1105,63 @@ class _HeaderCard extends StatelessWidget {
                   Text(
                     s.aiNannyTitle,
                     style: const TextStyle(
-                      fontSize: 18,
+                      fontSize: 15.5,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: -0.3,
+                      letterSpacing: -0.25,
+                      height: 1.15,
                       color: Color(0xFF4A148C),
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 2),
                   Text(
                     s.aiNannySubtitle,
                     style: TextStyle(
-                      fontSize: 13,
-                      height: 1.35,
+                      fontSize: 11.5,
+                      height: 1.25,
                       fontWeight: FontWeight.w500,
                       color: Colors.black.withAlpha(165),
                     ),
                   ),
                   if (!kIsWeb) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     ValueListenableBuilder<bool>(
                       valueListenable: HomePrefs.aiNannyAutoReadEnabled,
                       builder: (context, enabled, _) {
                         return InkWell(
                           onTap: () => onAutoReadChanged(!enabled),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                           child: Row(
                             children: [
                               Icon(
                                 enabled
                                     ? Icons.record_voice_over_rounded
                                     : Icons.voice_over_off_outlined,
-                                size: 18,
+                                size: 16,
                                 color: const Color(0xFF7B1FA2),
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 5),
                               Expanded(
                                 child: Text(
                                   s.aiNannyAutoReadLabel,
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.w700,
                                     color: Colors.black.withAlpha(170),
                                   ),
                                 ),
                               ),
-                              Switch(
-                                value: enabled,
-                                onChanged: onAutoReadChanged,
-                                materialTapTargetSize:
-                                    MaterialTapTargetSize.shrinkWrap,
-                                activeThumbColor: const Color(0xFF7B1FA2),
-                                activeTrackColor:
-                                    const Color(0xFF7B1FA2).withAlpha(100),
+                              Transform.scale(
+                                scale: 0.82,
+                                alignment: Alignment.centerRight,
+                                child: Switch(
+                                  value: enabled,
+                                  onChanged: onAutoReadChanged,
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  activeThumbColor: const Color(0xFF7B1FA2),
+                                  activeTrackColor:
+                                      const Color(0xFF7B1FA2).withAlpha(100),
+                                ),
                               ),
                             ],
                           ),
@@ -1154,7 +1215,7 @@ class _HeaderCard extends StatelessWidget {
                   child: Text(
                     s.aiNannyProfileButton,
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w800,
                     ),
                   ),

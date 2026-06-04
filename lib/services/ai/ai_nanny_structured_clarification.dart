@@ -18,13 +18,76 @@ abstract final class AiNannyStructuredClarification {
     final missing = <String>{...r.missingFields};
     final text = sourceText.trim();
     final low = text.toLowerCase();
-    final type = AiNannyParseNormalize.canonicalRecordType(r.type, fields);
+    var resolvedType = AiNannyParseNormalize.canonicalRecordType(r.type, fields);
 
     if (!fields.containsKey('time') || '${fields['time'] ?? ''}'.isEmpty) {
       fields['time'] = 'now';
     }
 
-    switch (type) {
+    if (resolvedType == 'growth' ||
+        resolvedType == 'crescimento' ||
+        resolvedType == 'measurement') {
+      final h = AiNannyParseNormalize.parseHeightDeltaCm(text);
+      if (h != null) {
+        resolvedType = 'growth_height';
+        fields['measurementType'] = 'height';
+        fields['value'] = h;
+        fields['unit'] = 'cm';
+        fields['mode'] = fields['mode'] ?? 'delta';
+        missing.remove('value');
+      } else {
+        final g = AiNannyParseNormalize.parseWeightDeltaGrams(text);
+        if (g != null) {
+          resolvedType = 'growth_weight';
+          fields['measurementType'] = 'weight';
+          fields['value'] = g;
+          fields['unit'] = 'g';
+          fields['mode'] = fields['mode'] ?? 'delta';
+          missing.remove('value');
+        }
+      }
+    }
+
+    if (resolvedType == 'wake' || resolvedType == 'woke' || resolvedType == 'awake') {
+      resolvedType = 'sleep';
+      fields['action'] = 'end';
+      fields['sleepStatus'] = 'woke';
+    }
+
+    if (resolvedType == 'record' ||
+        resolvedType == 'registro' ||
+        resolvedType == 'entry') {
+      resolvedType = 'record';
+    }
+
+    if (!AiNannyParseNormalize.knownRecordTypes.contains(resolvedType) ||
+        resolvedType == 'record') {
+      final h = AiNannyParseNormalize.parseHeightDeltaCm(text);
+      if (h != null) {
+        resolvedType = 'growth_height';
+        fields['measurementType'] = 'height';
+        fields['value'] = h;
+        fields['unit'] = 'cm';
+        fields['mode'] = fields['mode'] ?? 'delta';
+        missing.remove('value');
+      } else {
+        final g = AiNannyParseNormalize.parseWeightDeltaGrams(text);
+        if (g != null) {
+          resolvedType = 'growth_weight';
+          fields['measurementType'] = 'weight';
+          fields['value'] = g;
+          fields['unit'] = 'g';
+          fields['mode'] = fields['mode'] ?? 'delta';
+          missing.remove('value');
+        } else if (AiNannyIntentLexicon.textImpliesWake(low)) {
+          resolvedType = 'sleep';
+          fields['action'] = 'end';
+          fields['sleepStatus'] = 'woke';
+        }
+      }
+    }
+
+    switch (resolvedType) {
       case 'diaper':
         final pee = fields['pee'] == true;
         final poop = fields['poop'] == true;
@@ -164,20 +227,35 @@ abstract final class AiNannyStructuredClarification {
           missing.remove('vaccineName');
         }
         fields['status'] = AiNannyParseNormalize.inferVaccineStatus(text);
-        final vDate = AiNannyParseNormalize.parseAppointmentDate(text) ??
-            '${fields['date'] ?? ''}'.trim();
-        if (vDate.isNotEmpty) {
-          fields['date'] = vDate;
-        }
-        final nextDays = AiNannyParseNormalize.parseVaccineNextDueInDays(text);
+        final nextDaysFromText =
+            AiNannyParseNormalize.parseVaccineNextDueInDays(text);
+        final nextDaysCloud =
+            AiNannyParseNormalize.coercePositiveInt(fields['nextDueInDays']);
+        final nextDays = nextDaysFromText ?? nextDaysCloud;
         if (nextDays != null) {
           fields['nextDueInDays'] = nextDays;
           fields['nextDueDate'] =
-              AiNannyParseNormalize.parseVaccineNextDueDateIso(text);
+              AiNannyParseNormalize.parseVaccineNextDueDateIso(text) ??
+                  AiNannyParseNormalize.nextDueIsoFromDays(nextDays);
+        } else {
+          final cloudDate = '${fields['nextDueDate'] ?? ''}'.trim();
+          if (cloudDate.isNotEmpty) {
+            fields['nextDueDate'] = cloudDate;
+          }
+        }
+        if (fields['status'] == 'scheduled') {
+          fields.remove('date');
+        } else {
+          final vDate = AiNannyParseNormalize.parseAppointmentDate(text) ??
+              '${fields['date'] ?? ''}'.trim();
+          if (vDate.isNotEmpty) {
+            fields['date'] = vDate;
+          }
         }
         if (fields['status'] == 'scheduled' &&
             '${fields['date'] ?? ''}'.isEmpty &&
-            '${fields['nextDueDate'] ?? ''}'.isEmpty) {
+            '${fields['nextDueDate'] ?? ''}'.isEmpty &&
+            fields['nextDueInDays'] == null) {
           missing.add('date');
         } else {
           missing.remove('date');
@@ -239,6 +317,8 @@ abstract final class AiNannyStructuredClarification {
         }
         if (wVal != null) {
           missing.remove('value');
+          AiNannyParseNormalize.normalizeGrowthWeightFields(fields, text);
+          wMode = '${fields['mode'] ?? 'total'}';
           fields['mode'] = wMode;
         }
         missing.remove('time');
@@ -356,13 +436,13 @@ abstract final class AiNannyStructuredClarification {
     }
 
     final cleanedMissing =
-        AiNannyParseNormalize.sanitizeMissingForType(type, missing);
+        AiNannyParseNormalize.sanitizeMissingForType(resolvedType, missing);
     missing
       ..clear()
       ..addAll(cleanedMissing);
 
     return AiNannyStructuredRecord(
-      type: type,
+      type: resolvedType,
       missingFields: missing.toList()..sort(),
       fields: fields,
     );
@@ -581,7 +661,8 @@ abstract final class AiNannyStructuredClarification {
     S s, {
     String? sourceText,
   }) {
-    if (r.type == 'feeding') {
+    final type = AiNannyParseNormalize.canonicalRecordType(r.type, r.fields);
+    if (type == 'feeding') {
       var ft = '${r.fields['feedingType'] ?? ''}'.toLowerCase();
       if (ft.isEmpty && sourceText != null) {
         final low = sourceText.toLowerCase();
@@ -597,11 +678,12 @@ abstract final class AiNannyStructuredClarification {
       }
       return s.aiRecordLabelFeeding;
     }
-    return switch (r.type) {
+    return switch (type) {
       'diaper' => s.aiRecordLabelDiaper,
       'sleep' => s.aiRecordLabelSleep,
       'health_symptom' => s.aiRecordLabelSymptom,
-      'growth_weight' || 'growth_height' => s.aiRecordLabelGrowth,
+      'growth_weight' => s.growthTabWeight,
+      'growth_height' => s.growthTabHeight,
       'vaccine' => s.aiRecordLabelVaccine,
       'appointment' => s.aiRecordLabelAppointment,
       'memory' => s.aiRecordLabelMemory,
@@ -693,7 +775,15 @@ abstract final class AiNannyStructuredClarification {
 
       case 'sleep':
         final action = '${r.fields['action'] ?? 'start'}';
+        final waking =
+            action == 'end' || '${r.fields['sleepStatus'] ?? ''}' == 'woke';
         lines.add(field(s.aiRecordFieldAction, _sleepActionLabel(action, s)));
+        final mins = r.fields['durationMinutes'];
+        if (mins != null) {
+          lines.add(field(s.aiRecordFieldDuration, '$mins min'));
+        } else if (waking) {
+          lines.add('• ${s.aiSleepOptionAlreadyWoke}');
+        }
         lines.add(
           field(
             s.aiRecordFieldTime,

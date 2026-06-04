@@ -33,12 +33,12 @@ abstract final class PediatricReportSymptomLines {
   static String formatOccurrenceLine(PediatricSymptomOccurrence o, String locale, S s) {
     final date = DateFormat('dd/MM/yyyy', locale).format(o.at);
     if (o.journalDayOnly) {
-      return '$date — ${s.reportPediatricSymptomFromJournal}';
+      return '$date - ${s.reportPediatricSymptomFromJournal}';
     }
     final time = DateFormat.jm(locale).format(o.at);
     final d = o.detail?.trim();
     if (d != null && d.isNotEmpty) {
-      return '$date - $time · $d';
+      return '$date - $time, $d';
     }
     return '$date - $time';
   }

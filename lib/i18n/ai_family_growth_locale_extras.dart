@@ -136,9 +136,12 @@ const Map<String, String> _es = {
       'El chat llegará en la próxima fase. El acceso directo ya está en el menú.',
   'aiNannyTitle': 'IA Niñera 24h contigo',
   'aiNannySubtitle':
-      'Respuestas inteligentes y orientación personalizada para la rutina de tu bebé.',
+      'Consejera acogedora para mamá, papá y familia — rutina del bebé y apoyo emocional.',
   'aiNannyWelcomeMessage':
-      '🤖 ¡Hola! Soy la IA Niñera 💜\nPuedo ayudar con tomas, sueño, pañales, salud, crecimiento y más ✨',
+      '🤖 ¡Hola! Soy la IA Niñera 💜\n\n'
+      'Soy tu compañera y consejera: registro de rutina (tomas, sueño, vacunas…), '
+      'dudas sobre el bebé o el embarazo, y escuchar a mamá, papá y familia cuando necesiten desahogarse. '
+      'Estoy aquí contigo ✨',
   'aiNannyMockReply':
       'Entendido ❤️ En la próxima fase responderé con los registros reales de tu bebé.',
   'aiNannyInputHint': 'Escribe tu pregunta…',
@@ -265,9 +268,12 @@ const Map<String, String> _fr = {
       'Le chat arrive dans la prochaine phase. Le raccourci est déjà dans le menu.',
   'aiNannyTitle': 'IA Nounou 24h/24 avec vous',
   'aiNannySubtitle':
-      'Réponses intelligentes et conseils personnalisés pour la routine de votre bébé.',
+      'Conseillère bienveillante pour maman, papa et famille — routine du bébé et soutien émotionnel.',
   'aiNannyWelcomeMessage':
-      '🤖 Bonjour ! Je suis l’IA Nounou 💜\nTétées, sommeil, couches, santé, croissance et plus ✨',
+      '🤖 Bonjour ! Je suis l’IA Nounou 💜\n\n'
+      'Votre compagne et conseillère : routine (tétées, sommeil, vaccins…), questions sur le bébé ou la grossesse, '
+      'et écoute pour maman, papa et la famille quand vous avez besoin de vous confier. '
+      'Je suis là pour vous ✨',
   'aiNannyMockReply':
       'Compris ❤️ Dans la prochaine phase, je répondrai avec les vrais enregistrements de votre bébé.',
   'aiNannyInputHint': 'Saisissez votre question…',
@@ -395,9 +401,12 @@ const Map<String, String> _de = {
       'Der Chat kommt in der nächsten Phase. Die Verknüpfung ist schon im Menü.',
   'aiNannyTitle': 'KI-Babysitterin 24/7 für Sie',
   'aiNannySubtitle':
-      'Intelligente Antworten und persönliche Tipps für die Routine Ihres Babys.',
+      'Einfühlsame Beraterin für Mutter, Vater und Familie — Baby-Routine und emotionale Unterstützung.',
   'aiNannyWelcomeMessage':
-      '🤖 Hallo! Ich bin die KI-Babysitterin 💜\nMahlzeiten, Schlaf, Windeln, Gesundheit, Wachstum und mehr ✨',
+      '🤖 Hallo! Ich bin die KI-Babysitterin 💜\n\n'
+      'Ihre Begleiterin und Beraterin: Routine erfassen (Mahlzeiten, Schlaf, Impfungen…), '
+      'Fragen zu Baby oder Schwangerschaft, und zuhören, wenn die Familie sich aussprechen möchte. '
+      'Ich bin für Sie da ✨',
   'aiNannyMockReply':
       'Verstanden ❤️ In der nächsten Phase antworte ich mit echten Einträgen Ihres Babys.',
   'aiNannyInputHint': 'Frage eingeben…',
@@ -525,9 +534,12 @@ const Map<String, String> _it = {
       'La chat arriverà nella prossima fase. Il collegamento è già nel menu.',
   'aiNannyTitle': 'IA Tata 24h con te',
   'aiNannySubtitle':
-      'Risposte intelligenti e consigli personalizzati per la routine del tuo bambino.',
+      'Consulente accogliente per mamma, papà e famiglia — routine del bambino e supporto emotivo.',
   'aiNannyWelcomeMessage':
-      '🤖 Ciao! Sono l’IA Tata 💜\nPasti, sonno, pannolini, salute, crescita e altro ✨',
+      '🤖 Ciao! Sono l’IA Tata 💜\n\n'
+      'La tua compagna e consulente: registrare la routine (pasti, sonno, vaccini…), '
+      'domande su bambino o gravidanza, e ascoltare mamma, papà e famiglia quando serve sfogarsi. '
+      'Sono qui per te ✨',
   'aiNannyMockReply':
       'Capito ❤️ Nella prossima fase risponderò con i registri reali del bambino.',
   'aiNannyInputHint': 'Scrivi la tua domanda…',

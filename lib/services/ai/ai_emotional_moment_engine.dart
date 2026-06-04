@@ -20,6 +20,8 @@ abstract final class AiEmotionalMomentEngine {
     required String? babySex,
     required DateTime? birthDate,
     required S strings,
+    DateTime? anchorDay,
+    int daysOnApp = 999,
   }) async {
     final moments = await buildMoments(
       babyId: babyId,
@@ -27,6 +29,8 @@ abstract final class AiEmotionalMomentEngine {
       babySex: babySex,
       birthDate: birthDate,
       strings: strings,
+      anchorDay: anchorDay,
+      daysOnApp: daysOnApp,
     );
     return moments
         .map(
@@ -46,6 +50,8 @@ abstract final class AiEmotionalMomentEngine {
     required String? babySex,
     required DateTime? birthDate,
     required S strings,
+    DateTime? anchorDay,
+    int daysOnApp = 999,
   }) async {
     final ctx = await AiBabyEmotionalContext.load(
       babyId: babyId,
@@ -59,9 +65,24 @@ abstract final class AiEmotionalMomentEngine {
     final monthiversary = _monthiversary(ctx, strings, now);
     if (monthiversary != null) out.add(monthiversary);
 
-    out.addAll(await _tbtMoments(ctx, strings, now));
-    out.addAll(await _achievementMoments(ctx, strings, now));
-    out.addAll(await _spontaneousMoments(ctx, strings, now));
+    out.addAll(await _tbtMoments(ctx, strings, now, daysOnApp: daysOnApp));
+    out.addAll(
+      await _achievementMoments(
+        ctx,
+        strings,
+        now,
+        anchorDay: anchorDay,
+        daysOnApp: daysOnApp,
+      ),
+    );
+    out.addAll(
+      await _spontaneousMoments(
+        ctx,
+        strings,
+        now,
+        anchorDay: anchorDay,
+      ),
+    );
 
     out.sort((a, b) => a.priority.compareTo(b.priority));
     final picked = out.take(_maxMomentsPerDay).toList();
@@ -123,12 +144,14 @@ abstract final class AiEmotionalMomentEngine {
   static Future<List<AiEmotionalMoment>> _tbtMoments(
     AiBabyEmotionalContext ctx,
     S strings,
-    DateTime now,
-  ) async {
+    DateTime now, {
+    required int daysOnApp,
+  }) async {
     final out = <AiEmotionalMoment>[];
     final db = AppDatabase.instance;
 
     for (final daysAgo in const [30, 7, 365]) {
+      if (daysOnApp < daysAgo) continue;
       if (daysAgo == 365 && ctx.ageInDays < 380) continue;
       if (daysAgo == 30 && ctx.ageInDays < 31) continue;
       if (daysAgo == 7 && ctx.ageInDays < 8) continue;
@@ -168,11 +191,19 @@ abstract final class AiEmotionalMomentEngine {
   static Future<List<AiEmotionalMoment>> _achievementMoments(
     AiBabyEmotionalContext ctx,
     S strings,
-    DateTime now,
-  ) async {
+    DateTime now, {
+    DateTime? anchorDay,
+    required int daysOnApp,
+  }) async {
     final out = <AiEmotionalMoment>[];
 
-    final feedStreak = await _feedingStreakDays(ctx.babyId, now);
+    final feedStreak = daysOnApp >= 7
+        ? await _feedingStreakDays(
+            ctx.babyId,
+            now,
+            sinceDay: anchorDay,
+          )
+        : 0;
     if (feedStreak == 7) {
       out.add(
         AiEmotionalMoment(
@@ -185,7 +216,9 @@ abstract final class AiEmotionalMomentEngine {
       );
     }
 
-    final totalRecords = await _approxTotalRecords(ctx.babyId);
+    final totalRecords = daysOnApp >= 14
+        ? await _approxTotalRecords(ctx.babyId, sinceDay: anchorDay)
+        : 0;
     if (totalRecords >= 100 && totalRecords < 110) {
       out.add(
         AiEmotionalMoment(
@@ -210,7 +243,9 @@ abstract final class AiEmotionalMomentEngine {
       );
     }
 
-    final sleepStable = await _sleepMoreStableThisWeek(ctx.babyId, now);
+    final sleepStable = daysOnApp >= 14
+        ? await _sleepMoreStableThisWeek(ctx.babyId, now, sinceDay: anchorDay)
+        : false;
     if (sleepStable) {
       out.add(
         AiEmotionalMoment(
@@ -226,11 +261,16 @@ abstract final class AiEmotionalMomentEngine {
     return out;
   }
 
-  static Future<int> _feedingStreakDays(int babyId, DateTime now) async {
+  static Future<int> _feedingStreakDays(
+    int babyId,
+    DateTime now, {
+    DateTime? sinceDay,
+  }) async {
     final db = AppDatabase.instance;
     var streak = 0;
     for (var i = 1; i <= 7; i++) {
       final day = _dateOnly(now.subtract(Duration(days: i)));
+      if (sinceDay != null && day.isBefore(_dateOnly(sinceDay))) break;
       final sum = await db.dailySummaryForHomePicker(
         babyId: babyId,
         calendarDay: day,
@@ -244,11 +284,15 @@ abstract final class AiEmotionalMomentEngine {
     return streak;
   }
 
-  static Future<int> _approxTotalRecords(int babyId) async {
+  static Future<int> _approxTotalRecords(
+    int babyId, {
+    DateTime? sinceDay,
+  }) async {
     final db = AppDatabase.instance;
     var total = 0;
     for (var i = 0; i < 14; i++) {
       final day = _dateOnly(DateTime.now().subtract(Duration(days: i)));
+      if (sinceDay != null && day.isBefore(_dateOnly(sinceDay))) continue;
       final s = await db.dailySummaryForHomePicker(
         babyId: babyId,
         calendarDay: day,
@@ -258,17 +302,23 @@ abstract final class AiEmotionalMomentEngine {
     return total * 8;
   }
 
-  static Future<bool> _sleepMoreStableThisWeek(int babyId, DateTime now) async {
+  static Future<bool> _sleepMoreStableThisWeek(
+    int babyId,
+    DateTime now, {
+    DateTime? sinceDay,
+  }) async {
     final db = AppDatabase.instance;
     var thisWeek = 0;
     var prevWeek = 0;
     for (var i = 0; i < 7; i++) {
       final d = _dateOnly(now.subtract(Duration(days: i)));
+      if (sinceDay != null && d.isBefore(_dateOnly(sinceDay))) continue;
       final s = await db.dailySummaryForHomePicker(babyId: babyId, calendarDay: d);
       thisWeek += s.sleepTotalSeconds;
     }
     for (var i = 7; i < 14; i++) {
       final d = _dateOnly(now.subtract(Duration(days: i)));
+      if (sinceDay != null && d.isBefore(_dateOnly(sinceDay))) continue;
       final s = await db.dailySummaryForHomePicker(babyId: babyId, calendarDay: d);
       prevWeek += s.sleepTotalSeconds;
     }
@@ -279,13 +329,18 @@ abstract final class AiEmotionalMomentEngine {
   static Future<List<AiEmotionalMoment>> _spontaneousMoments(
     AiBabyEmotionalContext ctx,
     S strings,
-    DateTime now,
-  ) async {
+    DateTime now, {
+    DateTime? anchorDay,
+  }) async {
     final out = <AiEmotionalMoment>[];
     final db = AppDatabase.instance;
 
     final yesterday = _dateOnly(now.subtract(const Duration(days: 1)));
     final dayBefore = _dateOnly(now.subtract(const Duration(days: 2)));
+    if (anchorDay != null) {
+      final anchor = _dateOnly(anchorDay);
+      if (yesterday.isBefore(anchor)) return out;
+    }
     await db.ensureYesterdayDailySummarySnapshot(babyId: ctx.babyId);
 
     final y = await db.dailySummaryForHomePicker(

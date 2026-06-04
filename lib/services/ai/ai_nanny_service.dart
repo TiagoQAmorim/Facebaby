@@ -8,6 +8,7 @@ import '../../i18n/app_i18n.dart';
 import '../../models/ai/ai_message_model.dart';
 import '../../repositories/ai/ai_chat_repository.dart';
 import '../../utils/app_tts_locale.dart';
+import 'growth_curve_ai_context.dart';
 import 'ai_usage_limits_service.dart';
 
 /// Região da Cloud Function `askAiNanny` (deve coincidir com functions/src/ai/askAiNanny.js).
@@ -69,10 +70,29 @@ class AiNannyService {
     );
   }
 
-  /// Envia pergunta; retorna o texto da resposta da IA quando obtido com sucesso.
+  /// Atualiza a bolha de boas-vindas quando o idioma muda; insere se o chat estiver vazio.
+  Future<void> syncWelcomeMessage(String welcomeText) async {
+    final text = welcomeText.trim();
+    if (text.isEmpty) return;
+
+    for (final m in _repository.snapshot) {
+      if (!m.isAi || !m.id.startsWith('welcome-')) continue;
+      if (m.text.trim() != text) {
+        await _repository.updateById(m.id, m.copyWith(text: text));
+      }
+      return;
+    }
+
+    if (_repository.isEmpty) {
+      await ensureWelcomeMessage(text);
+    }
+  }
+
+  /// Chama `askAiNanny` e devolve o texto da resposta.
   ///
-  /// [question] — texto visível no chat (só o que a mãe digitou).
-  /// [agentHint] — instrução interna para o modelo (não aparece na bolha).
+  /// O chat visível é responsabilidade de quem chama ([appendUserMessage] /
+  /// [appendAssistantMessage] na tela). Isto evita bolhas duplicadas quando o
+  /// turno já mostrou a mensagem do utilizador antes de invocar a cloud.
   Future<String?> sendMessage({
     required String question,
     String? agentHint,
@@ -97,16 +117,6 @@ class AiNannyService {
     }
 
     final userId_ = userId ?? user.uid;
-    final userMessage = AiMessage(
-      id: AiMessage.newId(),
-      text: trimmed,
-      sender: AiMessageSender.user,
-      status: AiMessageStatus.sending,
-      createdAt: DateTime.now(),
-      babyId: babyId,
-      userId: userId_,
-    );
-    await _repository.add(userMessage);
     _typingController.add(true);
 
     String? aiAnswer;
@@ -130,12 +140,17 @@ class AiNannyService {
         ),
       );
       final lang = locale ?? AppLang.pt;
+      final strings = S(lang);
+      final growthCurveContext =
+          await GrowthCurveAiContext.blockForCurrentBaby(strings: strings);
       final result = await callable.call(
         {
           'question': trimmed,
           if (hint != null && hint.isNotEmpty) 'agentHint': hint,
           if (babyId != null && babyId.isNotEmpty) 'babyId': babyId,
           'locale': appLocaleApiCode(lang),
+          if (growthCurveContext != null && growthCurveContext.isNotEmpty)
+            'growthCurveContext': growthCurveContext,
         },
       );
 
@@ -157,15 +172,9 @@ class AiNannyService {
         await _usage.refreshFromServer();
       }
 
-      await _repository.updateById(
-        userMessage.id,
-        userMessage.copyWith(status: AiMessageStatus.sent),
-      );
-
       if (answer.isEmpty) {
         debugPrint('AiNannyService: resposta vazia da callable — acionando fallback');
         await _applyErrorFallback(
-          userMessage: userMessage,
           babyId: babyId,
           userId: userId_,
           reason: 'Resposta vazia da Cloud Function.',
@@ -175,17 +184,6 @@ class AiNannyService {
         );
       }
 
-      await _repository.add(
-        AiMessage(
-          id: messageId.isNotEmpty ? '$messageId-ai' : AiMessage.newId(),
-          text: answer,
-          sender: AiMessageSender.ai,
-          status: AiMessageStatus.sent,
-          createdAt: DateTime.now(),
-          babyId: babyId,
-          userId: userId_,
-        ),
-      );
       aiAnswer = answer;
     } on FirebaseFunctionsException catch (e, st) {
       _logFunctionsError(e, st);
@@ -194,7 +192,6 @@ class AiNannyService {
         throw const AiDailyLimitReachedException();
       }
       await _applyErrorFallback(
-        userMessage: userMessage,
         babyId: babyId,
         userId: userId_,
         reason: e.message ?? e.code,
@@ -206,7 +203,6 @@ class AiNannyService {
       }
       debugPrint('AiNannyService: erro inesperado: $e\n$st');
       await _applyErrorFallback(
-        userMessage: userMessage,
         babyId: babyId,
         userId: userId_,
         reason: '$e',
@@ -250,7 +246,6 @@ class AiNannyService {
   }
 
   Future<void> _applyErrorFallback({
-    required AiMessage userMessage,
     String? babyId,
     String? userId,
     String? reason,
@@ -258,10 +253,6 @@ class AiNannyService {
     debugPrint(
       'AiNannyService: FALLBACK ativado'
       '${reason != null ? " — $reason" : ""}',
-    );
-    await _repository.updateById(
-      userMessage.id,
-      userMessage.copyWith(status: AiMessageStatus.sent),
     );
     final fallbackText = (reason != null && reason.trim().isNotEmpty)
         ? reason.trim()
@@ -382,7 +373,6 @@ class AiNannyService {
   /// Limpa conversa ao abrir o app (nova sessão) e deixa só a mensagem de boas-vindas.
   Future<void> resetForNewAppSession(String welcomeText) async {
     await _repository.beginSessionReset();
-    await ensureWelcomeMessage(welcomeText);
     final user = _auth.currentUser;
     if (user != null) {
       try {
@@ -390,7 +380,10 @@ class AiNannyService {
       } catch (e) {
         debugPrint('AiNannyService: resetForNewAppSession clear $e');
       }
+    } else {
+      await _repository.clear();
     }
+    await ensureWelcomeMessage(welcomeText);
     _repository.endSessionReset();
   }
 

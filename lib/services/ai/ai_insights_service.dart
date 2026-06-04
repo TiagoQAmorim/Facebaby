@@ -41,6 +41,7 @@ class AiInsightsService {
     required S strings,
     AppLang? locale,
   }) async {
+    if (!FeatureAccess.canUseAnyAi) return;
     if (_ensureInFlight) return;
     _ensureInFlight = true;
     try {
@@ -215,6 +216,7 @@ abstract final class AiInsightsBootstrap {
   static String _scheduledDay = '';
 
   static void scheduleIfNeeded(S strings) {
+    if (!FeatureAccess.canUseAnyAi) return;
     final today = aiInsightDayDocId(DateTime.now());
     if (_scheduledDay != today) {
       _scheduledDay = today;

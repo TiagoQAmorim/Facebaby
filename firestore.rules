@@ -6,6 +6,18 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    /** E-mail/senha na sessão actual — exige e-mail confirmado para dados do app. */
+    function isPasswordSession() {
+      return isSignedIn()
+        && request.auth.token.firebase != null
+        && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+
+    function emailAccessGranted() {
+      return isSignedIn()
+        && (!isPasswordSession() || request.auth.token.email_verified == true);
+    }
+
     function panelAdminDoc() {
       return get(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
@@ -85,7 +97,8 @@ service cloud.firestore {
 
     match /floating_message_reads/{userId}/messages/{messageId} {
       allow read: if isSignedIn() && request.auth.uid == userId;
-      allow create, update: if isSignedIn() && request.auth.uid == userId;
+      allow create, update: if emailAccessGranted()
+        && request.auth.uid == userId;
       allow delete: if false;
     }
 
@@ -105,13 +118,13 @@ service cloud.firestore {
     match /public_memories/{memoryId} {
       allow read: if true;
 
-      allow create: if isSignedIn()
+      allow create: if emailAccessGranted()
         && (
           request.resource.data.owner_uid == request.auth.uid
           || request.resource.data.userId == request.auth.uid
         );
 
-      allow update: if isSignedIn()
+      allow update: if emailAccessGranted()
         && (
           canManageUsers()
           || (
@@ -124,7 +137,7 @@ service cloud.firestore {
           )
         );
 
-      allow delete: if isSignedIn()
+      allow delete: if emailAccessGranted()
         && (
           canManageUsers()
           || resource.data.owner_uid == request.auth.uid
@@ -133,10 +146,10 @@ service cloud.firestore {
 
       match /likes/{likeUid} {
         allow read: if true;
-        allow create, update: if isSignedIn()
+        allow create, update: if emailAccessGranted()
           && request.auth.uid == likeUid
           && request.resource.data.keys().hasOnly(['createdAt']);
-        allow delete: if isSignedIn() && request.auth.uid == likeUid;
+        allow delete: if emailAccessGranted() && request.auth.uid == likeUid;
       }
     }
 
@@ -147,7 +160,7 @@ service cloud.firestore {
 
     match /weekly_photo_reports/{reportId} {
       allow read: if hasPanelAccess();
-      allow create: if isSignedIn()
+      allow create: if emailAccessGranted()
         && request.resource.data.reporterUid == request.auth.uid
         && request.resource.data.publicMemoryId is string
         && request.resource.data.publicMemoryId.size() > 0
@@ -168,19 +181,27 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create, update: if isSignedIn()
+        && request.auth.uid == userId
+        && emailAccessGranted();
       allow read: if hasPanelAccess();
       allow update: if canManageUsers();
 
       match /{document=**} {
-        allow read, write: if isSignedIn() && request.auth.uid == userId;
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow write: if isSignedIn()
+          && request.auth.uid == userId
+          && emailAccessGranted();
         allow read: if hasPanelAccess();
         allow update: if canManageUsers();
       }
     }
 
     match /ai_chats/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read, write: if isSignedIn()
+        && request.auth.uid == userId
+        && emailAccessGranted();
       match /messages/{messageId} {
         allow read, write: if isSignedIn() && request.auth.uid == userId;
       }
@@ -193,11 +214,19 @@ service cloud.firestore {
         allow read: if isSignedIn() && request.auth.uid == userId;
         allow write: if false;
       }
+      match /monthly/{monthKey} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow write: if false;
+      }
+    }
+
+    match /ai_usage_global/{path=**} {
+      allow read, write: if false;
     }
 
     match /ai_profiles/{userId} {
       allow read: if isSignedIn() && request.auth.uid == userId;
-      allow create, update: if isSignedIn()
+      allow create, update: if emailAccessGranted()
         && request.auth.uid == userId
         && (
           !('aiHistory' in request.resource.data)
@@ -206,7 +235,7 @@ service cloud.firestore {
             && request.resource.data.aiHistory.size() <= 1500
           )
         );
-      allow delete: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if emailAccessGranted() && request.auth.uid == userId;
     }
 
     match /family_horoscopes/{userId} {
@@ -227,12 +256,50 @@ service cloud.firestore {
       }
     }
 
+    /** Homilia diária compartilhada por idioma (geração única/dia/idioma). */
+    match /family_homilies_shared/{langCode} {
+      allow read: if isSignedIn();
+      allow write: if false;
+      match /daily/{dateKey} {
+        allow read: if isSignedIn();
+        allow write: if false;
+      }
+    }
+
+    /** Texto diário por signo + idioma (compartilhado entre usuários do mesmo signo). */
+    match /family_horoscope_sign_shared/{langCode} {
+      allow read: if isSignedIn();
+      allow write: if false;
+      match /daily/{dateKey} {
+        allow read: if isSignedIn();
+        allow write: if false;
+        match /signs/{signSlug} {
+          allow read: if isSignedIn();
+          allow write: if false;
+        }
+      }
+    }
+
+    /** Compatibilidade familiar por combo de signos + idioma. */
+    match /family_horoscope_compat_shared/{langCode} {
+      allow read: if isSignedIn();
+      allow write: if false;
+      match /daily/{dateKey} {
+        allow read: if isSignedIn();
+        allow write: if false;
+        match /combos/{comboKey} {
+          allow read: if isSignedIn();
+          allow write: if false;
+        }
+      }
+    }
+
     match /ai_insights/{userId} {
       allow read: if isSignedIn() && request.auth.uid == userId;
       allow write: if false;
       match /daily/{dateKey} {
         allow read: if isSignedIn() && request.auth.uid == userId;
-        allow create, update: if isSignedIn()
+        allow create, update: if emailAccessGranted()
           && request.auth.uid == userId
           && request.resource.data.source == 'local'
           && request.resource.data.text is string
@@ -242,7 +309,7 @@ service cloud.firestore {
       }
       match /weekly/{weekKey} {
         allow read: if isSignedIn() && request.auth.uid == userId;
-        allow create, update: if isSignedIn()
+        allow create, update: if emailAccessGranted()
           && request.auth.uid == userId
           && request.resource.data.source == 'local'
           && request.resource.data.text is string

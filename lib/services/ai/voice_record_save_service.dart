@@ -15,6 +15,7 @@ import '../firebase/diaper_cloud_sync.dart';
 import '../firebase/feeding_cloud_sync.dart';
 import '../firebase/consultation_cloud_sync.dart';
 import '../firebase/growth_cloud_sync.dart';
+import '../growth_events.dart';
 import '../firebase/sleep_cloud_sync.dart';
 import '../firebase/symptom_cloud_sync.dart';
 import '../firebase/vaccine_cloud_sync.dart';
@@ -371,6 +372,7 @@ class VoiceRecordSaveService {
       weightKg: kg,
     );
     unawaited(ProfileCloudSync.pushBaby(babyId));
+    GrowthEvents.ping();
   }
 
   Future<void> _saveHeight(
@@ -413,6 +415,7 @@ class VoiceRecordSaveService {
       heightCm: cm,
     );
     unawaited(ProfileCloudSync.pushBaby(babyId));
+    GrowthEvents.ping();
   }
 
   Future<void> _saveSymptom(

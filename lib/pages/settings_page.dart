@@ -1,12 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app/face_baby_app.dart';
 import '../i18n/app_i18n.dart';
 import '../theme/app_theme.dart';
+import '../utils/app_version_info.dart';
 import '../utils/portal_page_route.dart';
 import '../utils/portal_time_of_day.dart';
 import '../services/firebase/account_deletion_service.dart';
@@ -332,6 +334,50 @@ Future<void> _inviteFriendShare(BuildContext context) async {
   await Share.share(s.settingsInviteShareText);
 }
 
+Future<void> _showAppVersionDialog(BuildContext context) async {
+  final s = S.of(context);
+  final info = await AppVersionInfo.load();
+  if (!context.mounted) return;
+  await showDialog<void>(
+    context: context,
+    builder: (dialogCtx) {
+      return AlertDialog(
+        title: Text(s.settingsVersionDialogTitle),
+        content: SingleChildScrollView(
+          child: SelectableText(
+            info.fullDetailText,
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 13,
+              height: 1.5,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await Clipboard.setData(
+                ClipboardData(text: info.fullDetailText),
+              );
+              if (dialogCtx.mounted) Navigator.of(dialogCtx).pop();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(s.settingsVersionCopied)),
+                );
+              }
+            },
+            child: Text(s.settingsVersionCopy),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: Text(s.commonClose),
+          ),
+        ],
+      );
+    },
+  );
+}
+
 Future<void> _openStoreRating(BuildContext context) async {
   final s = S.of(context);
   if (kIsWeb) {
@@ -503,6 +549,12 @@ class SettingsPage extends StatelessWidget {
             icon: Icons.mail_outline,
             title: s.contactTitle,
             onTap: () => pushPortalPage<void>(context, const ContactPage()),
+          ),
+          _SettingsTile(
+            compact: true,
+            icon: Icons.info_outline,
+            title: s.settingsVersion,
+            onTap: () => _showAppVersionDialog(context),
           ),
           const _SettingsRulerDivider(widthFactor: 0.94),
           _SettingsTile(

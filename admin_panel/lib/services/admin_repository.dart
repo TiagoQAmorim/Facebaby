@@ -211,7 +211,7 @@ class AdminRepository {
     final pageDocs = _pageDocs(snap, pageSize);
     final rows = <AdminUserRow>[];
     for (final doc in pageDocs) {
-      rows.add(await _userRowFromDoc(doc));
+      rows.add(_userRowFromDocLight(doc));
     }
     return AdminPaginatedResult(
       items: rows,
@@ -220,7 +220,7 @@ class AdminRepository {
     );
   }
 
-  Future<AdminUserRow> _userRowFromDoc(DocumentSnapshot<Map<String, dynamic>> doc) async {
+  AdminUserRow _userRowFromDocLight(DocumentSnapshot<Map<String, dynamic>> doc) {
     final uid = doc.id;
     final d = doc.data() ?? {};
     String normalizeCountry(Object? raw) {
@@ -250,32 +250,8 @@ class AdminRepository {
     final localeCountry =
         '${d['localeCountry'] ?? d['locale_country'] ?? ''}'.trim();
     final countryCode = deriveCountryCode(d);
-    final babies = await _db.collection('users').doc(uid).collection('babies').limit(3).get();
-    final babyName = babies.docs.isEmpty
-        ? '—'
-        : ((babies.docs.first.data()['name'] as String?) ?? '—');
-    final memSnap = await _db
-        .collection('users')
-        .doc(uid)
-        .collection('events')
-        .where('type', isEqualTo: 'memory_badge')
-        .count()
-        .get();
-    final memoriesCount = memSnap.count ?? 0;
-    final pubSnap = await _db
-        .collection('public_memories')
-        .where('userId', isEqualTo: uid)
-        .count()
-        .get();
-    var pubCount = pubSnap.count ?? 0;
-    if (pubCount == 0) {
-      final pub2 = await _db
-          .collection('public_memories')
-          .where('owner_uid', isEqualTo: uid)
-          .count()
-          .get();
-      pubCount = pub2.count ?? 0;
-    }
+    final babyName =
+        '${d['selectedBabyName'] ?? d['selected_baby_name'] ?? d['babyName'] ?? ''}'.trim();
     return AdminUserRow(
       uid: uid,
       name: (d['name'] as String?)?.trim().isNotEmpty == true
@@ -286,59 +262,58 @@ class AdminRepository {
       status: statusFromData(d),
       createdAt: tsToDate(d['createdAt'] ?? d['created_at']),
       lastLoginAt: tsToDate(d['lastLoginAt'] ?? d['last_login_at']),
-      babyName: babyName,
-      memoriesCount: memoriesCount,
-      publicMemoriesCount: pubCount,
+      babyName: babyName.isEmpty ? '—' : babyName,
+      memoriesCount: -1,
+      publicMemoriesCount: -1,
       countryCode: countryCode,
       localeCountry: localeCountry,
     );
   }
 
   Future<DashboardStats> fetchDashboardStats() async {
-    final users = await fetchUsers(limit: 1000);
-    final weekAgo = DateTime.now().subtract(const Duration(days: 7));
-    var premium = 0, free = 0, ai = 0, suspended = 0, active = 0, newWeek = 0, babies = 0;
-    var memories = 0, publicMem = 0;
-    for (final u in users) {
-      switch (u.plan) {
-        case UserPlan.premium:
-          premium++;
-        case UserPlan.aiNanny:
-          ai++;
-        case UserPlan.free:
-          free++;
-      }
-      if (u.status == UserStatus.suspended) {
-        suspended++;
-      } else {
-        active++;
-      }
-      if (u.createdAt != null && u.createdAt!.isAfter(weekAgo)) newWeek++;
-      memories += u.memoriesCount;
-      publicMem += u.publicMemoriesCount;
-      final bSnap = await _db.collection('users').doc(u.uid).collection('babies').count().get();
-      babies += bSnap.count ?? 0;
+    final result = await _functions.httpsCallable('adminGetDashboardStats').call();
+    final data = result.data;
+    if (data is! Map) {
+      throw StateError('Resposta inválida do servidor');
     }
-    final pubTotal = await _db.collection('public_memories').count().get();
-    final spotlight = await _db.collection('weekly_photo_contests').doc('spotlight_current').get();
-    final winnerName = spotlight.exists
-        ? ((spotlight.data()?['winner_baby_display_name'] as String?) ??
-            spotlight.data()?['winnerBabyDisplayName'] as String? ??
-            '—')
-        : '—';
+    final m = Map<String, dynamic>.from(data);
     return DashboardStats(
-      totalUsers: users.length,
-      activeUsers: active,
-      premiumUsers: premium,
-      freeUsers: free,
-      aiNannyUsers: ai,
-      suspendedUsers: suspended,
-      newUsersThisWeek: newWeek,
-      totalBabies: babies,
-      totalMemories: memories,
-      totalPublicMemories: pubTotal.count ?? publicMem,
-      weeklyWinnerName: winnerName,
+      totalUsers: (m['totalUsers'] as num?)?.toInt() ?? 0,
+      activeUsers: (m['activeUsers'] as num?)?.toInt() ?? 0,
+      premiumUsers: (m['premiumUsers'] as num?)?.toInt() ?? 0,
+      freeUsers: (m['freeUsers'] as num?)?.toInt() ?? 0,
+      aiNannyUsers: (m['aiNannyUsers'] as num?)?.toInt() ?? 0,
+      suspendedUsers: (m['suspendedUsers'] as num?)?.toInt() ?? 0,
+      newUsersThisWeek: (m['newUsersThisWeek'] as num?)?.toInt() ?? 0,
+      totalPublicMemories: (m['totalPublicMemories'] as num?)?.toInt() ?? 0,
+      aiCallsToday: (m['aiCallsToday'] as num?)?.toInt() ?? 0,
+      aiTokensToday: (m['aiTokensToday'] as num?)?.toInt() ?? 0,
+      weeklyWinnerName: '${m['weeklyWinnerName'] ?? '—'}',
     );
+  }
+
+  Future<AiUsageStats> fetchAiUsageStats({String? dateKey, int topLimit = 50}) async {
+    final result = await _functions.httpsCallable('adminGetAiUsageStats').call({
+      if (dateKey != null && dateKey.isNotEmpty) 'dateKey': dateKey,
+      'topLimit': topLimit,
+    });
+    final data = result.data;
+    if (data is! Map) {
+      throw StateError('Resposta inválida do servidor');
+    }
+    return AiUsageStats.fromMap(Map<String, dynamic>.from(data));
+  }
+
+  Future<UserAiUsageStats> fetchUserAiUsage(String uid, {String? dateKey}) async {
+    final result = await _functions.httpsCallable('adminGetUserAiUsage').call({
+      'uid': uid,
+      if (dateKey != null && dateKey.isNotEmpty) 'dateKey': dateKey,
+    });
+    final data = result.data;
+    if (data is! Map) {
+      throw StateError('Resposta inválida do servidor');
+    }
+    return UserAiUsageStats.fromMap(Map<String, dynamic>.from(data));
   }
 
   Future<FamilyDetails> fetchFamily(String uid) async {
@@ -748,6 +723,55 @@ class AdminRepository {
       if (c is num) return c.toInt();
     }
     return 0;
+  }
+
+  /// Limpa mensagens de teste no balão: ignora antigas + purge local nos apps + desativa campanhas ativas.
+  Future<int> resetBubbleQueueForAllUsers() async {
+    _requireManage();
+    final now = FieldValue.serverTimestamp();
+    final generation = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    await _db.collection('floating_message_settings').doc('global').set(
+      {
+        'resetBefore': now,
+        'localQueueGeneration': generation,
+        'updatedAt': now,
+        'updatedBy': _adminUid,
+      },
+      SetOptions(merge: true),
+    );
+
+    var deactivated = 0;
+    while (true) {
+      final activeSnap = await _db
+          .collection('floating_messages')
+          .where('active', isEqualTo: true)
+          .limit(200)
+          .get();
+      if (activeSnap.docs.isEmpty) break;
+
+      final batch = _db.batch();
+      for (final doc in activeSnap.docs) {
+        batch.update(doc.reference, {
+          'active': false,
+          'deactivatedAt': now,
+          'deactivatedReason': 'global_bubble_reset',
+        });
+      }
+      await batch.commit();
+      deactivated += activeSnap.docs.length;
+      if (activeSnap.docs.length < 200) break;
+    }
+
+    await AdminAuditService.instance.log(
+      action: AdminAuditAction.publishBroadcast,
+      targetUserUid: 'broadcast',
+      targetUserEmail: '—',
+      details:
+          'bubble_queue_reset generation=$generation deactivated=$deactivated',
+    );
+
+    return deactivated;
   }
 
   Future<Map<String, dynamic>> publishBroadcast({

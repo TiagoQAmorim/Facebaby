@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../controllers/current_baby_controller.dart';
 import '../../i18n/app_i18n.dart';
 import '../../models/ai/voice_record_interpretation.dart';
+import '../../utils/voice_intent.dart';
 import '../../utils/voice_record_clarification.dart';
 import '../../utils/voice_routine_multi_infer.dart';
 import 'ai_nanny_service.dart';
@@ -18,7 +19,7 @@ import 'ai_nanny_structured_mapper.dart';
 import 'ai_nanny_local_message_parser.dart';
 import 'ai_nanny_intent_lexicon.dart';
 import 'ai_nanny_parse_result_normalizer.dart';
-import '../../utils/ai_nanny_parse_normalize.dart';
+import 'ai_nanny_parse_merge.dart';
 import '../../utils/growth_baseline.dart';
 import 'ai_nanny_orchestrator.dart';
 import 'detected_record_builder.dart';
@@ -108,6 +109,21 @@ class AiNannyTurnService {
 
     if (babyId != null) {
       await sessionStore.loadForBaby(babyId);
+      if (AiNannyIntentLexicon.wantsConfirmSave(text) ||
+          AiNannyIntentLexicon.confirmsAffirmative(text)) {
+        final pendingBundle = sessionStore.awaitingConfirmBundle(babyId);
+        if (pendingBundle != null) {
+          return saveAfterConfirmation(
+            bundle: pendingBundle,
+            mode: confirmModeForBundle(pendingBundle),
+            strings: strings,
+            locale: locale,
+            babyName: babyName,
+            babyCloudId: babyCloudId,
+            userId: userId,
+          );
+        }
+      }
       if (sessionStore.blocksGenericChat(babyId)) {
         final sessionResult = await sessionStore.handleChatMessage(
           text: text,
@@ -118,20 +134,27 @@ class AiNannyTurnService {
         );
         if (sessionResult.handled) {
           final action = sessionResult.assistantReply?.trim() ?? '';
-          final conv = await _fetchPsychologistReply(
-            text: text,
-            strings: strings,
-            locale: locale,
-            babyCloudId: babyCloudId,
-            userId: userId,
-            pendingRecords: true,
-            recordsSaved: sessionResult.recordsSaved,
-          );
+          final collecting = !sessionResult.readyToConfirm &&
+              !sessionResult.recordsSaved &&
+              action.isNotEmpty;
+          final conv = collecting
+              ? null
+              : await _fetchPsychologistReply(
+                  text: text,
+                  strings: strings,
+                  locale: locale,
+                  babyCloudId: babyCloudId,
+                  userId: userId,
+                  pendingRecords: true,
+                  recordsSaved: sessionResult.recordsSaved,
+                );
           return AiNannyTurnResult(
-            aiAnswer: _mergeConversationalWithAction(
-              conversational: conv,
-              action: action,
-            ),
+            aiAnswer: collecting
+                ? action
+                : _mergeConversationalWithAction(
+                    conversational: conv,
+                    action: action,
+                  ),
             recordsBundle: sessionResult.bundle,
             needsClarification: !sessionResult.readyToConfirm,
             showRecordsConfirmSheet: sessionResult.readyToConfirm,
@@ -161,6 +184,18 @@ class AiNannyTurnService {
 
     final hasRoutineCue = interpretationHint != null ||
         RoutineRecordInterpreter.transcriptHasRoutineCue(text);
+    final statusInquiryOnly = shouldSkipRoutineAutoRegister(text);
+
+    if (statusInquiryOnly) {
+      final answer = await _nanny.sendMessage(
+        question: text,
+        agentHint: _statusInquiryAgentHint(strings),
+        babyId: babyCloudId,
+        userId: userId,
+        locale: locale,
+      );
+      return AiNannyTurnResult(aiAnswer: answer);
+    }
 
     // 1) Extração estruturada primeiro (registos > conversa motivacional).
     if (tryRegister && babyId != null && hasRoutineCue) {
@@ -180,6 +215,14 @@ class AiNannyTurnService {
     if (!hasRoutineCue) {
       final answer = await _nanny.sendMessage(
         question: text,
+        agentHint: (AiNannyIntentLexicon.wantsConfirmSave(text) ||
+                AiNannyIntentLexicon.confirmsAffirmative(text))
+            ? 'A família pediu para REGISTRAR/SALVAR algo já dito antes, mas o app '
+                'não tem rascunho pendente. Peça para repetir o que quer registrar '
+                '(vacina, remédio, consulta, mamada, etc.) com nome e data quando couber. '
+                'NÃO diga para tocar em confirmar no card se não houver card visível. '
+                'NÃO pergunte xixi/cocô nem use peso do cadastro como peso após ganho.'
+            : null,
         babyId: babyCloudId,
         userId: userId,
         locale: locale,
@@ -298,6 +341,25 @@ class AiNannyTurnService {
       );
     }
 
+    if (saveResult.savedCount > 0 && !hasIncomplete) {
+      final conv = await _fetchPsychologistReply(
+        text: bundle.userMessage,
+        strings: strings,
+        locale: locale,
+        babyCloudId: babyCloudId,
+        userId: userId,
+        pendingRecords: false,
+        recordsSaved: true,
+      );
+      if (conv != null && conv.trim().isNotEmpty) {
+        final action = answer?.trim() ?? '';
+        answer = _mergeConversationalWithAction(
+          conversational: conv,
+          action: action,
+        );
+      }
+    }
+
     final merged = AiNannyRecordActions.resolveChatAnswer(
       aiAnswer: answer,
       saved: saveResult.savedCount > 0,
@@ -375,7 +437,7 @@ class AiNannyTurnService {
       AiNannyLocalMessageParser.parse(text),
       text,
     );
-    parse = _mergeParseResults(parse, localParse, text);
+    parse = AiNannyParseMerge.merge(parse, localParse, text);
     if (!parse.hasRecords) return null;
 
     onProgress?.call(AiNannyProcessingPhase.preparing);
@@ -408,6 +470,7 @@ class AiNannyTurnService {
     );
 
     final incomplete = bundle.incompleteCount > 0;
+    final multiRecord = bundle.drafts.length > 1;
 
     var actionReply = AiNannyOrchestrator.buildSmartReply(
       bundle,
@@ -422,12 +485,17 @@ class AiNannyTurnService {
     onProgress?.call(AiNannyProcessingPhase.showingResults);
 
     var registerApplied = false;
-    var showSheet = !incomplete;
+    var showSheet = multiRecord || bundle.confirmCount > 0 || !incomplete;
     String? saveSummary;
     String? saveError;
 
     if (babyId != null && tryRegister) {
-      if (!incomplete) {
+      final growthNeedsConfirm = bundle.drafts.any(
+        (d) =>
+            d.status == AiNannyRecordDraftStatus.needsConfirm &&
+            d.growthPreview != null,
+      );
+      if (!incomplete && !multiRecord && !growthNeedsConfirm) {
         final saveResult = await _confirmFlow.saveFromBundle(
           bundle: bundle,
           strings: strings,
@@ -458,7 +526,16 @@ class AiNannyTurnService {
             lastHeightCm: await GrowthBaseline.latestHeightCmForCurrentBaby(),
           );
         }
-      } else {
+      } else if (!multiRecord && growthNeedsConfirm) {
+        await PendingRecordSessionStore.instance.stashAwaitingConfirm(
+          bundle: bundle,
+          babyId: babyId,
+          strings: strings,
+          lastWeightKg: await GrowthBaseline.latestWeightKgForCurrentBaby(),
+          lastHeightCm: await GrowthBaseline.latestHeightCmForCurrentBaby(),
+        );
+        showSheet = true;
+      } else if (!multiRecord) {
         final partial = await _confirmFlow.persistCompleteDrafts(
           drafts: bundle.drafts,
           strings: strings,
@@ -494,6 +571,23 @@ class AiNannyTurnService {
           session: session,
           babyId: babyId,
         );
+      } else {
+        await PendingRecordSessionStore.instance.stashAwaitingConfirm(
+          bundle: bundle,
+          babyId: babyId,
+          strings: strings,
+          lastWeightKg: await GrowthBaseline.latestWeightKgForCurrentBaby(),
+          lastHeightCm: await GrowthBaseline.latestHeightCmForCurrentBaby(),
+        );
+      }
+      if (showSheet && bundle.confirmCount > 0) {
+        await PendingRecordSessionStore.instance.stashAwaitingConfirm(
+          bundle: bundle,
+          babyId: babyId,
+          strings: strings,
+          lastWeightKg: await GrowthBaseline.latestWeightKgForCurrentBaby(),
+          lastHeightCm: await GrowthBaseline.latestHeightCmForCurrentBaby(),
+        );
       }
     } else if (babyId != null) {
       if (incomplete) {
@@ -509,6 +603,14 @@ class AiNannyTurnService {
           session: session,
           babyId: babyId,
         );
+      } else if (bundle.confirmCount > 0) {
+        await PendingRecordSessionStore.instance.stashAwaitingConfirm(
+          bundle: bundle,
+          babyId: babyId,
+          strings: strings,
+          lastWeightKg: await GrowthBaseline.latestWeightKgForCurrentBaby(),
+          lastHeightCm: await GrowthBaseline.latestHeightCmForCurrentBaby(),
+        );
       } else {
         await PendingRecordSessionStore.instance.clear(
           reason: 'all records complete on extract',
@@ -522,7 +624,15 @@ class AiNannyTurnService {
         : actionReply;
     final hasPending = incomplete &&
         PendingRecordsExplanation.hasRealPending(bundle: bundle);
-    final conv = hasPending
+    final onlyGrowthConfirm = !incomplete &&
+        bundle.confirmCount > 0 &&
+        bundle.drafts.every(
+          (d) =>
+              d.status == AiNannyRecordDraftStatus.needsConfirm ||
+              d.status == AiNannyRecordDraftStatus.complete,
+        );
+    final awaitingSheetConfirm = showSheet && !registerApplied && !incomplete;
+    final conv = hasPending || onlyGrowthConfirm || awaitingSheetConfirm
         ? null
         : await _fetchPsychologistReply(
             text: text,
@@ -590,6 +700,13 @@ class AiNannyTurnService {
     }
   }
 
+  static String _statusInquiryAgentHint(S strings) {
+    return '${_psychologistAgentHint(strings: strings)}\n'
+        'A família só quer saber como o bebê está agora e o que poderia registrar — '
+        'NÃO registrou nada nesta mensagem. Nunca diga que já registrou sono, mamada '
+        'ou fralda. Se sugerir registrar algo, use futuro ("pode registrar", "vale anotar").';
+  }
+
   static String _psychologistAgentHint({
     required S strings,
     bool pendingRecords = false,
@@ -597,11 +714,15 @@ class AiNannyTurnService {
   }) {
     final buf = StringBuffer()
       ..writeln(
-        'Você é psicóloga perinatal no app FaceBaby: acolhedora, objetiva, '
-        '2 a 4 frases no máximo. Sem clichês longos nem listas enormes.',
+        'Você é conselheira e psicóloga perinatal no FaceBaby: acolhe mãe, pai '
+        'e família com escuta empática — valida sentimentos, sem julgar.',
       )
       ..writeln(
-        'Pode orientar sobre sono, amamentação e rotina com base no que a família disse.',
+        '2 a 4 frases no máximo. Sem clichês longos nem listas enormes. '
+        'Pode orientar rotina (sono, amamentação) e também desabafo emocional.',
+      )
+      ..writeln(
+        'Não substitui terapia nem emergência; em crise grave, incentive ajuda humana (CVV 188, SAMU 192).',
       );
     if (recordsSaved) {
       buf.writeln(
@@ -628,90 +749,6 @@ class AiNannyTurnService {
     if (a.isEmpty) return c;
     if (c == a) return c;
     return '$c\n\n$a';
-  }
-
-  /// União cloud + local — evita perder fralda/mamada quando a cloud devolve incompleto.
-  static AiNannyParseResult _mergeParseResults(
-    AiNannyParseResult primary,
-    AiNannyParseResult local,
-    String message,
-  ) {
-    if (!local.hasRecords) return primary;
-    if (!primary.hasRecords) return local;
-
-    final byType = <String, AiNannyStructuredRecord>{};
-    for (final r in primary.records) {
-      byType[r.type] = r;
-    }
-    for (final r in local.records) {
-      final existing = byType[r.type];
-      if (existing == null) {
-        byType[r.type] = r;
-        continue;
-      }
-      byType[r.type] = _pickRicherStructuredRecord(existing, r);
-    }
-    final merged = _dropSpuriousDiaperWhenGrowthPresent(
-      byType.values.toList(),
-      local,
-      message,
-    );
-    return AiNannyParseResult(
-      classification: 'create_records',
-      records: merged,
-      needsConfirmation: true,
-    );
-  }
-
-  /// Prefere o registro mais completo (menos `missingFields`, mais campos preenchidos).
-  static AiNannyStructuredRecord _pickRicherStructuredRecord(
-    AiNannyStructuredRecord a,
-    AiNannyStructuredRecord b,
-  ) {
-    if (a.missingFields.length != b.missingFields.length) {
-      return a.missingFields.length < b.missingFields.length ? a : b;
-    }
-    int score(AiNannyStructuredRecord r) {
-      var s = r.fields.length;
-      if ('${r.fields['vaccineName'] ?? ''}'.trim().isNotEmpty) s += 3;
-      if ('${r.fields['reasonOrSpecialty'] ?? ''}'.trim().isNotEmpty) s += 3;
-      if ('${r.fields['value'] ?? ''}'.trim().isNotEmpty) s += 3;
-      if ('${r.fields['date'] ?? ''}'.trim().isNotEmpty) s += 2;
-      if (r.fields['nextDueDate'] != null || r.fields['nextDueInDays'] != null) {
-        s += 4;
-      }
-      return s;
-    }
-    return score(a) >= score(b) ? a : b;
-  }
-
-  /// Cloud às vezes devolve fralda incompleta em frases de altura/peso.
-  static List<AiNannyStructuredRecord> _dropSpuriousDiaperWhenGrowthPresent(
-    List<AiNannyStructuredRecord> records,
-    AiNannyParseResult local,
-    String message,
-  ) {
-    final low = message.toLowerCase();
-    final localGrowth = local.records.any(
-      (r) =>
-          r.type == 'growth_height' ||
-          r.type == 'growth_weight' ||
-          AiNannyParseNormalize.parseHeightDeltaCm(message) != null ||
-          AiNannyParseNormalize.parseWeightDeltaGrams(message) != null,
-    );
-    if (!localGrowth) return records;
-
-    final hasDiaperCue = AiNannyIntentLexicon.hasDiaperCue(low) ||
-        AiNannyIntentLexicon.hasPeeCue(low) ||
-        AiNannyIntentLexicon.hasPooCue(low);
-
-    return records.where((r) {
-      if (r.type != 'diaper') return true;
-      if (hasDiaperCue) return true;
-      final incomplete =
-          r.missingFields.contains('pee') || r.missingFields.contains('poop');
-      return !incomplete;
-    }).toList();
   }
 
   Future<AiNannyRecordsBundle> _buildBundle(
@@ -908,6 +945,7 @@ class AiNannyTurnService {
         babyName: babyName ?? '',
         strings: strings,
         at: _eventTimestamp(event),
+        transcript: saveTranscript,
       );
     }
 

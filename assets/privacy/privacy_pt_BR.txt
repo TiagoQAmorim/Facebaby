@@ -1,3 +1,108 @@
 FaceBaby — Política de Privacidade
 
-Esta Política explica como o FaceBaby coleta, armazena, processa e protege dados pessoais e familiares.
+PT-BR - Última atualização: Maio de 2026
+
+1. Introdução
+Bem-vindo ao FaceBaby.
+O FaceBaby é um aplicativo destinado ao registro, acompanhamento e organização de informações
+relacionadas ao desenvolvimento infantil, incluindo registros de alimentação, sono, trocas de fraldas,
+crescimento, marcos de desenvolvimento, memórias, fotografias, relatórios e funcionalidades assistidas
+por Inteligência Artificial.
+Esta Política de Privacidade descreve como coletamos, utilizamos, armazenamos, compartilhamos e
+protegemos os dados dos usuários. Ao utilizar o FaceBaby, você concorda com esta Política de
+Privacidade.
+2. Dados Coletados
+Podemos coletar os seguintes dados:
+Dados da Conta
+• Nome
+• Endereço de e-mail
+• Identificador da conta
+• Foto de perfil, quando fornecida
+• Método de autenticação utilizado
+Dados do Bebê
+• Nome do bebê
+• Data de nascimento
+• Sexo
+• Peso
+• Altura
+• Informações de desenvolvimento
+• Registros de alimentação
+• Registros de sono
+• Registros de trocas de fralda
+• Marcos importantes
+• Informações inseridas voluntariamente pelos responsáveis
+Fotografias e Conteúdo Enviado
+• Fotografias
+• Descrições
+• Legendas
+• Comentários
+• Memórias registradas
+Dados Técnicos
+• Modelo do dispositivo
+• Sistema operacional
+• Versão do aplicativo
+• Logs de erro
+• Informações de diagnóstico
+• Endereço IP
+• Dados de desempenho
+Dados de Assinatura
+
+Quando aplicável, podemos tratar status da assinatura, tipo de plano e data de renovação. O FaceBaby
+não armazena dados completos de cartões de crédito. Pagamentos são processados pela Google Play,
+Apple App Store ou provedores autorizados.
+3. Uso das Informações
+Os dados coletados podem ser utilizados para operação do aplicativo, sincronização em nuvem, backup
+de informações, geração de relatórios, criação de livros de memórias, personalização da experiência,
+envio de notificações, atendimento ao usuário, melhorias do produto, segurança da plataforma,
+prevenção de fraudes e cumprimento de obrigações legais.
+4. Inteligência Artificial
+O FaceBaby pode disponibilizar recursos de Inteligência Artificial para auxiliar os usuários. Esses recursos
+podem analisar registros de alimentação, sono, crescimento, eventos cadastrados e informações
+fornecidas pelo usuário.
+As respostas geradas pela Inteligência Artificial possuem caráter exclusivamente informativo, não
+constituem aconselhamento médico, não substituem consultas médicas, não substituem diagnóstico
+profissional e não devem ser utilizadas como única base para decisões relacionadas à saúde. Sempre
+consulte profissionais qualificados para questões médicas.
+5. Compartilhamento de Conteúdo Público
+Algumas funcionalidades podem permitir que usuários compartilhem voluntariamente conteúdos
+públicos, como Foto da Semana, memórias públicas e destaques da comunidade. Ao tornar um conteúdo
+público, o usuário concorda que ele poderá ser visualizado por outros usuários do FaceBaby. O usuário
+pode remover ou alterar a visibilidade desses conteúdos quando a funcionalidade estiver disponível.
+6. Moderação de Conteúdo
+O FaceBaby reserva-se o direito de remover conteúdos inadequados, restringir publicações, suspender
+contas ou encerrar contas que violem os Termos de Uso. São proibidos conteúdos ilegais, ofensivos,
+discriminatórios, violentos, pornográficos ou que exponham terceiros sem autorização.
+7. Armazenamento dos Dados
+Os dados podem ser armazenados em serviços de terceiros, incluindo Firebase Authentication, Cloud
+Firestore, Firebase Storage e Google Cloud Platform. Os servidores podem estar localizados em
+diferentes países. Ao utilizar o FaceBaby, o usuário concorda com a transferência internacional de dados
+necessária para a operação do serviço.
+8. Segurança
+Adotamos medidas técnicas e administrativas razoáveis para proteger as informações dos usuários,
+incluindo autenticação segura, criptografia em trânsito, controle de acesso, monitoramento de
+segurança e backups. Nenhum sistema é totalmente seguro e não podemos garantir segurança absoluta.
+9. Crianças e Menores de Idade
+O FaceBaby é destinado a pais, mães, responsáveis legais e cuidadores. Os dados inseridos sobre
+crianças são fornecidos pelos responsáveis. O FaceBaby não coleta intencionalmente dados diretamente
+de crianças sem a participação de seus responsáveis legais.
+10. Direitos do Usuário
+O usuário poderá solicitar acesso aos seus dados, correção de informações, exclusão da conta, exclusão
+de dados armazenados, exportação de informações e revogação de consentimentos aplicáveis. As
+solicitações poderão ser feitas pelos canais oficiais de suporte.
+11. Exclusão da Conta
+
+O usuário poderá solicitar a exclusão da conta. Após a exclusão, dados poderão ser removidos
+permanentemente, algumas informações poderão ser mantidas quando exigido por lei e backups
+poderão permanecer por período limitado.
+12. Alterações desta Política
+Esta Política poderá ser atualizada periodicamente. Quando alterações relevantes forem realizadas, os
+usuários poderão ser notificados por meio do aplicativo ou por outros canais apropriados. A continuidade
+do uso do FaceBaby após alterações representa a aceitação da nova versão da Política.
+13. Contato
+Para dúvidas relacionadas à privacidade ou proteção de dados, entre em contato pelo e-mail:
+suporte@facebaby.app, ou por meio dos canais oficiais disponibilizados no aplicativo.
+14. Conformidade Legal
+Esta Política busca atender às legislações aplicáveis de proteção de dados, incluindo Lei Geral de
+Proteção de Dados (LGPD - Brasil), Regulamento Geral de Proteção de Dados (GDPR - União Europeia) e
+demais legislações aplicáveis conforme a região do usuário. Na hipótese de conflito entre legislações,
+prevalecerá aquela obrigatória para a jurisdição aplicável.

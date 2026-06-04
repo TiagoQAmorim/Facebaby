@@ -1,9 +1,124 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'admin_layout.dart';
 
 /// Largura mínima estimada para tabelas largas (scroll horizontal).
-const double kAdminTableMinScrollWidth = 1280;
+const double kAdminTableMinScrollWidth = 1320;
+
+/// Barra horizontal fixa no rodapé — visível sempre que a tabela for mais larga que o ecrã.
+class _PinnedHorizontalScrollbar extends StatelessWidget {
+  const _PinnedHorizontalScrollbar({
+    required this.controller,
+    required this.viewportWidth,
+    required this.contentWidth,
+  });
+
+  final ScrollController controller;
+  final double viewportWidth;
+  final double contentWidth;
+
+  static const _height = 16.0;
+
+  bool get _scrollable => contentWidth > viewportWidth + 1;
+
+  void _jumpToThumb(BuildContext context, double localX, double trackWidth) {
+    if (!controller.hasClients || !_scrollable) return;
+    final pos = controller.position;
+    final thumbFrac = (viewportWidth / contentWidth).clamp(0.08, 1.0);
+    final thumbW = trackWidth * thumbFrac;
+    final travel = (trackWidth - thumbW).clamp(1.0, double.infinity);
+    final frac = ((localX - thumbW / 2) / travel).clamp(0.0, 1.0);
+    controller.jumpTo(frac * pos.maxScrollExtent);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context).scrollbarTheme;
+    final trackColor =
+        theme.trackColor?.resolve(const {}) ?? Colors.black.withValues(alpha: 0.06);
+    final thumbColor =
+        theme.thumbColor?.resolve(const {}) ?? const Color(0xFF7B1FA2).withValues(alpha: 0.55);
+
+    return SizedBox(
+      height: _height,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final trackW = constraints.maxWidth;
+          return AnimatedBuilder(
+            animation: controller,
+            builder: (context, _) {
+              final offset = controller.hasClients ? controller.offset : 0.0;
+              final maxExtent =
+                  controller.hasClients ? controller.position.maxScrollExtent : 0.0;
+              final thumbFrac = _scrollable
+                  ? (viewportWidth / contentWidth).clamp(0.08, 1.0)
+                  : 1.0;
+              final thumbW = trackW * thumbFrac;
+              final travel = (trackW - thumbW).clamp(0.0, double.infinity);
+              final left = _scrollable && maxExtent > 0
+                  ? (offset / maxExtent) * travel
+                  : 0.0;
+
+              return MouseRegion(
+                cursor: _scrollable
+                    ? SystemMouseCursors.click
+                    : SystemMouseCursors.basic,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapDown: _scrollable
+                      ? (d) => _jumpToThumb(context, d.localPosition.dx, trackW)
+                      : null,
+                  onHorizontalDragUpdate: _scrollable
+                      ? (d) {
+                          if (!controller.hasClients) return;
+                          final pos = controller.position;
+                          final deltaContent =
+                              d.delta.dx * (contentWidth / trackW);
+                          controller.jumpTo(
+                            (controller.offset + deltaContent)
+                                .clamp(0.0, pos.maxScrollExtent),
+                          );
+                        }
+                      : null,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: trackColor,
+                            border: Border(
+                              top: BorderSide(
+                                color: Colors.black.withValues(alpha: 0.08),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (_scrollable)
+                        Positioned(
+                          left: left,
+                          top: 3,
+                          bottom: 3,
+                          width: thumbW,
+                          child: Material(
+                            color: thumbColor,
+                            borderRadius: BorderRadius.circular(6),
+                            elevation: 0,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
 
 /// Tabela com rolagem vertical no corpo e barra horizontal **sempre** visível no rodapé.
 class AdminTableViewport extends StatefulWidget {
@@ -31,29 +146,18 @@ class _AdminTableViewportState extends State<AdminTableViewport> {
     super.dispose();
   }
 
-  Widget _horizontalScrollContent({required Widget child}) {
-    return SingleChildScrollView(
-      controller: _horizontal,
-      scrollDirection: Axis.horizontal,
-      primary: false,
-      physics: const ClampingScrollPhysics(),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(minWidth: widget.minScrollWidth),
-        child: child,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final viewportW = constraints.maxWidth.isFinite && constraints.maxWidth > 0
+            ? constraints.maxWidth
+            : widget.minScrollWidth;
+        final contentW = widget.minScrollWidth;
         final maxH = constraints.maxHeight;
         final bounded = maxH.isFinite && maxH > 0;
 
-        final tableBody = _horizontalScrollContent(child: widget.child);
-
-        final verticalArea = Scrollbar(
+        final tableArea = Scrollbar(
           controller: _vertical,
           thumbVisibility: true,
           trackVisibility: true,
@@ -64,28 +168,17 @@ class _AdminTableViewportState extends State<AdminTableViewport> {
             physics: const AlwaysScrollableScrollPhysics(
               parent: ClampingScrollPhysics(),
             ),
-            child: tableBody,
-          ),
-        );
-
-        const horizontalBarHeight = 14.0;
-        final horizontalBar = SizedBox(
-          height: horizontalBarHeight,
-          child: Scrollbar(
-            controller: _horizontal,
-            thumbVisibility: true,
-            trackVisibility: true,
-            interactive: true,
-            scrollbarOrientation: ScrollbarOrientation.bottom,
-            notificationPredicate: (n) => n.metrics.axis == Axis.horizontal,
-            child: SingleChildScrollView(
-              controller: _horizontal,
-              scrollDirection: Axis.horizontal,
-              primary: false,
-              physics: const ClampingScrollPhysics(),
-              child: SizedBox(
-                width: widget.minScrollWidth,
-                height: horizontalBarHeight,
+            child: ScrollConfiguration(
+              behavior: const _AdminTableScrollBehavior(),
+              child: SingleChildScrollView(
+                controller: _horizontal,
+                scrollDirection: Axis.horizontal,
+                primary: false,
+                physics: const ClampingScrollPhysics(),
+                child: SizedBox(
+                  width: contentW,
+                  child: widget.child,
+                ),
               ),
             ),
           ),
@@ -94,16 +187,60 @@ class _AdminTableViewportState extends State<AdminTableViewport> {
         final body = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(child: verticalArea),
-            horizontalBar,
+            Expanded(child: tableArea),
+            _PinnedHorizontalScrollbar(
+              controller: _horizontal,
+              viewportWidth: viewportW,
+              contentWidth: contentW,
+            ),
           ],
         );
 
         if (bounded) {
           return SizedBox(height: maxH, child: body);
         }
-        return body;
+        return SizedBox(
+          height: 420,
+          child: body,
+        );
       },
+    );
+  }
+}
+
+/// ScrollBehavior local — barras visíveis também no eixo horizontal (Flutter Web).
+class _AdminTableScrollBehavior extends MaterialScrollBehavior {
+  const _AdminTableScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.invertedStylus,
+      };
+
+  @override
+  Widget buildScrollbar(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    final controller = details.controller;
+    if (controller == null) return child;
+
+    final horizontal = axisDirectionToAxis(details.direction) == Axis.horizontal;
+
+    return Scrollbar(
+      controller: controller,
+      thumbVisibility: true,
+      trackVisibility: true,
+      interactive: true,
+      scrollbarOrientation: horizontal
+          ? ScrollbarOrientation.bottom
+          : ScrollbarOrientation.right,
+      child: child,
     );
   }
 }
@@ -119,6 +256,7 @@ class AdminTablePageLayout extends StatelessWidget {
     this.emptyMessage,
     this.footer,
     this.selectionBar,
+    this.tableMinScrollWidth = kAdminTableMinScrollWidth,
   });
 
   final Widget header;
@@ -127,8 +265,8 @@ class AdminTablePageLayout extends StatelessWidget {
   final String? error;
   final String? emptyMessage;
   final Widget? footer;
-  /// Barra de ações em lote (ex.: alterar plano dos selecionados).
   final Widget? selectionBar;
+  final double tableMinScrollWidth;
 
   Widget _cardChild(BuildContext context) {
     if (loading) {
@@ -158,7 +296,10 @@ class AdminTablePageLayout extends StatelessWidget {
         ),
       );
     }
-    return AdminTableViewport(child: table);
+    return AdminTableViewport(
+      minScrollWidth: tableMinScrollWidth,
+      child: table,
+    );
   }
 
   @override
@@ -188,24 +329,7 @@ class AdminTablePageLayout extends StatelessWidget {
       return column;
     }
 
-    return CustomScrollView(
-      physics: const AlwaysScrollableScrollPhysics(
-        parent: ClampingScrollPhysics(),
-      ),
-      slivers: [
-        SliverToBoxAdapter(child: header),
-        if (selectionBar != null) SliverToBoxAdapter(child: selectionBar!),
-        if (selectionBar != null) const SliverToBoxAdapter(child: SizedBox(height: 12)),
-        const SliverToBoxAdapter(child: SizedBox(height: 16)),
-        if (footer != null) SliverToBoxAdapter(child: footer!),
-        if (footer != null) const SliverToBoxAdapter(child: SizedBox(height: 12)),
-        SliverFillRemaining(
-          hasScrollBody: true,
-          child: card,
-        ),
-        const SliverToBoxAdapter(child: SizedBox(height: 24)),
-      ],
-    );
+    return column;
   }
 }
 

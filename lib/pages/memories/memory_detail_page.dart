@@ -562,8 +562,11 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
           Scaffold(
             backgroundColor: pageBg,
             appBar: AppBar(
-              backgroundColor: night ? AppTheme.background : null,
+              backgroundColor:
+                  night ? AppTheme.background : Colors.transparent,
               surfaceTintColor: Colors.transparent,
+              elevation: night ? null : 0,
+              scrolledUnderElevation: night ? null : 0,
               foregroundColor: AppTheme.textPrimary,
               iconTheme: const IconThemeData(color: AppTheme.textPrimary),
               actionsIconTheme:

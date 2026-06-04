@@ -1,3 +1,111 @@
-FaceBaby — Datenschutzrichtlinie
+FaceBaby — Datenschutzerklärung
 
-Diese Richtlinie erklärt, wie FaceBaby personenbezogene Daten sammelt und schützt.
+DE - Letzte Aktualisierung: Mai 2026
+
+1. Einführung
+Willkommen bei FaceBaby.
+FaceBaby ist eine Anwendung zur Erfassung, Nachverfolgung und Organisation von Informationen im
+Zusammenhang mit der kindlichen Entwicklung, einschließlich Aufzeichnungen zu Ernährung, Schlaf,
+Windelwechseln, Wachstum, Entwicklungsschritten, Erinnerungen, Fotografien, Berichten und durch
+Künstliche Intelligenz unterstützten Funktionen.
+Diese Datenschutzerklärung beschreibt, wie wir Nutzerdaten erheben, verwenden, speichern,
+weitergeben und schützen. Durch die Nutzung von FaceBaby stimmen Sie dieser Datenschutzerklärung
+zu.
+2. Erhobene Daten
+Wir können die folgenden Daten erheben:
+Kontodaten
+• Name
+• E-Mail-Adresse
+• Kontoidentifikator
+• Profilfoto, sofern bereitgestellt
+• Verwendete Authentifizierungsmethode
+Babydaten
+• Name des Babys
+• Geburtsdatum
+• Geschlecht
+• Gewicht
+• Größe
+• Entwicklungsinformationen
+• Ernährungsaufzeichnungen
+• Schlafaufzeichnungen
+• Aufzeichnungen zu Windelwechseln
+• Wichtige Meilensteine
+• Freiwillig von den Verantwortlichen eingegebene Informationen
+Fotografien und Eingereichte Inhalte
+• Fotografien
+• Beschreibungen
+• Bildunterschriften
+• Kommentare
+• Erfasste Erinnerungen
+Technische Daten
+• Gerätemodell
+• Betriebssystem
+• App-Version
+• Fehlerprotokolle
+• Diagnoseinformationen
+• IP-Adresse
+• Leistungsdaten
+Abonnementdaten
+
+Soweit zutreffend, können wir den Abonnementstatus, den Plantyp und das Verlängerungsdatum
+verarbeiten. FaceBaby speichert keine vollständigen Kreditkartendaten. Zahlungen werden über Google
+Play, den Apple App Store oder autorisierte Anbieter verarbeitet.
+3. Verwendung der Informationen
+Die erhobenen Daten können für den Betrieb der App, Cloud-Synchronisierung, Datensicherung,
+Erstellung von Berichten, Erstellung von Erinnerungsbüchern, Personalisierung der Erfahrung, Versand
+von Benachrichtigungen, Nutzerunterstützung, Produktverbesserungen, Sicherheit der Plattform,
+Betrugsprävention und Erfüllung gesetzlicher Verpflichtungen verwendet werden.
+4. Künstliche Intelligenz
+FaceBaby kann Funktionen der Künstlichen Intelligenz bereitstellen, um Nutzer zu unterstützen. Diese
+Funktionen können Ernährungsaufzeichnungen, Schlafaufzeichnungen, Wachstumsdaten, registrierte
+Ereignisse und vom Nutzer bereitgestellte Informationen analysieren.
+Die von der Künstlichen Intelligenz generierten Antworten dienen ausschließlich Informationszwecken,
+stellen keine medizinische Beratung dar, ersetzen keine ärztlichen Konsultationen, ersetzen keine
+professionelle Diagnose und sollten nicht als alleinige Grundlage für gesundheitsbezogene
+Entscheidungen verwendet werden. Wenden Sie sich bei medizinischen Fragen stets an qualifizierte
+Fachkräfte.
+5. Teilen Öffentlicher Inhalte
+Einige Funktionen können es Nutzern ermöglichen, freiwillig öffentliche Inhalte zu teilen, wie Foto der
+Woche, öffentliche Erinnerungen und Community-Highlights. Wenn ein Inhalt öffentlich gemacht wird,
+stimmt der Nutzer zu, dass dieser von anderen FaceBaby-Nutzern angesehen werden kann. Der Nutzer
+kann diese Inhalte entfernen oder deren Sichtbarkeit ändern, sofern die Funktion verfügbar ist.
+6. Inhaltsmoderation
+FaceBaby behält sich das Recht vor, unangemessene Inhalte zu entfernen, Veröffentlichungen
+einzuschränken, Konten zu sperren oder Konten zu schließen, die gegen die Nutzungsbedingungen
+verstoßen. Verboten sind illegale, beleidigende, diskriminierende, gewalttätige, pornografische Inhalte
+oder Inhalte, die Dritte ohne Genehmigung offenlegen.
+7. Speicherung der Daten
+Daten können bei Drittanbietern gespeichert werden, darunter Firebase Authentication, Cloud Firestore,
+Firebase Storage und Google Cloud Platform. Server können sich in verschiedenen Ländern befinden.
+Durch die Nutzung von FaceBaby stimmt der Nutzer der internationalen Datenübermittlung zu, die für
+den Betrieb des Dienstes erforderlich ist.
+8. Sicherheit
+Wir ergreifen angemessene technische und administrative Maßnahmen zum Schutz der
+Nutzerinformationen, einschließlich sicherer Authentifizierung, Verschlüsselung während der
+Übertragung, Zugriffskontrolle, Sicherheitsüberwachung und Backups. Kein System ist vollständig sicher,
+und wir können keine absolute Sicherheit garantieren.
+9. Kinder und Minderjährige
+FaceBaby richtet sich an Eltern, gesetzliche Vertreter und Betreuungspersonen. Daten über Kinder
+werden von den Verantwortlichen bereitgestellt. FaceBaby erhebt nicht absichtlich Daten direkt von
+Kindern ohne Beteiligung ihrer gesetzlichen Vertreter.
+10. Rechte des Nutzers
+Der Nutzer kann Zugang zu seinen Daten, Berichtigung von Informationen, Löschung des Kontos,
+Löschung gespeicherter Daten, Export von Informationen und Widerruf anwendbarer Einwilligungen
+
+verlangen. Anfragen können über die offiziellen Supportkanäle gestellt werden.
+11. Kontolöschung
+Der Nutzer kann die Löschung des Kontos beantragen. Nach der Löschung können Daten dauerhaft
+entfernt werden, bestimmte Informationen können aufbewahrt werden, wenn dies gesetzlich
+vorgeschrieben ist, und Backups können für einen begrenzten Zeitraum bestehen bleiben.
+12. Änderungen dieser Erklärung
+Diese Erklärung kann regelmäßig aktualisiert werden. Bei wesentlichen Änderungen können Nutzer über
+die App oder andere geeignete Kanäle informiert werden. Die fortgesetzte Nutzung von FaceBaby nach
+Änderungen gilt als Annahme der neuen Version der Erklärung.
+13. Kontakt
+Bei Fragen zum Datenschutz oder zum Schutz personenbezogener Daten kontaktieren Sie uns unter:
+suporte@facebaby.app, oder nutzen Sie die in der App bereitgestellten offiziellen Kanäle.
+14. Rechtliche Konformität
+Diese Erklärung soll den geltenden Datenschutzgesetzen entsprechen, einschließlich des brasilianischen
+Allgemeinen Datenschutzgesetzes (LGPD), der Datenschutz-Grundverordnung (GDPR - Europäische
+Union) und anderer je nach Region des Nutzers anwendbarer Gesetze. Im Falle eines Konflikts zwischen
+Gesetzen gilt das für die anwendbare Gerichtsbarkeit zwingende Recht.

@@ -7,6 +7,7 @@ import '../i18n/app_i18n.dart';
 import '../models/ai/ai_insight_model.dart';
 import '../services/ai/ai_insight_local_engine.dart';
 import '../services/ai/ai_insights_service.dart';
+import '../services/premium/feature_access.dart';
 import 'ai/ai_insight_card.dart';
 
 /// Resumos automáticos da IA Babá na Home (cache Firestore, sem OpenAI ao abrir).
@@ -154,6 +155,7 @@ class _HomeAiInsightsPanelState extends State<HomeAiInsightsPanel> {
 
   @override
   Widget build(BuildContext context) {
+    if (!FeatureAccess.canUseAnyAi) return const SizedBox.shrink();
     _syncDay();
     final s = S.of(context);
     final bid = widget.babyId;

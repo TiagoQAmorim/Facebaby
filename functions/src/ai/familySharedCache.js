@@ -85,7 +85,7 @@ async function ensureSharedSignDailyText({
     apiKey,
     system: FAMILY_HOROSCOPE_SIGN_SYSTEM,
     user: userPrompt,
-    maxTokens: 450,
+    maxTokens: 280,
   });
   const raw = result.text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '');
   const parsed = JSON.parse(raw);
@@ -147,7 +147,7 @@ async function ensureSharedCompatTexts({
     apiKey,
     system: FAMILY_HOROSCOPE_COMPAT_SYSTEM,
     user: userPrompt,
-    maxTokens: 550,
+    maxTokens: 360,
   });
   const raw = result.text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '');
   const parsed = JSON.parse(raw);

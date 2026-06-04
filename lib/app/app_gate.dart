@@ -10,6 +10,7 @@ import '../services/firebase/cloud_load_status.dart';
 import '../services/firebase/firestore_user_repository.dart';
 import '../pages/auth/onboarding_page.dart';
 import '../pages/auth/suspended_account_page.dart';
+import '../pages/auth/email_verification_page.dart';
 import 'main_shell.dart';
 import '../widgets/face_baby_loading.dart';
 import '../widgets/loading_scope.dart';
@@ -63,6 +64,21 @@ class _AppGateState extends State<AppGate> with WidgetsBindingObserver {
   }
 
   Future<void> _revalidateAfterResume() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && AuthService.instance.mustVerifyEmail(user)) {
+        await AuthService.instance.reloadAndCheckEmailVerified();
+        if (!mounted) return;
+        if (!AuthService.instance
+            .mustVerifyEmail(FirebaseAuth.instance.currentUser)) {
+          setState(() {
+            _cacheFuture = null;
+            _gateFuture = _trackGateFuture(_loadGateWithPendingOnboarding());
+          });
+          return;
+        }
+      }
+    } catch (_) {}
     // Evita “apagou tudo” em resume: revalida nuvem, mas não manda automaticamente pro cadastro em erro.
     try {
       await CurrentBabyController.instance.refresh();
@@ -156,6 +172,11 @@ class _AppGateState extends State<AppGate> with WidgetsBindingObserver {
             r.status == CloudLoadStatus.unauthenticated) {
           // AuthGate troca para OnboardingPage; evita spinner/preto por cima.
           return const SizedBox.shrink();
+        }
+
+        if (AuthService.instance
+            .mustVerifyEmail(FirebaseAuth.instance.currentUser)) {
+          return EmailVerificationPage(onVerified: _refresh);
         }
 
         if (r.status == CloudLoadStatus.permissionDenied ||
