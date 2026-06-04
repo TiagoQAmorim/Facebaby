@@ -7,6 +7,7 @@ import '../../pages/dev/logged_out_screen_mirror.dart';
 import '../../controllers/current_baby_controller.dart';
 import '../../i18n/app_i18n.dart';
 import '../../services/app_database.dart';
+import '../../services/firebase/auth_registration_exception.dart';
 import '../../services/firebase/auth_service.dart';
 import '../../services/firebase/firestore_user_repository.dart';
 import '../../services/firebase/profile_cloud_sync.dart';
@@ -1041,13 +1042,33 @@ class _OnboardingPageState extends State<OnboardingPage> {
       ),
     );
     if (result == null) return;
-    await _runAuth(() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
       await AuthService.instance.registerWithEmail(
         email: result.email,
         password: result.password,
         displayName: result.name,
       );
-    });
+    } catch (e) {
+      if (!mounted) return;
+      final isDuplicate = e is EmailAlreadyRegisteredException ||
+          (e is FirebaseAuthException && e.code == 'email-already-in-use');
+      if (isDuplicate) {
+        final s = S.of(context);
+        await _openExistingLogin(
+          initialEmail: result.email,
+          bannerMessage: s.authErrEmailInUse,
+        );
+        return;
+      }
+      setState(() => _error = S.of(context).userFacingAuthError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   /// Novo cadastro a partir do login — primeira pergunta (sexo do bebê), não o welcome.
@@ -1064,9 +1085,17 @@ class _OnboardingPageState extends State<OnboardingPage> {
     await _save(_draft);
   }
 
-  Future<void> _openExistingLogin() async {
+  Future<void> _openExistingLogin({
+    String? initialEmail,
+    String? bannerMessage,
+  }) async {
     final result = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const LoginPage()),
+      MaterialPageRoute(
+        builder: (_) => LoginPage(
+          initialEmail: initialEmail,
+          bannerMessage: bannerMessage,
+        ),
+      ),
     );
     if (!mounted) return;
     if (result == 'restart_registration') {

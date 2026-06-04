@@ -1,3 +1,5 @@
+import 'dart:async' show Timer, unawaited;
+
 import 'package:flutter/material.dart';
 
 import '../../i18n/app_i18n.dart';
@@ -22,15 +24,23 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
   String? _message;
   bool _messageIsError = false;
   Duration? _cooldownRemaining;
+  Timer? _autoCheckTimer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_checkVerified(silent: true));
+    });
+    _autoCheckTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      unawaited(_checkVerified(silent: true));
+    });
   }
 
   @override
   void dispose() {
+    _autoCheckTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
