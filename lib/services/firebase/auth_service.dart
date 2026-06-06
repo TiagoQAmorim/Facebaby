@@ -77,7 +77,7 @@ class AuthService {
       'profile',
       'openid',
     ],
-    serverClientId: hasGoogleWebClientId ? kGoogleWebClientId : null,
+    serverClientId: effectiveGoogleWebClientId,
   );
 
   Stream<User?> authStateChanges() => _auth.authStateChanges();
@@ -237,13 +237,34 @@ class AuthService {
         rawNonce: rawNonce,
       );
 
-      return await _auth.signInWithCredential(oauthCredential);
+      try {
+        return await _auth.signInWithCredential(oauthCredential);
+      } on FirebaseAuthException catch (e, st) {
+        developer.log(
+          'FirebaseAuth Apple signIn code=${e.code} message=${e.message}',
+          name: 'Apple Sign-In',
+          error: e,
+          stackTrace: st,
+        );
+        rethrow;
+      }
     } on SignInWithAppleAuthorizationException catch (e) {
+      developer.log(
+        'Apple authorization code=${e.code}',
+        name: 'Apple Sign-In',
+        error: e,
+      );
       if (e.code == AuthorizationErrorCode.canceled) {
         throw StateError('Login cancelado');
       }
       throw StateError('APPLE_AUTH_FAILED');
-    } on SignInWithAppleNotSupportedException {
+    } on SignInWithAppleNotSupportedException catch (e, st) {
+      developer.log(
+        'Sign in with Apple not supported (missing iOS capability?)',
+        name: 'Apple Sign-In',
+        error: e,
+        stackTrace: st,
+      );
       throw StateError('APPLE_AUTH_FAILED');
     }
   }

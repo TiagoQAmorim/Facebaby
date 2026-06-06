@@ -1,0 +1,85 @@
+{
+  "products" : [
+    {
+      "displayPrice" : "14.90",
+      "familyShareable" : false,
+      "internalID" : "FBPL0001",
+      "localizations" : [
+        {
+          "description" : "Compra única legada FaceBaby Plus.",
+          "displayName" : "FaceBaby Plus (vitalício)",
+          "locale" : "pt_BR"
+        }
+      ],
+      "productID" : "facebaby_premium",
+      "referenceName" : "facebaby_premium",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "FBPLUSGRP1",
+      "localizations" : [
+        {
+          "description" : "FaceBaby Plus — IA Babá, fotos ilimitadas e mais.",
+          "displayName" : "FaceBaby Plus",
+          "locale" : "pt_BR"
+        }
+      ],
+      "name" : "FaceBaby Plus",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "displayPrice" : "14.90",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "FBPL0002",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Plano mensal FaceBaby Plus.",
+              "displayName" : "FaceBaby Plus Mensal",
+              "locale" : "pt_BR"
+            }
+          ],
+          "productID" : "facebaby_premium_monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "facebaby_premium_monthly",
+          "subscriptionGroupID" : "FBPLUSGRP1",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "displayPrice" : "149.90",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "FBPL0003",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Plano anual FaceBaby Plus.",
+              "displayName" : "FaceBaby Plus Anual",
+              "locale" : "pt_BR"
+            }
+          ],
+          "productID" : "facebaby_premium_annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "facebaby_premium_annual",
+          "subscriptionGroupID" : "FBPLUSGRP1",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 1,
+    "minor" : 0
+  }
+}

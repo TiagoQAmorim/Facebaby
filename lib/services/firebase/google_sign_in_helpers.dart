@@ -1,11 +1,17 @@
 /// ID do cliente OAuth **Web** (termina em `.apps.googleusercontent.com`).
-/// Opcional: use para obter `id_token` de forma estável junto ao Firebase Auth.
+/// Necessário no iOS para obter `id_token` estável junto ao Firebase Auth.
 ///
-/// Obtém em: Console Google Cloud → APIs e serviços → Credenciais → ID do cliente OAuth 2.0 (tipo **Aplicativo da Web**).
-///
-/// Ou deixe vazio — com **SHA-1** certo no Firebase, o fluxo normalmente funciona assim mesmo.
-///
-/// Rode: `flutter run --dart-define=GOOGLE_WEB_CLIENT_ID=SEU_WEB_CLIENT_ID`
+/// Override em build: `--dart-define=GOOGLE_WEB_CLIENT_ID=...`
 const String kGoogleWebClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
 
-bool get hasGoogleWebClientId => kGoogleWebClientId.isNotEmpty && kGoogleWebClientId.contains('.apps.googleusercontent.com');
+/// Fallback do Firebase/Google Cloud (tipo Web) — usado quando o dart-define não vem no build iOS.
+const String kGoogleWebClientIdFallback =
+    '91181989163-f76eh355cm8i29q23knbil93tseig8hv.apps.googleusercontent.com';
+
+bool get hasGoogleWebClientId =>
+    kGoogleWebClientId.isNotEmpty &&
+    kGoogleWebClientId.contains('.apps.googleusercontent.com');
+
+/// Cliente Web efectivo para [GoogleSignIn.serverClientId].
+String get effectiveGoogleWebClientId =>
+    hasGoogleWebClientId ? kGoogleWebClientId : kGoogleWebClientIdFallback;
