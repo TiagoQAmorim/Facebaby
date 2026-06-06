@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/memory_badge.dart';
 import '../services/firebase/auth_registration_exception.dart';
 import '../services/firebase/email_verification_policy.dart';
+import '../utils/login_platform.dart';
 import '../utils/zodiac_element.dart';
 import '../utils/zodiac_keys.dart';
 import 'ai_family_growth_locale_extras.dart';
@@ -223,14 +224,31 @@ class S {
   String get plusSheetFootnote => _t('plusSheetFootnote');
   String get plusWelcomeSnack => _t('plusWelcomeSnack');
   String get plusPurchaseUnavailableSnack => _t('plusPurchaseUnavailableSnack');
-  String plusPurchaseSkuNotFoundSnack(String productId) =>
-      _t('plusPurchaseSkuNotFoundSnack').replaceAll('{id}', productId);
-  String get plusPurchaseBillingLaunchFailedSnack =>
-      _t('plusPurchaseBillingLaunchFailedSnack');
+  String plusPurchaseSkuNotFoundSnack(String productId) {
+    final key = isIOSDevice
+        ? 'plusPurchaseSkuNotFoundSnackIos'
+        : isAndroidDevice
+            ? 'plusPurchaseSkuNotFoundSnackAndroid'
+            : 'plusPurchaseSkuNotFoundSnack';
+    return _t(key).replaceAll('{id}', productId);
+  }
+
+  String get plusPurchaseBillingLaunchFailedSnack {
+    if (isIOSDevice) return _t('plusPurchaseBillingLaunchFailedSnackIos');
+    if (isAndroidDevice) return _t('plusPurchaseBillingLaunchFailedSnackAndroid');
+    return _t('plusPurchaseBillingLaunchFailedSnack');
+  }
+
   String get plusPurchaseAlreadyInPlayAccountSnack =>
       _t('plusPurchaseAlreadyInPlayAccountSnack');
-  String plusPaywallSkuMissingHint(String productId) =>
-      _t('plusPaywallSkuMissingHint').replaceAll('{id}', productId);
+  String plusPaywallSkuMissingHint(String productId) {
+    final key = isIOSDevice
+        ? 'plusPaywallSkuMissingHintIos'
+        : isAndroidDevice
+            ? 'plusPaywallSkuMissingHintAndroid'
+            : 'plusPaywallSkuMissingHint';
+    return _t(key).replaceAll('{id}', productId);
+  }
   String get plusRestoreOkSnack => _t('plusRestoreOkSnack');
   String get plusRestoreEmptySnack => _t('plusRestoreEmptySnack');
   String get plusSnackLockedFeature => _t('plusSnackLockedFeature');
@@ -260,9 +278,18 @@ class S {
   String get plusPurchaseErrorSnack => _t('plusPurchaseErrorSnack');
   String get plusDoneClose => _t('plusDoneClose');
   String get plusPaywallHeadline => _t('plusPaywallHeadline');
-  String get plusPaywallActiveNote => _t('plusPaywallActiveNote');
-  String get plusPaywallSecureNote => _t('plusPaywallRenewalNote');
-  String get plusPaywallRenewalNote => _t('plusPaywallRenewalNote');
+  String get plusPaywallActiveNote {
+    if (isIOSDevice) return _t('plusPaywallActiveNoteIos');
+    if (isAndroidDevice) return _t('plusPaywallActiveNoteAndroid');
+    return _t('plusPaywallActiveNote');
+  }
+
+  String get plusPaywallSecureNote => plusPaywallRenewalNote;
+  String get plusPaywallRenewalNote {
+    if (isIOSDevice) return _t('plusPaywallRenewalNoteIos');
+    if (isAndroidDevice) return _t('plusPaywallRenewalNoteAndroid');
+    return _t('plusPaywallRenewalNote');
+  }
   String get plusPlanPremiumTitle => _t('plusPlanMonthlyCardTitle');
   String get plusPlanPremiumSubtitle => _t('plusPlanMonthlySubtitle');
   String get plusEarlyAdopterOffer => _t('plusEarlyAdopterOffer');
@@ -948,6 +975,8 @@ class S {
         case 'invalid-verification-code':
         case 'invalid-verification-id':
           return authErrInvalidCredential;
+        case 'operation-not-allowed':
+          return authErrAppleFailed;
         case 'too-many-requests':
           return authErrEmailVerifyTooMany;
         default:
@@ -2990,7 +3019,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusCtaSubscribeAnnual': 'Assinar plano anual',
     'plusCtaSubscribePlus': 'Assinar FaceBaby Plus',
     'plusPaywallRenewalNote':
+        'Assinatura processada pela Google Play ou App Store. Cancele quando quiser nas definições da loja.',
+    'plusPaywallRenewalNoteAndroid':
         'A assinatura é renovada automaticamente pela Google Play. Você pode cancelar quando quiser nas configurações da Play Store.',
+    'plusPaywallRenewalNoteIos':
+        'A assinatura é renovada automaticamente pela App Store. Cancele em Ajustes › Apple ID › Subscrições.',
     'plusSheetHero':
         'FaceBaby Plus: IA Babá 24h, fotos à vontade, backup completo, relatórios premium, livro do bebê e muito mais — a partir de R\$ 14,90/mês.',
     'plusSheetPriceLabel': 'Planos mensal e anual',
@@ -3006,13 +3039,25 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusPurchaseUnavailableSnack':
         'Não foi possível iniciar a compra. Confirme o produto nas lojas ou tente mais tarde.',
     'plusPurchaseSkuNotFoundSnack':
+        'A loja não devolveu a assinatura "{id}". Confirme o produto na Play Console ou App Store Connect.',
+    'plusPurchaseSkuNotFoundSnackAndroid':
         'A Google Play não devolveu a assinatura "{id}". No Play Console crie uma assinatura mensal activa com este ID (Monetizar → Assinaturas), ou use --dart-define=FACEBABY_PREMIUM_SKU=… no build.',
+    'plusPurchaseSkuNotFoundSnackIos':
+        'A App Store não devolveu a assinatura "{id}". No App Store Connect crie um grupo de subscrições com este ID exacto (Monetização → Subscrições) e envie uma nova build para TestFlight.',
     'plusPurchaseBillingLaunchFailedSnack':
+        'Não foi possível abrir o pagamento. Confirme ligação à Internet e tente «Restaurar compras» se já comprou.',
+    'plusPurchaseBillingLaunchFailedSnackAndroid':
         'Não foi possível abrir o pagamento na Google Play. Confirme ligação à Internet, que a app veio da Play e que está com uma conta Google válida. Em testes internos/fechados, use conta licenciada. Se a mensagem da Play disser que o produto já foi comprado, use «Restaurar compras» abaixo.',
+    'plusPurchaseBillingLaunchFailedSnackIos':
+        'Não foi possível abrir o pagamento na App Store. Confirme ligação à Internet, que instalou via TestFlight ou App Store, e que tem um Apple ID válido. Se já comprou, use «Restaurar compras» abaixo.',
     'plusPurchaseAlreadyInPlayAccountSnack':
         'Se a Play disser que o produto já é seu, toque em «Restaurar compras» abaixo para ligar o Premium a esta conta FaceBaby. Se não funcionar, confira se está na mesma conta Google da compra.',
     'plusPaywallSkuMissingHint':
+        'Ainda sem preço da loja para a assinatura "{id}". Confirme o produto activo na loja ou aguarde sincronização.',
+    'plusPaywallSkuMissingHintAndroid':
         'Ainda sem preço da loja para a assinatura "{id}". Confirme o plano mensal activo na Play Console ou aguarde sincronização.',
+    'plusPaywallSkuMissingHintIos':
+        'Ainda sem preço da App Store para "{id}". Confirme a subscrição activa no App Store Connect (pode demorar até 24 h após criar).',
     'plusRestoreOkSnack': 'Compras restauradas com sucesso.',
     'plusRestoreEmptySnack': 'Não encontrámos uma compra anterior nesta conta.',
     'plusSnackLockedFeature': 'Incluído no FaceBaby Plus.',
@@ -3038,7 +3083,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusPaywallHeadline':
         'Escolha o plano ideal para\nacompanhar seu bebê com o FaceBaby Plus.',
     'plusPaywallActiveNote':
+        'Seu FaceBaby Plus está ativo. Gerencie a assinatura na Play Store ou App Store.',
+    'plusPaywallActiveNoteAndroid':
         'Seu FaceBaby Plus está ativo. Gerencie a assinatura na Play Store.',
+    'plusPaywallActiveNoteIos':
+        'Seu FaceBaby Plus está ativo. Gerencie a assinatura em Ajustes › Apple ID › Subscrições.',
     'plusPlanPremiumButtonActive': 'Plano atual',
     'plusPlanMonthlyFeature1': 'Tudo do plano Gratuito',
     'plusPlanMonthlyFeature2': 'IA Babá 24h com você',
@@ -5788,7 +5837,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusCtaSubscribeAnnual': 'Subscribe annual',
     'plusCtaSubscribePlus': 'Subscribe to FaceBaby Plus',
     'plusPaywallRenewalNote':
+        'Subscription processed by Google Play or the App Store. Cancel anytime in store settings.',
+    'plusPaywallRenewalNoteAndroid':
         'Subscription renews automatically through Google Play. You can cancel anytime in Play Store settings.',
+    'plusPaywallRenewalNoteIos':
+        'Subscription renews automatically through the App Store. Cancel in Settings › Apple ID › Subscriptions.',
     'plusSheetHero':
         'FaceBaby Plus: 24h AI Nanny, unlimited photos, full backup, premium reports, baby book, and more — from \$19.90/month.',
     'plusSheetPriceLabel': 'Monthly and annual plans',
@@ -5804,13 +5857,25 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusPurchaseUnavailableSnack':
         'Could not start purchase. Check the store listing or try again later.',
     'plusPurchaseSkuNotFoundSnack':
+        'The store did not return subscription "{id}". Check the product in Play Console or App Store Connect.',
+    'plusPurchaseSkuNotFoundSnackAndroid':
         'Google Play did not return product "{id}". Create an active managed in-app product with this exact Product ID (Monetize → In-app products), or build with --dart-define=FACEBABY_PREMIUM_SKU=… to match your store ID.',
+    'plusPurchaseSkuNotFoundSnackIos':
+        'The App Store did not return subscription "{id}". In App Store Connect create a subscription group with this exact Product ID (Monetization → Subscriptions) and upload a new TestFlight build.',
     'plusPurchaseBillingLaunchFailedSnack':
+        'Could not open checkout. Check your internet connection or tap “Restore purchases” if you already bought.',
+    'plusPurchaseBillingLaunchFailedSnackAndroid':
         'Could not open Google Play billing. Check your internet connection, that you installed the app from Play, and that you use a valid Google account. For internal/closed testing, use a licensed tester. If the store says you already own the product, tap “Restore purchases” below.',
+    'plusPurchaseBillingLaunchFailedSnackIos':
+        'Could not open App Store checkout. Check your internet connection, that you installed via TestFlight or the App Store, and that you use a valid Apple ID. If you already purchased, tap “Restore purchases” below.',
     'plusPurchaseAlreadyInPlayAccountSnack':
         'If the store says you already own this, tap “Restore purchases” below to link Premium to this FaceBaby account. If it still fails, use the same Google account you bought with.',
     'plusPaywallSkuMissingHint':
+        'Store price not loaded yet for "{id}". Confirm the product is active in the store or wait for sync.',
+    'plusPaywallSkuMissingHintAndroid':
         'Store price not loaded yet for "{id}". Confirm the product is active in Play Console or wait for sync (can take a few hours).',
+    'plusPaywallSkuMissingHintIos':
+        'App Store price not loaded yet for "{id}". Confirm the subscription is active in App Store Connect (can take up to 24 hours after creation).',
     'plusRestoreOkSnack': 'Purchases restored.',
     'plusRestoreEmptySnack': 'No previous purchase found for this account.',
     'plusSnackLockedFeature': 'Included in FaceBaby Plus.',
@@ -5836,7 +5901,11 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusPaywallHeadline':
         'Choose the right plan to\nsupport your baby with FaceBaby Plus.',
     'plusPaywallActiveNote':
+        'Your FaceBaby Plus is active. Manage your subscription in the Play Store or App Store.',
+    'plusPaywallActiveNoteAndroid':
         'Your FaceBaby Plus is active. Manage your subscription in the Play Store.',
+    'plusPaywallActiveNoteIos':
+        'Your FaceBaby Plus is active. Manage your subscription in Settings › Apple ID › Subscriptions.',
     'plusPlanPremiumButtonActive': 'Current plan',
     'plusPlanMonthlyFeature1': 'Everything in the Free plan',
     'plusPlanMonthlyFeature2': '24h AI Nanny with you',

@@ -317,6 +317,10 @@ class PremiumService extends ChangeNotifier {
   Future<Set<String>> _ownedPremiumSkusFromStore() async {
     final owned = <String>{};
     if (!premiumStoreSupported() || !_storeAvailable) return owned;
+    if (!premiumOnAndroid()) {
+      // iOS: compras anteriores chegam via restorePurchases + purchaseStream.
+      return owned;
+    }
     try {
       final addition = InAppPurchase.instance
           .getPlatformAddition<InAppPurchaseAndroidPlatformAddition>();
@@ -393,7 +397,8 @@ class PremiumService extends ChangeNotifier {
           }
           break;
         case PurchaseStatus.restored:
-          if (_isPremiumProductId(p.productID) && _userInitiatedRestore) {
+          if (_isPremiumProductId(p.productID) &&
+              (_userInitiatedRestore || premiumOnIos())) {
             await _persistEntitlement(true, pushRemote: true, productId: p.productID);
           }
           break;
@@ -552,13 +557,15 @@ class PremiumService extends ChangeNotifier {
 
     final ok = await _iap.buyNonConsumable(purchaseParam: param);
     if (!ok) {
-      await _tryLinkPlayPurchaseToCurrentUser();
-      if (_entitlement) {
-        return PurchasePremiumResult.billingFlowLaunched;
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 600));
-      if (await _tryGrantFromAndroidPastPurchases()) {
-        return PurchasePremiumResult.billingFlowLaunched;
+      if (premiumOnAndroid()) {
+        await _tryLinkPlayPurchaseToCurrentUser();
+        if (_entitlement) {
+          return PurchasePremiumResult.billingFlowLaunched;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 600));
+        if (await _tryGrantFromAndroidPastPurchases()) {
+          return PurchasePremiumResult.billingFlowLaunched;
+        }
       }
       return PurchasePremiumResult.billingLaunchFailed;
     }

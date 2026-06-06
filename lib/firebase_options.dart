@@ -60,20 +60,20 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDsnuG6BTKXf0ZKss5q-cOsfUS2Z_C-mh0',
-    appId: '1:91181989163:ios:fca6ab95507293657c596e',
+    appId: '1:91181989163:ios:22e7e33c116d0aba7c596e',
     messagingSenderId: '91181989163',
     projectId: 'facebaby-afc41',
     storageBucket: 'facebaby-afc41.firebasestorage.app',
-    iosBundleId: 'com.example.facebabyFlutter',
+    iosBundleId: 'com.facebaby.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyDsnuG6BTKXf0ZKss5q-cOsfUS2Z_C-mh0',
-    appId: '1:91181989163:ios:fca6ab95507293657c596e',
+    appId: '1:91181989163:ios:22e7e33c116d0aba7c596e',
     messagingSenderId: '91181989163',
     projectId: 'facebaby-afc41',
     storageBucket: 'facebaby-afc41.firebasestorage.app',
-    iosBundleId: 'com.example.facebabyFlutter',
+    iosBundleId: 'com.facebaby.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
