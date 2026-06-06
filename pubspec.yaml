@@ -1,5 +1,5 @@
 name: facebaby_flutter
-version: 1.0.35+173
+version: 1.0.35+174
 publish_to: 'none'
 description: MVP Flutter do FaceBaby, organizado com Page Objects/Screens, widgets, models, services e controllers.
 
@@ -74,6 +74,8 @@ flutter_launcher_icons:
     background_color: "#F5F6F8"
     theme_color: "#5B6B8C"
   image_path: assets/app_icon.png
+  remove_alpha_ios: true
+  background_color_ios: "#FFFFFF"
 
 flutter:
   uses-material-design: true
