@@ -1,6 +1,206 @@
 FaceBaby — Termos de Uso
+Última atualização: Junho de 2026
 
-Planos disponíveis: Gratuito, Mensal e Anual.
-Valores, funcionalidades e limites poderão ser alterados futuramente devido a custos operacionais, IA, APIs, infraestrutura e oscilações econômicas.
+1. ACEITAÇÃO DOS TERMOS
+Bem-vindo ao FaceBaby. Os presentes Termos de Uso ("Termos") regulam o acesso e utilização do aplicativo FaceBaby, seus serviços, funcionalidades, websites associados, recursos de Inteligência Artificial e demais plataformas operadas pelo FaceBaby. Ao criar uma conta, acessar ou utilizar qualquer funcionalidade do FaceBaby, o usuário declara ter lido, compreendido e concordado integralmente com estes Termos. Caso o usuário não concorde com qualquer disposição aqui estabelecida, deverá interromper imediatamente o uso dos serviços.
 
-A IA Babá é uma ferramenta auxiliar e não substitui orientação médica.
+2. DEFINIÇÕES
+Para os fins destes Termos:
+
+FaceBaby: plataforma digital destinada ao registro, organização e acompanhamento de informações relacionadas à gestação, bebês, crianças e familiares.
+
+Usuário: qualquer pessoa física que utilize o aplicativo.
+
+Responsável Legal: pessoa legalmente autorizada a representar uma criança ou menor de idade.
+
+Criança: indivíduo menor de idade cujos dados sejam registrados no aplicativo.
+
+Conteúdo: quaisquer informações inseridas pelos usuários, incluindo textos, fotos, vídeos, registros, comentários, documentos e demais arquivos.
+
+IA Babá: conjunto de funcionalidades de Inteligência Artificial disponibilizadas pelo FaceBaby.
+
+Serviços Premium: funcionalidades pagas disponibilizadas mediante assinatura.
+
+3. DESCRIÇÃO DOS SERVIÇOS
+O FaceBaby é uma plataforma destinada a auxiliar famílias na organização e registro de informações relacionadas à infância.
+Os recursos podem incluir:
+• Registro de mamadas
+• Registro de fraldas
+• Registro de sono
+• Registro de crescimento
+• Registro de peso e altura
+• Registro de vacinas
+• Registro de medicamentos
+• Registro de consultas médicas
+• Linha do tempo do bebê
+• Armazenamento de fotografias
+• Armazenamento de memórias
+• Compartilhamento de conteúdos
+• Relatórios em PDF
+• Alertas e lembretes
+• Curvas de crescimento
+• Recursos de Inteligência Artificial
+• Recursos comunitários
+• Funcionalidades futuras que venham a ser adicionadas
+O FaceBaby poderá modificar, adicionar, remover ou descontinuar funcionalidades a qualquer momento.
+
+4. ELEGIBILIDADE
+O uso do FaceBaby é permitido apenas a pessoas com capacidade legal para aceitar contratos. Ao cadastrar informações de crianças ou menores de idade, o usuário declara possuir autorização legal para fazê-lo. O usuário assume total responsabilidade pela legitimidade das informações cadastradas.
+
+5. CADASTRO E SEGURANÇA DA CONTA
+O usuário compromete-se a:
+• Fornecer informações verdadeiras
+• Manter os dados atualizados
+• Preservar a confidencialidade de suas credenciais
+• Não compartilhar acessos com terceiros não autorizados
+• Comunicar imediatamente qualquer suspeita de acesso indevido
+O FaceBaby poderá suspender ou encerrar contas que apresentem comportamento fraudulento, abusivo ou ilegal.
+
+6. PLANOS GRATUITOS E ASSINATURAS
+O FaceBaby poderá disponibilizar:
+
+Plano Gratuito
+Com funcionalidades limitadas definidas pelo FaceBaby.
+
+Plano Premium Mensal
+Assinatura renovada automaticamente conforme as regras da plataforma de pagamento utilizada.
+
+Plano Premium Anual
+Assinatura renovada automaticamente conforme as regras da plataforma de pagamento utilizada. Os preços atualmente praticados poderão ser alterados futuramente. Promoções, descontos, períodos de teste ou benefícios temporários poderão ser criados, alterados ou encerrados sem obrigação de manutenção permanente.
+
+7. PAGAMENTOS E COBRANÇAS
+As cobranças poderão ser processadas por terceiros, incluindo:
+• Apple App Store
+• Google Play Store
+• Outros processadores autorizados
+O FaceBaby não possui controle sobre cobranças realizadas diretamente por plataformas de terceiros. Cancelamentos, reembolsos e disputas de pagamento deverão observar as regras da plataforma responsável pela transação.
+
+8. RECURSOS DE INTELIGÊNCIA ARTIFICIAL
+O FaceBaby poderá utilizar Inteligência Artificial para:
+• Responder perguntas
+• Registrar eventos automaticamente
+• Sugerir conteúdos
+• Gerar relatórios
+• Produzir resumos
+• Auxiliar no acompanhamento do desenvolvimento infantil
+• Criar mensagens personalizadas
+• Automatizar tarefas dentro do aplicativo
+• O usuário reconhece que:
+• Sistemas de IA podem cometer erros
+• As respostas podem estar incompletas
+• As respostas podem estar desatualizadas
+• As respostas podem conter imprecisões
+O FaceBaby não garante precisão absoluta dos resultados. As informações fornecidas pela IA possuem finalidade exclusivamente informativa.
+
+9. LIMITAÇÃO MÉDICA
+O FaceBaby não é um dispositivo médico. O FaceBaby não realiza diagnósticos. O FaceBaby não prescreve medicamentos. O FaceBaby não substitui:
+• Pediatras
+• Médicos
+• Enfermeiros
+• Psicólogos
+• Nutricionistas
+• Fisioterapeutas
+• Profissionais de saúde em geral
+Em qualquer situação envolvendo saúde, sintomas, emergências ou dúvidas médicas, o usuário deverá procurar orientação profissional adequada.
+
+10. DADOS DE CRIANÇAS E MENORES
+O usuário declara possuir autorização legal para cadastrar, armazenar e gerenciar informações relacionadas à criança. O FaceBaby poderá armazenar:
+• Nome
+• Data de nascimento
+• Fotografias
+• Informações de crescimento
+• Informações de alimentação
+• Informações de saúde fornecidas pelo usuário
+• Demais informações inseridas voluntariamente
+• O usuário é integralmente responsável pela legalidade das informações cadastradas
+
+11. CONTEÚDO DO USUÁRIO
+O usuário mantém a propriedade dos conteúdos enviados ao FaceBaby. Ao utilizar a plataforma, o usuário concede ao FaceBaby licença limitada, mundial, não exclusiva e revogável para:
+• Armazenar
+• Processar
+• Exibir
+• Transmitir
+• Realizar backup
+• dos conteúdos necessários para a prestação dos serviços
+
+12. FOTO DA SEMANA E RECURSOS COMUNITÁRIOS
+Ao participar de recursos comunitários, incluindo Foto da Semana ou funcionalidades semelhantes, o usuário declara possuir autorização para compartilhar as imagens enviadas. O FaceBaby poderá exibir tais conteúdos dentro da plataforma para outros usuários conforme as configurações disponíveis. O usuário permanece responsável pelas informações compartilhadas.
+
+13. CONTEÚDO PROIBIDO
+É proibido utilizar o FaceBaby para:
+• Atividades ilegais
+• Fraudes
+• Pornografia
+• Exploração infantil
+• Discurso de ódio
+• Assédio
+• Spam
+• Violação de direitos autorais
+• Distribuição de malware
+• Qualquer atividade que viole legislação aplicável
+
+14. MODERAÇÃO
+O FaceBaby poderá, a seu exclusivo critério:
+• Remover conteúdos
+• Suspender funcionalidades
+• Restringir acessos
+• Encerrar contas
+• Comunicar autoridades competentes quando exigido por lei
+
+15. ARMAZENAMENTO E BACKUP
+O FaceBaby poderá utilizar serviços de armazenamento em nuvem para operação da plataforma. Embora sejam adotadas medidas razoáveis de segurança, o FaceBaby não garante proteção absoluta contra:
+• Falhas técnicas
+• Ataques cibernéticos
+• Perda de dados
+• Interrupções de serviço
+O usuário é incentivado a manter cópias próprias de informações importantes.
+
+16. DISPONIBILIDADE DO SERVIÇO
+O FaceBaby poderá interromper temporariamente seus serviços para:
+• Atualizações
+• Correções
+• Melhorias
+• Migrações
+• Manutenção preventiva ou corretiva
+Não existe garantia de disponibilidade contínua ou ininterrupta.
+
+17. LIMITAÇÃO DE RESPONSABILIDADE
+Na máxima extensão permitida pela legislação aplicável, o FaceBaby não será responsável por:
+• Danos indiretos
+• Lucros cessantes
+• Perda de oportunidade
+• Perda de dados
+• Decisões tomadas com base em respostas geradas por IA
+• Interrupções causadas por terceiros
+Problemas decorrentes de serviços externos. A responsabilidade total do FaceBaby jamais excederá o valor efetivamente pago pelo usuário nos 12 meses anteriores ao evento que originou eventual reclamação.
+
+18. PROPRIEDADE INTELECTUAL
+Todos os direitos relacionados ao FaceBaby, incluindo software, design, marcas, logotipos, textos e funcionalidades, pertencem aos seus respectivos titulares. É proibido:
+• Copiar
+• Distribuir
+• Modificar
+• Reproduzir
+• Comercializar
+• Realizar engenharia reversa
+• sem autorização prévia e expressa
+
+19. ENCERRAMENTO DA CONTA
+O usuário poderá solicitar a exclusão da conta a qualquer momento. O FaceBaby poderá encerrar contas que:
+• Descumpram estes Termos
+• Utilizem a plataforma de forma abusiva
+• Apresentem riscos à segurança da plataforma ou de terceiros
+
+20. ALTERAÇÕES DOS TERMOS
+O FaceBaby poderá atualizar estes Termos periodicamente. A versão mais recente será disponibilizada aos usuários. A continuidade do uso do serviço após a atualização representa aceitação das alterações realizadas.
+
+21. LEGISLAÇÃO APLICÁVEL
+Estes Termos serão interpretados de acordo com a legislação aplicável, incluindo normas relacionadas à proteção de dados pessoais, proteção do consumidor e direitos digitais. Quando aplicável, poderão ser observadas disposições da:
+• LGPD (Brasil)
+• GDPR (União Europeia)
+• Legislações locais equivalentes
+
+22. CONTATO
+Dúvidas relacionadas a estes Termos poderão ser encaminhadas para: support@thefacebaby.com
+
+23. ACEITAÇÃO FINAL
+Ao utilizar o FaceBaby, o usuário declara que leu, compreendeu e concorda integralmente com estes Termos de Uso.

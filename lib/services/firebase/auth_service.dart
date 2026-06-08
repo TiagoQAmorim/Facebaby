@@ -236,12 +236,31 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    final cred = await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-    await _recordSignedIn(cred.user);
-    return cred;
+    final normalized = normalizeEmail(email);
+    try {
+      final cred = await _auth.signInWithEmailAndPassword(
+        email: normalized,
+        password: password,
+      );
+      await _recordSignedIn(cred.user);
+      return cred;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'invalid-credential' ||
+          e.code == 'wrong-password' ||
+          e.code == 'user-not-found') {
+        try {
+          final methods = await _auth.fetchSignInMethodsForEmail(normalized);
+          if (methods.isNotEmpty && !methods.contains('password')) {
+            throw EmailAlreadyRegisteredException(methods);
+          }
+        } on EmailAlreadyRegisteredException {
+          rethrow;
+        } on FirebaseAuthException {
+          // Com proteção contra enumeração, o fetch pode falhar.
+        }
+      }
+      rethrow;
+    }
   }
 
   Future<UserCredential> signInWithGoogle() async {
@@ -289,6 +308,33 @@ class AuthService {
     }
   }
 
+  Future<void> _applyAppleDisplayNameIfNeeded(
+    UserCredential cred,
+    AuthorizationCredentialAppleID appleCredential,
+  ) async {
+    if (cred.additionalUserInfo?.isNewUser != true) return;
+    final user = cred.user;
+    if (user == null) return;
+    if ((user.displayName ?? '').trim().isNotEmpty) return;
+
+    final given = appleCredential.givenName?.trim() ?? '';
+    final family = appleCredential.familyName?.trim() ?? '';
+    final fullName = [given, family].where((part) => part.isNotEmpty).join(' ');
+    if (fullName.isEmpty) return;
+
+    try {
+      await user.updateDisplayName(fullName);
+      await user.reload();
+    } catch (e, st) {
+      developer.log(
+        'Apple displayName update failed (non-fatal): $e',
+        name: 'Apple Sign-In',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
   /// Sign in with Apple (iOS only). Uses Firebase `OAuthProvider('apple.com')`.
   Future<UserCredential> signInWithApple() async {
     if (!isIOSDevice) {
@@ -312,13 +358,16 @@ class AuthService {
         throw StateError('APPLE_MISSING_ID_TOKEN');
       }
 
+      // firebase_auth 5.2+ exige o authorizationCode da Apple como accessToken.
       final oauthCredential = OAuthProvider('apple.com').credential(
         idToken: idToken,
         rawNonce: rawNonce,
+        accessToken: appleCredential.authorizationCode,
       );
 
       try {
         final cred = await _auth.signInWithCredential(oauthCredential);
+        await _applyAppleDisplayNameIfNeeded(cred, appleCredential);
         await _recordSignedIn(cred.user);
         return cred;
       } on FirebaseAuthException catch (e, st) {
@@ -363,17 +412,17 @@ class AuthService {
     await _auth.signOut();
   }
 
-  /// Página de redefinição com logo (Firebase Hosting). Deploy: `firebase deploy --only hosting`
+  /// Página de redefinição com logo (Firebase Hosting). Deploy: `firebase deploy --only hosting:app`
   static const passwordResetActionUrl =
-      'https://facebaby-afc41.firebaseapp.com/auth/reset.html';
+      'https://www.thefacebaby.com/auth/reset.html';
 
-  /// Instruções de exclusão de conta (App Store / Google Play). Deploy: `firebase deploy --only hosting`
+  /// Instruções de exclusão de conta (App Store / Google Play).
   static const accountDeletionInfoUrl =
-      'https://facebaby-afc41.firebaseapp.com/auth/delete-account.html';
+      'https://www.thefacebaby.com/support/#delete-account';
 
   /// Página de confirmação de e-mail (Firebase Hosting).
   static const emailVerificationActionUrl =
-      'https://facebaby-afc41.firebaseapp.com/auth/verify-email.html';
+      'https://www.thefacebaby.com/auth/verify-email.html';
 
   DateTime? _lastVerificationEmailSent;
 
