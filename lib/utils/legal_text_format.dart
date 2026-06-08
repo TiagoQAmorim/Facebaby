@@ -17,6 +17,42 @@ String preprocessLegalPlainText(String raw) {
     (m) => '.\n\n${m[1]}',
   );
 
+  // Secção numerada colada após ponto: ".2. Dados"
+  t = t.replaceAllMapped(RegExp(r'\.(\d+\.\s+)'), (m) => '.\n\n${m[1]}');
+
+  // Linha em branco antes de secções numeradas
+  t = t.replaceAllMapped(
+    RegExp(r'(?<=\S)\n(\d+\.\s+)'),
+    (m) => '\n\n${m[1]}',
+  );
+
+  // Linha em branco após título de secção numerada
+  t = t.replaceAllMapped(
+    RegExp(r'^(\d+\.\s+[^\n]+)\n(?=\S)', multiLine: true),
+    (m) => '${m[1]}\n\n',
+  );
+
+  // Linha em branco antes de subtítulo seguido de marcador
+  t = t.replaceAllMapped(
+    RegExp(r'(\n|^)([^\n]+)\n(•\s)', multiLine: true),
+    (m) {
+      final line = m[2]!.trim();
+      if (!legalLineLooksLikeSubsectionTitle(line)) return m[0]!;
+      final prefix = m[1] == '\n' ? '\n\n' : '';
+      return '$prefix$line\n\n${m[3]}';
+    },
+  );
+
+  // Linha em branco entre fim de lista e próximo subtítulo
+  t = t.replaceAllMapped(
+    RegExp(r'(•[^\n]+)\n([^\n•]+)\n(•\s)', multiLine: true),
+    (m) {
+      final middle = m[2]!.trim();
+      if (!legalLineLooksLikeSubsectionTitle(middle)) return m[0]!;
+      return '${m[1]}\n\n$middle\n\n${m[3]}';
+    },
+  );
+
   // Chinês / japonês: ponto ideográfico ou ocidental antes de carácter CJK
   t = t.replaceAllMapped(RegExp(r'([\.\!\?])([\u4e00-\u9fff\u3040-\u30ff])'), (m) => '${m[1]}\n\n${m[2]}');
 
@@ -49,9 +85,16 @@ bool legalBlockLooksLikeMeta(String block) {
       lower.startsWith('sprache') ||
       lower.startsWith('lingua') ||
       lower.startsWith('lingua / language') ||
+      lower.startsWith('pt-br') ||
+      lower.startsWith('en-us') ||
+      lower.startsWith('es-es') ||
+      lower.startsWith('fr-fr') ||
+      lower.startsWith('de-de') ||
+      lower.startsWith('it-it') ||
+      lower.contains('última atualização') ||
+      lower.contains('ultima atualizacao') ||
       lower.startsWith('última') ||
       lower.startsWith('ultima') ||
-      lower.startsWith('última atualização') ||
       lower.startsWith('last update') ||
       lower.startsWith('last updated') ||
       lower.startsWith('letzte') ||
@@ -65,4 +108,19 @@ bool legalBlockLooksLikeMeta(String block) {
 bool legalLineLooksLikeBullet(String line) {
   final t = line.trimLeft();
   return t.startsWith('- ') || t.startsWith('• ') || t.startsWith('· ');
+}
+
+bool legalLineLooksLikeNumberedSection(String line) {
+  return RegExp(r'^\d+\.\s+\S').hasMatch(line.trim());
+}
+
+bool legalLineLooksLikeSubsectionTitle(String line) {
+  final t = line.trim();
+  if (t.length < 3 || t.length > 72) return false;
+  if (legalLineLooksLikeBullet(t)) return false;
+  if (legalLineLooksLikeNumberedSection(t)) return false;
+  if (legalBlockLooksLikeMeta(t)) return false;
+  if (t.endsWith(':') || t.endsWith('.') || t.endsWith(';')) return false;
+  if (RegExp(r'^[a-zà-ÿ]').hasMatch(t)) return false;
+  return true;
 }
