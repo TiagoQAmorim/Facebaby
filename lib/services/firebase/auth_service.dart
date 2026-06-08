@@ -12,6 +12,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../utils/login_platform.dart';
 import '../premium/premium_service.dart';
 import 'auth_registration_exception.dart';
+import 'auth_session_restore.dart';
 import 'email_verification_policy.dart';
 import 'google_sign_in_helpers.dart';
 
@@ -83,6 +84,77 @@ class AuthService {
   Stream<User?> authStateChanges() => _auth.authStateChanges();
 
   User? get currentUser => _auth.currentUser;
+
+  bool _isGoogleUser(User user) {
+    return user.providerData.any(
+      (info) => info.providerId == GoogleAuthProvider.PROVIDER_ID,
+    );
+  }
+
+  Future<void> _recordSignedIn(User? user) async {
+    if (user == null) return;
+    await AuthSessionRestore.recordSignedIn(user);
+  }
+
+  /// Reconecta Google Sign-In silencioso quando Firebase ainda não restaurou a sessão.
+  Future<void> tryRestoreGoogleSession() async {
+    try {
+      final googleUser = await _googleSignIn.signInSilently();
+      if (googleUser == null) return;
+
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final user = _auth.currentUser;
+      if (user == null) {
+        final cred = await _auth.signInWithCredential(credential);
+        await _recordSignedIn(cred.user);
+        return;
+      }
+
+      if (!_isGoogleUser(user)) return;
+      await user.getIdToken(true);
+      await user.reload();
+    } catch (e, st) {
+      developer.log(
+        'tryRestoreGoogleSession (non-fatal): $e',
+        name: 'AuthService',
+        error: e,
+        stackTrace: st,
+      );
+      final user = _auth.currentUser;
+      if (user == null) return;
+      try {
+        await user.getIdToken(true);
+      } catch (_) {}
+    }
+  }
+
+  /// Espera a sessão Firebase no disco (Samsung/Android após reiniciar o telemóvel).
+  Future<User?> waitForPersistedUser({
+    required Duration pollInterval,
+    required int maxAttempts,
+    void Function(int attempt)? onAttempt,
+  }) async {
+    User? user;
+    for (var i = 0; i < maxAttempts; i++) {
+      onAttempt?.call(i);
+      user = _auth.currentUser;
+      if (user != null) return user;
+      if (i > 0) {
+        await Future<void>.delayed(pollInterval);
+      }
+      if (i > 0 && i % 5 == 0) {
+        await tryRestoreGoogleSession();
+        user = _auth.currentUser;
+        if (user != null) return user;
+      }
+    }
+    return _auth.currentUser;
+  }
 
   static String normalizeEmail(String email) => email.trim().toLowerCase();
 
@@ -156,14 +228,20 @@ class AuthService {
         stackTrace: st,
       );
     }
+    await _recordSignedIn(cred.user);
     return cred;
   }
 
   Future<UserCredential> signInWithEmail({
     required String email,
     required String password,
-  }) {
-    return _auth.signInWithEmailAndPassword(email: email, password: password);
+  }) async {
+    final cred = await _auth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+    await _recordSignedIn(cred.user);
+    return cred;
   }
 
   Future<UserCredential> signInWithGoogle() async {
@@ -197,7 +275,9 @@ class AuthService {
       idToken: googleAuth.idToken,
     );
     try {
-      return await _auth.signInWithCredential(credential);
+      final cred = await _auth.signInWithCredential(credential);
+      await _recordSignedIn(cred.user);
+      return cred;
     } on FirebaseAuthException catch (e, st) {
       developer.log(
         'FirebaseAuth signInWithCredential code=${e.code} message=${e.message}',
@@ -238,7 +318,9 @@ class AuthService {
       );
 
       try {
-        return await _auth.signInWithCredential(oauthCredential);
+        final cred = await _auth.signInWithCredential(oauthCredential);
+        await _recordSignedIn(cred.user);
+        return cred;
       } on FirebaseAuthException catch (e, st) {
         developer.log(
           'FirebaseAuth Apple signIn code=${e.code} message=${e.message}',
@@ -277,6 +359,7 @@ class AuthService {
     try {
       await _googleSignIn.signOut();
     } catch (_) {}
+    await AuthSessionRestore.clear();
     await _auth.signOut();
   }
 

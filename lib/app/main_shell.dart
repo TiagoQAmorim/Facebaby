@@ -1,5 +1,6 @@
 import 'dart:async' show Timer, unawaited;
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -38,6 +39,12 @@ import '../widgets/weekly_photo_winner_congrats_host.dart';
 import '../widgets/ai/ai_nanny_bubble_host.dart';
 import '../services/premium/feature_access.dart';
 import '../services/premium/premium_service.dart';
+import '../services/app_tour/app_tour_controller.dart';
+import '../services/app_tour/app_tour_keys.dart';
+import '../services/app_tour/app_tour_service.dart';
+import '../services/app_tour/quick_register_tour_service.dart';
+import '../widgets/app_tour/app_tour_overlay.dart';
+import '../pages/family_tree_page.dart';
 import '../pages/premium/premium_paywall_screen.dart';
 import 'shell_nested_nav.dart';
 
@@ -68,6 +75,15 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   DateTime? _lastShellResumeAt;
   Timer? _portalBgTimer;
   bool _didPrecachePortalBackgrounds = false;
+
+  bool _appTourVisible = false;
+  int _appTourStep = 0;
+  final List<AppTourStep> _appTourSteps = defaultAppTourSteps();
+  bool _quickRegisterTourVisible = false;
+  int _quickRegisterTourStep = 0;
+  final List<QuickRegisterTourStep> _quickRegisterTourSteps =
+      defaultQuickRegisterTourSteps();
+  late final VoidCallback _appTourReplayListener;
 
   void _schedulePortalBackgroundRefresh() {
     _portalBgTimer?.cancel();
@@ -117,6 +133,164 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     _lastBabyIdForNavCleanup = currentBaby.currentBabyId;
     _onBabyChangedPopNavigators = _popAllTabsToRootOnBabySwitch;
     currentBaby.addListener(_onBabyChangedPopNavigators);
+    _appTourReplayListener = _onAppTourReplayRequested;
+    AppTourController.instance.addListener(_appTourReplayListener);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_maybeStartAppTour());
+    });
+  }
+
+  void _onAppTourReplayRequested() {
+    if (!AppTourController.instance.consumeReplayRequest()) return;
+    for (var i = 0; i < 5; i++) {
+      _popTabToRoot(i);
+    }
+    _goToTab(0);
+    if (!mounted) return;
+    setState(() {
+      _quickRegisterTourVisible = false;
+      _appTourStep = 0;
+      _appTourVisible = true;
+    });
+  }
+
+  Future<void> _maybeStartAppTour() async {
+    if (!mounted || _appTourVisible) return;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final show = await AppTourService.instance.shouldShowForUser(uid);
+    if (!mounted || !show) return;
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    if (!mounted) return;
+    setState(() {
+      _appTourStep = 0;
+      _appTourVisible = true;
+    });
+  }
+
+  Future<void> _prepareAppTourStep(AppTourStep step) async {
+    switch (step.kind) {
+      case AppTourStepKind.babyBannerSleep:
+      case AppTourStepKind.babyBannerFeeding:
+      case AppTourStepKind.babyBannerDiaper:
+        _closeFamilyPageIfOpenForTour();
+        _goToTab(0);
+        _popTabToRoot(0);
+        await Future<void>.delayed(const Duration(milliseconds: 160));
+        final key = switch (step.kind) {
+          AppTourStepKind.babyBannerSleep => AppTourKeys.babyBannerSleep,
+          AppTourStepKind.babyBannerFeeding => AppTourKeys.babyBannerFeeding,
+          AppTourStepKind.babyBannerDiaper => AppTourKeys.babyBannerDiaper,
+          _ => AppTourKeys.babyBannerSleep,
+        };
+        await ensureVisibleForTour(key, alignment: 0.06);
+      case AppTourStepKind.recordsTab:
+      case AppTourStepKind.aiNannyTab:
+      case AppTourStepKind.memoriesTab:
+        _closeFamilyPageIfOpenForTour();
+        _goToTab(0);
+        _popTabToRoot(0);
+      case AppTourStepKind.familyPage:
+        _goToTab(0);
+        _popTabToRoot(0);
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+        await _openFamilyPageForTour();
+        await waitForTourTarget(AppTourKeys.familyTourHeader);
+      case AppTourStepKind.finish:
+        _closeFamilyPageIfOpenForTour();
+        _goToTab(0);
+        _popTabToRoot(0);
+        await Future<void>.delayed(const Duration(milliseconds: 160));
+        _scrollHomeToTop();
+        break;
+    }
+  }
+
+  Future<void> _openFamilyPageForTour() async {
+    final nav = ShellNestedNav.tabNavigatorKeys[0].currentState;
+    if (nav == null) return;
+    if (AppTourKeys.familyTree.currentContext != null ||
+        AppTourKeys.familyTourHeader.currentContext != null) {
+      nav.pop();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    if (!mounted) return;
+    nav.push(
+      portalPageRoute<void>(
+        builder: (_) => const FamilyTreePage(tourMode: true),
+      ),
+    );
+  }
+
+  void _closeFamilyPageIfOpenForTour() {
+    if (AppTourKeys.familyTree.currentContext == null &&
+        AppTourKeys.familyTourHeader.currentContext == null) {
+      return;
+    }
+    ShellNestedNav.tabNavigatorKeys[0].currentState?.maybePop();
+  }
+
+  Future<void> _returnHomeAfterTour() async {
+    _closeFamilyPageIfOpenForTour();
+    for (var i = 0; i < 5; i++) {
+      _popTabToRoot(i);
+    }
+    _goToTab(0);
+    if (!mounted) return;
+    setState(() => selectedIndex = 0);
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    if (!mounted) return;
+    _scrollHomeToTop();
+  }
+
+  Future<void> _completeAppTour() async {
+    await _returnHomeAfterTour();
+    await AppTourService.instance.markCompleted();
+    if (!mounted) return;
+    setState(() => _appTourVisible = false);
+  }
+
+  Future<void> _finishAppTourWithInvite() async {
+    await _completeAppTour();
+  }
+
+  Future<void> _prepareQuickRegisterTourStep(QuickRegisterTourStep step) async {
+    _popTabToRoot(_recordsTabIndex);
+    setState(() => selectedIndex = _recordsTabIndex);
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    switch (step.kind) {
+      case QuickRegisterTourStepKind.overview:
+        await ensureVisibleForTour(AppTourKeys.quickRegisterHeader);
+      case QuickRegisterTourStepKind.categories:
+        await ensureVisibleForTour(AppTourKeys.quickRegisterCategories);
+      case QuickRegisterTourStepKind.reports:
+        await ensureVisibleForTour(AppTourKeys.quickRegisterReports);
+    }
+  }
+
+  Future<void> _maybeStartQuickRegisterTour() async {
+    if (!mounted || _appTourVisible || _quickRegisterTourVisible) return;
+    final show = await QuickRegisterTourService.instance.shouldShow();
+    if (!mounted || !show) return;
+    setState(() {
+      _quickRegisterTourStep = 0;
+      _quickRegisterTourVisible = true;
+    });
+  }
+
+  Future<void> _completeQuickRegisterTour() async {
+    await QuickRegisterTourService.instance.markCompleted();
+    if (!mounted) return;
+    setState(() => _quickRegisterTourVisible = false);
+  }
+
+  void _nextQuickRegisterTourStep() {
+    if (_quickRegisterTourStep >= _quickRegisterTourSteps.length - 1) return;
+    setState(() => _quickRegisterTourStep++);
+  }
+
+  void _nextAppTourStep() {
+    if (_appTourStep >= _appTourSteps.length - 1) return;
+    setState(() => _appTourStep++);
   }
 
   @override
@@ -213,6 +387,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     ShellNestedNav.selectTab = null;
     HomePrefs.aiMicEnabled.removeListener(_aiMicListener);
     currentBaby.removeListener(_onBabyChangedPopNavigators);
+    AppTourController.instance.removeListener(_appTourReplayListener);
     _homeScrollController.dispose();
     _homeRouteDepth.dispose();
     aiController.dispose();
@@ -246,6 +421,11 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     setState(() => selectedIndex = index);
     if (index == 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollHomeToTop());
+    }
+    if (index == _recordsTabIndex) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_maybeStartQuickRegisterTour());
+      });
     }
   }
 
@@ -507,6 +687,24 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                 ),
                 if (FeatureAccess.canUseAnyAi)
                   const Positioned.fill(child: AiNannyBubbleHost()),
+                if (_appTourVisible)
+                  AppTourOverlay(
+                    stepIndex: _appTourStep,
+                    steps: _appTourSteps,
+                    onStepPrepare: _prepareAppTourStep,
+                    onNext: _nextAppTourStep,
+                    onSkip: () => unawaited(_completeAppTour()),
+                    onFinish: () => unawaited(_finishAppTourWithInvite()),
+                  ),
+                if (_quickRegisterTourVisible)
+                  QuickRegisterTourOverlay(
+                    stepIndex: _quickRegisterTourStep,
+                    steps: _quickRegisterTourSteps,
+                    onStepPrepare: _prepareQuickRegisterTourStep,
+                    onNext: _nextQuickRegisterTourStep,
+                    onSkip: () => unawaited(_completeQuickRegisterTour()),
+                    onFinish: () => unawaited(_completeQuickRegisterTour()),
+                  ),
               ],
             ),
           );

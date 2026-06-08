@@ -832,6 +832,41 @@ class S {
   String get settingsPrivacyPolicy => _t('settingsPrivacyPolicy');
   String get settingsSpecialThanks => _t('settingsSpecialThanks');
   String get settingsTellFriend => _t('settingsTellFriend');
+  String get settingsHelpSection => _t('settingsHelpSection');
+  String get settingsAppTourAgain => _t('settingsAppTourAgain');
+  String get appTourSkip => _t('appTourSkip');
+  String get appTourNext => _t('appTourNext');
+  String get appTourFinish => _t('appTourFinish');
+  String appTourProgress(int current, int total) =>
+      _t('appTourProgress')
+          .replaceAll('{current}', '$current')
+          .replaceAll('{total}', '$total');
+  String get appTourStep1Title => _t('appTourStep1Title');
+  String get appTourStep1Body => _t('appTourStep1Body');
+  String get appTourStep2Title => _t('appTourStep2Title');
+  String get appTourStep2Body => _t('appTourStep2Body');
+  String get appTourStep3Title => _t('appTourStep3Title');
+  String get appTourStep3Body => _t('appTourStep3Body');
+  String get appTourStep4Title => _t('appTourStep4Title');
+  String get appTourStep4Body => _t('appTourStep4Body');
+  String get appTourStep5Title => _t('appTourStep5Title');
+  String get appTourStep5Body => _t('appTourStep5Body');
+  String get appTourStep6Title => _t('appTourStep6Title');
+  String get appTourStep6Body => _t('appTourStep6Body');
+  String get appTourBabyBannerSleepTitle => _t('appTourBabyBannerSleepTitle');
+  String get appTourBabyBannerSleepBody => _t('appTourBabyBannerSleepBody');
+  String get appTourBabyBannerFeedingTitle =>
+      _t('appTourBabyBannerFeedingTitle');
+  String get appTourBabyBannerFeedingBody =>
+      _t('appTourBabyBannerFeedingBody');
+  String get appTourBabyBannerDiaperTitle => _t('appTourBabyBannerDiaperTitle');
+  String get appTourBabyBannerDiaperBody => _t('appTourBabyBannerDiaperBody');
+  String get quickRegTourStep1Title => _t('quickRegTourStep1Title');
+  String get quickRegTourStep1Body => _t('quickRegTourStep1Body');
+  String get quickRegTourStep2Title => _t('quickRegTourStep2Title');
+  String get quickRegTourStep2Body => _t('quickRegTourStep2Body');
+  String get quickRegTourStep3Title => _t('quickRegTourStep3Title');
+  String get quickRegTourStep3Body => _t('quickRegTourStep3Body');
   String get settingsInviteShareText => _t('settingsInviteShareText');
   String get settingsPremiumBenefitsTitle => _t('settingsPremiumBenefitsTitle');
   String get settingsPremiumBannerHint => _t('settingsPremiumBannerHint');
@@ -3583,6 +3618,48 @@ const Map<AppLang, Map<String, String>> _strings = {
     'badge_first_book': 'Primeiro livro',
     'badge_special_free': 'Momento especial livre',
     'settingsTitle': 'Mais',
+    'settingsHelpSection': 'Ajuda',
+    'settingsAppTourAgain': 'Ver tour do app novamente',
+    'appTourSkip': 'Pular',
+    'appTourNext': 'Próximo',
+    'appTourFinish': 'Começar',
+    'appTourProgress': 'Passo {current} de {total}',
+    'appTourStep1Title': 'Banner do bebé',
+    'appTourStep1Body':
+        'Aqui acompanha mamadas, fraldas, sono e alertas importantes do dia — tudo num relance, com acesso rápido às rotinas.',
+    'appTourBabyBannerSleepTitle': 'Previsão de sono',
+    'appTourBabyBannerSleepBody':
+        'Veja quando o bebé deve dormir ou acordar, com estimativa e janela ideal baseada na rotina.',
+    'appTourBabyBannerFeedingTitle': 'Última mamada',
+    'appTourBabyBannerFeedingBody':
+        'Acompanhe há quanto tempo foi a última mamada e quando a próxima costuma ser recomendada.',
+    'appTourBabyBannerDiaperTitle': 'Última fralda',
+    'appTourBabyBannerDiaperBody':
+        'Veja há quanto tempo a fralda foi trocada e o tempo recomendado até à próxima troca.',
+    'appTourStep2Title': 'Faça o primeiro registro',
+    'appTourStep2Body':
+        'Abra Registros para anotar mamadas, sono, fraldas, crescimento, saúde e muito mais. É o melhor jeito de começar a usar o app.',
+    'appTourStep3Title': 'Conheça a IA Babá',
+    'appTourStep3Body':
+        'Fale naturalmente com a IA Babá para registar eventos, tirar dúvidas, receber orientação, acompanhar o desenvolvimento e obter insights personalizados com base no histórico do bebé.\n\nExemplos:\n• «O bebé mamou 15 minutos agora.»\n• «O bebé dormiu das 14h às 15h.»\n• «O bebé pesa 8,2 kg agora.»\n• «Este padrão de sono é normal aos 4 meses?»',
+    'appTourStep4Title': 'Guarde cada momento especial',
+    'appTourStep4Body':
+        'Guarde fotos, marcos, primeiros sorrisos, primeiros passos e memórias inesquecíveis que ficarão disponíveis para sempre.',
+    'appTourStep5Title': 'A página Família',
+    'appTourStep5Body':
+        'Veja a árvore da família, previsões, horóscopo e marcos. Use o botão de configurações para ajustar preferências, perfis e mensagens da família.',
+    'appTourStep6Title': 'Está pronto!',
+    'appTourStep6Body':
+        'Faça o seu primeiro registro e deixe o FaceBaby ajudar a preservar cada momento especial da jornada do bebé.',
+    'quickRegTourStep1Title': 'Registos rápidos',
+    'quickRegTourStep1Body':
+        'Esta é a sua central de registos: atalhos para tudo o que importa no dia a dia do bebé.',
+    'quickRegTourStep2Title': 'Escolha o que registrar',
+    'quickRegTourStep2Body':
+        'Toque numa categoria — crescimento, alimentação, saúde, fraldas ou sono — para abrir o formulário e guardar o evento.',
+    'quickRegTourStep3Title': 'Relatórios e resumos',
+    'quickRegTourStep3Body':
+        'No final da lista encontra os relatórios com gráficos e resumos gerados a partir dos seus registos.',
     'dailyJournalTitle': 'Resumo do dia',
     'dailyJournalPickDay': 'Escolher dia',
     'dailyJournalOnDate': 'Resumo em {d}',
@@ -6384,6 +6461,48 @@ const Map<AppLang, Map<String, String>> _strings = {
     'badge_first_book': 'First book',
     'badge_special_free': 'Special moment',
     'settingsTitle': 'More',
+    'settingsHelpSection': 'Help',
+    'settingsAppTourAgain': 'View app tour again',
+    'appTourSkip': 'Skip',
+    'appTourNext': 'Next',
+    'appTourFinish': 'Get started',
+    'appTourProgress': 'Step {current} of {total}',
+    'appTourStep1Title': 'Baby banner',
+    'appTourStep1Body':
+        'Track feedings, diapers, sleep, and important daily alerts at a glance — with quick access to routines.',
+    'appTourBabyBannerSleepTitle': 'Sleep forecast',
+    'appTourBabyBannerSleepBody':
+        'See when your baby should sleep or wake up, with an estimate and ideal window based on routine.',
+    'appTourBabyBannerFeedingTitle': 'Last feeding',
+    'appTourBabyBannerFeedingBody':
+        'Track how long since the last feeding and when the next one is usually recommended.',
+    'appTourBabyBannerDiaperTitle': 'Last diaper',
+    'appTourBabyBannerDiaperBody':
+        'See how long since the last diaper change and the recommended time until the next one.',
+    'appTourStep2Title': 'Make your first log',
+    'appTourStep2Body':
+        'Open Records to log feedings, sleep, diapers, growth, health, and more. It\'s the best way to get started.',
+    'appTourStep3Title': 'Meet your AI Nanny',
+    'appTourStep3Body':
+        'Talk naturally with the AI Nanny to log events, ask questions, get guidance, monitor development, and receive personalized insights based on your baby\'s history.\n\nExamples:\n• "The baby just breastfed for 15 minutes."\n• "The baby slept from 2 PM to 3 PM."\n• "The baby weighs 8.2 kg now."\n• "Is this sleep pattern normal for a 4 month old baby?"',
+    'appTourStep4Title': 'Save every special moment',
+    'appTourStep4Body':
+        'Store photos, milestones, first smiles, first steps, and unforgettable memories that will remain available forever.',
+    'appTourStep5Title': 'The Family page',
+    'appTourStep5Body':
+        'See the family tree, predictions, horoscope, and milestones. Use the settings button to adjust preferences, profiles, and family messages.',
+    'appTourStep6Title': 'You\'re ready!',
+    'appTourStep6Body':
+        'Make your first log and let FaceBaby help you preserve every special moment of your baby\'s journey.',
+    'quickRegTourStep1Title': 'Quick records',
+    'quickRegTourStep1Body':
+        'This is your logging hub — shortcuts to everything that matters in your baby\'s daily routine.',
+    'quickRegTourStep2Title': 'Choose what to log',
+    'quickRegTourStep2Body':
+        'Tap a category — growth, feeding, health, diapers, or sleep — to open the form and save the event.',
+    'quickRegTourStep3Title': 'Reports and summaries',
+    'quickRegTourStep3Body':
+        'At the bottom of the list you\'ll find reports with charts and summaries built from your logs.',
     'dailyJournalTitle': 'Daily summary',
     'dailyJournalPickDay': 'Pick day',
     'dailyJournalOnDate': 'Summary on {d}',
@@ -8927,6 +9046,48 @@ const Map<AppLang, Map<String, String>> _strings = {
     'badge_first_book': 'Primer libro',
     'badge_special_free': 'Momento especial libre',
     'settingsTitle': 'Más',
+    'settingsHelpSection': 'Ayuda',
+    'settingsAppTourAgain': 'Ver tour de la app de nuevo',
+    'appTourSkip': 'Omitir',
+    'appTourNext': 'Siguiente',
+    'appTourFinish': 'Empezar',
+    'appTourProgress': 'Paso {current} de {total}',
+    'appTourStep1Title': 'Banner del bebé',
+    'appTourStep1Body':
+        'Aquí sigues tomas, pañales, sueño y alertas importantes del día — todo de un vistazo, con acceso rápido a las rutinas.',
+    'appTourBabyBannerSleepTitle': 'Previsión de sueño',
+    'appTourBabyBannerSleepBody':
+        'Consulta cuándo debe dormir o despertar el bebé, con estimación y ventana ideal según la rutina.',
+    'appTourBabyBannerFeedingTitle': 'Última toma',
+    'appTourBabyBannerFeedingBody':
+        'Sigue cuánto tiempo pasó desde la última toma y cuándo suele recomendarse la siguiente.',
+    'appTourBabyBannerDiaperTitle': 'Último pañal',
+    'appTourBabyBannerDiaperBody':
+        'Consulta cuánto tiempo pasó desde el último cambio y el tiempo recomendado hasta el próximo.',
+    'appTourStep2Title': 'Haz tu primer registro',
+    'appTourStep2Body':
+        'Abre Registros para anotar tomas, sueño, pañales, crecimiento, salud y mucho más. Es la mejor forma de empezar.',
+    'appTourStep3Title': 'Conoce a la IA Niñera',
+    'appTourStep3Body':
+        'Habla con naturalidad con la IA Niñera para registrar eventos, resolver dudas, recibir orientación y obtener insights personalizados según el historial del bebé.',
+    'appTourStep4Title': 'Guarda cada momento especial',
+    'appTourStep4Body':
+        'Guarda fotos, hitos, primeras sonrisas, primeros pasos y recuerdos inolvidables que quedarán disponibles para siempre.',
+    'appTourStep5Title': 'La página Familia',
+    'appTourStep5Body':
+        'Consulta el árbol familiar, predicciones, horóscopo e hitos. Usa el botón de ajustes para preferencias, perfiles y mensajes familiares.',
+    'appTourStep6Title': '¡Listo!',
+    'appTourStep6Body':
+        'Haz tu primer registro y deja que FaceBaby te ayude a preservar cada momento especial del bebé.',
+    'quickRegTourStep1Title': 'Registros rápidos',
+    'quickRegTourStep1Body':
+        'Este es tu centro de registros: accesos directos a todo lo importante en el día a día del bebé.',
+    'quickRegTourStep2Title': 'Elige qué registrar',
+    'quickRegTourStep2Body':
+        'Toca una categoría — crecimiento, alimentación, salud, pañales o sueño — para abrir el formulario y guardar el evento.',
+    'quickRegTourStep3Title': 'Informes y resúmenes',
+    'quickRegTourStep3Body':
+        'Al final de la lista encontrarás informes con gráficos y resúmenes generados a partir de tus registros.',
     'registerMotherBaby': 'Registro (mamá y bebé)',
     'vaccinesCard': 'Vacunas (cartilla)',
     'language': 'Idioma',
@@ -10348,6 +10509,48 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoryOtherBadgeNameRequired': 'Indiquez le nom du badge.',
     'memoryOtherBadgeNameTooLong': 'Utilisez 25 caractères maximum.',
     'settingsTitle': 'Plus',
+    'settingsHelpSection': 'Aide',
+    'settingsAppTourAgain': 'Revoir le tour de l\'app',
+    'appTourSkip': 'Passer',
+    'appTourNext': 'Suivant',
+    'appTourFinish': 'Commencer',
+    'appTourProgress': 'Étape {current} sur {total}',
+    'appTourStep1Title': 'Bannière du bébé',
+    'appTourStep1Body':
+        'Suivez tétées, couches, sommeil et alertes importantes du jour — tout en un coup d\'œil, avec un accès rapide aux routines.',
+    'appTourBabyBannerSleepTitle': 'Prévision de sommeil',
+    'appTourBabyBannerSleepBody':
+        'Voyez quand bébé devrait dormir ou se réveiller, avec estimation et fenêtre idéale selon la routine.',
+    'appTourBabyBannerFeedingTitle': 'Dernière tétée',
+    'appTourBabyBannerFeedingBody':
+        'Suivez le temps écoulé depuis la dernière tétée et quand la suivante est généralement recommandée.',
+    'appTourBabyBannerDiaperTitle': 'Dernière couche',
+    'appTourBabyBannerDiaperBody':
+        'Consultez le temps écoulé depuis le dernier change et le délai recommandé avant le prochain.',
+    'appTourStep2Title': 'Faites votre premier enregistrement',
+    'appTourStep2Body':
+        'Ouvrez Enregistrements pour noter tétées, sommeil, couches, croissance, santé et plus encore. C\'est la meilleure façon de commencer.',
+    'appTourStep3Title': 'Découvrez la Nounou IA',
+    'appTourStep3Body':
+        'Parlez naturellement à la Nounou IA pour enregistrer des événements, poser des questions, obtenir des conseils et des insights personnalisés selon l\'historique du bébé.',
+    'appTourStep4Title': 'Gardez chaque moment spécial',
+    'appTourStep4Body':
+        'Conservez photos, étapes, premiers sourires, premiers pas et souvenirs inoubliables disponibles pour toujours.',
+    'appTourStep5Title': 'La page Famille',
+    'appTourStep5Body':
+        'Consultez l\'arbre familial, prévisions, horoscope et étapes. Utilisez le bouton réglages pour les préférences, profils et messages familiaux.',
+    'appTourStep6Title': 'C\'est prêt !',
+    'appTourStep6Body':
+        'Faites votre premier enregistrement et laissez FaceBaby vous aider à préserver chaque moment spécial du bébé.',
+    'quickRegTourStep1Title': 'Enregistrements rapides',
+    'quickRegTourStep1Body':
+        'Voici votre hub d\'enregistrement : raccourcis vers tout ce qui compte au quotidien du bébé.',
+    'quickRegTourStep2Title': 'Choisissez quoi enregistrer',
+    'quickRegTourStep2Body':
+        'Touchez une catégorie — croissance, alimentation, santé, couches ou sommeil — pour ouvrir le formulaire et sauvegarder l\'événement.',
+    'quickRegTourStep3Title': 'Rapports et résumés',
+    'quickRegTourStep3Body':
+        'En bas de la liste, trouvez des rapports avec graphiques et résumés générés à partir de vos enregistrements.',
     'registerMotherBaby': 'Inscription (maman & bébé)',
     'vaccinesCard': 'Vaccins (carnet)',
     'language': 'Langue',
@@ -11750,6 +11953,48 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoryOtherBadgeNameRequired': 'Gib den Badge-Namen ein.',
     'memoryOtherBadgeNameTooLong': 'Verwende höchstens 25 Zeichen.',
     'settingsTitle': 'Mehr',
+    'settingsHelpSection': 'Hilfe',
+    'settingsAppTourAgain': 'App-Tour erneut ansehen',
+    'appTourSkip': 'Überspringen',
+    'appTourNext': 'Weiter',
+    'appTourFinish': 'Loslegen',
+    'appTourProgress': 'Schritt {current} von {total}',
+    'appTourStep1Title': 'Baby-Banner',
+    'appTourStep1Body':
+        'Verfolge Mahlzeiten, Windeln, Schlaf und wichtige Tageshinweise auf einen Blick — mit schnellem Zugriff auf Routinen.',
+    'appTourBabyBannerSleepTitle': 'Schlafprognose',
+    'appTourBabyBannerSleepBody':
+        'Sieh, wann dein Baby schlafen oder aufwachen sollte — mit Schätzung und idealem Fenster laut Routine.',
+    'appTourBabyBannerFeedingTitle': 'Letzte Mahlzeit',
+    'appTourBabyBannerFeedingBody':
+        'Verfolge, wie lange die letzte Mahlzeit her ist und wann die nächste üblicherweise empfohlen wird.',
+    'appTourBabyBannerDiaperTitle': 'Letzte Windel',
+    'appTourBabyBannerDiaperBody':
+        'Sieh, wie lange der letzte Wechsel her ist und die empfohlene Zeit bis zum nächsten.',
+    'appTourStep2Title': 'Ersten Eintrag machen',
+    'appTourStep2Body':
+        'Öffne Einträge, um Mahlzeiten, Schlaf, Windeln, Wachstum, Gesundheit und mehr zu notieren. So startest du am besten.',
+    'appTourStep3Title': 'Lerne die KI-Babysitterin kennen',
+    'appTourStep3Body':
+        'Sprich natürlich mit der KI-Babysitterin, um Ereignisse zu erfassen, Fragen zu stellen, Tipps zu erhalten und personalisierte Insights zu bekommen.',
+    'appTourStep4Title': 'Bewahre jeden besonderen Moment',
+    'appTourStep4Body':
+        'Speichere Fotos, Meilensteine, erste Lächeln, erste Schritte und unvergessliche Erinnerungen für immer.',
+    'appTourStep5Title': 'Die Familienseite',
+    'appTourStep5Body':
+        'Sieh den Familienstammbaum, Prognosen, Horoskop und Meilensteine. Nutze die Einstellungen für Präferenzen, Profile und Familiennachrichten.',
+    'appTourStep6Title': 'Bereit!',
+    'appTourStep6Body':
+        'Mach deinen ersten Eintrag und lass FaceBaby dir helfen, jeden besonderen Moment der Baby-Reise zu bewahren.',
+    'quickRegTourStep1Title': 'Schnelle Einträge',
+    'quickRegTourStep1Body':
+        'Dies ist deine Eintragszentrale — Verknüpfungen zu allem Wichtigen im Alltag mit dem Baby.',
+    'quickRegTourStep2Title': 'Wähle, was du erfasst',
+    'quickRegTourStep2Body':
+        'Tippe eine Kategorie — Wachstum, Ernährung, Gesundheit, Windeln oder Schlaf — um das Formular zu öffnen und den Eintrag zu speichern.',
+    'quickRegTourStep3Title': 'Berichte und Zusammenfassungen',
+    'quickRegTourStep3Body':
+        'Am Ende der Liste findest du Berichte mit Diagrammen und Zusammenfassungen aus deinen Einträgen.',
     'registerMotherBaby': 'Registrierung (Mama & Baby)',
     'vaccinesCard': 'Impfungen (Heft)',
     'language': 'Sprache',
@@ -13034,6 +13279,48 @@ const Map<AppLang, Map<String, String>> _strings = {
     'memoryOtherBadgeNameRequired': 'Inserisci il nome del badge.',
     'memoryOtherBadgeNameTooLong': 'Usa al massimo 25 caratteri.',
     'settingsTitle': 'Altro',
+    'settingsHelpSection': 'Aiuto',
+    'settingsAppTourAgain': 'Rivedi il tour dell\'app',
+    'appTourSkip': 'Salta',
+    'appTourNext': 'Avanti',
+    'appTourFinish': 'Inizia',
+    'appTourProgress': 'Passo {current} di {total}',
+    'appTourStep1Title': 'Banner del bimbo',
+    'appTourStep1Body':
+        'Segui poppate, pannolini, sonno e avvisi importanti della giornata — tutto a colpo d\'occhio, con accesso rapido alle routine.',
+    'appTourBabyBannerSleepTitle': 'Previsione del sonno',
+    'appTourBabyBannerSleepBody':
+        'Scopri quando il bimbo dovrebbe dormire o svegliarsi, con stima e finestra ideale in base alla routine.',
+    'appTourBabyBannerFeedingTitle': 'Ultima poppata',
+    'appTourBabyBannerFeedingBody':
+        'Tieni traccia del tempo trascorso dall\'ultima poppata e quando di solito è consigliata la successiva.',
+    'appTourBabyBannerDiaperTitle': 'Ultimo pannolino',
+    'appTourBabyBannerDiaperBody':
+        'Consulta quanto tempo è passato dall\'ultimo cambio e il tempo consigliato fino al prossimo.',
+    'appTourStep2Title': 'Fai la prima registrazione',
+    'appTourStep2Body':
+        'Apri Registrazioni per annotare poppate, sonno, pannolini, crescita, salute e altro. È il modo migliore per iniziare.',
+    'appTourStep3Title': 'Scopri la Tata IA',
+    'appTourStep3Body':
+        'Parla naturalmente con la Tata IA per registrare eventi, fare domande, ricevere consigli e ottenere insight personalizzati in base alla storia del bimbo.',
+    'appTourStep4Title': 'Conserva ogni momento speciale',
+    'appTourStep4Body':
+        'Salva foto, traguardi, primi sorrisi, primi passi e ricordi indimenticabili disponibili per sempre.',
+    'appTourStep5Title': 'La pagina Famiglia',
+    'appTourStep5Body':
+        'Consulta l\'albero familiare, previsioni, oroscopo e traguardi. Usa il pulsante impostazioni per preferenze, profili e messaggi familiari.',
+    'appTourStep6Title': 'Sei pronto!',
+    'appTourStep6Body':
+        'Fai la tua prima registrazione e lascia che FaceBaby ti aiuti a conservare ogni momento speciale del bimbo.',
+    'quickRegTourStep1Title': 'Registrazioni rapide',
+    'quickRegTourStep1Body':
+        'Questo è il tuo hub di registrazione: scorciatoie a tutto ciò che conta nella routine quotidiana del bimbo.',
+    'quickRegTourStep2Title': 'Scegli cosa registrare',
+    'quickRegTourStep2Body':
+        'Tocca una categoria — crescita, alimentazione, salute, pannolini o sonno — per aprire il modulo e salvare l\'evento.',
+    'quickRegTourStep3Title': 'Report e riepiloghi',
+    'quickRegTourStep3Body':
+        'In fondo alla lista trovi report con grafici e riepiloghi generati dalle tue registrazioni.',
     'dailyJournalTitle': 'Riepilogo giornaliero',
     'dailyJournalPickDay': 'Scegli giorno',
     'dailyJournalOnDate': 'Riepilogo del {d}',

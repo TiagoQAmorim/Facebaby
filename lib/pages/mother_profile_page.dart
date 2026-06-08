@@ -398,7 +398,6 @@ class _MotherInfoTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = S.of(context);
     final name = (motherRow['name'] as String?)?.trim();
-    final phone = (motherRow['phone'] as String?)?.trim();
     final birthRaw = (motherRow['birth_date'] as String?)?.trim();
     final birth = birthRaw == null || birthRaw.isEmpty
         ? null
@@ -446,10 +445,6 @@ class _MotherInfoTab extends StatelessWidget {
                     style: const TextStyle(
                         fontWeight: FontWeight.w900, fontSize: 14)),
                 const SizedBox(height: 12),
-                _ProfileInfoLine(
-                  label: s.motherProfileFieldPhone,
-                  value: (phone == null || phone.isEmpty) ? '—' : phone,
-                ),
                 _ProfileInfoLine(
                   label: s.motherProfileFieldBirth,
                   value: birth == null ? '—' : _profileFmtDate(birth),

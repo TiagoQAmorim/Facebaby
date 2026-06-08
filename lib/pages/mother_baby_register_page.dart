@@ -11,11 +11,10 @@ import '../services/firebase/auth_service.dart';
 import '../services/firebase/firestore_user_repository.dart';
 import '../services/measurement_units_prefs.dart';
 import '../theme/app_theme.dart';
-import '../utils/input_formatters.dart';
+import '../utils/br_date_picker.dart';
 import '../utils/pick_image_b64.dart';
 import '../utils/portal_night_ui.dart';
 import '../utils/portal_time_of_day.dart';
-import '../utils/br_date_picker.dart';
 import '../utils/zodiac.dart';
 import '../widgets/card_box.dart';
 import '../widgets/loading_scope.dart';
@@ -95,7 +94,6 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
   final _babyFormKey = GlobalKey<FormState>();
 
   final _motherNameCtrl = TextEditingController();
-  final _motherPhoneCtrl = TextEditingController();
   final _fatherNameCtrl = TextEditingController();
   final _babyNameCtrl = TextEditingController();
 
@@ -138,6 +136,19 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
       widget.profileMotherSection == null ||
       widget.profileMotherSection == MotherProfileMotherFormSection.father;
 
+  bool get _profileFieldHintsOnly => _profileEditMode;
+
+  InputDecoration _regTextDecoration({
+    required String hint,
+    required IconData icon,
+  }) {
+    return InputDecoration(
+      hintText: _profileFieldHintsOnly ? hint : null,
+      labelText: _profileFieldHintsOnly ? null : hint,
+      prefixIcon: Icon(icon),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -165,7 +176,6 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
     final fh = row['father_height_cm'] as num?;
     setState(() {
       _motherNameCtrl.text = (row['name'] as String?) ?? '';
-      _motherPhoneCtrl.text = (row['phone'] as String?) ?? '';
       _motherHeightCmRuler =
           (h != null && h.toDouble() > 0) ? h.toDouble() : 165.0;
       _fatherNameCtrl.text = (row['father_name'] as String?)?.trim() ?? '';
@@ -216,7 +226,6 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
   @override
   void dispose() {
     _motherNameCtrl.dispose();
-    _motherPhoneCtrl.dispose();
     _fatherNameCtrl.dispose();
     _babyNameCtrl.dispose();
     super.dispose();
@@ -490,7 +499,7 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
           await AppDatabase.instance.updateMother(
             motherId: editMid,
             name: _motherNameCtrl.text,
-            phone: _motherPhoneCtrl.text,
+            phone: (row['phone'] as String?)?.trim(),
             birthDate: _motherBirthDate,
             heightCm: _motherHeightCmRuler,
             fatherName: fName == null || fName.isEmpty ? null : fName,
@@ -510,7 +519,7 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
             FirestoreUserRepository.instance.saveUserProfile(uid, {
               'name': _motherNameCtrl.text.trim(),
               'email': AuthService.instance.currentUser?.email,
-              'phone': _motherPhoneCtrl.text.trim().isEmpty ? null : _motherPhoneCtrl.text.trim(),
+              'phone': (row['phone'] as String?)?.trim(),
               'birth_date': _motherBirthDate?.toIso8601String(),
               'height_cm': _motherHeightCmRuler,
               'father_name': fName,
@@ -646,11 +655,13 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
     setState(() => _saving = true);
     try {
       if (editMid != null) {
+        final existingRow = await AppDatabase.instance.getMotherById(editMid);
+        if (!mounted || existingRow == null) return;
         await _runLoading(() async {
           await AppDatabase.instance.updateMother(
             motherId: editMid,
             name: _motherNameCtrl.text,
-            phone: _motherPhoneCtrl.text,
+            phone: (existingRow['phone'] as String?)?.trim(),
             birthDate: _motherBirthDate,
             heightCm: _motherHeightCmRuler,
             fatherName: _trimFatherName,
@@ -670,7 +681,7 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
             FirestoreUserRepository.instance.saveUserProfile(uidFull, {
               'name': _motherNameCtrl.text.trim(),
               'email': AuthService.instance.currentUser?.email,
-              'phone': _motherPhoneCtrl.text.trim().isEmpty ? null : _motherPhoneCtrl.text.trim(),
+              'phone': (existingRow['phone'] as String?)?.trim(),
               'birth_date': _motherBirthDate?.toIso8601String(),
               'height_cm': _motherHeightCmRuler,
               'father_name': _trimFatherName,
@@ -694,7 +705,7 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
       final motherId = await _runLoading(() async {
         return await AppDatabase.instance.insertMother(
           name: _motherNameCtrl.text,
-          phone: _motherPhoneCtrl.text,
+          phone: null,
           birthDate: _motherBirthDate,
           heightCm: _motherHeightCmRuler,
           fatherName: _trimFatherName,
@@ -712,7 +723,7 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
           FirestoreUserRepository.instance.saveUserProfile(uid, {
             'name': _motherNameCtrl.text.trim(),
             'email': AuthService.instance.currentUser?.email,
-            'phone': _motherPhoneCtrl.text.trim().isEmpty ? null : _motherPhoneCtrl.text.trim(),
+            'phone': null,
             'birth_date': _motherBirthDate?.toIso8601String(),
             'height_cm': _motherHeightCmRuler,
             'father_name': _trimFatherName,
@@ -724,7 +735,6 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
       }
       _motherFormKey.currentState?.reset();
       _motherNameCtrl.clear();
-      _motherPhoneCtrl.clear();
       _fatherNameCtrl.clear();
       _fatherPhotoB64 = null;
       _fatherPhotoUrl = null;
@@ -1071,19 +1081,21 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (_motherFormSectionVisible) ...[
+                                if (_motherFormSectionVisible && !_profileEditMode) ...[
                                   SectionTitle(
                                     title: s.regMotherSection,
                                     titleColor: sectionTitleColor,
                                     titleShadows: sectionTitleShadows,
                                   ),
                                   const SizedBox(height: 8),
+                                ],
+                                if (_motherFormSectionVisible) ...[
                                 TextFormField(
                                   controller: _motherNameCtrl,
                                   textInputAction: TextInputAction.next,
-                                  decoration: InputDecoration(
-                                    labelText: s.commonName,
-                                    prefixIcon: const Icon(Icons.person_outline),
+                                  decoration: _regTextDecoration(
+                                    hint: s.onb('MotherNameHint'),
+                                    icon: Icons.person_outline,
                                   ),
                                   validator: (v) {
                                     final t = (v ?? '').trim();
@@ -1093,28 +1105,10 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                                   },
                                 ),
                                 const SizedBox(height: 12),
-                                TextFormField(
-                                  controller: _motherPhoneCtrl,
-                                  keyboardType: TextInputType.phone,
-                                  textInputAction: TextInputAction.done,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.allow(RegExp(r'[0-9\(\)\-\s]')),
-                                    PhoneBrFormatter(),
-                                  ],
-                                  decoration: InputDecoration(
-                                    labelText: s.commonPhone,
-                                    prefixIcon: const Icon(Icons.call_outlined),
-                                  ),
-                                  validator: (v) {
-                                    final digits = (v ?? '').replaceAll(RegExp(r'\D'), '');
-                                    if (digits.isEmpty) return s.valPhoneEmpty;
-                                    if (digits.length != 11) return s.valPhoneInvalid;
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 12),
                                 _RegTapField(
                                   label: s.regBirthLabel,
+                                  hint: s.brDateHint,
+                                  hintsOnly: _profileFieldHintsOnly,
                                   value: motherBirthLabel,
                                   icon: Icons.cake_outlined,
                                   dimValue: motherBirthLabel == s.commonSelect,
@@ -1129,19 +1123,21 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                                 const SizedBox(height: 16),
                                 ],
                                 if (_fatherFormSectionVisible) ...[
+                                if (!_profileEditMode) ...[
                                 SectionTitle(
                                   title: s.regFatherSection,
                                   titleColor: sectionTitleColor,
                                   titleShadows: sectionTitleShadows,
                                 ),
                                 const SizedBox(height: 8),
+                                ],
                                 TextFormField(
                                   controller: _fatherNameCtrl,
                                   textInputAction: TextInputAction.next,
                                   textCapitalization: TextCapitalization.words,
-                                  decoration: InputDecoration(
-                                    labelText: s.regFatherName,
-                                    prefixIcon: const Icon(Icons.man_outlined),
+                                  decoration: _regTextDecoration(
+                                    hint: s.onb('FatherNameHint'),
+                                    icon: Icons.man_outlined,
                                   ),
                                   validator: (v) {
                                     final t = (v ?? '').trim();
@@ -1153,6 +1149,8 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                                 const SizedBox(height: 12),
                                 _RegTapField(
                                   label: s.regFatherBirthLabel,
+                                  hint: s.brDateHint,
+                                  hintsOnly: _profileFieldHintsOnly,
                                   value: fatherBirthLabel,
                                   icon: Icons.cake_outlined,
                                   dimValue: fatherBirthLabel == s.commonSelect,
@@ -1167,6 +1165,8 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                                 const SizedBox(height: 12),
                                 _RegPhotoTapField(
                                   label: s.fatherPhotoTitle,
+                                  hint: s.regFatherPhotoAdd,
+                                  hintsOnly: _profileFieldHintsOnly,
                                   caption: ((_fatherPhotoB64 == null) &&
                                           (_fatherPhotoUrl == null ||
                                               _fatherPhotoUrl!.isEmpty))
@@ -1196,6 +1196,8 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                                 const SizedBox(height: 12),
                                 _RegPhotoTapField(
                                   label: s.motherPhotoTitle,
+                                  hint: s.regMotherPhotoAdd,
+                                  hintsOnly: _profileFieldHintsOnly,
                                   caption: ((_motherPhotoB64 == null) &&
                                           (_motherPhotoUrl == null || _motherPhotoUrl!.isEmpty))
                                       ? s.regMotherPhotoAdd
@@ -1305,6 +1307,7 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                                   tooltip: s.commonBack,
                                 ),
                               if (!widget.babyOnly && !_profileEditBaby) const SizedBox(width: 6),
+                              if (!_profileEditBaby)
                               Expanded(
                                 child: SectionTitle(
                                   title: s.regBabySection,
@@ -1367,9 +1370,9 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                                 TextFormField(
                                   controller: _babyNameCtrl,
                                   textInputAction: TextInputAction.next,
-                                  decoration: InputDecoration(
-                                    labelText: s.commonName,
-                                    prefixIcon: const Icon(Icons.child_care),
+                                  decoration: _regTextDecoration(
+                                    hint: s.onb('BabyNameHint'),
+                                    icon: Icons.child_care,
                                   ),
                                   validator: (v) {
                                     final t = (v ?? '').trim();
@@ -1395,6 +1398,8 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                                 const SizedBox(height: 12),
                                 _RegPhotoTapField(
                                   label: s.babyPhotoTitle,
+                                  hint: s.regBabyPhotoAdd,
+                                  hintsOnly: _profileFieldHintsOnly,
                                   caption:
                                       ((_babyPhotoB64 == null) && (_babyPhotoUrl == null || _babyPhotoUrl!.isEmpty))
                                           ? s.regBabyPhotoAdd
@@ -1419,6 +1424,8 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                                 const SizedBox(height: 12),
                                 _RegTapField(
                                   label: s.regBirthLabel,
+                                  hint: s.brDateHint,
+                                  hintsOnly: _profileFieldHintsOnly,
                                   value: birthLabel,
                                   icon: Icons.cake_outlined,
                                   dimValue: birthLabel == s.commonSelect,
@@ -1502,7 +1509,6 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                         return Column(
                           children: rows.map((row) {
                             final motherName = (row['mother_name'] as String?) ?? '';
-                            final motherPhone = row['mother_phone'] as String?;
                             final babyName = (row['baby_name'] as String?) ?? '';
                             final babyBirth = row['baby_birth_date'] as String?;
                             final babyZodiac = row['baby_zodiac_sign'] as String?;
@@ -1520,7 +1526,6 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
                               if (babyName.trim().isNotEmpty) s.regListBabyLine(babyName.trim()),
                               if (birthText != null) s.regListBirthLine(birthText),
                               if (babyZodiac != null && babyZodiac.trim().isNotEmpty) s.regListSignLine(babyZodiac.trim()),
-                              if (motherPhone != null && motherPhone.trim().isNotEmpty) s.regListPhoneLine(motherPhone.trim()),
                             ].join(' • ');
 
                             return Padding(
@@ -1569,6 +1574,8 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
 /// Data (ou valor) tocável com o mesmo contorno dos [TextFormField].
 class _RegTapField extends StatelessWidget {
   final String label;
+  final String? hint;
+  final bool hintsOnly;
   final String value;
   final IconData icon;
   final VoidCallback? onTap;
@@ -1576,6 +1583,8 @@ class _RegTapField extends StatelessWidget {
 
   const _RegTapField({
     required this.label,
+    this.hint,
+    this.hintsOnly = false,
     required this.value,
     required this.icon,
     required this.onTap,
@@ -1587,11 +1596,15 @@ class _RegTapField extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final base = theme.inputDecorationTheme;
+    final placeholder = hint ?? label;
     final decoration = InputDecoration(
-      labelText: label,
+      hintText: hintsOnly ? placeholder : null,
+      labelText: hintsOnly ? null : label,
       prefixIcon: Icon(icon, color: scheme.onSurfaceVariant),
       suffixIcon: Icon(Icons.expand_more_rounded, color: scheme.onSurfaceVariant),
     ).applyDefaults(base);
+
+    final showValue = !(hintsOnly && dimValue);
 
     return Material(
       color: Colors.transparent,
@@ -1600,19 +1613,22 @@ class _RegTapField extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: InputDecorator(
           decoration: decoration,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 22),
-              child: Text(
-                value,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: dimValue ? scheme.onSurfaceVariant : scheme.onSurface,
-                ),
-              ),
-            ),
-          ),
+          isEmpty: !showValue,
+          child: showValue
+              ? Align(
+                  alignment: Alignment.centerLeft,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 22),
+                    child: Text(
+                      value,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: dimValue ? scheme.onSurfaceVariant : scheme.onSurface,
+                      ),
+                    ),
+                  ),
+                )
+              : const SizedBox(height: 22),
         ),
       ),
     );
@@ -1622,6 +1638,8 @@ class _RegTapField extends StatelessWidget {
 /// Foto opcional com o mesmo contorno dos outros campos.
 class _RegPhotoTapField extends StatelessWidget {
   final String label;
+  final String? hint;
+  final bool hintsOnly;
   final String caption;
   final String? photoB64;
   final String? photoUrl;
@@ -1631,6 +1649,8 @@ class _RegPhotoTapField extends StatelessWidget {
 
   const _RegPhotoTapField({
     required this.label,
+    this.hint,
+    this.hintsOnly = false,
     required this.caption,
     required this.photoB64,
     this.photoUrl,
@@ -1644,8 +1664,13 @@ class _RegPhotoTapField extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final base = theme.inputDecorationTheme;
+    final hasPhoto =
+        (photoB64 != null && photoB64!.trim().isNotEmpty) ||
+        (photoUrl != null && photoUrl!.trim().isNotEmpty);
+    final placeholder = hint ?? label;
     final decoration = InputDecoration(
-      labelText: label,
+      hintText: hintsOnly && !hasPhoto ? placeholder : null,
+      labelText: hintsOnly ? null : label,
       prefixIcon: Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 4, 8),
         child: PhotoAvatar(
@@ -1667,10 +1692,11 @@ class _RegPhotoTapField extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: InputDecorator(
           decoration: decoration,
+          isEmpty: hintsOnly && !hasPhoto,
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              caption,
+              hintsOnly && !hasPhoto ? '' : caption,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
