@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/app_tour/app_tour_keys.dart';
 import '../i18n/app_i18n.dart';
 import '../theme/app_theme.dart';
 import 'ai_nanny_nav_button.dart';
@@ -50,6 +51,7 @@ class ShellBottomNavigation extends StatelessWidget {
                 onTap: () => onSelected(0),
               ),
               _NavSlot(
+                key: AppTourKeys.navRecords,
                 selected: selectedIndex == 1,
                 icon: Icons.edit_note_outlined,
                 selectedIcon: Icons.edit_note,
@@ -59,6 +61,7 @@ class ShellBottomNavigation extends StatelessWidget {
               Expanded(
                 flex: 14,
                 child: GestureDetector(
+                  key: AppTourKeys.navAiNanny,
                   onTap: onAiTap ?? () => onSelected(2),
                   behavior: HitTestBehavior.opaque,
                   child: Transform.translate(
@@ -72,6 +75,7 @@ class ShellBottomNavigation extends StatelessWidget {
                 ),
               ),
               _NavSlot(
+                key: AppTourKeys.navMemories,
                 selected: selectedIndex == 3,
                 icon: Icons.favorite_border,
                 selectedIcon: Icons.favorite,
@@ -96,6 +100,7 @@ class ShellBottomNavigation extends StatelessWidget {
 
 class _NavSlot extends StatelessWidget {
   const _NavSlot({
+    super.key,
     required this.selected,
     required this.icon,
     required this.selectedIcon,

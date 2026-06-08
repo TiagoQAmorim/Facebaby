@@ -776,6 +776,14 @@ class _AiFloatingInsightsHostState extends State<AiFloatingInsightsHost> {
     }
   }
 
+  void _onCloseTap() {
+    if (_queue.length > 1) {
+      unawaited(_dismissAll());
+    } else {
+      unawaited(_dismissCurrent());
+    }
+  }
+
   void _syncDay() {
     final day = _dayStamp(DateTime.now());
     if (_prefsDay == day) return;
@@ -963,7 +971,7 @@ class _AiFloatingInsightsHostState extends State<AiFloatingInsightsHost> {
               unawaited(_persistPosition());
             }
           },
-          onCloseTap: () => unawaited(_dismissCurrent()),
+          onCloseTap: _onCloseTap,
         );
       },
     );
