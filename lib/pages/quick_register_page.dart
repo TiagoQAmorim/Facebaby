@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../controllers/current_baby_controller.dart';
 import '../i18n/app_i18n.dart';
+import '../services/app_tour/app_tour_keys.dart';
 import '../theme/app_theme.dart';
 import '../utils/portal_night_ui.dart';
 import '../utils/portal_page_route.dart';
@@ -54,17 +55,25 @@ class _QuickRegisterPageState extends State<QuickRegisterPage> with AutomaticKee
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            s.quickRecordsTitle,
-            style: PortalNightUi.titleStyle(night, fontSize: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            s.quickRecordsSubtitle,
-            style: PortalNightUi.bodyStyle(night, fontSize: 14).copyWith(
-              fontWeight: FontWeight.w600,
-              color: night ? PortalTimeOfDay.nightTextColor : null,
-              shadows: night ? PortalTimeOfDay.nightTextOutlineShadows : null,
+          KeyedSubtree(
+            key: AppTourKeys.quickRegisterHeader,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  s.quickRecordsTitle,
+                  style: PortalNightUi.titleStyle(night, fontSize: 28),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  s.quickRecordsSubtitle,
+                  style: PortalNightUi.bodyStyle(night, fontSize: 14).copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: night ? PortalTimeOfDay.nightTextColor : null,
+                    shadows: night ? PortalTimeOfDay.nightTextOutlineShadows : null,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 22),
@@ -79,58 +88,69 @@ class _QuickRegisterPageState extends State<QuickRegisterPage> with AutomaticKee
               ),
             )
           else ...[
-            _RegisterRow(
-              icon: Icons.monitor_weight_outlined,
-              title: s.growth,
-              color: AppTheme.secondary,
-              onTap: () => pushPortalPage<void>(
-                    context, const GrowthRegisterPage()),
-            ),
-            const SizedBox(height: 10),
-            _RegisterRow(
-              icon: Icons.restaurant_outlined,
-              title: s.shortcutFeedingSession,
-              color: const Color(0xFFE08A3E),
-              onTap: () => pushPortalPage<void>(
-                    context,
-                    FeedingHubPage(
-                        appBarTitle: s.shortcutFeedingSession),
+            KeyedSubtree(
+              key: AppTourKeys.quickRegisterCategories,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _RegisterRow(
+                    icon: Icons.monitor_weight_outlined,
+                    title: s.growth,
+                    color: AppTheme.secondary,
+                    onTap: () => pushPortalPage<void>(
+                          context, const GrowthRegisterPage()),
                   ),
-            ),
-            const SizedBox(height: 10),
-            _RegisterRow(
-              icon: Icons.favorite_outline,
-              title: s.shortcutHealth,
-              color: AppTheme.green,
-              onTap: () =>
-                  pushPortalPage<void>(context, const HealthHubPage()),
-            ),
-            const SizedBox(height: 10),
-            _RegisterRow(
-              icon: Icons.baby_changing_station_rounded,
-              title: s.shortcutDiaper,
-              color: AppTheme.mint,
-              onTap: () =>
-                  pushPortalPage<void>(context, const DiaperPage()),
-            ),
-            const SizedBox(height: 10),
-            _RegisterRow(
-              icon: Icons.nightlight_round,
-              title: s.shortcutSleep,
-              color: AppTheme.primary,
-              onTap: () =>
-                  pushPortalPage<void>(context, const SleepPage()),
+                  const SizedBox(height: 10),
+                  _RegisterRow(
+                    icon: Icons.restaurant_outlined,
+                    title: s.shortcutFeedingSession,
+                    color: const Color(0xFFE08A3E),
+                    onTap: () => pushPortalPage<void>(
+                          context,
+                          FeedingHubPage(
+                              appBarTitle: s.shortcutFeedingSession),
+                        ),
+                  ),
+                  const SizedBox(height: 10),
+                  _RegisterRow(
+                    icon: Icons.favorite_outline,
+                    title: s.shortcutHealth,
+                    color: AppTheme.green,
+                    onTap: () =>
+                        pushPortalPage<void>(context, const HealthHubPage()),
+                  ),
+                  const SizedBox(height: 10),
+                  _RegisterRow(
+                    icon: Icons.baby_changing_station_rounded,
+                    title: s.shortcutDiaper,
+                    color: AppTheme.mint,
+                    onTap: () =>
+                        pushPortalPage<void>(context, const DiaperPage()),
+                  ),
+                  const SizedBox(height: 10),
+                  _RegisterRow(
+                    icon: Icons.nightlight_round,
+                    title: s.shortcutSleep,
+                    color: AppTheme.primary,
+                    onTap: () =>
+                        pushPortalPage<void>(context, const SleepPage()),
+                  ),
+                ],
+              ),
             ),
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 14),
               child: Divider(height: 1, thickness: 1),
             ),
-            _RegisterRow(
-              icon: Icons.insert_chart_outlined,
-              title: s.reportsTitle,
-              color: AppTheme.textPrimary,
-              onTap: () =>
-                  pushPortalPage<void>(context, const ReportsHubPage()),
+            KeyedSubtree(
+              key: AppTourKeys.quickRegisterReports,
+              child: _RegisterRow(
+                icon: Icons.insert_chart_outlined,
+                title: s.reportsTitle,
+                color: AppTheme.textPrimary,
+                onTap: () =>
+                    pushPortalPage<void>(context, const ReportsHubPage()),
+              ),
             ),
           ],
         ],

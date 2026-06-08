@@ -17,6 +17,7 @@ import '../services/family_homily_read_prefs.dart';
 import '../services/family_horoscope_read_prefs.dart';
 import '../services/premium/feature_access.dart';
 import '../services/premium/premium_service.dart';
+import '../services/app_tour/app_tour_keys.dart';
 import '../theme/app_theme.dart';
 import '../utils/family_page_tabs.dart';
 import '../utils/portal_page_route.dart';
@@ -30,10 +31,17 @@ import 'premium/premium_paywall_screen.dart';
 
 /// Tela «Família»: árvore ilustrada e cartões por membro (`FamilyTreeStage`).
 class FamilyTreePage extends StatefulWidget {
-  const FamilyTreePage({super.key, this.initialTabIndex = 0});
+  const FamilyTreePage({
+    super.key,
+    this.initialTabIndex = 0,
+    this.tourMode = false,
+  });
 
   /// Índice da guia superior ([FamilyPageTabs]).
   final int initialTabIndex;
+
+  /// Versão simplificada para o tour do app (sem abas nem configurações).
+  final bool tourMode;
 
   @override
   State<FamilyTreePage> createState() => _FamilyTreePageState();
@@ -351,6 +359,56 @@ class _FamilyTreePageState extends State<FamilyTreePage>
     return offset + babyIdx;
   }
 
+  Widget _buildFamilyTreeStage({
+    required S s,
+    required Map<String, Object?>? mother,
+    required bool fatherRegistered,
+    required int? babyId,
+    required bool zodiacUnlocked,
+  }) {
+    return FamilyTreeStage(
+      s: s,
+      zodiacUnlocked: zodiacUnlocked,
+      zodiacReady: _zodiacContentReady,
+      showChristianMessages: _displayMessagePrefs.showChristian,
+      showHoroscopeMessages: _displayMessagePrefs.showHoroscope,
+      showSpiritistMessages: _displayMessagePrefs.showSpiritist,
+      showJewishMessages: _displayMessagePrefs.showJewish,
+      christianReady: _christianContentReady,
+      spiritistReady: _spiritistContentReady,
+      jewishReady: _jewishContentReady,
+      mother: mother,
+      babies: _babies,
+      heightCmByBabyId: _heightByBabyId,
+      fatherRegistered: fatherRegistered,
+      activeBabyId: babyId,
+      initialTabIndex: _initialTabIndex(
+        fatherRegistered: fatherRegistered,
+        currentBabyId: babyId,
+      ),
+      verticalMemberTabs: false,
+      onEditMother: () => _openMyProfile(MotherProfileInitialTab.mother),
+      onEditFather: () => _openMyProfile(MotherProfileInitialTab.father),
+      onEditBaby: (id) async {
+        await _current.setCurrentBabyId(id);
+        if (!mounted) return;
+        await _openMyProfile(MotherProfileInitialTab.babies);
+      },
+      premiumZodiacLockedMessage: s.familyPremiumZodiacLocked,
+      premiumUnlockCta: s.familyPremiumUnlockCta,
+      onPremiumTap: () => openPremiumPaywall(context),
+      todaySummary: _todaySummary,
+      summaryDay: _selectedSummaryDay,
+      summaryDayLabel: _fmtCalendarDate(_selectedSummaryDay),
+      isTodaySummaryDay: _isTodaySummaryDay,
+      onPickSummaryDay: _pickSummaryDay,
+      onTodaySummaryDay: _goToTodaySummary,
+      lastFeedEndedAt: _lastFeedEndedAt,
+      lastDiaperChangedAt: _lastDiaperChangedAt,
+      lastSleepEndedAt: _lastSleepEndedAt,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
@@ -369,7 +427,9 @@ class _FamilyTreePageState extends State<FamilyTreePage>
     final fallback =
         atNight ? const Color(0xFF152238) : const Color(0xFFB8D9EE);
 
-    return Scaffold(
+    return PopScope(
+      canPop: !widget.tourMode,
+      child: Scaffold(
       // O MainShell já mantém o background do portal em cache atrás do Navigator.
       // Evita recriar a mesma imagem ao abrir/fechar Família, que causava flash.
       backgroundColor: Colors.transparent,
@@ -405,18 +465,23 @@ class _FamilyTreePageState extends State<FamilyTreePage>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _FamilyPageHeader(
-                            title: s.familyScreenTitle,
-                            settingsTooltip: s.settingsTitle,
-                            onBack: () => Navigator.maybePop(context),
-                            onSettings: motherId == null
-                                ? null
-                                : () => _openMyProfile(
-                                      MotherProfileInitialTab.preferences,
-                                    ),
+                          KeyedSubtree(
+                            key: AppTourKeys.familyTourHeader,
+                            child: _FamilyPageHeader(
+                              title: s.familyScreenTitle,
+                              settingsTooltip: s.settingsTitle,
+                              onBack: () => Navigator.maybePop(context),
+                              hideBack: widget.tourMode,
+                              onSettings: widget.tourMode || motherId == null
+                                  ? null
+                                  : () => _openMyProfile(
+                                        MotherProfileInitialTab.preferences,
+                                      ),
+                            ),
                           ),
-                          const SizedBox(height: 8),
-                          TabBar(
+                          if (!widget.tourMode) ...[
+                            const SizedBox(height: 8),
+                            TabBar(
                             controller: _tabController,
                             isScrollable: true,
                             tabAlignment: TabAlignment.start,
@@ -490,10 +555,11 @@ class _FamilyTreePageState extends State<FamilyTreePage>
                                 Tab(text: s.familyTabAiHistory),
                             ],
                           ),
+                          ],
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    if (widget.tourMode) const SizedBox(height: 12),
                     Expanded(
                       child: mother == null
                           ? Padding(
@@ -507,63 +573,32 @@ class _FamilyTreePageState extends State<FamilyTreePage>
                                 ),
                               ),
                             )
-                          : TabBarView(
+                          : widget.tourMode
+                              ? tabScroll(
+                                  child: KeyedSubtree(
+                                    key: AppTourKeys.familyTree,
+                                    child: _buildFamilyTreeStage(
+                                      s: s,
+                                      mother: mother,
+                                      fatherRegistered: fatherRegistered,
+                                      babyId: babyId,
+                                      zodiacUnlocked: zodiacUnlocked,
+                                    ),
+                                  ),
+                                )
+                              : TabBarView(
                               controller: _tabController,
                               children: [
                                 tabScroll(
-                                  child: FamilyTreeStage(
-                                    s: s,
-                                    zodiacUnlocked: zodiacUnlocked,
-                                    zodiacReady: _zodiacContentReady,
-                                    showChristianMessages:
-                                        _displayMessagePrefs.showChristian,
-                                    showHoroscopeMessages:
-                                        _displayMessagePrefs.showHoroscope,
-                                    showSpiritistMessages:
-                                        _displayMessagePrefs.showSpiritist,
-                                    showJewishMessages:
-                                        _displayMessagePrefs.showJewish,
-                                    christianReady: _christianContentReady,
-                                    spiritistReady: _spiritistContentReady,
-                                    jewishReady: _jewishContentReady,
-                                    mother: mother,
-                                    babies: _babies,
-                                    heightCmByBabyId: _heightByBabyId,
-                                    fatherRegistered: fatherRegistered,
-                                    activeBabyId: babyId,
-                                    initialTabIndex: _initialTabIndex(
+                                  child: KeyedSubtree(
+                                    key: AppTourKeys.familyTree,
+                                    child: _buildFamilyTreeStage(
+                                      s: s,
+                                      mother: mother,
                                       fatherRegistered: fatherRegistered,
-                                      currentBabyId: babyId,
+                                      babyId: babyId,
+                                      zodiacUnlocked: zodiacUnlocked,
                                     ),
-                                    verticalMemberTabs: false,
-                                    onEditMother: () => _openMyProfile(
-                                      MotherProfileInitialTab.mother,
-                                    ),
-                                    onEditFather: () => _openMyProfile(
-                                      MotherProfileInitialTab.father,
-                                    ),
-                                    onEditBaby: (id) async {
-                                      await _current.setCurrentBabyId(id);
-                                      if (!mounted) return;
-                                      await _openMyProfile(
-                                        MotherProfileInitialTab.babies,
-                                      );
-                                    },
-                                    premiumZodiacLockedMessage:
-                                        s.familyPremiumZodiacLocked,
-                                    premiumUnlockCta: s.familyPremiumUnlockCta,
-                                    onPremiumTap: () =>
-                                        openPremiumPaywall(context),
-                                    todaySummary: _todaySummary,
-                                    summaryDay: _selectedSummaryDay,
-                                    summaryDayLabel:
-                                        _fmtCalendarDate(_selectedSummaryDay),
-                                    isTodaySummaryDay: _isTodaySummaryDay,
-                                    onPickSummaryDay: _pickSummaryDay,
-                                    onTodaySummaryDay: _goToTodaySummary,
-                                    lastFeedEndedAt: _lastFeedEndedAt,
-                                    lastDiaperChangedAt: _lastDiaperChangedAt,
-                                    lastSleepEndedAt: _lastSleepEndedAt,
                                   ),
                                 ),
                                 if (_displayMessagePrefs.showChristian)
@@ -598,6 +633,7 @@ class _FamilyTreePageState extends State<FamilyTreePage>
           ),
         ],
       ),
+    ),
     );
   }
 }
@@ -608,12 +644,14 @@ class _FamilyPageHeader extends StatelessWidget {
     required this.settingsTooltip,
     required this.onBack,
     this.onSettings,
+    this.hideBack = false,
   });
 
   final String title;
   final String settingsTooltip;
   final VoidCallback onBack;
   final VoidCallback? onSettings;
+  final bool hideBack;
 
   @override
   Widget build(BuildContext context) {
@@ -623,13 +661,14 @@ class _FamilyPageHeader extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: _HeaderIconButton(
-              icon: Icons.arrow_back_ios_new_rounded,
-              onPressed: onBack,
+          if (!hideBack)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: _HeaderIconButton(
+                icon: Icons.arrow_back_ios_new_rounded,
+                onPressed: onBack,
+              ),
             ),
-          ),
           Center(
             child: Text(
               title,

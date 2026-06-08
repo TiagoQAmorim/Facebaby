@@ -227,6 +227,14 @@ class _FloatingMessageHostState extends State<FloatingMessageHost> {
     });
   }
 
+  void _onCloseTap() {
+    if (_messages.length > 1) {
+      unawaited(_dismissAllActive());
+    } else {
+      unawaited(_dismiss());
+    }
+  }
+
   void _showActionError() {
     if (!mounted) return;
     final s = S.of(context);
@@ -424,7 +432,7 @@ class _FloatingMessageHostState extends State<FloatingMessageHost> {
               unawaited(_persistPosition());
             }
           },
-          onCloseTap: allowsClose ? () => unawaited(_dismiss()) : null,
+          onCloseTap: allowsClose ? _onCloseTap : null,
           onActionTap: hasCta ? () => unawaited(_openAction(msg)) : null,
         );
 

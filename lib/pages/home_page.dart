@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../utils/app_date_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/app_tour/app_tour_keys.dart';
 import '../controllers/current_baby_controller.dart';
 import '../controllers/sleep_timer_controller.dart';
 import '../services/reminder_monitor.dart';
@@ -33,6 +34,7 @@ import '../theme/app_theme.dart';
 import '../widgets/consultation_detail_sheet.dart';
 import '../widgets/language_picker.dart';
 import '../widgets/photo_avatar.dart';
+import '../widgets/portal_layout_preference_control.dart';
 import '../widgets/section_title.dart';
 import '../widgets/home_memories_weekly_panel.dart';
 import '../utils/portal_layout.dart';
@@ -592,6 +594,22 @@ class _HomePageState extends State<HomePage> {
     final weightHint = s.homeSummaryTotalDay;
 
     _syncHomeDailyTipLayoutDay();
+    final notificationsButton = IconButton(
+      tooltip: s.notificationsInboxTitle,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+      iconSize: 22,
+      onPressed: () {
+        pushPortalPage<void>(context, const NotificationsInboxPage());
+      },
+      icon: CircleAvatar(
+        radius: 16,
+        backgroundColor: AppTheme.mint.withAlpha(50),
+        child: const Icon(Icons.notifications_none,
+            size: 21, color: AppTheme.secondary),
+      ),
+    );
     final pickBabyButton = widget.onPickBaby == null
         ? null
         : IconButton(
@@ -614,6 +632,10 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           );
+    const headerActionWidth = 40.0;
+    const headerActionsGap = 2.0;
+    final greetingActionsWidth = headerActionWidth +
+        (pickBabyButton == null ? 0 : headerActionWidth + headerActionsGap);
 
     return DecoratedBox(
       decoration: const BoxDecoration(color: Colors.transparent),
@@ -693,24 +715,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                             child: const LanguageButton(),
                           ),
-                          IconButton(
-                            tooltip: s.notificationsInboxTitle,
-                            visualDensity: VisualDensity.compact,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                                minWidth: 40, minHeight: 40),
-                            iconSize: 22,
-                            onPressed: () {
-                              pushPortalPage<void>(
-                                  context, const NotificationsInboxPage());
-                            },
-                            icon: CircleAvatar(
-                              radius: 16,
-                              backgroundColor: AppTheme.mint.withAlpha(50),
-                              child: const Icon(Icons.notifications_none,
-                                  size: 21, color: AppTheme.secondary),
-                            ),
-                          ),
+                          const PortalLayoutToggleButton(),
                           const SizedBox(width: 4),
                           Material(
                             type: MaterialType.transparency,
@@ -767,7 +772,7 @@ class _HomePageState extends State<HomePage> {
                               children: [
                                 Padding(
                                   padding: EdgeInsets.only(
-                                    right: pickBabyButton == null ? 0 : 46,
+                                    right: greetingActionsWidth,
                                   ),
                                   child: Text.rich(
                                     TextSpan(
@@ -793,12 +798,20 @@ class _HomePageState extends State<HomePage> {
                                     softWrap: true,
                                   ),
                                 ),
-                                if (pickBabyButton != null)
-                                  Positioned(
-                                    right: 0,
-                                    top: -8,
-                                    child: pickBabyButton,
+                                Positioned(
+                                  right: 0,
+                                  top: -8,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      notificationsButton,
+                                      if (pickBabyButton != null) ...[
+                                        const SizedBox(width: headerActionsGap),
+                                        pickBabyButton,
+                                      ],
+                                    ],
                                   ),
+                                ),
                               ],
                             ),
                             const SizedBox(height: 2),
@@ -936,7 +949,7 @@ class _HomePageState extends State<HomePage> {
                                 : 102.0;
                         final tileH = idealH;
 
-                        Widget shortcutTile(_ShortcutCard card) {
+                        Widget shortcutTile(Widget card) {
                           return SizedBox(
                             width: tileW,
                             height: tileH,
@@ -1228,7 +1241,10 @@ class _HomePageState extends State<HomePage> {
                       consultations: _dayConsultations,
                       fmtHm: _fmtHm,
                     ),
-                    const HomeMemoriesWeeklyPanel(),
+                    KeyedSubtree(
+                      key: AppTourKeys.weeklyPhoto,
+                      child: const HomeMemoriesWeeklyPanel(),
+                    ),
                   ],
                 ),
               ),
@@ -2280,7 +2296,9 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                 // Novos quadros: começam abaixo da foto e ocupam a largura toda.
                 if (widget.isTodayView) ...[
                   SizedBox(height: narrow ? 10 : 12),
-                  _BabyBannerForecastCard(
+                  KeyedSubtree(
+                    key: AppTourKeys.babyBannerSleep,
+                    child: _BabyBannerForecastCard(
                     sleeping: SleepTimerController.instance.isTracking &&
                         SleepTimerController.instance.babyId == widget.babyId,
                     title: (SleepTimerController.instance.isTracking &&
@@ -2382,6 +2400,7 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                     }(),
                     onTap: widget.onTapOpenSleepBanner,
                   ),
+                  ),
                   SizedBox(height: narrow ? 10 : 12),
                   LayoutBuilder(
                     builder: (context, c) {
@@ -2390,7 +2409,9 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: _BabyBannerTimelineCard(
+                            child: KeyedSubtree(
+                              key: AppTourKeys.babyBannerFeeding,
+                              child: _BabyBannerTimelineCard(
                               icon: Icons.local_drink_rounded,
                               accent: const Color(0xFFFF5A6E),
                               softBg: const Color(0xFFFFF0F2),
@@ -2432,10 +2453,13 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                               onTap: widget.onTapFeedNow,
                               dense: isNarrow,
                             ),
+                            ),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: _BabyBannerTimelineCard(
+                            child: KeyedSubtree(
+                              key: AppTourKeys.babyBannerDiaper,
+                              child: _BabyBannerTimelineCard(
                               icon: Icons.baby_changing_station_rounded,
                               accent: const Color(0xFF00BFA6),
                               softBg: const Color(0xFFEFFAF7),
@@ -2486,6 +2510,7 @@ class _PrimaryBabyCardState extends State<_PrimaryBabyCard> {
                                       210,
                               onTap: widget.onTapOpenDiaperBanner,
                               dense: isNarrow,
+                            ),
                             ),
                           ),
                         ],

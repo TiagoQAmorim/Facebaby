@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../app/shell_nested_nav.dart';
 import '../app/face_baby_app.dart';
 import '../i18n/app_i18n.dart';
 import '../theme/app_theme.dart';
@@ -14,6 +15,7 @@ import '../utils/portal_time_of_day.dart';
 import '../services/firebase/account_deletion_service.dart';
 import '../services/firebase/auth_service.dart';
 import '../services/premium/premium_service.dart';
+import '../services/app_tour/app_tour_controller.dart';
 import '../widgets/card_box.dart';
 import '../widgets/dev_qa_tools_section.dart';
 import '../utils/portal_layout.dart';
@@ -549,6 +551,25 @@ class SettingsPage extends StatelessWidget {
             icon: Icons.mail_outline,
             title: s.contactTitle,
             onTap: () => pushPortalPage<void>(context, const ContactPage()),
+          ),
+          Text(
+            s.settingsHelpSection,
+            style: TextStyle(
+              fontSize: portalSp(context, 13),
+              fontWeight: FontWeight.w900,
+              color: nightTitleColor ?? AppTheme.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          _SettingsTile(
+            compact: true,
+            icon: Icons.explore_outlined,
+            title: s.settingsAppTourAgain,
+            onTap: () {
+              AppTourController.instance.requestReplay();
+              Navigator.of(context).popUntil((route) => route.isFirst);
+              ShellNestedNav.selectTab?.call(0);
+            },
           ),
           _SettingsTile(
             compact: true,
