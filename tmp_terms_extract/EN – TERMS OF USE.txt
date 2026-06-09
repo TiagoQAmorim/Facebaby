@@ -1,0 +1,324 @@
+FACEBABY – TERMS OF USE
+Last Updated: June 2026
+1. ACCEPTANCE OF TERMS
+Welcome to FaceBaby.
+These Terms of Use ("Terms") govern access to and use of the FaceBaby application, its services,
+features, Artificial Intelligence resources, associated websites, and other platforms operated by
+FaceBaby.
+By creating an account, accessing, or using any FaceBaby feature, the user acknowledges that they have
+read, understood, and fully agreed to these Terms.
+If the user does not agree with any provision of these Terms, they must immediately discontinue use of
+the services.
+2. DEFINITIONS
+For the purposes of these Terms:
+FaceBaby: a digital platform designed for recording, organizing, and tracking information related to
+pregnancy, babies, children, and families.
+User: any individual who uses the application.
+Legal Guardian: a person legally authorized to represent a child or minor .
+Child: a minor whose information is registered within the application.
+Content: any information submitted by users, including text, photographs, videos, records, comments,
+documents, and other files.
+AI Nanny: the set of Artificial Intelligence features provided by FaceBaby.
+Premium Services: paid features made available through subscriptions.
+3. DESCRIPTION OF SERVICES
+FaceBaby is a platform designed to help families organize and record information related to childhood.
+1
+Features may include:
+Feeding records;
+Diaper records;
+Sleep tracking;
+Growth tracking;
+Weight and height records;
+Vaccination records;
+Medication records;
+Medical appointment records;
+Baby timeline;
+Photo storage;
+Memory storage;
+Content sharing;
+PDF reports;
+Alerts and reminders;
+Growth charts;
+Artificial Intelligence features;
+Community features;
+Future features that may be added.
+FaceBaby may modify, add, remove, or discontinue features at any time.
+4. ELIGIBILITY
+FaceBaby may only be used by individuals legally capable of entering into binding agreements.
+By registering information about children or minors, the user represents that they have the legal
+authority to do so.
+The user assumes full responsibility for the legitimacy of all registered information.
+5. ACCOUNT REGISTRATION AND SECURITY
+The user agrees to:
+Provide accurate information;
+Keep information up to date;
+Maintain the confidentiality of login credentials;
+Not share access with unauthorized third parties;
+Immediately report any suspected unauthorized access.
+FaceBaby may suspend or terminate accounts involved in fraudulent, abusive, or unlawful activities.
+6. FREE PLANS AND SUBSCRIPTIONS
+FaceBaby may offer:
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+2
+Free Plan
+With limited features determined by FaceBaby.
+Monthly Premium Plan
+A subscription automatically renewed according to the rules of the payment platform used.
+Annual Premium Plan
+A subscription automatically renewed according to the rules of the payment platform used.
+Current prices may be changed in the future.
+Promotions, discounts, trial periods, or temporary benefits may be created, modified, or discontinued
+without obligation to maintain them permanently.
+7. PAYMENTS AND BILLING
+Payments may be processed by third parties, including:
+Apple App Store;
+Google Play Store;
+Other authorized payment processors.
+FaceBaby has no control over charges processed directly by third-party platforms.
+Cancellations, refunds, and payment disputes must comply with the policies of the platform responsible
+for the transaction.
+8. ARTIFICIAL INTELLIGENCE FEATURES
+FaceBaby may use Artificial Intelligence to:
+Answer questions;
+Automatically record events;
+Suggest content;
+Generate reports;
+Produce summaries;
+Assist with child development tracking;
+Create personalized messages;
+Automate tasks within the application.
+The user acknowledges that:
+AI systems may make mistakes;
+Responses may be incomplete;
+Responses may be outdated;
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+3
+Responses may contain inaccuracies;
+FaceBaby does not guarantee absolute accuracy of results.
+Information provided by AI is for informational purposes only.
+9. MEDICAL DISCLAIMER
+FaceBaby is not a medical device.
+FaceBaby does not provide diagnoses.
+FaceBaby does not prescribe medication.
+FaceBaby does not replace:
+Pediatricians;
+Physicians;
+Nurses;
+Psychologists;
+Nutritionists;
+Physical therapists;
+Healthcare professionals in general.
+For any health-related concerns, symptoms, emergencies, or medical questions, users should seek
+professional medical advice.
+10. CHILDREN'S DATA
+The user represents that they have legal authorization to register , store, and manage information
+related to a child.
+FaceBaby may store:
+Name;
+Date of birth;
+Photographs;
+Growth information;
+Feeding information;
+Health information provided by the user;
+Other voluntarily submitted information.
+The user is solely responsible for the legality of the information entered.
+11. USER CONTENT
+Users retain ownership of all content submitted to FaceBaby.
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+4
+By using the platform, the user grants FaceBaby a limited, worldwide, non-exclusive, and revocable
+license to:
+Store;
+Process;
+Display;
+Transmit;
+Backup;
+the content necessary for providing the services.
+12. PHOTO OF THE WEEK AND COMMUNITY FEATURES
+By participating in community features, including Photo of the Week or similar activities, the user
+represents that they have authorization to share submitted images.
+FaceBaby may display such content within the platform to other users according to available settings.
+The user remains solely responsible for shared information.
+13. PROHIBITED CONTENT
+It is prohibited to use FaceBaby for:
+Illegal activities;
+Fraud;
+Pornography;
+Child exploitation;
+Hate speech;
+Harassment;
+Spam;
+Copyright infringement;
+Malware distribution;
+Any activity that violates applicable laws.
+14. MODERATION
+FaceBaby may, at its sole discretion:
+Remove content;
+Suspend features;
+Restrict access;
+Terminate accounts;
+Notify competent authorities when required by law.
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+5
+15. STORAGE AND BACKUP
+FaceBaby may use cloud storage services to operate the platform.
+Although reasonable security measures are adopted, FaceBaby does not guarantee absolute protection
+against:
+Technical failures;
+Cyberattacks;
+Data loss;
+Service interruptions.
+Users are encouraged to maintain their own copies of important information.
+16. SERVICE AVAILABILITY
+FaceBaby may temporarily interrupt services for:
+Updates;
+Fixes;
+Improvements;
+Migrations;
+Preventive or corrective maintenance.
+Continuous or uninterrupted availability is not guaranteed.
+17. LIMITATION OF LIABILITY
+To the maximum extent permitted by applicable law, FaceBaby shall not be liable for:
+Indirect damages;
+Loss of profits;
+Loss of opportunities;
+Data loss;
+Decisions made based on AI-generated responses;
+Interruptions caused by third parties;
+Issues arising from external services.
+FaceBaby's total liability shall never exceed the amount actually paid by the user during the twelve (12)
+months preceding the event giving rise to the claim.
+18. INTELLECTUAL PROPERTY
+All rights related to FaceBaby, including software, design, trademarks, logos, text, and features, belong
+to their respective owners.
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+6
+It is prohibited to:
+Copy;
+Distribute;
+Modify;
+Reproduce;
+Commercialize;
+Reverse engineer;
+without prior written authorization.
+19. ACCOUNT TERMINATION
+Users may request account deletion at any time.
+FaceBaby may terminate accounts that:
+Violate these Terms;
+Use the platform abusively;
+Present security risks to the platform or third parties.
+20. CHANGES TO THESE TERMS
+FaceBaby may update these Terms periodically.
+The latest version will be made available to users.
+Continued use of the service after updates constitutes acceptance of the revised Terms.
+21. GOVERNING LAW
+These Terms shall be interpreted in accordance with applicable laws, including regulations related to
+personal data protection, consumer rights, and digital services.
+Where applicable, provisions of the following may apply:
+LGPD (Brazil);
+GDPR (European Union);
+Equivalent local legislation.
+22. CONTACT
+Questions regarding these Terms may be directed to:
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+7
+support@thefacebaby.com
+23. FINAL ACCEPTANCE
+By using FaceBaby, the user acknowledges that they have read, understood, and fully agreed to these
+Terms of Use.
+8

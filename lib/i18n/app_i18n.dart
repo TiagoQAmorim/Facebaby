@@ -1007,6 +1007,11 @@ class S {
         case 'email-already-in-use':
           return authErrEmailInUse;
         case 'invalid-credential':
+          final msg = (error.message ?? '').toLowerCase();
+          if (msg.contains('apple.com') || msg.contains('oauth response from apple')) {
+            return authErrAppleFailed;
+          }
+          return authErrInvalidCredential;
         case 'invalid-verification-code':
         case 'invalid-verification-id':
           return authErrInvalidCredential;

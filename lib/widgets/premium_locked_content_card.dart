@@ -272,21 +272,42 @@ class _PaymentBadgesRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: compact ? 6 : 8,
-      runSpacing: 6,
-      children: [
-        _BadgePill(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final stack = w < 340;
+        final pill1 = _BadgePill(
           icon: Icons.payments_rounded,
           label: lifetimeLabel,
           compact: compact,
-        ),
-        _BadgePill(
+        );
+        final pill2 = _BadgePill(
           icon: Icons.event_busy_rounded,
           label: noMonthlyLabel,
           compact: compact,
-        ),
-      ],
+        );
+
+        if (stack) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              pill1,
+              SizedBox(height: compact ? 5 : 6),
+              pill2,
+            ],
+          );
+        }
+
+        final pillWidth = (w - (compact ? 6 : 8)) / 2;
+        return Wrap(
+          spacing: compact ? 6 : 8,
+          runSpacing: 6,
+          children: [
+            SizedBox(width: pillWidth, child: pill1),
+            SizedBox(width: pillWidth, child: pill2),
+          ],
+        );
+      },
     );
   }
 }
@@ -315,7 +336,6 @@ class _BadgePill extends StatelessWidget {
         border: Border.all(color: Colors.white.withAlpha(200)),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             icon,
@@ -323,8 +343,7 @@ class _BadgePill extends StatelessWidget {
             color: const Color(0xFFB71C5C),
           ),
           const SizedBox(width: 5),
-          ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: compact ? 132 : 168),
+          Expanded(
             child: Text(
               label,
               maxLines: 2,
