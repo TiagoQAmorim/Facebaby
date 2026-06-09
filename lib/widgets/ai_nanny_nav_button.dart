@@ -7,16 +7,21 @@ class AiNannyNavButton extends StatelessWidget {
     required this.selected,
     required this.label,
     this.locked = false,
+    this.compact = false,
   });
 
   final bool selected;
   final String label;
   final bool locked;
+  final bool compact;
 
   static const _asset = 'assets/ai/ia_baba_button.png';
 
   @override
   Widget build(BuildContext context) {
+    final circleSize = compact ? 52.0 : 56.0;
+    final labelSize = compact ? 10.0 : 10.5;
+    final labelGap = compact ? 2.0 : 3.0;
     final glow = selected
         ? [
             BoxShadow(
@@ -46,8 +51,8 @@ class AiNannyNavButton extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             Container(
-              width: 62,
-              height: 62,
+              width: circleSize,
+              height: circleSize,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: const Color(0xFFFFF8FC),
@@ -92,11 +97,13 @@ class AiNannyNavButton extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: labelGap),
         Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: labelSize,
             fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
             color: selected
                 ? const Color(0xFF6A1B9A)

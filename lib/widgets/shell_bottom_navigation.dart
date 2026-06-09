@@ -27,6 +27,9 @@ class ShellBottomNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
+    final compact = MediaQuery.sizeOf(context).width < 400;
+    final barHeight = 78.0;
+    final aiLift = compact ? -8.0 : -10.0;
 
     return Material(
       color: navBarBackground,
@@ -36,9 +39,9 @@ class ShellBottomNavigation extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 72,
+          height: barHeight,
           child: Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: EdgeInsets.only(top: compact ? 2 : 4),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -65,11 +68,12 @@ class ShellBottomNavigation extends StatelessWidget {
                   onTap: onAiTap ?? () => onSelected(2),
                   behavior: HitTestBehavior.opaque,
                   child: Transform.translate(
-                    offset: const Offset(0, -10),
+                    offset: Offset(0, aiLift),
                     child: AiNannyNavButton(
                       selected: !aiLocked && selectedIndex == 2,
                       locked: aiLocked,
                       label: s.aiNannyNavLabel,
+                      compact: compact,
                     ),
                   ),
                 ),
