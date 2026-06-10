@@ -979,6 +979,17 @@ class S {
     return _t('authErrEmailInUse');
   }
 
+  String _firebaseAuthDetailedMessage(
+    FirebaseAuthException error,
+    String fallback,
+  ) {
+    final message = error.message?.trim();
+    if (message != null && message.isNotEmpty) {
+      return '$fallback\n${error.code}: $message';
+    }
+    return fallback;
+  }
+
   /// Mensagens de erro de login/registo alinhadas ao idioma atual.
   String userFacingAuthError(Object error) {
     if (error is EmailVerificationCooldownException) {
@@ -1009,18 +1020,18 @@ class S {
         case 'invalid-credential':
           final msg = (error.message ?? '').toLowerCase();
           if (msg.contains('apple.com') || msg.contains('oauth response from apple')) {
-            return authErrAppleFailed;
+            return _firebaseAuthDetailedMessage(error, authErrAppleFailed);
           }
-          return authErrInvalidCredential;
+          return _firebaseAuthDetailedMessage(error, authErrInvalidCredential);
         case 'invalid-verification-code':
         case 'invalid-verification-id':
           return authErrInvalidCredential;
         case 'operation-not-allowed':
-          return authErrAppleFailed;
+          return _firebaseAuthDetailedMessage(error, authErrAppleFailed);
         case 'too-many-requests':
           return authErrEmailVerifyTooMany;
         default:
-          return authErrCredentialsGeneric;
+          return _firebaseAuthDetailedMessage(error, authErrCredentialsGeneric);
       }
     }
     final s = error.toString();
@@ -1042,6 +1053,9 @@ class S {
     if (s.contains('APPLE_MISSING_ID_TOKEN') ||
         s.contains('APPLE_AUTH_FAILED')) {
       return authErrAppleFailed;
+    }
+    if (s.startsWith('Apple Sign-In failed:')) {
+      return s.replaceFirst('Bad state: ', '');
     }
     return '$authErrUnexpected\n$s';
   }

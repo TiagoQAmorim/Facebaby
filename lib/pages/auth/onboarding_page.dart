@@ -1,5 +1,7 @@
 import 'dart:async' show unawaited;
 
+import 'dart:developer' as developer;
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -1017,6 +1019,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
     try {
       await action();
     } catch (e) {
+      developer.log(
+        'Auth action failed: $e',
+        name: 'Apple Sign-In',
+        error: e,
+      );
       if (!mounted) return;
       setState(() => _error = S.of(context).userFacingAuthError(e));
     } finally {
@@ -1531,8 +1538,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     OutlinedButton.icon(
                       onPressed: _busy
                           ? null
-                          : () => _runAuth(
-                              () => AuthService.instance.signInWithApple()),
+                          : () {
+                              developer.log(
+                                'Entrar com Apple tapped (onboarding)',
+                                name: 'Apple Sign-In',
+                              );
+                              _runAuth(() => AuthService.instance.signInWithApple());
+                            },
                       icon: const Icon(Icons.apple),
                       label: Text(s.onb('SignInApple')),
                     ),
