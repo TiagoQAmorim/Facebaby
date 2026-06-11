@@ -8,6 +8,7 @@ import '../../utils/voice_health_infer.dart';
 import '../../utils/voice_routine_multi_infer.dart';
 import 'ai_nanny_intent_lexicon.dart';
 import 'ai_nanny_intent_parser.dart';
+import 'routine_absence_detection.dart';
 import 'voice_record_api_service.dart';
 import '../../i18n/app_i18n.dart';
 /// Interpretação de rotina (sono, peso, fralda, etc.) a partir de texto ou voz.
@@ -25,6 +26,9 @@ class RoutineRecordInterpreter {
   }) async {
     final text = transcript.trim();
     if (text.isEmpty) {
+      return const VoiceRecordInterpretation.unknown();
+    }
+    if (RoutineAbsenceDetection.isAbsenceOnlyConversation(text)) {
       return const VoiceRecordInterpretation.unknown();
     }
 
@@ -65,6 +69,9 @@ class RoutineRecordInterpreter {
         hint.type != 'unknown' &&
         hint.canRegister &&
         local.type == hint.type) {
+      return false;
+    }
+    if (RoutineAbsenceDetection.isAbsenceOnlyConversation(transcript)) {
       return false;
     }
     if (_localInterpretSufficient(local, transcript)) return false;
@@ -127,6 +134,9 @@ abstract final class RoutineRecordMatcher {
 
     final t = transcript.trim().toLowerCase();
     if (shouldSkipRoutineAutoRegister(transcript)) return false;
+    if (RoutineAbsenceDetection.isAbsenceOnlyConversation(transcript)) {
+      return false;
+    }
     if (t.contains('registr') && !transcriptIsMetaRegisterGuidance(transcript)) {
       return true;
     }

@@ -3017,7 +3017,7 @@ LIMIT 1
     double? heightCm,
     double? birthWeightKg,
     double? birthHeightCm,
-    bool touchBirthBaseline = true,
+    bool touchBirthBaseline = false,
     String? photoB64,
     bool resetProfilePhotoUrl = false,
   }) async {
