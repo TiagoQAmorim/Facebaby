@@ -2,6 +2,7 @@ import '../../i18n/app_i18n.dart';
 import '../../models/ai/ai_nanny_parsed_message.dart';
 import '../../models/ai/detected_baby_record.dart';
 import '../../utils/ai_nanny_parse_normalize.dart';
+import 'ai_nanny_intent_lexicon.dart';
 import 'ai_nanny_structured_clarification.dart';
 import 'ai_nanny_structured_mapper.dart';
 import 'breastfeeding_both_helper.dart';
@@ -387,10 +388,13 @@ abstract final class DetectedRecordBuilder {
         }
         break;
       case 'type':
-        if (low.contains('xixi') || low.contains('pee')) {
+        if (AiNannyIntentLexicon.isDiaperAbsenceObservation(low)) {
+          break;
+        }
+        if (AiNannyIntentLexicon.hasAffirmativePeeCue(low)) {
           fields['pee'] = true;
           fields['poop'] = false;
-        } else if (low.contains('coc') || low.contains('poop') || low.contains('poo')) {
+        } else if (AiNannyIntentLexicon.hasAffirmativePooCue(low)) {
           fields['pee'] = false;
           fields['poop'] = true;
         } else if (low.contains('ambos') || low.contains('both')) {

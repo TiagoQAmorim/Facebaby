@@ -23,6 +23,7 @@ import 'ai_nanny_parse_merge.dart';
 import '../../utils/growth_baseline.dart';
 import 'ai_nanny_orchestrator.dart';
 import 'detected_record_builder.dart';
+import 'routine_absence_detection.dart';
 import 'ai_nanny_system_context_service.dart';
 import 'ai_conversation_state_repository.dart';
 import 'parse_ai_nanny_message_service.dart';
@@ -210,6 +211,16 @@ class AiNannyTurnService {
         onProgress: onProgress,
       );
       if (structured != null) return structured;
+    }
+
+    if (RoutineAbsenceDetection.isAbsenceOnlyConversation(text)) {
+      final answer = await _nanny.sendMessage(
+        question: text,
+        babyId: babyCloudId,
+        userId: userId,
+        locale: locale,
+      );
+      return AiNannyTurnResult(aiAnswer: answer);
     }
 
     if (!hasRoutineCue) {

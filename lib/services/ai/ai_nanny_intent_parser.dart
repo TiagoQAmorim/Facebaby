@@ -344,6 +344,10 @@ abstract final class AiNannyIntentParser {
 
   static AiNannyParsedIntent? _parseDiaper(String text, String low) {
 
+    if (AiNannyIntentLexicon.isDiaperAbsenceObservation(text)) {
+      return null;
+    }
+
     if (!transcriptHasDiaperCue(low)) {
       return null;
     }
@@ -413,6 +417,9 @@ abstract final class AiNannyIntentParser {
 
 
   static AiNannyParsedIntent? _parseFeeding(String text, String low) {
+    if (AiNannyIntentLexicon.isFeedingAbsenceObservation(text)) {
+      return null;
+    }
 
     if (!transcriptHasFeedingCue(low)) return null;
 

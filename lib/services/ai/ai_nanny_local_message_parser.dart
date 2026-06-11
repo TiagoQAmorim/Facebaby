@@ -1,6 +1,7 @@
 import '../../models/ai/ai_nanny_parsed_message.dart';
 import '../../utils/ai_nanny_parse_normalize.dart';
 import 'ai_nanny_intent_lexicon.dart';
+import 'routine_absence_detection.dart';
 
 /// Fallback offline: léxico multilíngue + normalização numérica (apoio ao parser IA).
 abstract final class AiNannyLocalMessageParser {
@@ -52,14 +53,17 @@ abstract final class AiNannyLocalMessageParser {
   }
 
   static AiNannyStructuredRecord? _parseDiaper(String low) {
+    if (AiNannyIntentLexicon.isDiaperAbsenceObservation(low)) {
+      return null;
+    }
     if (!AiNannyIntentLexicon.hasDiaperCue(low) &&
         !AiNannyIntentLexicon.hasPeeCue(low) &&
         !AiNannyIntentLexicon.hasPooCue(low)) {
       return null;
     }
 
-    final pee = AiNannyIntentLexicon.hasPeeCue(low);
-    final poop = AiNannyIntentLexicon.hasPooCue(low);
+    final pee = AiNannyIntentLexicon.hasAffirmativePeeCue(low);
+    final poop = AiNannyIntentLexicon.hasAffirmativePooCue(low);
     if (!pee && !poop) {
       return const AiNannyStructuredRecord(
         type: 'diaper',
@@ -75,9 +79,10 @@ abstract final class AiNannyLocalMessageParser {
   }
 
   static AiNannyStructuredRecord? _parseFeeding(String text, String low) {
+    if (AiNannyIntentLexicon.isFeedingAbsenceObservation(text)) return null;
     final ml = AiNannyParseNormalize.parseAmountMl(text);
     final hasFeed =
-        AiNannyIntentLexicon.hasFeedingCue(low) || ml != null;
+        AiNannyIntentLexicon.hasAffirmativeFeedingIntent(text) || ml != null;
     if (!hasFeed) return null;
 
     if (ml != null) {
@@ -218,6 +223,9 @@ abstract final class AiNannyLocalMessageParser {
   }
 
   static List<AiNannyStructuredRecord> _parseWeights(String text, String low) {
+    if (RoutineAbsenceDetection.isGrowthWeightAbsence(text)) {
+      return const [];
+    }
     final delta = AiNannyParseNormalize.parseWeightDeltaGrams(text);
     if (delta != null) {
       return [
@@ -251,6 +259,9 @@ abstract final class AiNannyLocalMessageParser {
   }
 
   static List<AiNannyStructuredRecord> _parseHeights(String text, String low) {
+    if (RoutineAbsenceDetection.isGrowthHeightAbsence(text)) {
+      return const [];
+    }
     final delta = AiNannyParseNormalize.parseHeightDeltaCm(text);
     if (delta != null) {
       return [
@@ -359,6 +370,7 @@ abstract final class AiNannyLocalMessageParser {
 
   static AiNannyStructuredRecord? _parseSleep(String text) {
     final low = text.toLowerCase();
+    if (RoutineAbsenceDetection.isSleepAbsence(text)) return null;
     if (!AiNannyIntentLexicon.hasSleepCue(low)) return null;
 
     // "acordou e mamou" = contexto duplo; "acordou com fome" ainda é fim de sono.

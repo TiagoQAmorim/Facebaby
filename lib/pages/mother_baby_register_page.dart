@@ -833,6 +833,7 @@ class _MotherBabyRegisterPageState extends State<MotherBabyRegisterPage> {
             heightCm: _babyHeightCmRuler,
             photoB64: _babyPhotoB64,
             resetProfilePhotoUrl: _babyPhotoDirty,
+            touchBirthBaseline: false,
           );
         }, label: S.of(context).commonSaving);
         // Login obrigatório: só conclui após persistir na nuvem (FireStore + Storage se houver foto).

@@ -21,7 +21,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const _dbName = 'facebaby.db';
-  static const _dbVersion = 34;
+  static const _dbVersion = 35;
 
   Database? _db;
   SharedPreferences? _prefs;
@@ -103,6 +103,8 @@ CREATE TABLE babies (
   zodiac_sign TEXT,
   weight_kg REAL,
   height_cm REAL,
+  birth_weight_kg REAL,
+  birth_height_cm REAL,
   first_baby INTEGER,
   onboarding_concerns_json TEXT,
   onboarding_goals_json TEXT,
@@ -893,6 +895,31 @@ CREATE TABLE IF NOT EXISTS memory_badge_tombstones (
             );
           }
 
+          if (oldVersion < 35) {
+            Future<void> tryAdd35(String sql, String label) async {
+              try {
+                await db.execute(sql);
+              } catch (e) {
+                debugPrint('migration v35 $label: $e');
+              }
+            }
+
+            await tryAdd35(
+              'ALTER TABLE babies ADD COLUMN birth_weight_kg REAL',
+              'babies.birth_weight_kg',
+            );
+            await tryAdd35(
+              'ALTER TABLE babies ADD COLUMN birth_height_cm REAL',
+              'babies.birth_height_cm',
+            );
+            await db.execute(
+              'UPDATE babies SET birth_weight_kg = weight_kg WHERE birth_weight_kg IS NULL AND weight_kg IS NOT NULL',
+            );
+            await db.execute(
+              'UPDATE babies SET birth_height_cm = height_cm WHERE birth_height_cm IS NULL AND height_cm IS NOT NULL',
+            );
+          }
+
           if (oldVersion < 10) {
             await db.execute('''
 CREATE TABLE IF NOT EXISTS diapers (
@@ -1321,6 +1348,12 @@ CREATE TABLE IF NOT EXISTS diapers (
     final zodiac = (data['zodiac_sign'] as String?)?.trim();
     final weight = _parseCloudDouble(data['weight_kg']);
     final height = _parseCloudDouble(data['height_cm']);
+    final birthWeight = _parseCloudDouble(
+      data['birth_weight_kg'] ?? data['birthWeightKg'],
+    );
+    final birthHeight = _parseCloudDouble(
+      data['birth_height_cm'] ?? data['birthHeightCm'],
+    );
     final firstBaby = _parseCloudBool(data['first_baby'] ?? data['firstBaby']);
     final concernsJson = _stringListJson(
         data['onboarding_concerns'] ?? data['onboardingConcerns']);
@@ -1339,6 +1372,8 @@ CREATE TABLE IF NOT EXISTS diapers (
         'zodiac_sign': (zodiac == null || zodiac.isEmpty) ? null : zodiac,
         'weight_kg': weight,
         'height_cm': height,
+        'birth_weight_kg': birthWeight ?? weight,
+        'birth_height_cm': birthHeight ?? height,
         'first_baby': firstBaby == null ? null : (firstBaby ? 1 : 0),
         'onboarding_concerns_json': concernsJson,
         'onboarding_goals_json': goalsJson,
@@ -1363,6 +1398,8 @@ CREATE TABLE IF NOT EXISTS diapers (
       'onboarding_goals_json': goalsJson,
       'cloud_id': cloudId,
     };
+    if (birthWeight != null) patch['birth_weight_kg'] = birthWeight;
+    if (birthHeight != null) patch['birth_height_cm'] = birthHeight;
     if (mergedBabyPhotoUrl != null) patch['photo_url'] = mergedBabyPhotoUrl;
     await db.update(
       'babies',
@@ -2449,6 +2486,8 @@ WHERE baby_id = ?
           'zodiac_sign': z,
           'weight_kg': weightKg,
           'height_cm': heightCm,
+          'birth_weight_kg': weightKg,
+          'birth_height_cm': heightCm,
           'first_baby': firstBaby == null ? null : (firstBaby ? 1 : 0),
           'onboarding_concerns_json': concernsJson,
           'onboarding_goals_json': goalsJson,
@@ -2471,8 +2510,8 @@ WHERE baby_id = ?
     return db.rawInsert(
       '''
 INSERT INTO babies(
-  mother_id, name, sex, birth_date, zodiac_sign, weight_kg, height_cm, first_baby, onboarding_concerns_json, onboarding_goals_json, photo_b64, created_at
-) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  mother_id, name, sex, birth_date, zodiac_sign, weight_kg, height_cm, birth_weight_kg, birth_height_cm, first_baby, onboarding_concerns_json, onboarding_goals_json, photo_b64, created_at
+) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ''',
       [
         motherId,
@@ -2480,6 +2519,8 @@ INSERT INTO babies(
         sx,
         birthDate?.toIso8601String(),
         z,
+        weightKg,
+        heightCm,
         weightKg,
         heightCm,
         firstBaby == null ? null : (firstBaby ? 1 : 0),
@@ -2974,6 +3015,9 @@ LIMIT 1
     String? zodiacSign,
     double? weightKg,
     double? heightCm,
+    double? birthWeightKg,
+    double? birthHeightCm,
+    bool touchBirthBaseline = false,
     String? photoB64,
     bool resetProfilePhotoUrl = false,
   }) async {
@@ -3000,6 +3044,10 @@ LIMIT 1
             b['zodiac_sign'] = z;
             b['weight_kg'] = weightKg;
             b['height_cm'] = heightCm;
+            if (touchBirthBaseline) {
+              b['birth_weight_kg'] = birthWeightKg ?? weightKg;
+              b['birth_height_cm'] = birthHeightCm ?? heightCm;
+            }
             b['photo_b64'] = pb;
             if (resetProfilePhotoUrl) b['photo_url'] = null;
             babies[i] = b;
@@ -3019,6 +3067,10 @@ LIMIT 1
       'height_cm': heightCm,
       'photo_b64': pb,
     };
+    if (touchBirthBaseline) {
+      patch['birth_weight_kg'] = birthWeightKg ?? weightKg;
+      patch['birth_height_cm'] = birthHeightCm ?? heightCm;
+    }
     if (resetProfilePhotoUrl) patch['photo_url'] = null;
     final nRows = await db.update(
       'babies',
@@ -4096,7 +4148,10 @@ ORDER BY m.created_at DESC, b.created_at DESC
       Future<String> fallbackBirthWeightLabel() async {
         try {
           final baby = await getBabyById(babyId);
-          final kg = (baby?['weight_kg'] as num?)?.toDouble();
+          final birth = (baby?['birth_weight_kg'] as num?)?.toDouble();
+          final kg = (birth != null && birth > 0)
+              ? birth
+              : (baby?['weight_kg'] as num?)?.toDouble();
           if (kg != null && kg > 0) return _formatWeightLabel(kg);
         } catch (_) {}
         return '—';

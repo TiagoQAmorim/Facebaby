@@ -80,10 +80,13 @@ class GrowthChartWidget extends StatelessWidget {
       final prev = merged.last;
       final cur = spots[i];
       if ((cur.x - prev.x).abs() < 0.02) {
-        merged[merged.length - 1] = cur.y >= prev.y ? cur : prev;
-      } else {
-        merged.add(cur);
+        // Mesma idade: manter nascimento no 1.º ponto; medições novas com leve deslocamento.
+        if ((cur.y - prev.y).abs() > 0.001) {
+          merged.add(FlSpot(cur.x + 0.05, cur.y));
+        }
+        continue;
       }
+      merged.add(cur);
     }
     return merged;
   }

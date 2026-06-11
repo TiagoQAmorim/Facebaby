@@ -3,6 +3,7 @@ import '../i18n/app_i18n.dart';
 import '../models/daily_summary.dart';
 import '../services/app_database.dart';
 import '../services/growth_analyzer_service.dart';
+import '../utils/growth_baseline.dart';
 import '../utils/growth_measurements_builder.dart';
 
 /// Texto compacto «IA Babá · ontem» — tom pediátrico e de vínculo (curto).
@@ -85,8 +86,8 @@ abstract final class HomeYesterdayBabaService {
 
     final sex = GrowthCurves.sexFromProfile(babySex);
     final baby = await AppDatabase.instance.getBabyById(babyId);
-    final birthH = (baby?['height_cm'] as num?)?.toDouble();
-    final birthW = (baby?['weight_kg'] as num?)?.toDouble();
+    final birthH = GrowthBaseline.birthHeightCm(baby);
+    final birthW = GrowthBaseline.birthWeightKg(baby);
 
     final hRows = await AppDatabase.instance.listGrowthRecords(
       babyId: babyId,
