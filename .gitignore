@@ -51,3 +51,13 @@ app.*.map.json
 functions/.env.*
 flutter/
 ios/build/
+
+functions/node_modules/
+flutter_*.png
+flutter/
+build/
+.dart_tool/
+ios/build/
+ios/Pods/
+*.ipa
+*.xcarchive
