@@ -171,6 +171,17 @@ abstract final class AiNannyIntentLexicon {
     'ganhou peso', 'ganhou de peso', 'mais pesad', 'mais gord',
   ];
 
+  /// Perda de peso — delta negativo (registrar).
+  static const weightLossCues = [
+    'perdeu', 'perdeu peso', 'emagreceu', 'emagrecer', 'emagrecendo',
+    'baixou de peso', 'baixou o peso', 'diminuiu', 'diminuiu de peso',
+    'menos pesad', 'abaixou o peso', 'abaixou de peso',
+    'lost weight', 'weight loss', 'lost ', 'decreased', 'dropped',
+    'perdió peso', 'perdio peso', 'adelgazó', 'adelgazo', 'bajó de peso',
+    'a perdu', 'perdu du poids', 'abgenommen', 'verloren', 'gewicht verloren',
+    'perso peso', 'dimagrito', 'dimagrire',
+  ];
+
   static const heightCues = [
     'altura', ' cresceu', 'crescimento', ' cm', 'height', 'tall',
     'estatura', 'taille', 'größe', 'altezza', 'centimeter', 'centimetre',
@@ -309,6 +320,10 @@ abstract final class AiNannyIntentLexicon {
 
   /// Mamada para registrar — não "parece com fome" sem ação.
   static bool hasExplicitFeedingIntent(String low) {
+    if (isFeedingNegated(low) &&
+        !_hasRoutineReversalAfterNegation(low, topic: 'feeding')) {
+      return false;
+    }
     if (containsAny(low, [
       'mamou', 'mamei', 'mamada', 'mamar', 'amament',
       'nursed', 'breastfed', 'fed the baby', 'just fed', 'deu mamar',
@@ -320,6 +335,41 @@ abstract final class AiNannyIntentLexicon {
         !RegExp(r'\b(com fome|parece.*fome|hungry|hambre)\b').hasMatch(low);
   }
 
+  static bool hasAffirmativeFeedingIntent(String transcript) {
+    final low = transcript.toLowerCase();
+    if (isFeedingNegated(low)) {
+      return _hasRoutineReversalAfterNegation(low, topic: 'feeding');
+    }
+    return hasExplicitFeedingIntent(low);
+  }
+
+  static bool isFeedingAbsenceObservation(String transcript) {
+    final low = transcript.toLowerCase();
+    final mentions = hasFeedingCue(low) ||
+        RegExp(r'\bmam(?:ou|ar|ada|ei|ando)\b').hasMatch(low);
+    if (!mentions) return false;
+    return !hasAffirmativeFeedingIntent(transcript);
+  }
+
+  static bool isFeedingNegated(String low) =>
+      _negatedFeedingPt.hasMatch(low) ||
+      _negatedFeedingEn.hasMatch(low) ||
+      _negatedFeedingEs.hasMatch(low);
+
+  static bool isWeightGainNegated(String low) =>
+      _negatedWeightGainPt.hasMatch(low) ||
+      _negatedWeightGainEn.hasMatch(low) ||
+      _negatedWeightGainEs.hasMatch(low);
+
+  static bool isHeightGainNegated(String low) =>
+      _negatedHeightGainPt.hasMatch(low) ||
+      _negatedHeightGainEn.hasMatch(low);
+
+  static bool isSleepNegated(String low) =>
+      _negatedSleepPt.hasMatch(low) ||
+      _negatedSleepEn.hasMatch(low) ||
+      _negatedSleepEs.hasMatch(low);
+
   static bool hasDiaperCue(String low) =>
       containsAny(low, diaperCues) ||
       containsAny(low, peeCues) ||
@@ -328,6 +378,202 @@ abstract final class AiNannyIntentLexicon {
   static bool hasPeeCue(String low) => containsAny(low, peeCues);
 
   static bool hasPooCue(String low) => containsAny(low, pooCues);
+
+  /// "Não fez xixi hoje" — observação/a preocupação, não registro de fralda.
+  static bool isDiaperAbsenceObservation(String transcript) {
+    final low = transcript.toLowerCase();
+    final mentionsPee = hasPeeCue(low);
+    final mentionsPoo = hasPooCue(low);
+    if (!mentionsPee && !mentionsPoo) return false;
+    return !hasAffirmativePeeCue(low) && !hasAffirmativePooCue(low);
+  }
+
+  static bool hasAffirmativePeeCue(String low) {
+    if (!hasPeeCue(low)) return false;
+    if (!isPeeNegated(low)) return true;
+    return _hasDiaperReversalAfterNegation(low, isPee: true);
+  }
+
+  static bool hasAffirmativePooCue(String low) {
+    if (!hasPooCue(low)) return false;
+    if (!isPooNegated(low)) return true;
+    return _hasDiaperReversalAfterNegation(low, isPee: false);
+  }
+
+  static bool isPeeNegated(String low) =>
+      _negatedPeePt.hasMatch(low) || _negatedPeeEn.hasMatch(low);
+
+  static bool isPooNegated(String low) =>
+      _negatedPooPt.hasMatch(low) || _negatedPooEn.hasMatch(low);
+
+  static final RegExp _negatedPeePt = RegExp(
+    r'(?:'
+    r'n[aã]o\s+(?:'
+    r'(?:fez|faz|fazer|mijou|mijo|urinou|urinar|mijar)\s+)?'
+    r'(?:xixi|xix|pipi|mijo|mijar|urinou|urinar)'
+    r'|sem\s+(?:xixi|pipi)'
+    r'|ainda\s+n[aã]o\s+(?:fez|mijou|mijo|faz|fazer)(?:\s+(?:xixi|pipi))?'
+    r'|nunca\s+(?:fez|mijou|mijo)(?:\s+(?:xixi|pipi))?'
+    r'|jamais\s+(?:fez|mijou)(?:\s+(?:xixi|pipi))?'
+    r')',
+    caseSensitive: false,
+  );
+
+  static final RegExp _negatedPooPt = RegExp(
+    r'(?:'
+    r'n[aã]o\s+(?:'
+    r'(?:fez|faz|fazer|cagou|cagar)\s+)?'
+    r'(?:coc[oô]|coco|cagou|cagar|fezes)'
+    r'|sem\s+coc'
+    r'|ainda\s+n[aã]o\s+(?:fez|cagou|cagar)(?:\s+coc)?'
+    r'|nunca\s+(?:fez|cagou)(?:\s+coc)?'
+    r')',
+    caseSensitive: false,
+  );
+
+  static final RegExp _negatedPeeEn = RegExp(
+    r"(?:didn'?t|did not|hasn'?t|have not|without|no)\s+(?:\w+\s+){0,5}?"
+    r'(?:pee|peed|urinat|wee|urine)',
+    caseSensitive: false,
+  );
+
+  static final RegExp _negatedPooEn = RegExp(
+    r"(?:didn'?t|did not|hasn'?t|have not|without|no)\s+(?:\w+\s+){0,5}?"
+    r'(?:poop|pooped|poo|bowel)',
+    caseSensitive: false,
+  );
+
+  static bool _hasDiaperReversalAfterNegation(String low, {required bool isPee}) {
+    if (isPee) {
+      return _hasRoutineReversalAfterNegation(low, topic: 'pee');
+    }
+    return _hasRoutineReversalAfterNegation(low, topic: 'poo');
+  }
+
+  static bool _hasRoutineReversalAfterNegation(
+    String low, {
+    required String topic,
+  }) {
+    const connector =
+        r'\b(?:mas|porém|porem|agora|já|ja|depois|later|then|but)\b';
+    switch (topic) {
+      case 'pee':
+        return RegExp(
+          '$connector.{0,48}\\b(?:fez|mijou|mijo|urinou)\\s*(?:xixi|pipi)?\\b',
+          caseSensitive: false,
+        ).hasMatch(low);
+      case 'poo':
+        return RegExp(
+          '$connector.{0,48}\\b(?:fez|cagou)\\s*(?:coc[oô]|coco)?\\b',
+          caseSensitive: false,
+        ).hasMatch(low);
+      case 'feeding':
+        return RegExp(
+          '$connector.{0,48}\\b(?:mamou|mamei|amamentou|fed|nursed|breastfed)\\b',
+          caseSensitive: false,
+        ).hasMatch(low);
+      case 'weight':
+        return RegExp(
+          '$connector.{0,48}\\b(?:ganhou|aumentou|perdeu|engordou|gained|lost)\\b',
+          caseSensitive: false,
+        ).hasMatch(low);
+      case 'height':
+        return RegExp(
+          '$connector.{0,48}\\b(?:cresceu|grew|creció)\\b',
+          caseSensitive: false,
+        ).hasMatch(low);
+      case 'sleep':
+        return RegExp(
+          '$connector.{0,48}\\b(?:dormiu|dormir|slept|sleep|durmió|durmio)\\b',
+          caseSensitive: false,
+        ).hasMatch(low);
+      default:
+        return false;
+    }
+  }
+
+  static final RegExp _negatedFeedingPt = RegExp(
+    r'(?:'
+    r'n[aã]o\s+(?:\w+\s+){0,3}?'
+    r'(?:mamou|mamei|mamar|amamentou|amamentei|alimentei|deu\s+mamar|'
+    r'tomou\s+(?:leite|mamadeira)|fez\s+mamada)'
+    r'|sem\s+(?:mamada|mamar|amamentar|leite)'
+    r'|ainda\s+n[aã]o\s+(?:mamou|mamei|mamou|amamentou)'
+    r'|nunca\s+(?:mamou|mamei|amamentou)'
+    r')',
+    caseSensitive: false,
+  );
+
+  static final RegExp _negatedFeedingEn = RegExp(
+    r"(?:didn'?t|did not|hasn'?t|have not|without|no|not)\s+(?:\w+\s+){0,5}?"
+    r'(?:feed|fed|nurse|nursed|breastfeed|breastfed|bottle)',
+    caseSensitive: false,
+  );
+
+  static final RegExp _negatedFeedingEs = RegExp(
+    r'(?:no|sin|nunca)\s+(?:\w+\s+){0,4}?'
+    r'(?:mamó|mamo|amamantó|amamanto|tomó\s+leche|aliment)',
+    caseSensitive: false,
+  );
+
+  static final RegExp _negatedWeightGainPt = RegExp(
+    r'(?:'
+    r'n[aã]o\s+(?:\w+\s+){0,4}?'
+    r'(?:aumentou|ganhou|engordou|subiu)\s+(?:o\s+)?(?:peso|de\s+peso|gramas?)'
+    r'|n[aã]o\s+ganhou\s+(?:peso|de\s+peso)'
+    r'|n[aã]o\s+aumentou\s+(?:o\s+)?peso'
+    r'|sem\s+(?:ganho|aumento)\s+de\s+peso'
+    r')',
+    caseSensitive: false,
+  );
+
+  static final RegExp _negatedWeightGainEn = RegExp(
+    r"(?:didn'?t|did not|hasn'?t|have not|no|not|without)\s+(?:\w+\s+){0,5}?"
+    r'(?:gain(?:ed)?|grew|increase(?:d)?)\s*(?:weight)?',
+    caseSensitive: false,
+  );
+
+  static final RegExp _negatedWeightGainEs = RegExp(
+    r'(?:no|sin)\s+(?:\w+\s+){0,4}?'
+    r'(?:aumentó|aumento|ganó|gano|engordó)\s*(?:de\s+)?peso',
+    caseSensitive: false,
+  );
+
+  static final RegExp _negatedHeightGainPt = RegExp(
+    r'(?:'
+    r'n[aã]o\s+(?:\w+\s+){0,3}?cresceu'
+    r'|sem\s+crescimento'
+    r'|ainda\s+n[aã]o\s+cresceu'
+    r')',
+    caseSensitive: false,
+  );
+
+  static final RegExp _negatedHeightGainEn = RegExp(
+    r"(?:didn'?t|did not|hasn'?t|have not|no|not)\s+(?:\w+\s+){0,5}?"
+    r'(?:grow|grew|growth)',
+    caseSensitive: false,
+  );
+
+  static final RegExp _negatedSleepPt = RegExp(
+    r'(?:'
+    r'n[aã]o\s+(?:\w+\s+){0,3}?(?:dormiu|dormir|dormindo|dorme)'
+    r'|sem\s+(?:sono|dormir)'
+    r'|ainda\s+n[aã]o\s+dormiu'
+    r'|nunca\s+dormiu'
+    r')',
+    caseSensitive: false,
+  );
+
+  static final RegExp _negatedSleepEn = RegExp(
+    r"(?:didn'?t|did not|hasn'?t|have not|no|not|without)\s+(?:\w+\s+){0,5}?"
+    r'(?:sleep|slept|nap|napped)',
+    caseSensitive: false,
+  );
+
+  static final RegExp _negatedSleepEs = RegExp(
+    r'(?:no|sin)\s+(?:\w+\s+){0,4}?(?:durmió|durmio|dormir|dormido)',
+    caseSensitive: false,
+  );
 
   static bool indicatesDiaperChange(String low) =>
       containsAny(low, diaperChangeCues);
@@ -353,8 +599,9 @@ abstract final class AiNannyIntentLexicon {
 
   static String? resolveDiaperKind(String transcript) {
     final low = transcript.toLowerCase();
-    final hasPee = hasPeeCue(low);
-    final hasPoo = hasPooCue(low);
+    if (isDiaperAbsenceObservation(low)) return null;
+    final hasPee = hasAffirmativePeeCue(low);
+    final hasPoo = hasAffirmativePooCue(low);
     final hasBoth = containsAny(low, diaperBothCues) ||
         (low.contains('dois') && (hasPee || hasPoo)) ||
         (low.contains('two') && (hasPee || hasPoo));

@@ -177,6 +177,8 @@ class ProfileCloudSync {
         'zodiac_sign': b['zodiac_sign'],
         'weight_kg': b['weight_kg'],
         'height_cm': b['height_cm'],
+        'birth_weight_kg': b['birth_weight_kg'] ?? b['weight_kg'],
+        'birth_height_cm': b['birth_height_cm'] ?? b['height_cm'],
         'first_baby': _boolFromSqlite(b['first_baby']),
         'onboarding_concerns':
             _stringListFromJson(b['onboarding_concerns_json'] as String?),

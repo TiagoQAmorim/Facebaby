@@ -241,9 +241,9 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage>
     if (baby == null) return null;
     switch (kind) {
       case 'weight':
-        return (baby['weight_kg'] as num?)?.toDouble();
+        return GrowthBaseline.birthWeightKg(baby);
       case 'height':
-        return (baby['height_cm'] as num?)?.toDouble();
+        return GrowthBaseline.birthHeightCm(baby);
       default:
         return null;
     }
@@ -1056,8 +1056,8 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage>
     final sx = sexRaw?.trim().toUpperCase();
     final sex = GrowthCurves.sexFromProfile(sexRaw);
     final showSexHint = sx != 'M' && sx != 'F';
-    final birthH = (baby?['height_cm'] as num?)?.toDouble();
-    final birthW = (baby?['weight_kg'] as num?)?.toDouble();
+    final birthH = GrowthBaseline.birthHeightCm(baby);
+    final birthW = GrowthBaseline.birthWeightKg(baby);
     final name = _displayBabyName(baby, s);
     final forWeight = metric == GrowthChartMetric.weight;
     final points = forWeight

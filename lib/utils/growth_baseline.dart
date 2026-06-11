@@ -7,6 +7,20 @@ import '../services/app_database.dart';
 class GrowthBaseline {
   GrowthBaseline._();
 
+  /// Peso ao nascer (cadastro inicial) — não muda ao registrar novas medições.
+  static double? birthWeightKg(Map<String, Object?>? baby) {
+    final birth = (baby?['birth_weight_kg'] as num?)?.toDouble();
+    if (birth != null && birth > 0) return birth;
+    return (baby?['weight_kg'] as num?)?.toDouble();
+  }
+
+  /// Altura ao nascer (cadastro inicial).
+  static double? birthHeightCm(Map<String, Object?>? baby) {
+    final birth = (baby?['birth_height_cm'] as num?)?.toDouble();
+    if (birth != null && birth > 0) return birth;
+    return (baby?['height_cm'] as num?)?.toDouble();
+  }
+
   static const int _scanLimit = 120;
 
   /// Último peso (kg): medições em [growth_records], senão cadastro do bebê.
@@ -81,7 +95,8 @@ class GrowthBaseline {
       (CurrentBabyController.instance.currentBabyRow?['height_cm'] as num?)
           ?.toDouble();
 
-  /// Atualiza peso/altura no cadastro do bebê após gravar medição (Home + nuvem).
+  /// Atualiza peso/altura **atuais** no cadastro após medição (Home + nuvem).
+  /// Não altera [birth_weight_kg] / [birth_height_cm] usados nas curvas ao nascer.
   static Future<void> syncBabyProfileAfterMeasurement({
     required int babyId,
     double? weightKg,
@@ -113,6 +128,7 @@ class GrowthBaseline {
       weightKg: weightKg ?? (baby['weight_kg'] as num?)?.toDouble(),
       heightCm: heightCm ?? (baby['height_cm'] as num?)?.toDouble(),
       photoB64: baby['photo_b64'] as String?,
+      touchBirthBaseline: false,
     );
     await CurrentBabyController.instance.refresh();
   }

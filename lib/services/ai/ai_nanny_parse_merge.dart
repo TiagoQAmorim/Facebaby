@@ -1,6 +1,7 @@
 import '../../models/ai/ai_nanny_parsed_message.dart';
 import '../../utils/ai_nanny_parse_normalize.dart';
 import 'ai_nanny_intent_lexicon.dart';
+import 'routine_absence_detection.dart';
 
 /// União cloud + local — preserva vários tipos na mesma frase (ex.: acordou + cresceu).
 abstract final class AiNannyParseMerge {
@@ -10,9 +11,16 @@ abstract final class AiNannyParseMerge {
     String message,
   ) {
     if (!local.hasRecords) {
+      final filtered = dropNegatedRoutineObservations(
+        _filterSpurious(primary.records),
+        message,
+      );
+      if (filtered.isEmpty) {
+        return const AiNannyParseResult(classification: 'chat_only');
+      }
       return AiNannyParseResult(
         classification: primary.classification,
-        records: _filterSpurious(primary.records),
+        records: filtered,
         needsConfirmation: primary.needsConfirmation,
       );
     }
@@ -38,12 +46,32 @@ abstract final class AiNannyParseMerge {
       local,
       message,
     );
+    merged = dropNegatedRoutineObservations(merged, message);
     merged = _filterSpurious(merged);
+    if (merged.isEmpty) {
+      return const AiNannyParseResult(classification: 'chat_only');
+    }
     return AiNannyParseResult(
       classification: 'create_records',
       records: merged,
       needsConfirmation: true,
     );
+  }
+
+  /// Cloud pode devolver registro mesmo em negação — filtra observação de ausência.
+  static List<AiNannyStructuredRecord> dropNegatedRoutineObservations(
+    List<AiNannyStructuredRecord> records,
+    String message,
+  ) {
+    final blocked = RoutineAbsenceDetection.blockedRecordTypes(message);
+    if (blocked.isEmpty) return records;
+    return records
+        .where(
+          (r) => !blocked.contains(
+            AiNannyParseNormalize.canonicalRecordType(r.type, r.fields),
+          ),
+        )
+        .toList();
   }
 
   static String _mergeKey(AiNannyStructuredRecord r) =>
