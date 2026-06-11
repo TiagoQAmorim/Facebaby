@@ -1,6 +1,6 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_declarations
 
-import 'dart:async' show unawaited;
+import 'dart:async' show Timer, unawaited;
 
 import 'package:flutter/material.dart';
 
@@ -59,13 +59,28 @@ enum _PurchasingPlan { none, monthly, annual, restore }
 class _PremiumPaywallScreenState extends State<PremiumPaywallScreen>
     with WidgetsBindingObserver {
   _PurchasingPlan _purchasing = _PurchasingPlan.none;
+  Timer? _purchaseTimeout;
 
   bool get _busy => _purchasing != _PurchasingPlan.none;
+
+  void _clearPurchaseTimeout() {
+    _purchaseTimeout?.cancel();
+    _purchaseTimeout = null;
+  }
+
+  void _startPurchaseTimeout() {
+    _clearPurchaseTimeout();
+    _purchaseTimeout = Timer(const Duration(seconds: 120), () {
+      if (!mounted || _purchasing == _PurchasingPlan.none) return;
+      setState(() => _purchasing = _PurchasingPlan.none);
+    });
+  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    PremiumService.instance.addListener(_onPremiumServiceChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       PremiumService.instance.refreshStorePricing();
       unawaited(PremiumService.instance.syncPremiumFromFirestore());
@@ -74,8 +89,52 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen>
 
   @override
   void dispose() {
+    _clearPurchaseTimeout();
+    PremiumService.instance.removeListener(_onPremiumServiceChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _onPremiumServiceChanged() {
+    if (!mounted || _purchasing == _PurchasingPlan.none) return;
+    final svc = PremiumService.instance;
+    if (svc.isPremium) {
+      _finishPurchaseSuccess();
+      return;
+    }
+    if (!svc.purchaseAwaitingStoreConfirmation &&
+        svc.lastPurchaseErrorMessage != null) {
+      final s = S.of(context);
+      final msg = svc.lastPurchaseErrorMessage!;
+      _stopPurchasing();
+      _showPurchaseErrorSnack(
+        msg == 'purchase_canceled'
+            ? s.plusPurchaseErrorSnack
+            : s.plusPurchaseBillingLaunchFailedSnack,
+      );
+    }
+  }
+
+  void _finishPurchaseSuccess() {
+    if (!mounted) return;
+    _clearPurchaseTimeout();
+    setState(() => _purchasing = _PurchasingPlan.none);
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(S.of(context).plusWelcomeSnack)),
+    );
+  }
+
+  void _stopPurchasing() {
+    _clearPurchaseTimeout();
+    if (mounted) setState(() => _purchasing = _PurchasingPlan.none);
+  }
+
+  void _showPurchaseErrorSnack(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text), duration: const Duration(seconds: 8)),
+    );
   }
 
   @override
@@ -88,61 +147,59 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen>
 
   Future<void> _purchase({required bool annual}) async {
     if (_busy) return;
+    final svc = PremiumService.instance;
+    final sku = annual
+        ? PremiumConstants.productIdAnnual
+        : PremiumConstants.productIdMonthly;
+    final productReady =
+        annual ? svc.annualProductReady : svc.monthlyProductReady;
+    if (!svc.storeAvailable || !productReady) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(S.of(context).plusPurchaseSkuNotFoundSnack(sku))),
+      );
+      return;
+    }
+
     setState(() {
       _purchasing = annual ? _PurchasingPlan.annual : _PurchasingPlan.monthly;
     });
     try {
-      final svc = PremiumService.instance;
       final result =
           annual ? await svc.purchaseAnnual() : await svc.purchaseMonthly();
       if (!mounted) return;
       if (svc.isPremium) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(S.of(context).plusWelcomeSnack)),
-        );
+        _finishPurchaseSuccess();
         return;
       }
-      final sku = annual
-          ? PremiumConstants.productIdAnnual
-          : PremiumConstants.productIdMonthly;
       switch (result) {
         case PurchasePremiumResult.billingFlowLaunched:
-          break;
+          _startPurchaseTimeout();
+          return;
         case PurchasePremiumResult.productNotFoundInStore:
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(S.of(context).plusPurchaseSkuNotFoundSnack(sku)),
-            ),
+          _stopPurchasing();
+          _showPurchaseErrorSnack(
+            S.of(context).plusPurchaseSkuNotFoundSnack(sku),
           );
           break;
         case PurchasePremiumResult.billingLaunchFailed:
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content:
-                  Text(S.of(context).plusPurchaseBillingLaunchFailedSnack),
-              duration: const Duration(seconds: 8),
-            ),
+          _stopPurchasing();
+          _showPurchaseErrorSnack(
+            S.of(context).plusPurchaseBillingLaunchFailedSnack,
           );
           break;
         case PurchasePremiumResult.billingUnavailable:
         case PurchasePremiumResult.unsupportedPlatform:
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(S.of(context).plusPurchaseUnavailableSnack),
-            ),
+          _stopPurchasing();
+          _showPurchaseErrorSnack(
+            S.of(context).plusPurchaseUnavailableSnack,
           );
           break;
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(S.of(context).plusPurchaseErrorSnack)),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _purchasing = _PurchasingPlan.none);
-      }
+      _stopPurchasing();
+      _showPurchaseErrorSnack(S.of(context).plusPurchaseErrorSnack);
     }
   }
 
@@ -190,6 +247,16 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen>
         final savingsLine = s.plusAnnualSavingsAmountLine(
           PremiumConstants.annualSavingsAmountBr,
         );
+        final annualPrice = svc.formattedLocalizedPriceAnnual.isNotEmpty
+            ? svc.formattedLocalizedPriceAnnual
+            : '...';
+        final monthlyPrice = svc.formattedLocalizedPriceMonthly.isNotEmpty
+            ? svc.formattedLocalizedPriceMonthly
+            : '...';
+        final missingSkus = <String>[
+          if (svc.monthlySkuMissingFromStore) PremiumConstants.productIdMonthly,
+          if (svc.annualSkuMissingFromStore) PremiumConstants.productIdAnnual,
+        ];
 
         return Scaffold(
           backgroundColor: AppTheme.background,
@@ -276,7 +343,7 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen>
                             _PlanCard(
                               title: s.plusPlanAnnualCardTitle,
                               subtitle: s.plusPlanAnnualSubtitle,
-                              price: svc.formattedLocalizedPriceAnnual,
+                              price: annualPrice,
                               priceHighlight: savingsLine,
                               priceHint: s.plusAnnualPerMonthHint,
                               features: s.plusPlanAnnualFeatures,
@@ -291,7 +358,9 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen>
                               isCurrentPlan:
                                   activePlan == PremiumBillingPlan.annual,
                               busy: _purchasing == _PurchasingPlan.annual,
-                              onPressed: activePlan == PremiumBillingPlan.annual
+                              onPressed: activePlan == PremiumBillingPlan.annual ||
+                                      !svc.storeAvailable ||
+                                      !svc.annualProductReady
                                   ? null
                                   : () => _purchase(annual: true),
                             ),
@@ -299,7 +368,7 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen>
                             _PlanCard(
                               title: s.plusPlanMonthlyCardTitle,
                               subtitle: s.plusPlanMonthlySubtitle,
-                              price: svc.formattedLocalizedPriceMonthly,
+                              price: monthlyPrice,
                               features: s.plusPlanMonthlyFeatures,
                               accent: plusPurple,
                               icon: Icons.workspace_premium_rounded,
@@ -310,10 +379,11 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen>
                               isCurrentPlan:
                                   activePlan == PremiumBillingPlan.monthly,
                               busy: _purchasing == _PurchasingPlan.monthly,
-                              onPressed:
-                                  activePlan == PremiumBillingPlan.monthly
-                                      ? null
-                                      : () => _purchase(annual: false),
+                              onPressed: activePlan == PremiumBillingPlan.monthly ||
+                                      !svc.storeAvailable ||
+                                      !svc.monthlyProductReady
+                                  ? null
+                                  : () => _purchase(annual: false),
                             ),
                             const SizedBox(height: 18),
                             const _TrustStrip(),
@@ -330,15 +400,10 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen>
                                 color: AppTheme.textMuted.withAlpha(220),
                               ),
                             ),
-                            if (!hasPlus &&
-                                svc.storeAvailable &&
-                                svc.monthlyProduct == null &&
-                                svc.annualProduct == null) ...[
+                            if (!hasPlus && missingSkus.isNotEmpty) ...[
                               const SizedBox(height: 12),
                               Text(
-                                s.plusPaywallSkuMissingHint(
-                                  PremiumConstants.productIdMonthly,
-                                ),
+                                s.plusPaywallSkuMissingHint(missingSkus.join(', ')),
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 12,

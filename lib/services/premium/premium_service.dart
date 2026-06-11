@@ -33,6 +33,7 @@ class PremiumService extends ChangeNotifier {
   static const _prefEntitlement = 'facebaby_premium_entitlement_v2';
   static const _prefActiveProduct = 'facebaby_premium_active_product_v1';
   static const _prefDebugPremium = 'facebaby_plus_debug_force';
+  static const _kIapLog = 'FaceBaby IAP';
 
   final InAppPurchase _iap = InAppPurchase.instance;
   StreamSubscription<List<PurchaseDetails>>? _purchaseSub;
@@ -50,6 +51,11 @@ class PremiumService extends ChangeNotifier {
   bool _restoreUiPending = false;
   bool _userInitiatedRestore = false;
   List<String> _lastNotFoundIds = const [];
+  bool _purchaseAwaitingStoreConfirmation = false;
+  String? _lastPurchaseErrorMessage;
+  String? _lastPurchaseProductId;
+
+  void _log(String message) => debugPrint('[$_kIapLog] $message');
 
   static bool get qaToolsEnabled =>
       kDebugMode ||
@@ -73,16 +79,19 @@ class PremiumService extends ChangeNotifier {
 
   bool get lifetimeSkuMissingFromStore => monthlySkuMissingFromStore;
 
-  String get formattedLocalizedPriceMonthly {
-    if (_monthlyPriceLooksMisconfigured(_monthlyProduct)) {
-      return PremiumConstants.priceDisplayMonthlyBr;
-    }
-    return _formatProductPrice(
-      _monthlyProduct,
-      PremiumConstants.priceDisplayMonthlyBr,
-      perMonth: true,
-    );
-  }
+  List<String> get notFoundProductIds => List<String>.from(_lastNotFoundIds);
+
+  bool get purchaseAwaitingStoreConfirmation => _purchaseAwaitingStoreConfirmation;
+
+  String? get lastPurchaseErrorMessage => _lastPurchaseErrorMessage;
+
+  String? get lastPurchaseProductId => _lastPurchaseProductId;
+
+  bool get monthlyProductReady => _monthlyProduct != null;
+
+  bool get annualProductReady => _annualProduct != null;
+
+  String get formattedLocalizedPriceMonthly => _formatStorePrice(_monthlyProduct);
 
   PremiumBillingPlan get activeBillingPlan {
     if (!isPremium) return PremiumBillingPlan.free;
@@ -100,52 +109,25 @@ class PremiumService extends ChangeNotifier {
     return PremiumBillingPlan.plusUnknown;
   }
 
-  static bool _monthlyPriceLooksMisconfigured(ProductDetails? p) {
-    if (p == null) return false;
-    if (p.currencyCode.toUpperCase() != 'BRL') return false;
-    return p.rawPrice > PremiumConstants.monthlyStorePriceSanityMaxBr;
-  }
-
-  String get formattedLocalizedPriceAnnual =>
-      _formatProductPrice(_annualProduct, PremiumConstants.priceDisplayAnnualBr, perMonth: false);
+  String get formattedLocalizedPriceAnnual => _formatStorePrice(_annualProduct);
 
   String get formattedLocalizedPrice => formattedLocalizedPriceMonthly;
 
   String get storeCurrencyCode =>
       _monthlyProduct?.currencyCode ?? _annualProduct?.currencyCode ?? '';
 
-  String _formatProductPrice(
-    ProductDetails? p,
-    String fallback, {
-    required bool perMonth,
-  }) {
-    if (p != null) {
-      final store = p.price.trim();
-      if (store.isNotEmpty) {
-        final lower = store.toLowerCase();
-        if (perMonth &&
-            !lower.contains('/mês') &&
-            !lower.contains('/mes') &&
-            !lower.contains('/month')) {
-          return '$store/mês';
-        }
-        return store;
-      }
-      final raw = _formatRawWithCurrency(p);
-      if (raw != null) {
-        return perMonth ? '$raw/mês' : raw;
+  String _formatStorePrice(ProductDetails? p) {
+    if (p == null) return '';
+    final store = p.price.trim();
+    if (store.isNotEmpty) return store;
+    if (p.rawPrice > 0 && p.currencyCode.isNotEmpty) {
+      try {
+        return NumberFormat.simpleCurrency(name: p.currencyCode).format(p.rawPrice);
+      } catch (_) {
+        return '';
       }
     }
-    return fallback;
-  }
-
-  String? _formatRawWithCurrency(ProductDetails p) {
-    if (p.rawPrice <= 0 || p.currencyCode.isEmpty) return null;
-    try {
-      return NumberFormat.simpleCurrency(name: p.currencyCode).format(p.rawPrice);
-    } catch (_) {
-      return null;
-    }
+    return '';
   }
 
   static bool _isPremiumProductId(String? id) {
@@ -265,7 +247,13 @@ class PremiumService extends ChangeNotifier {
 
       _purchaseSub = _iap.purchaseStream.listen(
         _onPurchaseUpdates,
-        onError: (Object e) => debugPrint('IAP stream error: $e'),
+        onError: (Object e, StackTrace st) {
+          _log('purchase stream error: $e');
+          debugPrint('[$_kIapLog] purchase stream stack: $st');
+          _purchaseAwaitingStoreConfirmation = false;
+          _lastPurchaseErrorMessage = e.toString();
+          notifyListeners();
+        },
       );
 
       await _queryProducts();
@@ -278,23 +266,47 @@ class PremiumService extends ChangeNotifier {
   }
 
   Future<void> _queryProducts() async {
-    final ids = PremiumConstants.allPremiumProductIds;
+    final ids = PremiumConstants.subscriptionProductIds;
+    _log('product query start ids=${ids.join(', ')}');
     final response = await _iap.queryProductDetails(ids);
     _lastNotFoundIds = List<String>.from(response.notFoundIDs);
 
     if (response.error != null) {
-      debugPrint('PremiumService queryProductDetails IAPError: ${response.error}');
+      _log(
+        'product query IAPError code=${response.error!.code} '
+        'message=${response.error!.message} details=${response.error!.details}',
+      );
+    }
+
+    if (_lastNotFoundIds.isEmpty) {
+      _log('products not found: (none)');
+    } else {
+      for (final missing in _lastNotFoundIds) {
+        _log('products not found: $missing');
+      }
     }
 
     _monthlyProduct = null;
     _annualProduct = null;
     for (final p in response.productDetails) {
+      _log(
+        'products found: id=${p.id} price=${p.price} '
+        'rawPrice=${p.rawPrice} currency=${p.currencyCode}',
+      );
       if (p.id == PremiumConstants.productIdMonthly) {
         _monthlyProduct = p;
       } else if (p.id == PremiumConstants.productIdAnnual) {
         _annualProduct = p;
       }
     }
+
+    if (_monthlyProduct == null) {
+      _log('monthly product missing after query (${PremiumConstants.productIdMonthly})');
+    }
+    if (_annualProduct == null) {
+      _log('annual product missing after query (${PremiumConstants.productIdAnnual})');
+    }
+
     notifyListeners();
   }
 
@@ -384,25 +396,43 @@ class PremiumService extends ChangeNotifier {
     for (final p in purchases) {
       switch (p.status) {
         case PurchaseStatus.pending:
+          _log('purchase pending product=${p.productID}');
+          _purchaseAwaitingStoreConfirmation = true;
+          _lastPurchaseErrorMessage = null;
           break;
         case PurchaseStatus.error:
-          debugPrint('Purchase error: ${p.error}');
+          _log(
+            'purchase error product=${p.productID} '
+            'code=${p.error?.code} message=${p.error?.message} details=${p.error?.details}',
+          );
+          _purchaseAwaitingStoreConfirmation = false;
+          _lastPurchaseErrorMessage =
+              p.error?.message ?? p.error?.code ?? 'purchase_error';
           if (p.error != null && _indicatesItemAlreadyOwned(p.error!)) {
             await _tryLinkPlayPurchaseToCurrentUser();
           }
           break;
         case PurchaseStatus.purchased:
+          _log('purchase completed product=${p.productID}');
+          _purchaseAwaitingStoreConfirmation = false;
+          _lastPurchaseErrorMessage = null;
           if (_isPremiumProductId(p.productID)) {
             await _persistEntitlement(true, pushRemote: true, productId: p.productID);
           }
           break;
         case PurchaseStatus.restored:
+          _log('purchase restored product=${p.productID}');
+          _purchaseAwaitingStoreConfirmation = false;
+          _lastPurchaseErrorMessage = null;
           if (_isPremiumProductId(p.productID) &&
               (_userInitiatedRestore || premiumOnIos())) {
             await _persistEntitlement(true, pushRemote: true, productId: p.productID);
           }
           break;
         case PurchaseStatus.canceled:
+          _log('purchase canceled product=${p.productID}');
+          _purchaseAwaitingStoreConfirmation = false;
+          _lastPurchaseErrorMessage = 'purchase_canceled';
           break;
       }
       if (p.pendingCompletePurchase) {
@@ -412,15 +442,16 @@ class PremiumService extends ChangeNotifier {
     if (_restoreUiPending) {
       _restoreUiPending = false;
       _userInitiatedRestore = false;
-      notifyListeners();
     }
+    notifyListeners();
   }
 
   Future<void> _completeSafe(PurchaseDetails p) async {
     try {
       await _iap.completePurchase(p);
+      _log('purchase acknowledged product=${p.productID}');
     } catch (e) {
-      debugPrint('completePurchase: $e');
+      _log('completePurchase failed product=${p.productID} error=$e');
     }
   }
 
@@ -535,16 +566,21 @@ class PremiumService extends ChangeNotifier {
     }
     if (!_storeAvailable) return PurchasePremiumResult.billingUnavailable;
 
+    _lastPurchaseErrorMessage = null;
+    _lastPurchaseProductId = sku;
+
     var details = product;
     if (details == null) {
       await _queryProducts();
-      if (sku == PremiumConstants.productIdAnnual) {
-        details = _annualProduct;
-      } else {
-        details = _monthlyProduct;
-      }
+      details = sku == PremiumConstants.productIdAnnual
+          ? _annualProduct
+          : _monthlyProduct;
     }
     if (details == null) {
+      _log('purchase blocked: product not found in store sku=$sku');
+      if (_lastNotFoundIds.contains(sku)) {
+        _log('missing product ID confirmed: $sku');
+      }
       return PurchasePremiumResult.productNotFoundInStore;
     }
 
@@ -555,21 +591,41 @@ class PremiumService extends ChangeNotifier {
       param = PurchaseParam(productDetails: details);
     }
 
-    final ok = await _iap.buyNonConsumable(purchaseParam: param);
-    if (!ok) {
-      if (premiumOnAndroid()) {
-        await _tryLinkPlayPurchaseToCurrentUser();
-        if (_entitlement) {
-          return PurchasePremiumResult.billingFlowLaunched;
+    _log(
+      'purchase start sku=$sku storePrice=${details.price} '
+      'method=buyNonConsumable',
+    );
+    _purchaseAwaitingStoreConfirmation = true;
+    notifyListeners();
+
+    try {
+      final ok = await _iap.buyNonConsumable(purchaseParam: param);
+      if (!ok) {
+        _log('purchase start failed sku=$sku buyNonConsumable returned false');
+        _purchaseAwaitingStoreConfirmation = false;
+        notifyListeners();
+        if (premiumOnAndroid()) {
+          await _tryLinkPlayPurchaseToCurrentUser();
+          if (_entitlement) {
+            return PurchasePremiumResult.billingFlowLaunched;
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 600));
+          if (await _tryGrantFromAndroidPastPurchases()) {
+            return PurchasePremiumResult.billingFlowLaunched;
+          }
         }
-        await Future<void>.delayed(const Duration(milliseconds: 600));
-        if (await _tryGrantFromAndroidPastPurchases()) {
-          return PurchasePremiumResult.billingFlowLaunched;
-        }
+        return PurchasePremiumResult.billingLaunchFailed;
       }
+      _log('purchase sheet launched sku=$sku awaiting store confirmation');
+      return PurchasePremiumResult.billingFlowLaunched;
+    } catch (e, st) {
+      _log('purchase start exception sku=$sku error=$e');
+      debugPrint('[$_kIapLog] purchase start stack: $st');
+      _purchaseAwaitingStoreConfirmation = false;
+      _lastPurchaseErrorMessage = e.toString();
+      notifyListeners();
       return PurchasePremiumResult.billingLaunchFailed;
     }
-    return PurchasePremiumResult.billingFlowLaunched;
   }
 
   Future<PurchasePremiumResult> purchaseMonthly() => _purchaseProduct(
