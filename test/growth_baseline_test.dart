@@ -2,6 +2,20 @@ import 'package:facebaby_flutter/utils/growth_baseline.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('birthWeightKg prefers birth_weight_kg over current weight_kg', () {
+    expect(
+      GrowthBaseline.birthWeightKg({
+        'birth_weight_kg': 3.2,
+        'weight_kg': 5.0,
+      }),
+      closeTo(3.2, 0.001),
+    );
+    expect(
+      GrowthBaseline.birthWeightKg({'weight_kg': 4.1}),
+      closeTo(4.1, 0.001),
+    );
+  });
+
   test('maxValueByMeasuredAt picks newest row', () {
     final rows = [
       {

@@ -42,6 +42,9 @@ Rules:
 - For growth_weight / growth_height: missingFields may ONLY include "value" if the number is unknown. NEVER use pee, poop, feedingType, breastSide, or generic "type" for growth records.
 - needsConfirmation: true if any incomplete record or weight/height delta.
 - classification "chat_only" ONLY when there is zero registrable baby-care event.
+- NEGATION / absence (NO records): phrases like "didn't / não / no / sin / pas" + routine action = concern or question only — classification chat_only, records []. Examples (any language): "não fez xixi", "não mamou", "não dormiu", "não cresceu", "não aumentou o peso", "didn't pee", "didn't nurse", "no weight gain", "hasn't slept". NEVER create diaper/feeding/sleep/growth records for negated absence.
+- POSITIVE records only when the family reports the baby DID the action (mamou, dormiu, fez xixi, ganhou X g, perdeu X g, cresceu X cm).
+- WEIGHT LOSS is registrable: "perdeu 200 gramas", "lost 200g", "emagreceu 150g" → growth_weight mode delta, value NEGATIVE (-200), unit g.
 - Never confuse fever temperature (35-42) with weight kg.
 - Normalize 37,5 and 37.5 to 37.5. Normalize times to 24h HH:mm.
 - Priority: structured extraction over friendly conversation.`;

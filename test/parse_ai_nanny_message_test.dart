@@ -2,6 +2,7 @@ import 'package:facebaby_flutter/i18n/app_i18n.dart';
 import 'package:facebaby_flutter/models/ai/ai_nanny_parsed_message.dart';
 import 'package:facebaby_flutter/services/ai/ai_nanny_intent_lexicon.dart';
 import 'package:facebaby_flutter/services/ai/ai_nanny_local_message_parser.dart';
+import 'package:facebaby_flutter/services/ai/ai_nanny_parse_merge.dart';
 import 'package:facebaby_flutter/services/ai/ai_nanny_structured_mapper.dart';
 import 'package:facebaby_flutter/services/ai/routine_record_interpreter.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -91,6 +92,78 @@ void main() {
       expect('${v.fields['vaccineName']}', contains('pentavalente'));
       expect(v.fields['date'], 'next_monday');
       expect(v.fields['time'], '10:00');
+    });
+
+    test('não fez xixi hoje — conversa, sem registro de fralda', () {
+      const msg = 'A bebê não fez xixi hoje';
+      expect(AiNannyIntentLexicon.isDiaperAbsenceObservation(msg), isTrue);
+      final r = AiNannyLocalMessageParser.parse(msg);
+      expect(r.hasRecords, isFalse);
+      expect(r.classification, 'chat_only');
+      expect(findRecord(r, 'diaper'), isNull);
+    });
+
+    test('fez xixi — registra fralda com xixi', () {
+      const msg = 'A bebê fez xixi agora';
+      expect(AiNannyIntentLexicon.isDiaperAbsenceObservation(msg), isFalse);
+      final r = AiNannyLocalMessageParser.parse(msg);
+      final diaper = findRecord(r, 'diaper');
+      expect(diaper, isNotNull);
+      expect(diaper!.fields['pee'], isTrue);
+      expect(diaper.fields['poop'], isFalse);
+    });
+
+    test('merge remove fralda espúria em negação', () {
+      const msg = 'A bebê não fez xixi hoje';
+      final cloud = AiNannyParseResult(
+        classification: 'create_records',
+        records: [
+          AiNannyStructuredRecord(
+            type: 'diaper',
+            fields: {'pee': true, 'poop': false, 'time': 'now'},
+          ),
+        ],
+      );
+      final local = AiNannyLocalMessageParser.parse(msg);
+      final merged = AiNannyParseMerge.merge(cloud, local, msg);
+      expect(merged.hasRecords, isFalse);
+      expect(merged.classification, 'chat_only');
+    });
+
+    test('não mamou — conversa, sem registro de mamada', () {
+      const msg = 'A bebê não mamou hoje';
+      final r = AiNannyLocalMessageParser.parse(msg);
+      expect(r.hasRecords, isFalse);
+      expect(findRecord(r, 'feeding'), isNull);
+    });
+
+    test('não aumentou o peso — conversa, sem registro de peso', () {
+      const msg = 'Ela não aumentou o peso esta semana';
+      final r = AiNannyLocalMessageParser.parse(msg);
+      expect(r.hasRecords, isFalse);
+      expect(findRecord(r, 'growth_weight'), isNull);
+    });
+
+    test('não cresceu — conversa, sem registro de altura', () {
+      const msg = 'O bebê não cresceu este mês';
+      final r = AiNannyLocalMessageParser.parse(msg);
+      expect(r.hasRecords, isFalse);
+      expect(findRecord(r, 'growth_height'), isNull);
+    });
+
+    test('perdeu 200 gramas — delta negativo de peso', () {
+      const msg = 'A bebê perdeu 200 gramas';
+      final r = AiNannyLocalMessageParser.parse(msg);
+      final w = findRecord(r, 'growth_weight');
+      expect(w, isNotNull);
+      expect(w!.fields['value'], -200);
+      expect(w.fields['mode'], 'delta');
+      expect(w.fields['unit'], 'g');
+    });
+
+    test('emagreceu 150 gramas — delta negativo', () {
+      final r = AiNannyLocalMessageParser.parse('Emagreceu 150 gramas');
+      expect(findRecord(r, 'growth_weight')!.fields['value'], -150);
     });
   });
 

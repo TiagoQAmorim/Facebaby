@@ -1,6 +1,7 @@
 import '../data/growth_curves.dart';
 import '../i18n/app_i18n.dart';
 import '../models/growth_measurement_point.dart';
+import '../utils/growth_baseline.dart';
 import '../utils/growth_measurements_builder.dart';
 import 'app_database.dart';
 import 'growth_analyzer_service.dart';
@@ -46,8 +47,8 @@ class GrowthCurveAlertService {
     if (birthDate == null) return const [];
 
     final baby = await AppDatabase.instance.getBabyById(babyId);
-    final birthH = (baby?['height_cm'] as num?)?.toDouble();
-    final birthW = (baby?['weight_kg'] as num?)?.toDouble();
+    final birthH = GrowthBaseline.birthHeightCm(baby);
+    final birthW = GrowthBaseline.birthWeightKg(baby);
     final sex = GrowthCurves.sexFromProfile(babySex);
 
     final out = <GrowthCurveOutOfBand>[];

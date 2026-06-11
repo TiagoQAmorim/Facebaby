@@ -230,18 +230,60 @@ abstract final class AiNannyParseNormalize {
 
   static int? parseWeightDeltaGrams(String text) {
     final low = text.toLowerCase();
-    if (!AiNannyIntentLexicon.containsAny(
+    final isGain = AiNannyIntentLexicon.containsAny(
       low,
       AiNannyIntentLexicon.weightGainCues,
-    )) {
-      return null;
-    }
-    final m = RegExp(
+    );
+    final isLoss = AiNannyIntentLexicon.containsAny(
+      low,
+      AiNannyIntentLexicon.weightLossCues,
+    );
+    if (!isGain && !isLoss) return null;
+
+    final g = RegExp(
       r'(\d{2,4})\s*(?:g|gramas?|grams?|grammes?|grammi|gramm)\b',
       caseSensitive: false,
     ).firstMatch(low);
-    if (m == null) return null;
-    return int.tryParse(m.group(1)!);
+    if (g != null) {
+      final n = int.tryParse(g.group(1)!);
+      if (n == null) return null;
+      final sign = _weightDeltaSign(low, isGain: isGain, isLoss: isLoss);
+      return sign * n;
+    }
+
+    final kg = RegExp(
+      r'(\d{1,2})(?:[,.](\d{1,3}))?\s*(?:kg|kilogram|kilograms|quilo|quilos)\b',
+      caseSensitive: false,
+    ).firstMatch(low);
+    if (kg != null) {
+      final v = _decimalFromMatch(kg);
+      if (v != null && v > 0 && v < 10) {
+        final grams = (v * 1000).round();
+        final sign = _weightDeltaSign(low, isGain: isGain, isLoss: isLoss);
+        return sign * grams;
+      }
+    }
+    return null;
+  }
+
+  static int _weightDeltaSign(
+    String low, {
+    required bool isGain,
+    required bool isLoss,
+  }) {
+    if (isLoss && !isGain) return -1;
+    if (isGain && !isLoss) return 1;
+    var lossAt = -1;
+    for (final cue in AiNannyIntentLexicon.weightLossCues) {
+      final i = low.lastIndexOf(cue);
+      if (i > lossAt) lossAt = i;
+    }
+    var gainAt = -1;
+    for (final cue in AiNannyIntentLexicon.weightGainCues) {
+      final i = low.lastIndexOf(cue);
+      if (i > gainAt) gainAt = i;
+    }
+    return lossAt > gainAt ? -1 : 1;
   }
 
   /// Cloud às vezes manda `{ value: 200, unit: "g" }` com `mode: total` — vira delta.
@@ -265,7 +307,11 @@ abstract final class AiNannyParseNormalize {
       low,
       AiNannyIntentLexicon.weightGainCues,
     );
-    if (!hasGainCue || mode != 'total') return;
+    final hasLossCue = AiNannyIntentLexicon.containsAny(
+      low,
+      AiNannyIntentLexicon.weightLossCues,
+    );
+    if ((!hasGainCue && !hasLossCue) || mode != 'total') return;
 
     final n = (wVal is num) ? wVal.toDouble() : double.tryParse('$wVal');
     if (n == null) return;
