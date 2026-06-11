@@ -1,9 +1,16 @@
 import '../../utils/ai_nanny_parse_normalize.dart';
 import 'ai_nanny_intent_lexicon.dart';
+import 'ai_nanny_local_message_parser.dart';
 
 /// Detecta frases de ausência/negação — conversa, sem registro automático.
 abstract final class RoutineAbsenceDetection {
   RoutineAbsenceDetection._();
+
+  /// Frase nega rotina (ex.: "não fez xixi") sem evento positivo para gravar.
+  static bool isAbsenceOnlyConversation(String transcript) {
+    if (blockedRecordTypes(transcript).isEmpty) return false;
+    return !AiNannyLocalMessageParser.parse(transcript).hasRecords;
+  }
 
   static Set<String> blockedRecordTypes(String transcript) {
     final blocked = <String>{};

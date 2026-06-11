@@ -170,22 +170,25 @@ class ProfileCloudSync {
         );
       }
 
-      await FirestoreService.instance.updateBaby(cid, {
+      final birthW = (b['birth_weight_kg'] as num?)?.toDouble();
+      final birthH = (b['birth_height_cm'] as num?)?.toDouble();
+      final cloudPatch = <String, dynamic>{
         'name': name,
         'sex': (b['sex'] as String?) ?? 'F',
         'birth_date': birth?.toIso8601String(),
         'zodiac_sign': b['zodiac_sign'],
         'weight_kg': b['weight_kg'],
         'height_cm': b['height_cm'],
-        'birth_weight_kg': b['birth_weight_kg'] ?? b['weight_kg'],
-        'birth_height_cm': b['birth_height_cm'] ?? b['height_cm'],
+        if (birthW != null && birthW > 0) 'birth_weight_kg': birthW,
+        if (birthH != null && birthH > 0) 'birth_height_cm': birthH,
         'first_baby': _boolFromSqlite(b['first_baby']),
         'onboarding_concerns':
             _stringListFromJson(b['onboarding_concerns_json'] as String?),
         'onboarding_goals':
             _stringListFromJson(b['onboarding_goals_json'] as String?),
         if (photoUrl != null) 'photo_url': photoUrl,
-      });
+      };
+      await FirestoreService.instance.updateBaby(cid, cloudPatch);
       if (photoUrl != null && photoUrl.isNotEmpty) {
         await AppDatabase.instance
             .persistBabyPhotoUrl(babyId: localBabyId, photoUrl: photoUrl);

@@ -116,6 +116,23 @@ class GrowthBaseline {
         ? DateTime.tryParse(birthRaw)
         : null;
 
+    final existingBirthW =
+        (baby['birth_weight_kg'] as num?)?.toDouble();
+    final existingBirthH =
+        (baby['birth_height_cm'] as num?)?.toDouble();
+    final profileW = (baby['weight_kg'] as num?)?.toDouble();
+    final profileH = (baby['height_cm'] as num?)?.toDouble();
+
+    // Legado: congela peso/altura do cadastro como "ao nascer" uma única vez.
+    final captureBirthW = weightKg != null &&
+        (existingBirthW == null || existingBirthW <= 0) &&
+        profileW != null &&
+        profileW > 0;
+    final captureBirthH = heightCm != null &&
+        (existingBirthH == null || existingBirthH <= 0) &&
+        profileH != null &&
+        profileH > 0;
+
     await AppDatabase.instance.updateBaby(
       babyId: babyId,
       motherId: motherId,
@@ -125,10 +142,12 @@ class GrowthBaseline {
           : (baby['sex'] as String?) ?? 'F',
       birthDate: birthDate,
       zodiacSign: baby['zodiac_sign'] as String?,
-      weightKg: weightKg ?? (baby['weight_kg'] as num?)?.toDouble(),
-      heightCm: heightCm ?? (baby['height_cm'] as num?)?.toDouble(),
+      weightKg: weightKg ?? profileW,
+      heightCm: heightCm ?? profileH,
+      birthWeightKg: captureBirthW ? profileW : null,
+      birthHeightCm: captureBirthH ? profileH : null,
+      touchBirthBaseline: captureBirthW || captureBirthH,
       photoB64: baby['photo_b64'] as String?,
-      touchBirthBaseline: false,
     );
     await CurrentBabyController.instance.refresh();
   }

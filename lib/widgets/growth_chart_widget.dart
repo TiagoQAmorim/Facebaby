@@ -79,8 +79,11 @@ class GrowthChartWidget extends StatelessWidget {
     for (var i = 1; i < spots.length; i++) {
       final prev = merged.last;
       final cur = spots[i];
-      // Mesma idade (ex.: nascimento + medição no 1.º dia): manter o primeiro ponto.
       if ((cur.x - prev.x).abs() < 0.02) {
+        // Mesma idade: manter nascimento no 1.º ponto; medições novas com leve deslocamento.
+        if ((cur.y - prev.y).abs() > 0.001) {
+          merged.add(FlSpot(cur.x + 0.05, cur.y));
+        }
         continue;
       }
       merged.add(cur);
