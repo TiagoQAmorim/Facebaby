@@ -49,3 +49,4 @@ app.*.map.json
 
 # Firebase Functions per-project env (bootstrap emails, secrets)
 functions/.env.*
+flutter/
