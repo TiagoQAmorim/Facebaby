@@ -49,3 +49,35 @@ app.*.map.json
 
 # Firebase Functions per-project env (bootstrap emails, secrets)
 functions/.env.*
+flutter/
+ios/build/
+
+functions/node_modules/
+flutter_*.png
+flutter/
+build/
+.dart_tool/
+ios/build/
+ios/Pods/
+*.ipa
+*.xcarchive
+
+flutter/
+build/
+.dart_tool/
+ios/build/
+ios/Pods/
+functions/node_modules/
+*.ipa
+*.xcarchive
+EOF	
+
+flutter/
+build/
+.dart_tool/
+ios/build/
+ios/Pods/
+functions/node_modules/
+*.ipa
+*.xcarchive
+

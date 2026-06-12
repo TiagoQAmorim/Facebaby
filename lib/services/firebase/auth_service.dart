@@ -1,13 +1,10 @@
-import 'dart:convert';
 import 'dart:developer' as developer;
 
-import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../utils/login_platform.dart';
 import '../premium/premium_service.dart';
@@ -16,13 +13,33 @@ import 'auth_session_restore.dart';
 import 'email_verification_policy.dart';
 import 'google_sign_in_helpers.dart';
 
-String _sha256Hex(String input) {
-  final digest = sha256.convert(utf8.encode(input));
-  return digest.toString();
-}
-
 /// Temporary: filter logs in DevTools / Logcat with this name.
 const _kDebugGoogleSignInLogName = 'DEBUG Google Sign-In (TEMP)';
+
+const _kDebugAppleSignInLogName = 'Apple Sign-In';
+
+void _debugLogApple(String message, {Object? error, StackTrace? stackTrace}) {
+  developer.log(
+    message,
+    name: _kDebugAppleSignInLogName,
+    error: error,
+    stackTrace: stackTrace,
+  );
+}
+
+void _debugLogAppleFailure(Object error, StackTrace stackTrace, {required String step}) {
+  final buf = StringBuffer('Apple Sign-In failure step=$step ');
+  if (error is FirebaseAuthException) {
+    buf.write('code=${error.code} message=${error.message}');
+  } else if (error is PlatformException) {
+    buf.write(
+      'code=${error.code} message=${error.message} details=${error.details}',
+    );
+  } else {
+    buf.write('type=${error.runtimeType} details=$error');
+  }
+  _debugLogApple(buf.toString(), error: error, stackTrace: stackTrace);
+}
 
 Future<void> _debugLogBeforeGoogleSignIn() async {
   final o = Firebase.app().options;
@@ -308,95 +325,55 @@ class AuthService {
     }
   }
 
-  Future<void> _applyAppleDisplayNameIfNeeded(
-    UserCredential cred,
-    AuthorizationCredentialAppleID appleCredential,
-  ) async {
-    if (cred.additionalUserInfo?.isNewUser != true) return;
-    final user = cred.user;
-    if (user == null) return;
-    if ((user.displayName ?? '').trim().isNotEmpty) return;
-
-    final given = appleCredential.givenName?.trim() ?? '';
-    final family = appleCredential.familyName?.trim() ?? '';
-    final fullName = [given, family].where((part) => part.isNotEmpty).join(' ');
-    if (fullName.isEmpty) return;
-
-    try {
-      await user.updateDisplayName(fullName);
-      await user.reload();
-    } catch (e, st) {
-      developer.log(
-        'Apple displayName update failed (non-fatal): $e',
-        name: 'Apple Sign-In',
-        error: e,
-        stackTrace: st,
-      );
-    }
-  }
-
-  /// Sign in with Apple (iOS only). Uses Firebase `OAuthProvider('apple.com')`.
+  /// Sign in with Apple (iOS only).
+  ///
+  /// Uses Firebase [AppleAuthProvider] + [FirebaseAuth.signInWithProvider] so the
+  /// native iOS SDK presents the sheet (with a presentation anchor for
+  /// SceneDelegate apps) and handles the OAuth nonce for `apple.com`.
   Future<UserCredential> signInWithApple() async {
     if (!isIOSDevice) {
+      _debugLogApple('step=blocked reason=non_iOS_platform');
       throw StateError('APPLE_UNAVAILABLE_PLATFORM');
     }
 
-    final rawNonce = generateNonce();
-    final nonce = _sha256Hex(rawNonce);
+    _debugLogApple('step=begin platform=iOS provider=apple.com');
+
+    final appleProvider = AppleAuthProvider()
+      ..addScope('email')
+      ..addScope('name');
+
+    _debugLogApple(
+      'step=before_signInWithProvider scopes=${appleProvider.scopes.join(",")}',
+    );
 
     try {
-      final appleCredential = await SignInWithApple.getAppleIDCredential(
-        scopes: const [
-          AppleIDAuthorizationScopes.email,
-          AppleIDAuthorizationScopes.fullName,
-        ],
-        nonce: nonce,
+      final cred = await _auth.signInWithProvider(appleProvider);
+      _debugLogApple(
+        'step=after_signInWithProvider uid=${cred.user?.uid} '
+        'isNewUser=${cred.additionalUserInfo?.isNewUser}',
       );
 
-      final idToken = appleCredential.identityToken;
-      if (idToken == null || idToken.isEmpty) {
-        throw StateError('APPLE_MISSING_ID_TOKEN');
-      }
-
-      // firebase_auth 5.2+ exige o authorizationCode da Apple como accessToken.
-      final oauthCredential = OAuthProvider('apple.com').credential(
-        idToken: idToken,
-        rawNonce: rawNonce,
-        accessToken: appleCredential.authorizationCode,
-      );
-
-      try {
-        final cred = await _auth.signInWithCredential(oauthCredential);
-        await _applyAppleDisplayNameIfNeeded(cred, appleCredential);
-        await _recordSignedIn(cred.user);
-        return cred;
-      } on FirebaseAuthException catch (e, st) {
-        developer.log(
-          'FirebaseAuth Apple signIn code=${e.code} message=${e.message}',
-          name: 'Apple Sign-In',
-          error: e,
-          stackTrace: st,
-        );
-        rethrow;
-      }
-    } on SignInWithAppleAuthorizationException catch (e) {
-      developer.log(
-        'Apple authorization code=${e.code}',
-        name: 'Apple Sign-In',
-        error: e,
-      );
-      if (e.code == AuthorizationErrorCode.canceled) {
+      _debugLogApple('step=before_recordSignedIn uid=${cred.user?.uid}');
+      await _recordSignedIn(cred.user);
+      _debugLogApple('step=after_recordSignedIn uid=${cred.user?.uid}');
+      _debugLogApple('step=done uid=${cred.user?.uid}');
+      return cred;
+    } on FirebaseAuthException catch (e, st) {
+      _debugLogAppleFailure(e, st, step: 'signInWithProvider');
+      rethrow;
+    } on PlatformException catch (e, st) {
+      _debugLogAppleFailure(e, st, step: 'signInWithProvider_platform');
+      if (e.code == 'sign_in_canceled' || e.code == 'ERROR_USER_CANCELED') {
         throw StateError('Login cancelado');
       }
-      throw StateError('APPLE_AUTH_FAILED');
-    } on SignInWithAppleNotSupportedException catch (e, st) {
-      developer.log(
-        'Sign in with Apple not supported (missing iOS capability?)',
-        name: 'Apple Sign-In',
-        error: e,
-        stackTrace: st,
-      );
-      throw StateError('APPLE_AUTH_FAILED');
+      throw StateError('Apple Sign-In failed: ${e.code} ${e.message ?? e.details ?? ''}'.trim());
+    } catch (e, st) {
+      _debugLogAppleFailure(e, st, step: 'signInWithProvider_unexpected');
+      final message = e.toString();
+      if (message.contains('canceled') || message.contains('cancelled')) {
+        throw StateError('Login cancelado');
+      }
+      rethrow;
     }
   }
 

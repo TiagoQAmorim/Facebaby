@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
 
 import '../../i18n/app_i18n.dart';
@@ -83,8 +85,11 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _handleAppleSignIn() async {
+    developer.log('Entrar com Apple tapped', name: 'Apple Sign-In');
     await _run(() async {
+      developer.log('calling AuthService.signInWithApple', name: 'Apple Sign-In');
       await AuthService.instance.signInWithApple();
+      developer.log('AuthService.signInWithApple completed', name: 'Apple Sign-In');
       _closeAfterSuccessfulLogin();
     });
   }

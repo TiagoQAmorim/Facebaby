@@ -14,29 +14,24 @@ abstract final class PremiumConstants {
   /// Fallback anual.
   static const String priceDisplayAnnualBr = 'R\$ 149,90/ano';
 
-  /// Assinatura mensal — Play Console / App Store.
-  static String get productIdMonthly {
-    const fromEnv = String.fromEnvironment('FACEBABY_PREMIUM_MONTHLY_SKU');
-    if (fromEnv.trim().isNotEmpty) return fromEnv.trim();
-    const legacy = String.fromEnvironment('FACEBABY_PREMIUM_SKU');
-    if (legacy.trim().isNotEmpty && legacy.trim() != 'facebaby_premium') {
-      return legacy.trim();
-    }
-    return 'facebaby_premium_monthly';
-  }
+  /// Assinatura mensal — App Store Connect / Play Console.
+  static const String productIdMonthly = 'facebaby_premium_monthly';
 
   /// Assinatura anual.
-  static String get productIdAnnual {
-    const fromEnv = String.fromEnvironment('FACEBABY_PREMIUM_ANNUAL_SKU');
-    return fromEnv.trim().isEmpty ? 'facebaby_premium_annual' : fromEnv.trim();
-  }
+  static const String productIdAnnual = 'facebaby_premium_annual';
 
-  /// Compra única antiga (mantém acesso vitalício).
+  /// Compra única antiga (restauração apenas; não consultar na loja).
   static const String productIdLifetimeLegacy = 'facebaby_premium';
 
-  static Set<String> get allPremiumProductIds => {
+  /// IDs pedidos ao StoreKit / Play Billing para novas assinaturas.
+  static Set<String> get subscriptionProductIds => {
         productIdMonthly,
         productIdAnnual,
+      };
+
+  /// Todos os SKUs que concedem Plus (inclui legado vitalício em restauração).
+  static Set<String> get allPremiumProductIds => {
+        ...subscriptionProductIds,
         productIdLifetimeLegacy,
       };
 

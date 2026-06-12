@@ -1,20 +1,6 @@
 {
   "products" : [
-    {
-      "displayPrice" : "14.90",
-      "familyShareable" : false,
-      "internalID" : "FBPL0001",
-      "localizations" : [
-        {
-          "description" : "Compra única legada FaceBaby Plus.",
-          "displayName" : "FaceBaby Plus (vitalício)",
-          "locale" : "pt_BR"
-        }
-      ],
-      "productID" : "facebaby_premium",
-      "referenceName" : "facebaby_premium",
-      "type" : "NonConsumable"
-    }
+
   ],
   "settings" : {
 
