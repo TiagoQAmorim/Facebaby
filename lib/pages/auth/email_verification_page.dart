@@ -1,4 +1,4 @@
-import 'dart:async' show Timer, unawaited;
+import 'dart:async' show StreamSubscription, Timer, unawaited;
 
 import 'package:flutter/material.dart';
 
@@ -27,11 +27,16 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
   int _cooldownSeconds = 0;
   Timer? _cooldownTicker;
   Timer? _backgroundCheckTimer;
+  StreamSubscription<void>? _verifiedSub;
+  bool _completed = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _verifiedSub = AuthService.instance.emailVerifiedEvents.listen((_) {
+      unawaited(_checkVerified(silent: true));
+    });
     unawaited(_initCooldown());
     _cooldownTicker = Timer.periodic(const Duration(seconds: 1), (_) {
       _tickCooldown();
@@ -63,6 +68,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
   void dispose() {
     _cooldownTicker?.cancel();
     _backgroundCheckTimer?.cancel();
+    _verifiedSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -87,8 +93,11 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
       final ok = await AuthService.instance.reloadAndCheckEmailVerified();
       if (!mounted) return;
       if (ok) {
+        if (_completed) return;
+        _completed = true;
         _backgroundCheckTimer?.cancel();
         await AuthService.instance.onEmailVerifiedBootstrap();
+        if (!mounted) return;
         widget.onVerified();
         return;
       }

@@ -109,6 +109,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   bool _busy = false;
   String? _error;
   bool _didPrecacheBackgrounds = false;
+  bool _resumeAfterEmailScheduled = false;
 
   final _concerns = const [
     'ConcernSleep',
@@ -197,9 +198,15 @@ class _OnboardingPageState extends State<OnboardingPage> {
     if (widget.requireProfileOnly && draft.stage == 'welcome') {
       draft = draft.copyWith(stage: 'questions');
     }
-    if (draft.localBabyId != null &&
-        FirebaseAuth.instance.currentUser == null) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (draft.localBabyId != null && user == null) {
       draft = draft.copyWith(stage: 'auth');
+    }
+    if (widget.requireProfileOnly &&
+        user != null &&
+        draft.localBabyId != null &&
+        draft.stage == 'auth') {
+      draft = draft.copyWith(stage: 'processing');
     }
     _nameCtrl.text = draft.babyName;
     _motherNameCtrl.text = draft.motherName;
@@ -210,6 +217,47 @@ class _OnboardingPageState extends State<OnboardingPage> {
       _draft = draft;
       _loading = false;
     });
+
+    if (widget.requireProfileOnly &&
+        user != null &&
+        draft.localBabyId != null &&
+        draft.stage == 'processing') {
+      _scheduleResumeAfterEmailVerification();
+    }
+  }
+
+  void _scheduleResumeAfterEmailVerification() {
+    if (_resumeAfterEmailScheduled) return;
+    _resumeAfterEmailScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_resumeAfterEmailVerification());
+    });
+  }
+
+  Future<void> _resumeAfterEmailVerification() async {
+    if (_busy) return;
+    final babyId = _draft.localBabyId;
+    if (babyId == null || FirebaseAuth.instance.currentUser == null) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await _syncLocalProfileToCloud(babyId);
+      await OnboardingDraftStore.clear();
+      await CurrentBabyController.instance.refresh();
+      if (!mounted) return;
+      widget.onCompleted?.call();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = S.of(context).onb('CouldNotPrepare');
+        _draft = _draft.copyWith(stage: 'auth');
+      });
+      await OnboardingDraftStore.save(_draft);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _save(OnboardingDraft draft) async {

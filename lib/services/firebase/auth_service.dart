@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -84,6 +85,17 @@ class AuthService {
   AuthService._();
 
   static final AuthService instance = AuthService._();
+
+  final _emailVerifiedEvents = StreamController<void>.broadcast();
+
+  /// Emitido quando o Firebase confirma [User.emailVerified] (app ou link).
+  Stream<void> get emailVerifiedEvents => _emailVerifiedEvents.stream;
+
+  void notifyEmailVerified() {
+    if (!_emailVerifiedEvents.isClosed) {
+      _emailVerifiedEvents.add(null);
+    }
+  }
 
   /// Após [signOut], o [AuthGate] mostra o onboarding sem esperar revalidação de sessão.
   bool _trustAuthNullImmediately = false;
@@ -498,15 +510,22 @@ class AuthService {
   }
 
   Future<bool> reloadAndCheckEmailVerified() async {
-    final user = _auth.currentUser;
-    if (user == null) return false;
-    await user.reload();
-    final refreshed = _auth.currentUser;
-    if (refreshed == null) return false;
-    if (refreshed.emailVerified) {
-      await refreshed.getIdToken(true);
+    for (var attempt = 0; attempt < 3; attempt++) {
+      final user = _auth.currentUser;
+      if (user == null) return false;
+      await user.reload();
+      final refreshed = _auth.currentUser;
+      if (refreshed == null) return false;
+      if (refreshed.emailVerified) {
+        await refreshed.getIdToken(true);
+        notifyEmailVerified();
+        return true;
+      }
+      if (attempt < 2) {
+        await Future<void>.delayed(Duration(milliseconds: 350 * (attempt + 1)));
+      }
     }
-    return refreshed.emailVerified;
+    return false;
   }
 
   /// Perfil cloud inicial após confirmação (adiado desde o registo).

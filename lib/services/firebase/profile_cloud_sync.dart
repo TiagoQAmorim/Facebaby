@@ -178,14 +178,11 @@ class ProfileCloudSync {
 
       final birthW = (b['birth_weight_kg'] as num?)?.toDouble();
       final birthH = (b['birth_height_cm'] as num?)?.toDouble();
-      final profileW = (b['weight_kg'] as num?)?.toDouble();
-      final profileH = (b['height_cm'] as num?)?.toDouble();
-      final effectiveBirthW = (birthW != null && birthW > 0)
-          ? birthW
-          : ((profileW != null && profileW > 0) ? profileW : null);
-      final effectiveBirthH = (birthH != null && birthH > 0)
-          ? birthH
-          : ((profileH != null && profileH > 0) ? profileH : null);
+      // Baseline ao nascer só quando gravado explicitamente — nunca o peso/altura atuais.
+      final effectiveBirthW =
+          (birthW != null && birthW > 0) ? birthW : null;
+      final effectiveBirthH =
+          (birthH != null && birthH > 0) ? birthH : null;
       final cloudPatch = <String, dynamic>{
         'name': name,
         'sex': (b['sex'] as String?) ?? 'F',

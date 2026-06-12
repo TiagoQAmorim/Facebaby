@@ -47,7 +47,9 @@ class _EmailVerificationLinkHostState extends State<EmailVerificationLinkHost> {
       await AuthService.instance.reloadAndCheckEmailVerified();
       if (result == EmailVerificationLinkResult.applied ||
           result == EmailVerificationLinkResult.alreadyVerified) {
+        await AuthService.instance.reloadAndCheckEmailVerified();
         await AuthService.instance.onEmailVerifiedBootstrap();
+        AuthService.instance.notifyEmailVerified();
       }
     } catch (e, st) {
       debugPrint('EmailVerificationLinkHost.handle: $e\n$st');

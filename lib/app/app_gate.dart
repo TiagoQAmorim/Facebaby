@@ -15,9 +15,7 @@ import 'main_shell.dart';
 import '../widgets/face_baby_loading.dart';
 import '../widgets/loading_scope.dart';
 import '../services/auth_local_scope.dart';
-import '../services/app_database.dart';
-import '../services/firebase/profile_cloud_sync.dart';
-import '../services/onboarding_draft_store.dart';
+import '../services/onboarding_post_verify_sync.dart';
 
 class AppGate extends StatefulWidget {
   const AppGate({super.key});
@@ -111,28 +109,16 @@ class _AppGateState extends State<AppGate> with WidgetsBindingObserver {
       return initial;
     }
 
-    final draft = await OnboardingDraftStore.load();
-    final localBabyId = draft.localBabyId;
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (localBabyId == null || uid == null) return initial;
-
-    try {
-      await ProfileCloudSync.pushBaby(localBabyId);
-      final baby = await AppDatabase.instance.getBabyById(localBabyId);
-      final cloudId = (baby?['cloud_id'] as String?)?.trim();
-      if (cloudId != null && cloudId.isNotEmpty) {
-        await FirestoreUserRepository.instance.saveUserProfile(uid, {
-          'name': FirebaseAuth.instance.currentUser?.displayName,
-          'email': FirebaseAuth.instance.currentUser?.email,
-        });
-        await FirestoreUserRepository.instance.setSelectedBabyId(uid, cloudId);
-        await OnboardingDraftStore.clear();
-        return await FirestoreUserRepository.instance.loadGate();
-      }
-    } catch (e, st) {
-      debugPrint('AppGate.pendingOnboardingSync failed: $e\n$st');
+    final synced = await OnboardingPostVerifySync.tryPushPendingProfileToCloud();
+    if (synced) {
+      return await FirestoreUserRepository.instance.loadGate();
     }
     return initial;
+  }
+
+  Future<void> _onEmailVerified() async {
+    await OnboardingPostVerifySync.tryPushPendingProfileToCloud();
+    _refresh();
   }
 
   Future<void> _ensureCacheReady(String selectedBabyId) async {
@@ -176,7 +162,7 @@ class _AppGateState extends State<AppGate> with WidgetsBindingObserver {
 
         if (AuthService.instance
             .mustVerifyEmail(FirebaseAuth.instance.currentUser)) {
-          return EmailVerificationPage(onVerified: _refresh);
+          return EmailVerificationPage(onVerified: _onEmailVerified);
         }
 
         if (r.status == CloudLoadStatus.permissionDenied ||

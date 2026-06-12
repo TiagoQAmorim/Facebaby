@@ -241,17 +241,20 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage>
     if (baby == null) return null;
     switch (kind) {
       case 'weight':
-        return GrowthBaseline.birthWeightKg(baby);
+        return GrowthBaseline.birthWeightKgStored(baby);
       case 'height':
-        return GrowthBaseline.birthHeightCm(baby);
+        return GrowthBaseline.birthHeightCmStored(baby);
       default:
         return null;
     }
   }
 
   double? _latestValue(List<Map<String, Object?>> rows) {
-    if (rows.isEmpty) return null;
-    return (rows.first['value'] as num?)?.toDouble();
+    return GrowthBaseline.maxValueByMeasuredAtForTest(rows);
+  }
+
+  Map<String, Object?>? _latestRow(List<Map<String, Object?>> rows) {
+    return GrowthBaseline.latestRowByMeasuredAt(rows);
   }
 
   /// Valor inicial da régua ao adicionar peso/altura (último registo → cadastro do bebê).
@@ -276,7 +279,7 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage>
   }
 
   String? _latestDateRaw(List<Map<String, Object?>> rows) =>
-      rows.isEmpty ? null : rows.first['measured_at'] as String?;
+      _latestRow(rows)?['measured_at'] as String?;
 
   List<Map<String, Object?>> _asc(List<Map<String, Object?>> rows) {
     final copy = [...rows];
@@ -435,9 +438,15 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage>
                           }
                           return;
                         }
+                        debugPrint(
+                          '[GrowthSave] before insert babyId=$bid type=$kind value=$parsed date=${DateTime.now().toIso8601String()}',
+                        );
                         final newId = await AppDatabase.instance
                             .insertGrowthRecord(
                                 babyId: bid, kind: kind, value: parsed);
+                        debugPrint(
+                          '[GrowthSave] after insert id=$newId op=insert babyId=$bid type=$kind value=$parsed',
+                        );
                         GrowthCloudSync.pushLocalSoon(
                             localBabyId: bid, localGrowthId: newId);
                         await GrowthBaseline.syncBabyProfileAfterMeasurement(
@@ -727,7 +736,8 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage>
     final baby = _currentBaby.currentBabyRow;
     final muted = Colors.black.withAlpha(140);
     final baseline = _birthBaseline(kind, baby);
-    final current = _latestValue(rows);
+    final latestRow = _latestRow(rows);
+    final current = (latestRow?['value'] as num?)?.toDouble();
     final birthRaw = baby?['birth_date'] as String?;
     final birthDt = _tryParseIso(birthRaw);
     final birthSub = birthDt == null
@@ -741,6 +751,13 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage>
         : (curDt == null ? (currentRaw ?? '') : _fmtDateDdMmYy(curDt));
 
     final deltaStr = _formatDelta(kind, baseline, current);
+
+    final birthId = 'profile';
+    final latestId = (latestRow?['id'] as num?)?.toInt();
+    debugPrint(
+      '[GrowthCards] kind=$kind birthMeasurement id=$birthId value=$baseline date=$birthSub '
+      'latestMeasurement id=$latestId value=$current date=$curSub',
+    );
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1056,8 +1073,8 @@ class _GrowthDashboardPageState extends State<GrowthDashboardPage>
     final sx = sexRaw?.trim().toUpperCase();
     final sex = GrowthCurves.sexFromProfile(sexRaw);
     final showSexHint = sx != 'M' && sx != 'F';
-    final birthH = GrowthBaseline.birthHeightCm(baby);
-    final birthW = GrowthBaseline.birthWeightKg(baby);
+    final birthH = GrowthBaseline.birthHeightCmStored(baby);
+    final birthW = GrowthBaseline.birthWeightKgStored(baby);
     final name = _displayBabyName(baby, s);
     final forWeight = metric == GrowthChartMetric.weight;
     final points = forWeight

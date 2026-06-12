@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show File;
 
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint, visibleForTesting;
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/daily_summary.dart';
@@ -25,6 +25,18 @@ class AppDatabase {
 
   Database? _db;
   SharedPreferences? _prefs;
+  String? _testDbPath;
+
+  /// Caminho SQLite isolado para testes de integração.
+  @visibleForTesting
+  void setTestDatabasePath(String? path) => _testDbPath = path;
+
+  @visibleForTesting
+  Future<void> disposeForTest() async {
+    await _db?.close();
+    _db = null;
+    _testDbPath = null;
+  }
 
   Future<Database> get database async {
     final existing = _db;
@@ -41,7 +53,9 @@ class AppDatabase {
 
   Future<Database> _open() async {
     final String path;
-    if (kIsWeb) {
+    if (_testDbPath != null) {
+      path = _testDbPath!;
+    } else if (kIsWeb) {
       // On web, getDatabasesPath() can be null. Using a simple file name works with sqflite_common_ffi_web.
       path = _dbName;
     } else {
@@ -1485,15 +1499,11 @@ CREATE TABLE IF NOT EXISTS diapers (
       patch['birth_weight_kg'] = birthWeight;
     } else if (localBirthW != null && localBirthW > 0) {
       patch['birth_weight_kg'] = localBirthW;
-    } else if (weight != null && weight > 0) {
-      patch['birth_weight_kg'] = weight;
     }
     if (birthHeight != null) {
       patch['birth_height_cm'] = birthHeight;
     } else if (localBirthH != null && localBirthH > 0) {
       patch['birth_height_cm'] = localBirthH;
-    } else if (height != null && height > 0) {
-      patch['birth_height_cm'] = height;
     }
     if (mergedBabyPhotoUrl != null) patch['photo_url'] = mergedBabyPhotoUrl;
     await db.update(
@@ -2099,7 +2109,7 @@ WHERE baby_id = ?
       limit: 1,
     );
     if (rows.isEmpty) {
-      await db.insert('growth_records', {
+      final localId = await db.insert('growth_records', {
         'baby_id': localBabyId,
         'kind': kind,
         'value': value,
@@ -2107,10 +2117,16 @@ WHERE baby_id = ?
         'cloud_id': cid,
         'created_at': createdAt,
       });
+      debugPrint(
+        '[GrowthCloudUpsert] insert localId=$localId cloudId=$cid kind=$kind value=$value',
+      );
       HealthCalendarEvents.ping();
       return;
     }
     final localId = (rows.first['id'] as num).toInt();
+    debugPrint(
+      '[GrowthCloudUpsert] update localId=$localId cloudId=$cid kind=$kind value=$value',
+    );
     await db.update(
       'growth_records',
       {
@@ -2694,6 +2710,8 @@ SELECT
   zodiac_sign,
   weight_kg,
   height_cm,
+  birth_weight_kg,
+  birth_height_cm,
   first_baby,
   onboarding_concerns_json,
   onboarding_goals_json,
@@ -2729,6 +2747,8 @@ SELECT
   zodiac_sign,
   weight_kg,
   height_cm,
+  birth_weight_kg,
+  birth_height_cm,
   photo_b64,
   photo_url,
   cloud_id,
@@ -3178,6 +3198,36 @@ LIMIT 1
       whereArgs: [babyId, motherId],
     );
     if (nRows == 0) throw StateError('Baby not found or wrong mother');
+  }
+
+  /// Atualiza só peso/altura atuais — nunca baseline ao nascer.
+  Future<void> patchBabyCurrentMeasurements({
+    required int babyId,
+    double? weightKg,
+    double? heightCm,
+  }) async {
+    if (weightKg == null && heightCm == null) return;
+    if (kIsWeb) {
+      return _webSerialized(() async {
+        final prefs = await _webPrefs();
+        final babies = _webReadList(prefs, 'babies');
+        for (var i = 0; i < babies.length; i++) {
+          final b = Map<String, Object?>.from(babies[i] as Map);
+          if ((b['id'] as num?)?.toInt() != babyId) continue;
+          if (weightKg != null) b['weight_kg'] = weightKg;
+          if (heightCm != null) b['height_cm'] = heightCm;
+          babies[i] = b;
+          break;
+        }
+        await _webWriteList(prefs, 'babies', babies);
+      });
+    }
+    final patch = <String, Object?>{
+      if (weightKg != null) 'weight_kg': weightKg,
+      if (heightCm != null) 'height_cm': heightCm,
+    };
+    final db = await database;
+    await db.update('babies', patch, where: 'id = ?', whereArgs: [babyId]);
   }
 
   /// ID do documento Firestore associado (sincronização de perfil na nuvem).
@@ -5139,9 +5189,9 @@ LIMIT 1
     final measured = (measuredAt ?? DateTime.now()).toIso8601String();
     final created = DateTime.now().toIso8601String();
 
-    if (k == 'weight' || k == 'height') {
-      await freezeBirthBaselineBeforeGrowth(babyId: babyId, kind: k);
-    }
+    debugPrint(
+      '[GrowthInsert] before babyId=$babyId kind=$k value=$value measured_at=$measured',
+    );
 
     if (kIsWeb) {
       return _webSerialized(() async {
@@ -5157,18 +5207,21 @@ LIMIT 1
           'created_at': created,
         });
         await _webWriteList(prefs, 'growth_records', list);
+        debugPrint('[GrowthInsert] after id=$id op=insert');
         return id;
       });
     }
 
     final db = await database;
-    return db.insert('growth_records', {
+    final id = await db.insert('growth_records', {
       'baby_id': babyId,
       'kind': k,
       'value': value,
       'measured_at': measured,
       'created_at': created,
     });
+    debugPrint('[GrowthInsert] after id=$id op=insert');
+    return id;
   }
 
   Future<List<Map<String, Object?>>> listGrowthRecords({

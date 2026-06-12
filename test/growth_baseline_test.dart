@@ -2,6 +2,17 @@ import 'package:facebaby_flutter/utils/growth_baseline.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('birthWeightKgStored never falls back to current weight_kg', () {
+    expect(
+      GrowthBaseline.birthWeightKgStored({
+        'birth_weight_kg': 3.2,
+        'weight_kg': 5.0,
+      }),
+      closeTo(3.2, 0.001),
+    );
+    expect(GrowthBaseline.birthWeightKgStored({'weight_kg': 4.1}), isNull);
+  });
+
   test('birthWeightKg prefers birth_weight_kg over current weight_kg', () {
     expect(
       GrowthBaseline.birthWeightKg({

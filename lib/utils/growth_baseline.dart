@@ -7,19 +7,31 @@ import '../services/app_database.dart';
 class GrowthBaseline {
   GrowthBaseline._();
 
-  /// Peso ao nascer (cadastro inicial) — não muda ao registrar novas medições.
-  /// Se [birth_weight_kg] estiver vazio (legado), usa o peso do cadastro.
-  static double? birthWeightKg(Map<String, Object?>? baby) {
+  /// Peso ao nascer gravado no perfil — imutável ao adicionar medições na tela Crescimento.
+  static double? birthWeightKgStored(Map<String, Object?>? baby) {
     final birth = (baby?['birth_weight_kg'] as num?)?.toDouble();
     if (birth != null && birth > 0) return birth;
+    return null;
+  }
+
+  /// Altura ao nascer gravada no perfil — imutável ao adicionar medições na tela Crescimento.
+  static double? birthHeightCmStored(Map<String, Object?>? baby) {
+    final birth = (baby?['birth_height_cm'] as num?)?.toDouble();
+    if (birth != null && birth > 0) return birth;
+    return null;
+  }
+
+  /// Peso ao nascer para ecrãs legados (ex.: home) — fallback ao cadastro se baseline ausente.
+  static double? birthWeightKg(Map<String, Object?>? baby) {
+    final stored = birthWeightKgStored(baby);
+    if (stored != null) return stored;
     return (baby?['weight_kg'] as num?)?.toDouble();
   }
 
-  /// Altura ao nascer (cadastro inicial).
-  /// Se [birth_height_cm] estiver vazio (legado), usa a altura do cadastro.
+  /// Altura ao nascer para ecrãs legados — fallback ao cadastro se baseline ausente.
   static double? birthHeightCm(Map<String, Object?>? baby) {
-    final birth = (baby?['birth_height_cm'] as num?)?.toDouble();
-    if (birth != null && birth > 0) return birth;
+    final stored = birthHeightCmStored(baby);
+    if (stored != null) return stored;
     return (baby?['height_cm'] as num?)?.toDouble();
   }
 
@@ -69,11 +81,13 @@ class GrowthBaseline {
     return maxValueByMeasuredAtForTest(rows);
   }
 
-  /// Escolhe o valor da medição mais recente (por [measured_at]).
+  /// Linha da medição mais recente (por [measured_at]).
   @visibleForTesting
-  static double? maxValueByMeasuredAtForTest(List<Map<String, Object?>> rows) {
+  static Map<String, Object?>? latestRowByMeasuredAt(
+    List<Map<String, Object?>> rows,
+  ) {
+    Map<String, Object?>? bestRow;
     DateTime? bestAt;
-    double? bestVal;
     for (final row in rows) {
       final raw = row['measured_at'] as String?;
       final parsed = DateTime.tryParse(raw ?? '');
@@ -83,10 +97,17 @@ class GrowthBaseline {
       if (v == null || v <= 0) continue;
       if (bestAt == null || at.isAfter(bestAt)) {
         bestAt = at;
-        bestVal = v;
+        bestRow = row;
       }
     }
-    return bestVal;
+    return bestRow;
+  }
+
+  /// Valor da medição mais recente (por [measured_at]).
+  @visibleForTesting
+  static double? maxValueByMeasuredAtForTest(List<Map<String, Object?>> rows) {
+    final row = latestRowByMeasuredAt(rows);
+    return (row?['value'] as num?)?.toDouble();
   }
 
   static double? _profileWeightKg() =>
@@ -98,58 +119,17 @@ class GrowthBaseline {
           ?.toDouble();
 
   /// Atualiza peso/altura **atuais** no cadastro após medição (Home + nuvem).
-  /// Não altera [birth_weight_kg] / [birth_height_cm] usados nas curvas ao nascer.
+  /// Nunca altera [birth_weight_kg] / [birth_height_cm].
   static Future<void> syncBabyProfileAfterMeasurement({
     required int babyId,
     double? weightKg,
     double? heightCm,
   }) async {
     if (weightKg == null && heightCm == null) return;
-    final baby = await AppDatabase.instance.getBabyById(babyId);
-    if (baby == null) return;
-    final motherId = (baby['mother_id'] as num?)?.toInt();
-    if (motherId == null) return;
-
-    final name = (baby['name'] as String?)?.trim();
-    if (name == null || name.isEmpty) return;
-
-    final birthRaw = baby['birth_date'] as String?;
-    final birthDate = birthRaw != null && birthRaw.isNotEmpty
-        ? DateTime.tryParse(birthRaw)
-        : null;
-
-    final existingBirthW =
-        (baby['birth_weight_kg'] as num?)?.toDouble();
-    final existingBirthH =
-        (baby['birth_height_cm'] as num?)?.toDouble();
-    final profileW = (baby['weight_kg'] as num?)?.toDouble();
-    final profileH = (baby['height_cm'] as num?)?.toDouble();
-
-    // Legado: congela peso/altura do cadastro como "ao nascer" uma única vez.
-    final captureBirthW = weightKg != null &&
-        (existingBirthW == null || existingBirthW <= 0) &&
-        profileW != null &&
-        profileW > 0;
-    final captureBirthH = heightCm != null &&
-        (existingBirthH == null || existingBirthH <= 0) &&
-        profileH != null &&
-        profileH > 0;
-
-    await AppDatabase.instance.updateBaby(
+    await AppDatabase.instance.patchBabyCurrentMeasurements(
       babyId: babyId,
-      motherId: motherId,
-      name: name,
-      sex: (baby['sex'] as String?)?.trim().isEmpty == true
-          ? 'F'
-          : (baby['sex'] as String?) ?? 'F',
-      birthDate: birthDate,
-      zodiacSign: baby['zodiac_sign'] as String?,
-      weightKg: weightKg ?? profileW,
-      heightCm: heightCm ?? profileH,
-      birthWeightKg: captureBirthW ? profileW : null,
-      birthHeightCm: captureBirthH ? profileH : null,
-      touchBirthBaseline: captureBirthW || captureBirthH,
-      photoB64: baby['photo_b64'] as String?,
+      weightKg: weightKg,
+      heightCm: heightCm,
     );
     await CurrentBabyController.instance.refresh();
   }
