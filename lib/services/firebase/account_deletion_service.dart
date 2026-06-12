@@ -15,6 +15,11 @@ class AccountDeletionRequiresRecentLogin implements Exception {
   AccountDeletionRequiresRecentLogin();
 }
 
+/// Utilizador cancelou a confirmação de identidade durante apagar conta.
+class AccountDeletionCancelled implements Exception {
+  AccountDeletionCancelled();
+}
+
 class AccountDeletionService {
   AccountDeletionService._();
 
@@ -22,14 +27,21 @@ class AccountDeletionService {
 
   /// Elimina dados na nuvem e em seguida o utilizador Firebase Auth + cache local.
   ///
+  /// [reauthenticateBeforeDelete] é chamado logo antes de `user.delete()` (credencial fresca).
   /// Se `user.delete()` falhar por [requires-recent-login], o cache local é limpo na mesma
   /// (dados cloud já foram apagados) — evita erros ao criar conta nova com o mesmo e-mail.
-  Future<void> deleteAllUserDataAndAccount() async {
+  Future<void> deleteAllUserDataAndAccount({
+    required Future<void> Function() reauthenticateBeforeDelete,
+  }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw StateError('Usuário não autenticado');
     final uid = user.uid;
 
     await _deleteCloudData(uid);
+
+    await user.reload();
+    await reauthenticateBeforeDelete();
+    await user.reload();
 
     try {
       await user.delete();

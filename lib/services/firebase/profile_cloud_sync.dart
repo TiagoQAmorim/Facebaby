@@ -142,13 +142,19 @@ class ProfileCloudSync {
       }
 
       if (cid == null || cid.isEmpty) {
+        final birthW = (b['birth_weight_kg'] as num?)?.toDouble();
+        final birthH = (b['birth_height_cm'] as num?)?.toDouble();
+        final profileW = (b['weight_kg'] as num?)?.toDouble();
+        final profileH = (b['height_cm'] as num?)?.toDouble();
         cid = await FirestoreService.instance.createBaby(
           name: name,
           sex: (b['sex'] as String?) ?? 'F',
           birthDate: birth,
           zodiacSign: b['zodiac_sign'] as String?,
-          weightKg: b['weight_kg'] as double?,
-          heightCm: b['height_cm'] as double?,
+          weightKg: profileW,
+          heightCm: profileH,
+          birthWeightKg: birthW,
+          birthHeightCm: birthH,
           firstBaby: _boolFromSqlite(b['first_baby']),
           onboardingConcerns:
               _stringListFromJson(b['onboarding_concerns_json'] as String?),
@@ -172,6 +178,14 @@ class ProfileCloudSync {
 
       final birthW = (b['birth_weight_kg'] as num?)?.toDouble();
       final birthH = (b['birth_height_cm'] as num?)?.toDouble();
+      final profileW = (b['weight_kg'] as num?)?.toDouble();
+      final profileH = (b['height_cm'] as num?)?.toDouble();
+      final effectiveBirthW = (birthW != null && birthW > 0)
+          ? birthW
+          : ((profileW != null && profileW > 0) ? profileW : null);
+      final effectiveBirthH = (birthH != null && birthH > 0)
+          ? birthH
+          : ((profileH != null && profileH > 0) ? profileH : null);
       final cloudPatch = <String, dynamic>{
         'name': name,
         'sex': (b['sex'] as String?) ?? 'F',
@@ -179,8 +193,8 @@ class ProfileCloudSync {
         'zodiac_sign': b['zodiac_sign'],
         'weight_kg': b['weight_kg'],
         'height_cm': b['height_cm'],
-        if (birthW != null && birthW > 0) 'birth_weight_kg': birthW,
-        if (birthH != null && birthH > 0) 'birth_height_cm': birthH,
+        if (effectiveBirthW != null) 'birth_weight_kg': effectiveBirthW,
+        if (effectiveBirthH != null) 'birth_height_cm': effectiveBirthH,
         'first_baby': _boolFromSqlite(b['first_baby']),
         'onboarding_concerns':
             _stringListFromJson(b['onboarding_concerns_json'] as String?),

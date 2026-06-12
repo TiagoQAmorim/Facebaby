@@ -8,6 +8,7 @@ class GrowthBaseline {
   GrowthBaseline._();
 
   /// Peso ao nascer (cadastro inicial) — não muda ao registrar novas medições.
+  /// Se [birth_weight_kg] estiver vazio (legado), usa o peso do cadastro.
   static double? birthWeightKg(Map<String, Object?>? baby) {
     final birth = (baby?['birth_weight_kg'] as num?)?.toDouble();
     if (birth != null && birth > 0) return birth;
@@ -15,6 +16,7 @@ class GrowthBaseline {
   }
 
   /// Altura ao nascer (cadastro inicial).
+  /// Se [birth_height_cm] estiver vazio (legado), usa a altura do cadastro.
   static double? birthHeightCm(Map<String, Object?>? baby) {
     final birth = (baby?['birth_height_cm'] as num?)?.toDouble();
     if (birth != null && birth > 0) return birth;

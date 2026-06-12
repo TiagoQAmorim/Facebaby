@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../utils/login_platform.dart';
 import '../premium/premium_service.dart';
@@ -60,6 +61,13 @@ Future<void> _debugLogBeforeGoogleSignIn() async {
   }
 }
 
+/// Como reautenticar antes de apagar a conta Firebase Auth.
+enum AccountDeletionReauthMethod {
+  password,
+  google,
+  apple,
+}
+
 void _debugLogGoogleSignInFailure(Object error, StackTrace stackTrace, {required String step}) {
   final buf = StringBuffer('GoogleSignIn failure step=$step ');
   if (error is PlatformException) {
@@ -111,6 +119,12 @@ class AuthService {
   Future<void> _recordSignedIn(User? user) async {
     if (user == null) return;
     await AuthSessionRestore.recordSignedIn(user);
+  }
+
+  Future<void> _ensureNewUserStartsFree(UserCredential cred) async {
+    if (cred.additionalUserInfo?.isNewUser == true) {
+      await PremiumService.instance.markNewAccountFreeInCloud();
+    }
   }
 
   /// Reconecta Google Sign-In silencioso quando Firebase ainda não restaurou a sessão.
@@ -236,7 +250,7 @@ class AuthService {
     }
     try {
       await cred.user?.sendEmailVerification(_emailActionCodeSettings);
-      _lastVerificationEmailSent = DateTime.now();
+      await _markVerificationEmailSent();
     } catch (e, st) {
       developer.log(
         'sendEmailVerification after register failed',
@@ -244,8 +258,10 @@ class AuthService {
         error: e,
         stackTrace: st,
       );
+      rethrow;
     }
     await _recordSignedIn(cred.user);
+    await _ensureNewUserStartsFree(cred);
     return cred;
   }
 
@@ -313,6 +329,7 @@ class AuthService {
     try {
       final cred = await _auth.signInWithCredential(credential);
       await _recordSignedIn(cred.user);
+      await _ensureNewUserStartsFree(cred);
       return cred;
     } on FirebaseAuthException catch (e, st) {
       developer.log(
@@ -355,6 +372,7 @@ class AuthService {
 
       _debugLogApple('step=before_recordSignedIn uid=${cred.user?.uid}');
       await _recordSignedIn(cred.user);
+      await _ensureNewUserStartsFree(cred);
       _debugLogApple('step=after_recordSignedIn uid=${cred.user?.uid}');
       _debugLogApple('step=done uid=${cred.user?.uid}');
       return cred;
@@ -386,7 +404,41 @@ class AuthService {
       await _googleSignIn.signOut();
     } catch (_) {}
     await AuthSessionRestore.clear();
+    _lastVerificationEmailSent = null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kLastVerificationSentKey);
+    } catch (_) {}
     await _auth.signOut();
+  }
+
+  static const _kLastVerificationSentKey = 'auth_last_verification_email_sent_ms';
+
+  DateTime? _lastVerificationEmailSent;
+  bool _verificationSentPrefsLoaded = false;
+
+  Future<void> ensureVerificationCooldownLoaded() async {
+    if (_verificationSentPrefsLoaded) return;
+    _verificationSentPrefsLoaded = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final ms = prefs.getInt(_kLastVerificationSentKey);
+      if (ms != null) {
+        _lastVerificationEmailSent =
+            DateTime.fromMillisecondsSinceEpoch(ms);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _markVerificationEmailSent() async {
+    _lastVerificationEmailSent = DateTime.now();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(
+        _kLastVerificationSentKey,
+        _lastVerificationEmailSent!.millisecondsSinceEpoch,
+      );
+    } catch (_) {}
   }
 
   /// Página de redefinição com logo (Firebase Hosting). Deploy: `firebase deploy --only hosting:app`
@@ -400,8 +452,6 @@ class AuthService {
   /// Página de confirmação de e-mail (Firebase Hosting).
   static const emailVerificationActionUrl =
       'https://www.thefacebaby.com/auth/verify-email.html';
-
-  DateTime? _lastVerificationEmailSent;
 
   Duration? get verificationResendCooldownRemaining {
     final sent = _lastVerificationEmailSent;
@@ -420,15 +470,9 @@ class AuthService {
         handleCodeInApp: false,
       );
 
-  /// Confirmação de e-mail: abre o app quando instalado (oobCode no Flutter).
-  ActionCodeSettings get _emailActionCodeSettings => ActionCodeSettings(
-        url: emailVerificationActionUrl,
-        handleCodeInApp: true,
-        androidPackageName: 'com.facebaby.app',
-        androidInstallApp: true,
-        androidMinimumVersion: '21',
-        iOSBundleId: 'com.facebaby.app',
-      );
+  /// Link abre a página de confirmação no site (mesmo fluxo do reset de senha).
+  ActionCodeSettings get _emailActionCodeSettings =>
+      _webAuthActionSettings(emailVerificationActionUrl);
 
   Future<void> sendEmailVerificationToCurrentUser() async {
     final user = _auth.currentUser;
@@ -444,10 +488,10 @@ class AuthService {
     }
     try {
       await user.sendEmailVerification(_emailActionCodeSettings);
-      _lastVerificationEmailSent = DateTime.now();
+      await _markVerificationEmailSent();
     } on FirebaseAuthException catch (e) {
       if (e.code == 'too-many-requests') {
-        _lastVerificationEmailSent = DateTime.now();
+        await _markVerificationEmailSent();
       }
       rethrow;
     }
@@ -479,6 +523,28 @@ class AuthService {
     );
   }
 
+  /// Método de reautenticação adequado para apagar conta (após [User.reload]).
+  Future<AccountDeletionReauthMethod?> preferredDeletionReauthMethod(
+    User user,
+  ) async {
+    await user.reload();
+    final refreshed = _auth.currentUser ?? user;
+    final ids = refreshed.providerData.map((p) => p.providerId).toSet();
+    if (ids.contains(EmailAuthProvider.PROVIDER_ID)) {
+      return AccountDeletionReauthMethod.password;
+    }
+    if (ids.contains(GoogleAuthProvider.PROVIDER_ID)) {
+      return AccountDeletionReauthMethod.google;
+    }
+    if (ids.contains(AppleAuthProvider.PROVIDER_ID)) {
+      return AccountDeletionReauthMethod.apple;
+    }
+    if ((refreshed.email ?? '').trim().isNotEmpty) {
+      return AccountDeletionReauthMethod.password;
+    }
+    return null;
+  }
+
   /// Re-login recente antes de operações sensíveis (ex.: apagar conta).
   Future<void> reauthenticateWithPassword({required String password}) async {
     final user = _auth.currentUser;
@@ -500,12 +566,59 @@ class AuthService {
     if (googleUser == null) {
       throw StateError('Login cancelado');
     }
+    final accountEmail = user.email?.trim().toLowerCase();
+    final googleEmail = googleUser.email.trim().toLowerCase();
+    if (accountEmail != null &&
+        accountEmail.isNotEmpty &&
+        googleEmail.isNotEmpty &&
+        googleEmail != accountEmail) {
+      throw StateError(
+        'Selecione a conta Google $accountEmail (não $googleEmail).',
+      );
+    }
     final googleAuth = await googleUser.authentication;
     final credential = GoogleAuthProvider.credential(
       accessToken: googleAuth.accessToken,
       idToken: googleAuth.idToken,
     );
     await user.reauthenticateWithCredential(credential);
+  }
+
+  /// Apple: mesmo fluxo nativo que o login inicial.
+  Future<void> reauthenticateWithApple() async {
+    if (!isIOSDevice) {
+      throw StateError('APPLE_UNAVAILABLE_PLATFORM');
+    }
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw StateError('Sem sessão');
+    }
+
+    final appleProvider = AppleAuthProvider()
+      ..addScope('email')
+      ..addScope('name');
+
+    try {
+      await user.reauthenticateWithProvider(appleProvider);
+    } on FirebaseAuthException catch (e, st) {
+      _debugLogAppleFailure(e, st, step: 'reauthenticateWithProvider');
+      rethrow;
+    } on PlatformException catch (e, st) {
+      _debugLogAppleFailure(e, st, step: 'reauthenticateWithProvider_platform');
+      if (e.code == 'sign_in_canceled' || e.code == 'ERROR_USER_CANCELED') {
+        throw StateError('Login cancelado');
+      }
+      throw StateError(
+        'Apple Sign-In failed: ${e.code} ${e.message ?? e.details ?? ''}'.trim(),
+      );
+    } catch (e, st) {
+      _debugLogAppleFailure(e, st, step: 'reauthenticateWithProvider_unexpected');
+      final message = e.toString();
+      if (message.contains('canceled') || message.contains('cancelled')) {
+        throw StateError('Login cancelado');
+      }
+      rethrow;
+    }
   }
 }
 

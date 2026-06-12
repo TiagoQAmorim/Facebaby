@@ -20,27 +20,49 @@ class EmailVerificationPage extends StatefulWidget {
 
 class _EmailVerificationPageState extends State<EmailVerificationPage>
     with WidgetsBindingObserver {
-  bool _busy = false;
+  bool _checkingManual = false;
+  bool _sendingResend = false;
   String? _message;
   bool _messageIsError = false;
-  Duration? _cooldownRemaining;
-  Timer? _autoCheckTimer;
+  int _cooldownSeconds = 0;
+  Timer? _cooldownTicker;
+  Timer? _backgroundCheckTimer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    unawaited(_initCooldown());
+    _cooldownTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      _tickCooldown();
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_checkVerified(silent: true));
     });
-    _autoCheckTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+    _backgroundCheckTimer = Timer.periodic(const Duration(seconds: 45), (_) {
       unawaited(_checkVerified(silent: true));
     });
   }
 
+  Future<void> _initCooldown() async {
+    await AuthService.instance.ensureVerificationCooldownLoaded();
+    if (!mounted) return;
+    _tickCooldown(forceRebuild: true);
+  }
+
+  void _tickCooldown({bool forceRebuild = false}) {
+    if (!mounted) return;
+    final left = AuthService.instance.verificationResendCooldownRemaining;
+    final secs = left != null && left > Duration.zero ? left.inSeconds : 0;
+    if (forceRebuild || secs != _cooldownSeconds) {
+      setState(() => _cooldownSeconds = secs);
+    }
+  }
+
   @override
   void dispose() {
-    _autoCheckTimer?.cancel();
+    _cooldownTicker?.cancel();
+    _backgroundCheckTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -48,23 +70,24 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _checkVerified(silent: true);
+      unawaited(_checkVerified(silent: true));
     }
   }
 
   Future<void> _checkVerified({bool silent = false}) async {
-    if (_busy) return;
-    setState(() {
-      _busy = true;
-      if (!silent) {
+    if (_checkingManual || _sendingResend) return;
+    if (!silent) {
+      setState(() {
+        _checkingManual = true;
         _message = null;
         _messageIsError = false;
-      }
-    });
+      });
+    }
     try {
       final ok = await AuthService.instance.reloadAndCheckEmailVerified();
       if (!mounted) return;
       if (ok) {
+        _backgroundCheckTimer?.cancel();
         await AuthService.instance.onEmailVerifiedBootstrap();
         widget.onVerified();
         return;
@@ -83,37 +106,37 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
         });
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (!silent && mounted) setState(() => _checkingManual = false);
     }
   }
 
   Future<void> _resend() async {
-    if (_busy) return;
+    if (_checkingManual || _sendingResend) return;
+    if (_cooldownSeconds > 0) return;
     setState(() {
-      _busy = true;
+      _sendingResend = true;
       _message = null;
       _messageIsError = false;
-      _cooldownRemaining = null;
     });
     try {
       await AuthService.instance.sendEmailVerificationToCurrentUser();
       if (!mounted) return;
+      _tickCooldown(forceRebuild: true);
       setState(() {
         _message = S.of(context).emailVerifySent;
         _messageIsError = false;
-        _cooldownRemaining = AuthService.instance.verificationResendCooldownRemaining;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _message = S.of(context).userFacingAuthError(e);
         _messageIsError = true;
-        if (e is EmailVerificationCooldownException) {
-          _cooldownRemaining = e.remaining;
-        }
       });
+      if (e is EmailVerificationCooldownException) {
+        _tickCooldown(forceRebuild: true);
+      }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) setState(() => _sendingResend = false);
     }
   }
 
@@ -121,9 +144,8 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
   Widget build(BuildContext context) {
     final s = S.of(context);
     final email = AuthService.instance.currentUser?.email?.trim() ?? '';
-    final cooldown = _cooldownRemaining;
-    final resendDisabled = _busy ||
-        (cooldown != null && cooldown > Duration.zero);
+    final resendDisabled =
+        _checkingManual || _sendingResend || _cooldownSeconds > 0;
 
     return Scaffold(
       body: Stack(
@@ -213,8 +235,10 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
                           ],
                           const SizedBox(height: 24),
                           FilledButton(
-                            onPressed: _busy ? null : () => _checkVerified(),
-                            child: _busy
+                            onPressed: _checkingManual || _sendingResend
+                                ? null
+                                : () => _checkVerified(),
+                            child: _checkingManual
                                 ? const SizedBox(
                                     height: 22,
                                     width: 22,
@@ -227,15 +251,25 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
                           const SizedBox(height: 10),
                           OutlinedButton(
                             onPressed: resendDisabled ? null : _resend,
-                            child: Text(
-                              cooldown != null && cooldown > Duration.zero
-                                  ? s.emailVerifyResendWait(cooldown.inSeconds)
-                                  : s.emailVerifyResendButton,
-                            ),
+                            child: _sendingResend
+                                ? const SizedBox(
+                                    height: 22,
+                                    width: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : Text(
+                                    _cooldownSeconds > 0
+                                        ? s.emailVerifyResendWait(
+                                            _cooldownSeconds,
+                                          )
+                                        : s.emailVerifyResendButton,
+                                  ),
                           ),
                           const SizedBox(height: 12),
                           TextButton(
-                            onPressed: _busy
+                            onPressed: _checkingManual || _sendingResend
                                 ? null
                                 : () => AuthService.instance.signOut(
                                       trustAuthNullImmediately: true,

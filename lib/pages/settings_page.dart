@@ -110,55 +110,17 @@ String _userVisibleDeleteError(Object e) {
   return '$e'.replaceFirst(RegExp(r'^Bad state:\s*'), '');
 }
 
-TextStyle _deleteReauthSectionStyle(BuildContext context) {
-  return TextStyle(
-    fontSize: 13,
-    fontWeight: FontWeight.w800,
-    color: AppTheme.textSecondary.withAlpha(235),
-    height: 1.2,
-  );
-}
-
-Widget _deleteReauthSectionLabel(BuildContext context, String text) {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(text, style: _deleteReauthSectionStyle(context)),
-  );
-}
-
-Widget _deleteReauthOrDivider(BuildContext context, S s) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 14),
-    child: Row(
-      children: [
-        const Expanded(child: Divider(height: 1)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Text(
-            s.deleteAccountReauthOrDivider,
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              color: AppTheme.textMuted.withAlpha(220),
-            ),
-          ),
-        ),
-        const Expanded(child: Divider(height: 1)),
-      ],
-    ),
-  );
-}
-
 Future<bool> _promptReauthenticateForDeletion(BuildContext ctx, S s) async {
   final user = FirebaseAuth.instance.currentUser;
   if (user == null) return false;
 
-  final hasGoogle = user.providerData.any((p) => p.providerId == 'google.com');
-  final hasPassword = user.providerData.any((p) => p.providerId == 'password');
-
-  if (!hasGoogle && !hasPassword) {
+  final method =
+      await AuthService.instance.preferredDeletionReauthMethod(user);
+  if (method == null) {
     if (!ctx.mounted) return false;
     ScaffoldMessenger.of(ctx).showSnackBar(
-        SnackBar(content: Text(s.deleteAccountReauthCantPassword)));
+      SnackBar(content: Text(s.deleteAccountReauthUnsupported)),
+    );
     return false;
   }
 
@@ -175,32 +137,50 @@ Future<bool> _promptReauthenticateForDeletion(BuildContext ctx, S s) async {
     ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  String dialogTitle() {
+    switch (method) {
+      case AccountDeletionReauthMethod.password:
+        return s.deleteAccountReauthTitlePassword;
+      case AccountDeletionReauthMethod.google:
+        return s.deleteAccountReauthTitleGoogle;
+      case AccountDeletionReauthMethod.apple:
+        return s.deleteAccountReauthTitleApple;
+    }
+  }
+
+  String dialogBody() {
+    switch (method) {
+      case AccountDeletionReauthMethod.password:
+        return s.deleteAccountReauthBodyPassword;
+      case AccountDeletionReauthMethod.google:
+        return s.deleteAccountReauthBodyGoogle;
+      case AccountDeletionReauthMethod.apple:
+        return s.deleteAccountReauthBodyApple;
+    }
+  }
+
   try {
     return await showDialog<bool>(
           context: ctx,
           barrierDismissible: false,
           builder: (dialogCtx) {
             return AlertDialog(
-              title: Text(s.deleteAccountReauthTitle),
+              title: Text(dialogTitle()),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      s.deleteAccountReauthBody,
+                      dialogBody(),
                       style: TextStyle(
                         height: 1.4,
                         color: AppTheme.textSecondary.withAlpha(240),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    if (hasGoogle) ...[
+                    if (method == AccountDeletionReauthMethod.google) ...[
                       const SizedBox(height: 18),
-                      _deleteReauthSectionLabel(
-                        dialogCtx,
-                        s.deleteAccountReauthGoogleSection,
-                      ),
                       if (accountEmail.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 10),
@@ -243,15 +223,29 @@ Future<bool> _promptReauthenticateForDeletion(BuildContext ctx, S s) async {
                           },
                         ),
                       ),
-                    ],
-                    if (hasGoogle && hasPassword)
-                      _deleteReauthOrDivider(dialogCtx, s),
-                    if (hasPassword) ...[
-                      if (!hasGoogle) const SizedBox(height: 18),
-                      _deleteReauthSectionLabel(
-                        dialogCtx,
-                        s.deleteAccountReauthPasswordSection,
+                    ] else if (method == AccountDeletionReauthMethod.apple) ...[
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          style: deleteBtnStyle,
+                          icon: const Icon(Icons.apple, color: Colors.white),
+                          label: Text(s.deleteAccountReauthApple),
+                          onPressed: () async {
+                            try {
+                              await AuthService.instance
+                                  .reauthenticateWithApple();
+                              if (dialogCtx.mounted) {
+                                Navigator.of(dialogCtx).pop(true);
+                              }
+                            } catch (e) {
+                              await toastErr(_userVisibleDeleteError(e));
+                            }
+                          },
+                        ),
                       ),
+                    ] else ...[
+                      const SizedBox(height: 18),
                       TextFormField(
                         initialValue: accountEmail,
                         readOnly: true,
@@ -264,7 +258,7 @@ Future<bool> _promptReauthenticateForDeletion(BuildContext ctx, S s) async {
                       TextField(
                         controller: passCtrl,
                         obscureText: true,
-                        autofocus: !hasGoogle,
+                        autofocus: true,
                         textInputAction: TextInputAction.done,
                         decoration: InputDecoration(
                           labelText: s.deleteAccountReauthPasswordHint,
@@ -437,9 +431,6 @@ class SettingsPage extends StatelessWidget {
     if (confirmWord != true) return;
     if (!context.mounted) return;
 
-    final verified = await _promptReauthenticateForDeletion(context, s);
-    if (verified != true || !context.mounted) return;
-
     Future<void> onSuccessUx() async {
       FaceBabyApp.navigatorKey.currentState?.popUntil((r) => r.isFirst);
       if (!context.mounted) return;
@@ -447,12 +438,22 @@ class SettingsPage extends StatelessWidget {
           .showSnackBar(SnackBar(content: Text(s.deleteAccountSuccess)));
     }
 
+    Future<void> reauthenticateBeforeDelete() async {
+      if (!context.mounted) throw AccountDeletionCancelled();
+      final verified = await _promptReauthenticateForDeletion(context, s);
+      if (verified != true) throw AccountDeletionCancelled();
+    }
+
     try {
       await LoadingScope.of(context).run(
-        () => AccountDeletionService.instance.deleteAllUserDataAndAccount(),
+        () => AccountDeletionService.instance.deleteAllUserDataAndAccount(
+          reauthenticateBeforeDelete: reauthenticateBeforeDelete,
+        ),
         label: s.deleteAccountDeleting,
       );
       await onSuccessUx();
+    } on AccountDeletionCancelled catch (_) {
+      return;
     } on AccountDeletionRequiresRecentLogin catch (_) {
       if (!context.mounted) return;
       final reVerified = await _promptReauthenticateForDeletion(context, s);

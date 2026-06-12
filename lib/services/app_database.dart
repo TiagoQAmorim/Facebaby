@@ -21,7 +21,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const _dbName = 'facebaby.db';
-  static const _dbVersion = 35;
+  static const _dbVersion = 36;
 
   Database? _db;
   SharedPreferences? _prefs;
@@ -920,6 +920,77 @@ CREATE TABLE IF NOT EXISTS memory_badge_tombstones (
             );
           }
 
+          if (oldVersion < 36) {
+            // Restaura peso/altura ao nascer apagados ou nunca gravados.
+            await db.execute('''
+UPDATE babies SET birth_weight_kg = weight_kg
+WHERE (birth_weight_kg IS NULL OR birth_weight_kg <= 0)
+  AND weight_kg IS NOT NULL AND weight_kg > 0
+''');
+            await db.execute('''
+UPDATE babies SET birth_height_cm = height_cm
+WHERE (birth_height_cm IS NULL OR birth_height_cm <= 0)
+  AND height_cm IS NOT NULL AND height_cm > 0
+''');
+            await db.execute('''
+UPDATE babies SET birth_weight_kg = (
+  SELECT gr.value FROM growth_records gr
+  WHERE gr.baby_id = babies.id AND gr.kind = 'weight'
+  ORDER BY gr.measured_at ASC, gr.created_at ASC
+  LIMIT 1
+)
+WHERE (birth_weight_kg IS NULL OR birth_weight_kg <= 0)
+AND EXISTS (
+  SELECT 1 FROM growth_records gr
+  WHERE gr.baby_id = babies.id AND gr.kind = 'weight'
+)
+''');
+            await db.execute('''
+UPDATE babies SET birth_height_cm = (
+  SELECT gr.value FROM growth_records gr
+  WHERE gr.baby_id = babies.id AND gr.kind = 'height'
+  ORDER BY gr.measured_at ASC, gr.created_at ASC
+  LIMIT 1
+)
+WHERE (birth_height_cm IS NULL OR birth_height_cm <= 0)
+AND EXISTS (
+  SELECT 1 FROM growth_records gr
+  WHERE gr.baby_id = babies.id AND gr.kind = 'height'
+)
+''');
+            // Baseline copiado por engano do peso atual: usa a medição mais antiga se for menor.
+            await db.execute('''
+UPDATE babies SET birth_weight_kg = (
+  SELECT gr.value FROM growth_records gr
+  WHERE gr.baby_id = babies.id AND gr.kind = 'weight'
+  ORDER BY gr.measured_at ASC, gr.created_at ASC
+  LIMIT 1
+)
+WHERE birth_weight_kg IS NOT NULL AND weight_kg IS NOT NULL
+AND ABS(birth_weight_kg - weight_kg) < 0.001
+AND EXISTS (
+  SELECT 1 FROM growth_records gr
+  WHERE gr.baby_id = babies.id AND gr.kind = 'weight'
+  AND gr.value < babies.birth_weight_kg - 0.001
+)
+''');
+            await db.execute('''
+UPDATE babies SET birth_height_cm = (
+  SELECT gr.value FROM growth_records gr
+  WHERE gr.baby_id = babies.id AND gr.kind = 'height'
+  ORDER BY gr.measured_at ASC, gr.created_at ASC
+  LIMIT 1
+)
+WHERE birth_height_cm IS NOT NULL AND height_cm IS NOT NULL
+AND ABS(birth_height_cm - height_cm) < 0.001
+AND EXISTS (
+  SELECT 1 FROM growth_records gr
+  WHERE gr.baby_id = babies.id AND gr.kind = 'height'
+  AND gr.value < babies.birth_height_cm - 0.001
+)
+''');
+          }
+
           if (oldVersion < 10) {
             await db.execute('''
 CREATE TABLE IF NOT EXISTS diapers (
@@ -1385,6 +1456,18 @@ CREATE TABLE IF NOT EXISTS diapers (
       return id;
     }
     final id = (rows.first['id'] as num).toInt();
+    final existing = await db.query(
+      'babies',
+      columns: ['birth_weight_kg', 'birth_height_cm'],
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    final localBirthW =
+        (existing.first['birth_weight_kg'] as num?)?.toDouble();
+    final localBirthH =
+        (existing.first['birth_height_cm'] as num?)?.toDouble();
+
     final patch = <String, Object?>{
       'mother_id': localMotherId,
       'name': name,
@@ -1398,8 +1481,20 @@ CREATE TABLE IF NOT EXISTS diapers (
       'onboarding_goals_json': goalsJson,
       'cloud_id': cloudId,
     };
-    if (birthWeight != null) patch['birth_weight_kg'] = birthWeight;
-    if (birthHeight != null) patch['birth_height_cm'] = birthHeight;
+    if (birthWeight != null) {
+      patch['birth_weight_kg'] = birthWeight;
+    } else if (localBirthW != null && localBirthW > 0) {
+      patch['birth_weight_kg'] = localBirthW;
+    } else if (weight != null && weight > 0) {
+      patch['birth_weight_kg'] = weight;
+    }
+    if (birthHeight != null) {
+      patch['birth_height_cm'] = birthHeight;
+    } else if (localBirthH != null && localBirthH > 0) {
+      patch['birth_height_cm'] = localBirthH;
+    } else if (height != null && height > 0) {
+      patch['birth_height_cm'] = height;
+    }
     if (mergedBabyPhotoUrl != null) patch['photo_url'] = mergedBabyPhotoUrl;
     await db.update(
       'babies',
@@ -3045,8 +3140,12 @@ LIMIT 1
             b['weight_kg'] = weightKg;
             b['height_cm'] = heightCm;
             if (touchBirthBaseline) {
-              b['birth_weight_kg'] = birthWeightKg ?? weightKg;
-              b['birth_height_cm'] = birthHeightCm ?? heightCm;
+              if (birthWeightKg != null) {
+                b['birth_weight_kg'] = birthWeightKg;
+              }
+              if (birthHeightCm != null) {
+                b['birth_height_cm'] = birthHeightCm;
+              }
             }
             b['photo_b64'] = pb;
             if (resetProfilePhotoUrl) b['photo_url'] = null;
@@ -3068,8 +3167,8 @@ LIMIT 1
       'photo_b64': pb,
     };
     if (touchBirthBaseline) {
-      patch['birth_weight_kg'] = birthWeightKg ?? weightKg;
-      patch['birth_height_cm'] = birthHeightCm ?? heightCm;
+      if (birthWeightKg != null) patch['birth_weight_kg'] = birthWeightKg;
+      if (birthHeightCm != null) patch['birth_height_cm'] = birthHeightCm;
     }
     if (resetProfilePhotoUrl) patch['photo_url'] = null;
     final nRows = await db.update(
@@ -4957,6 +5056,76 @@ LIMIT 1
     return n;
   }
 
+  /// Congela peso/altura do cadastro como baseline ao nascer (só se ainda não definido).
+  Future<void> freezeBirthBaselineBeforeGrowth({
+    required int babyId,
+    required String kind,
+  }) async {
+    final k = kind.trim().toLowerCase();
+    if (k != 'weight' && k != 'height') return;
+
+    if (kIsWeb) {
+      return _webSerialized(() async {
+        final prefs = await _webPrefs();
+        final babies = _webReadList(prefs, 'babies');
+        for (var i = 0; i < babies.length; i++) {
+          final b = Map<String, Object?>.from(babies[i] as Map);
+          if ((b['id'] as num?)?.toInt() != babyId) continue;
+          if (k == 'weight') {
+            final birth = (b['birth_weight_kg'] as num?)?.toDouble();
+            if (birth != null && birth > 0) return;
+            final w = (b['weight_kg'] as num?)?.toDouble();
+            if (w == null || w <= 0) return;
+            b['birth_weight_kg'] = w;
+          } else {
+            final birth = (b['birth_height_cm'] as num?)?.toDouble();
+            if (birth != null && birth > 0) return;
+            final h = (b['height_cm'] as num?)?.toDouble();
+            if (h == null || h <= 0) return;
+            b['birth_height_cm'] = h;
+          }
+          babies[i] = b;
+          break;
+        }
+        await _webWriteList(prefs, 'babies', babies);
+      });
+    }
+
+    final db = await database;
+    final rows = await db.query(
+      'babies',
+      columns: ['birth_weight_kg', 'birth_height_cm', 'weight_kg', 'height_cm'],
+      where: 'id = ?',
+      whereArgs: [babyId],
+      limit: 1,
+    );
+    if (rows.isEmpty) return;
+    final baby = rows.first;
+    if (k == 'weight') {
+      final birth = (baby['birth_weight_kg'] as num?)?.toDouble();
+      if (birth != null && birth > 0) return;
+      final w = (baby['weight_kg'] as num?)?.toDouble();
+      if (w == null || w <= 0) return;
+      await db.update(
+        'babies',
+        {'birth_weight_kg': w},
+        where: 'id = ?',
+        whereArgs: [babyId],
+      );
+      return;
+    }
+    final birth = (baby['birth_height_cm'] as num?)?.toDouble();
+    if (birth != null && birth > 0) return;
+    final h = (baby['height_cm'] as num?)?.toDouble();
+    if (h == null || h <= 0) return;
+    await db.update(
+      'babies',
+      {'birth_height_cm': h},
+      where: 'id = ?',
+      whereArgs: [babyId],
+    );
+  }
+
   Future<int> insertGrowthRecord({
     required int babyId,
     required String kind, // 'weight' | 'height' | 'head'
@@ -4969,6 +5138,10 @@ LIMIT 1
     }
     final measured = (measuredAt ?? DateTime.now()).toIso8601String();
     final created = DateTime.now().toIso8601String();
+
+    if (k == 'weight' || k == 'height') {
+      await freezeBirthBaselineBeforeGrowth(babyId: babyId, kind: k);
+    }
 
     if (kIsWeb) {
       return _webSerialized(() async {

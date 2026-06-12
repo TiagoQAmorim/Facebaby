@@ -2063,6 +2063,7 @@ class _EmailAccountSheetState extends State<_EmailAccountSheet> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _passwordConfirm = TextEditingController();
   bool _checking = false;
   String? _submitError;
 
@@ -2086,6 +2087,7 @@ class _EmailAccountSheetState extends State<_EmailAccountSheet> {
     _name.dispose();
     _email.dispose();
     _password.dispose();
+    _passwordConfirm.dispose();
     super.dispose();
   }
 
@@ -2149,6 +2151,22 @@ class _EmailAccountSheetState extends State<_EmailAccountSheet> {
                 ),
                 validator: (v) =>
                     (v ?? '').length < 6 ? s.onb('ValPasswordMin') : null,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _passwordConfirm,
+                style: const TextStyle(color: _onboardingDarkBlue),
+                obscureText: true,
+                textInputAction: TextInputAction.done,
+                decoration: _modernInputDecoration(
+                  hintText: s.onb('PasswordConfirmHint'),
+                  icon: Icons.lock_outline_rounded,
+                ),
+                validator: (v) {
+                  if ((v ?? '').isEmpty) return s.onb('ValPasswordConfirmRequired');
+                  if (v != _password.text) return s.onb('ValPasswordMismatch');
+                  return null;
+                },
               ),
               if (_submitError != null) ...[
                 const SizedBox(height: 8),

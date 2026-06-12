@@ -1221,6 +1221,18 @@ class S {
   String get deleteAccountConfirm => _t('deleteAccountConfirm');
   String get deleteAccountDeleting => _t('deleteAccountDeleting');
   String get deleteAccountSuccess => _t('deleteAccountSuccess');
+  String get deleteAccountReauthTitlePassword =>
+      _t('deleteAccountReauthTitlePassword');
+  String get deleteAccountReauthTitleGoogle =>
+      _t('deleteAccountReauthTitleGoogle');
+  String get deleteAccountReauthTitleApple =>
+      _t('deleteAccountReauthTitleApple');
+  String get deleteAccountReauthBodyPassword =>
+      _t('deleteAccountReauthBodyPassword');
+  String get deleteAccountReauthBodyGoogle =>
+      _t('deleteAccountReauthBodyGoogle');
+  String get deleteAccountReauthBodyApple =>
+      _t('deleteAccountReauthBodyApple');
   String get deleteAccountReauthTitle => _t('deleteAccountReauthTitle');
   String get deleteAccountReauthBody => _t('deleteAccountReauthBody');
   String get deleteAccountReauthGoogleSection =>
@@ -1237,7 +1249,10 @@ class S {
   String get deleteAccountReauthPasswordRequired =>
       _t('deleteAccountReauthPasswordRequired');
   String get deleteAccountReauthGoogle => _t('deleteAccountReauthGoogle');
+  String get deleteAccountReauthApple => _t('deleteAccountReauthApple');
   String get deleteAccountReauthContinue => _t('deleteAccountReauthContinue');
+  String get deleteAccountReauthUnsupported =>
+      _t('deleteAccountReauthUnsupported');
   String get deleteAccountReauthCantPassword =>
       _t('deleteAccountReauthCantPassword');
   String get deleteAccountTypeWordTitle => _t('deleteAccountTypeWordTitle');
@@ -3925,6 +3940,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'onbValYourName': 'Informe seu nome.',
     'onbValEmailRequired': 'Informe seu e-mail.',
     'onbValEmailInvalid': 'E-mail inválido.',
+    'onbPasswordConfirmHint': 'Confirmar senha',
+    'onbValPasswordConfirmRequired': 'Confirme sua senha.',
+    'onbValPasswordMismatch': 'As senhas não coincidem.',
     'onbValPasswordMin': 'Use pelo menos 6 caracteres.',
     'vaccinesTitle': 'Vacinas',
     'vaccinesSubtitle': 'Adicione vacinas, datas e próximas doses.',
@@ -4074,6 +4092,15 @@ const Map<AppLang, Map<String, String>> _strings = {
     'deleteAccountConfirm': 'Apagar tudo',
     'deleteAccountDeleting': 'Apagando sua conta...',
     'deleteAccountSuccess': 'Conta apagada com sucesso.',
+    'deleteAccountReauthTitlePassword': 'Confirmar senha',
+    'deleteAccountReauthTitleGoogle': 'Confirmar com Google',
+    'deleteAccountReauthTitleApple': 'Confirmar com Apple',
+    'deleteAccountReauthBodyPassword':
+        'Digite a senha atual da conta para concluir a exclusão.',
+    'deleteAccountReauthBodyGoogle':
+        'Toque abaixo e escolha a mesma conta Google (Gmail) com que entrou no app.',
+    'deleteAccountReauthBodyApple':
+        'Toque abaixo e confirme com a mesma conta Apple com que entrou no app.',
     'deleteAccountReauthTitle': 'Confirmar senha ou Google',
     'deleteAccountReauthBody':
         'Último passo antes de apagar: confirme o mesmo método com que entra no app (senha do e-mail ou conta Google/Gmail).',
@@ -4085,12 +4112,15 @@ const Map<AppLang, Map<String, String>> _strings = {
     'deleteAccountReauthPasswordHint': 'Senha atual',
     'deleteAccountReauthPasswordRequired': 'Digite a senha atual da conta.',
     'deleteAccountReauthGoogle': 'Confirmar com Google (Gmail)',
+    'deleteAccountReauthApple': 'Confirmar com Apple',
     'deleteAccountReauthContinue': 'Confirmar com senha',
+    'deleteAccountReauthUnsupported':
+        'Não foi possível identificar como entrou no app. Saia, entre de novo com o mesmo método e tente apagar a conta outra vez.',
     'deleteAccountReauthCantPassword':
         'Use o botão do mesmo método de login (Google/Gmail ou e-mail e senha) que usou ao criar a conta.',
     'deleteAccountTypeWordTitle': 'Confirmação final',
     'deleteAccountTypeWordInstruction':
-        'Para apagar a conta de forma permanente, digite a palavra delete no campo abaixo. Na sequência, pediremos confirmação com senha ou com Google (Gmail).',
+        'Para apagar a conta de forma permanente, digite a palavra delete no campo abaixo. Em seguida, pediremos confirmação com o mesmo método de login.',
     'deleteAccountTypeWordFieldLabel': 'delete',
     'homeBabyBannerForecastSleep': 'Previsão de dormir',
     'homeBabyBannerForecastWake': 'Previsão de acordar',
@@ -6761,6 +6791,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'onbValYourName': 'Enter your name.',
     'onbValEmailRequired': 'Enter your email.',
     'onbValEmailInvalid': 'Invalid email.',
+    'onbPasswordConfirmHint': 'Confirm password',
+    'onbValPasswordConfirmRequired': 'Please confirm your password.',
+    'onbValPasswordMismatch': 'Passwords do not match.',
     'onbValPasswordMin': 'Use at least 6 characters.',
     'vaccinesTitle': 'Vaccines',
     'vaccinesSubtitle': 'Add vaccines, dates and next doses.',
@@ -6908,6 +6941,15 @@ const Map<AppLang, Map<String, String>> _strings = {
     'deleteAccountConfirm': 'Delete everything',
     'deleteAccountDeleting': 'Deleting your account...',
     'deleteAccountSuccess': 'Account deleted successfully.',
+    'deleteAccountReauthTitlePassword': 'Confirm password',
+    'deleteAccountReauthTitleGoogle': 'Confirm with Google',
+    'deleteAccountReauthTitleApple': 'Confirm with Apple',
+    'deleteAccountReauthBodyPassword':
+        'Enter your current account password to finish deletion.',
+    'deleteAccountReauthBodyGoogle':
+        'Tap below and choose the same Google (Gmail) account you used to sign in.',
+    'deleteAccountReauthBodyApple':
+        'Tap below and confirm with the same Apple account you used to sign in.',
     'deleteAccountReauthTitle': 'Confirm password or Google',
     'deleteAccountReauthBody':
         'Last step before deletion: confirm how you sign in (email password or Google/Gmail account).',
@@ -6920,12 +6962,15 @@ const Map<AppLang, Map<String, String>> _strings = {
     'deleteAccountReauthPasswordRequired':
         'Enter your account’s current password.',
     'deleteAccountReauthGoogle': 'Confirm with Google (Gmail)',
+    'deleteAccountReauthApple': 'Confirm with Apple',
     'deleteAccountReauthContinue': 'Confirm with password',
+    'deleteAccountReauthUnsupported':
+        'We could not detect how you signed in. Sign out, sign in again with the same method, then try deleting your account again.',
     'deleteAccountReauthCantPassword':
         'Use the button for the same sign-in method (Google/Gmail or email and password) you used when creating the account.',
     'deleteAccountTypeWordTitle': 'Final confirmation',
     'deleteAccountTypeWordInstruction':
-        'To permanently delete your account, type delete in the field below. Next we will ask for password or Google (Gmail) confirmation.',
+        'To permanently delete your account, type delete in the field below. Next we will ask you to confirm with the same sign-in method.',
     'deleteAccountTypeWordFieldLabel': 'delete',
     'homeBabyBannerForecastSleep': 'Sleep forecast',
     'homeBabyBannerForecastWake': 'Wake-up forecast',
@@ -9427,6 +9472,9 @@ const Map<AppLang, Map<String, String>> _strings = {
     'onbValYourName': 'Informa tu nombre.',
     'onbValEmailRequired': 'Informa tu correo.',
     'onbValEmailInvalid': 'Correo inválido.',
+    'onbPasswordConfirmHint': 'Confirmar contraseña',
+    'onbValPasswordConfirmRequired': 'Confirma tu contraseña.',
+    'onbValPasswordMismatch': 'Las contraseñas no coinciden.',
     'onbValPasswordMin': 'Usa al menos 6 caracteres.',
     'vaccinesTitle': 'Vacunas',
     'vaccinesSubtitle': 'Agrega vacunas, fechas y próximas dosis.',
@@ -9579,6 +9627,15 @@ const Map<AppLang, Map<String, String>> _strings = {
     'deleteAccountConfirm': 'Eliminar todo',
     'deleteAccountDeleting': 'Eliminando tu cuenta...',
     'deleteAccountSuccess': 'Cuenta eliminada con éxito.',
+    'deleteAccountReauthTitlePassword': 'Confirmar contraseña',
+    'deleteAccountReauthTitleGoogle': 'Confirmar con Google',
+    'deleteAccountReauthTitleApple': 'Confirmar con Apple',
+    'deleteAccountReauthBodyPassword':
+        'Escribe la contraseña actual de la cuenta para completar la eliminación.',
+    'deleteAccountReauthBodyGoogle':
+        'Toca abajo y elige la misma cuenta Google (Gmail) con la que entraste.',
+    'deleteAccountReauthBodyApple':
+        'Toca abajo y confirma con la misma cuenta Apple con la que entraste.',
     'deleteAccountReauthTitle': 'Confirmar contraseña o Google',
     'deleteAccountReauthBody':
         'Último paso antes de eliminar: confirma el mismo método con el que entras (contraseña del correo o cuenta Google/Gmail).',
@@ -9591,12 +9648,15 @@ const Map<AppLang, Map<String, String>> _strings = {
     'deleteAccountReauthPasswordRequired':
         'Escribe la contraseña actual de la cuenta.',
     'deleteAccountReauthGoogle': 'Confirmar con Google (Gmail)',
+    'deleteAccountReauthApple': 'Confirmar con Apple',
     'deleteAccountReauthContinue': 'Confirmar con contraseña',
+    'deleteAccountReauthUnsupported':
+        'No pudimos detectar cómo entraste. Cierra sesión, entra de nuevo con el mismo método e intenta eliminar la cuenta otra vez.',
     'deleteAccountReauthCantPassword':
         'Usa el botón del mismo método de acceso (Google/Gmail o correo y contraseña) con el que creaste la cuenta.',
     'deleteAccountTypeWordTitle': 'Confirmación final',
     'deleteAccountTypeWordInstruction':
-        'Para eliminar la cuenta de forma permanente, escribe delete en el campo. Después pediremos confirmación con contraseña o Google (Gmail).',
+        'Para eliminar la cuenta de forma permanente, escribe delete en el campo. Después pediremos confirmación con el mismo método de acceso.',
     'deleteAccountTypeWordFieldLabel': 'delete',
     'homeBabyBannerForecastSleep': 'Previsión de sueño',
     'homeBabyBannerForecastWake': 'Previsión de despertar',
@@ -10793,6 +10853,15 @@ const Map<AppLang, Map<String, String>> _strings = {
     'deleteAccountConfirm': 'Tout supprimer',
     'deleteAccountDeleting': 'Suppression de votre compte...',
     'deleteAccountSuccess': 'Compte supprimé avec succès.',
+    'deleteAccountReauthTitlePassword': 'Confirmer le mot de passe',
+    'deleteAccountReauthTitleGoogle': 'Confirmer avec Google',
+    'deleteAccountReauthTitleApple': 'Confirmer avec Apple',
+    'deleteAccountReauthBodyPassword':
+        'Saisissez le mot de passe actuel du compte pour terminer la suppression.',
+    'deleteAccountReauthBodyGoogle':
+        'Appuyez ci-dessous et choisissez le même compte Google (Gmail) que pour la connexion.',
+    'deleteAccountReauthBodyApple':
+        'Appuyez ci-dessous et confirmez avec le même compte Apple que pour la connexion.',
     'deleteAccountReauthTitle': 'Confirmer mot de passe ou Google',
     'deleteAccountReauthBody':
         'Dernière étape avant suppression : confirmez la même méthode de connexion (mot de passe e-mail ou compte Google/Gmail).',
@@ -10806,12 +10875,15 @@ const Map<AppLang, Map<String, String>> _strings = {
     'deleteAccountReauthPasswordRequired':
         'Saisissez le mot de passe actuel du compte.',
     'deleteAccountReauthGoogle': 'Confirmer avec Google (Gmail)',
+    'deleteAccountReauthApple': 'Confirmer avec Apple',
     'deleteAccountReauthContinue': 'Confirmer avec le mot de passe',
+    'deleteAccountReauthUnsupported':
+        'Impossible de détecter votre mode de connexion. Déconnectez-vous, reconnectez-vous avec la même méthode, puis réessayez de supprimer le compte.',
     'deleteAccountReauthCantPassword':
         'Utilisez le bouton de la même méthode de connexion (Google/Gmail ou e-mail et mot de passe) qu’à la création du compte.',
     'deleteAccountTypeWordTitle': 'Confirmation finale',
     'deleteAccountTypeWordInstruction':
-        'Pour supprimer définitivement le compte, tapez delete dans le champ. Ensuite nous demanderons une confirmation par mot de passe ou Google (Gmail).',
+        'Pour supprimer définitivement le compte, tapez delete dans le champ. Ensuite nous demanderons une confirmation avec la même méthode de connexion.',
     'deleteAccountTypeWordFieldLabel': 'delete',
     'homeBabyBannerForecastSleep': 'Prévision de sommeil',
     'homeBabyBannerForecastWake': 'Prévision de réveil',
@@ -13806,6 +13878,15 @@ const Map<AppLang, Map<String, String>> _strings = {
     'deleteAccountConfirm': 'Elimina tutto',
     'deleteAccountDeleting': 'Eliminazione account...',
     'deleteAccountSuccess': 'Account eliminato correttamente.',
+    'deleteAccountReauthTitlePassword': 'Conferma password',
+    'deleteAccountReauthTitleGoogle': 'Conferma con Google',
+    'deleteAccountReauthTitleApple': 'Conferma con Apple',
+    'deleteAccountReauthBodyPassword':
+        'Inserisci la password attuale dell’account per completare l’eliminazione.',
+    'deleteAccountReauthBodyGoogle':
+        'Tocca sotto e scegli lo stesso account Google (Gmail) usato per l’accesso.',
+    'deleteAccountReauthBodyApple':
+        'Tocca sotto e conferma con lo stesso account Apple usato per l’accesso.',
     'deleteAccountReauthTitle': 'Conferma password o Google',
     'deleteAccountReauthBody':
         'Ultimo passo prima dell’eliminazione: conferma lo stesso metodo di accesso (password e-mail o account Google/Gmail).',
@@ -13818,12 +13899,15 @@ const Map<AppLang, Map<String, String>> _strings = {
     'deleteAccountReauthPasswordRequired':
         'Inserisci la password attuale dell’account.',
     'deleteAccountReauthGoogle': 'Conferma con Google (Gmail)',
+    'deleteAccountReauthApple': 'Conferma con Apple',
     'deleteAccountReauthContinue': 'Conferma con password',
+    'deleteAccountReauthUnsupported':
+        'Non siamo riusciti a rilevare come hai effettuato l’accesso. Esci, accedi di nuovo con lo stesso metodo e riprova a eliminare l’account.',
     'deleteAccountReauthCantPassword':
         'Usa il pulsante dello stesso metodo di accesso (Google/Gmail o e-mail e password) usato alla creazione dell’account.',
     'deleteAccountTypeWordTitle': 'Conferma finale',
     'deleteAccountTypeWordInstruction':
-        'Per eliminare definitivamente l’account, digita delete nel campo. Poi chiederemo conferma con password o Google (Gmail).',
+        'Per eliminare definitivamente l’account, digita delete nel campo. Poi chiederemo conferma con lo stesso metodo di accesso.',
     'deleteAccountTypeWordFieldLabel': 'elimina',
     'homeBabyBannerForecastSleep': 'Previsione sonno',
     'homeBabyBannerForecastWake': 'Previsione risveglio',

@@ -206,6 +206,10 @@ class PremiumService extends ChangeNotifier {
   }
 
   Future<void> _onAuthUserChanged(User? user) async {
+    // Evita flash de Plus do utilizador anterior enquanto carrega o perfil novo.
+    _entitlement = false;
+    _activeProductId = null;
+    notifyListeners();
     await _loadEntitlementForUser(user?.uid);
     if (user != null) {
       await syncPremiumFromFirestore();
@@ -314,18 +318,6 @@ class PremiumService extends ChangeNotifier {
     unawaited(_processPurchaseUpdates(purchases));
   }
 
-  static bool _indicatesItemAlreadyOwned(IAPError err) {
-    final blob = '${err.code} ${err.message} ${err.details ?? ''}'.toLowerCase();
-    return blob.contains('itemalreadyowned') ||
-        blob.contains('item_already_owned') ||
-        blob.contains('billingresponse.itemalreadyowned') ||
-        blob.contains('item_owned') ||
-        blob.contains('já é seu') ||
-        blob.contains('ja e seu') ||
-        blob.contains('already yours') ||
-        blob.contains('already owned');
-  }
-
   Future<Set<String>> _ownedPremiumSkusFromStore() async {
     final owned = <String>{};
     if (!premiumStoreSupported() || !_storeAvailable) return owned;
@@ -375,23 +367,6 @@ class PremiumService extends ChangeNotifier {
     return true;
   }
 
-  Future<void> _tryLinkPlayPurchaseToCurrentUser() async {
-    if (!premiumStoreSupported() || !_storeAvailable) return;
-    if (await _tryGrantFromAndroidPastPurchases()) {
-      await syncPremiumFromFirestore();
-      return;
-    }
-    _userInitiatedRestore = true;
-    try {
-      await _iap.restorePurchases();
-      await Future<void>.delayed(const Duration(milliseconds: 2400));
-    } catch (e, st) {
-      debugPrint('PremiumService _tryLinkPlayPurchaseToCurrentUser: $e\n$st');
-    }
-    await syncPremiumFromFirestore();
-    _userInitiatedRestore = false;
-  }
-
   Future<void> _processPurchaseUpdates(List<PurchaseDetails> purchases) async {
     for (final p in purchases) {
       switch (p.status) {
@@ -408,9 +383,6 @@ class PremiumService extends ChangeNotifier {
           _purchaseAwaitingStoreConfirmation = false;
           _lastPurchaseErrorMessage =
               p.error?.message ?? p.error?.code ?? 'purchase_error';
-          if (p.error != null && _indicatesItemAlreadyOwned(p.error!)) {
-            await _tryLinkPlayPurchaseToCurrentUser();
-          }
           break;
         case PurchaseStatus.purchased:
           _log('purchase completed product=${p.productID}');
@@ -424,8 +396,7 @@ class PremiumService extends ChangeNotifier {
           _log('purchase restored product=${p.productID}');
           _purchaseAwaitingStoreConfirmation = false;
           _lastPurchaseErrorMessage = null;
-          if (_isPremiumProductId(p.productID) &&
-              (_userInitiatedRestore || premiumOnIos())) {
+          if (_isPremiumProductId(p.productID) && _userInitiatedRestore) {
             await _persistEntitlement(true, pushRemote: true, productId: p.productID);
           }
           break;
@@ -509,6 +480,11 @@ class PremiumService extends ChangeNotifier {
     await _persistEntitlement(false, pushRemote: true);
   }
 
+  /// Sincroniza Plus a partir do perfil cloud do utilizador atual.
+  ///
+  /// Compras na loja do dispositivo **não** concedem Plus automaticamente no login
+  /// (evita que outra conta FaceBaby no mesmo aparelho herde a assinatura).
+  /// Use [restorePurchases] para associar compras da loja à conta atual.
   Future<void> syncPremiumFromFirestore() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
@@ -538,15 +514,6 @@ class PremiumService extends ChangeNotifier {
         return;
       }
 
-      if (await _storeGrantsPremiumAccess()) {
-        await _resolveActiveProductFromStore();
-        await _persistEntitlement(
-          true,
-          pushRemote: true,
-          productId: _activeProductId,
-        );
-        return;
-      }
       if (_entitlement) {
         await _cacheActiveProductId(null);
         await _persistEntitlement(false, pushRemote: false);
@@ -604,16 +571,6 @@ class PremiumService extends ChangeNotifier {
         _log('purchase start failed sku=$sku buyNonConsumable returned false');
         _purchaseAwaitingStoreConfirmation = false;
         notifyListeners();
-        if (premiumOnAndroid()) {
-          await _tryLinkPlayPurchaseToCurrentUser();
-          if (_entitlement) {
-            return PurchasePremiumResult.billingFlowLaunched;
-          }
-          await Future<void>.delayed(const Duration(milliseconds: 600));
-          if (await _tryGrantFromAndroidPastPurchases()) {
-            return PurchasePremiumResult.billingFlowLaunched;
-          }
-        }
         return PurchasePremiumResult.billingLaunchFailed;
       }
       _log('purchase sheet launched sku=$sku awaiting store confirmation');
@@ -645,14 +602,20 @@ class PremiumService extends ChangeNotifier {
     _userInitiatedRestore = true;
     _restoreUiPending = true;
     notifyListeners();
-    await _iap.restorePurchases();
-    await Future<void>.delayed(const Duration(milliseconds: 900));
-    await syncPremiumFromFirestore();
-    if (_restoreUiPending) {
+    if (await _tryGrantFromAndroidPastPurchases()) {
       _restoreUiPending = false;
       _userInitiatedRestore = false;
       notifyListeners();
+      return;
     }
+    await _iap.restorePurchases();
+    await Future<void>.delayed(const Duration(milliseconds: 2400));
+    if (premiumOnAndroid()) {
+      await _tryGrantFromAndroidPastPurchases();
+    }
+    _restoreUiPending = false;
+    _userInitiatedRestore = false;
+    notifyListeners();
   }
 
   Future<void> setDebugPremiumForced(bool value) async {

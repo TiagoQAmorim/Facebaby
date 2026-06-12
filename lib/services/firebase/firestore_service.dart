@@ -46,12 +46,20 @@ class FirestoreService {
     String? zodiacSign,
     double? weightKg,
     double? heightCm,
+    double? birthWeightKg,
+    double? birthHeightCm,
     bool? firstBaby,
     List<String>? onboardingConcerns,
     List<String>? onboardingGoals,
     String? photoUrl,
   }) async {
     // Keep snake_case keys to match existing local hydration helpers.
+    final birthW = (birthWeightKg != null && birthWeightKg > 0)
+        ? birthWeightKg
+        : weightKg;
+    final birthH = (birthHeightCm != null && birthHeightCm > 0)
+        ? birthHeightCm
+        : heightCm;
     return FirestoreUserRepository.instance.saveBaby(_uid, {
       'name': name.trim(),
       'sex': sex,
@@ -59,6 +67,8 @@ class FirestoreService {
       'zodiac_sign': zodiacSign,
       'weight_kg': weightKg,
       'height_cm': heightCm,
+      if (birthW != null && birthW > 0) 'birth_weight_kg': birthW,
+      if (birthH != null && birthH > 0) 'birth_height_cm': birthH,
       'first_baby': firstBaby,
       'onboarding_concerns': onboardingConcerns,
       'onboarding_goals': onboardingGoals,

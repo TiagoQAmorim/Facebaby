@@ -126,6 +126,8 @@ class CloudBootstrapSync {
             'zodiac_sign': b['zodiac_sign'] ?? b['zodiacSign'],
             'weight_kg': b['weight_kg'] ?? b['weightKg'],
             'height_cm': b['height_cm'] ?? b['heightCm'],
+            'birth_weight_kg': b['birth_weight_kg'] ?? b['birthWeightKg'],
+            'birth_height_cm': b['birth_height_cm'] ?? b['birthHeightCm'],
             'photo_url': b['photo_url'] ?? b['photoUrl'],
           },
         );
@@ -167,6 +169,8 @@ class CloudBootstrapSync {
         'zodiac_sign': baby['zodiac_sign'] ?? baby['zodiacSign'],
         'weight_kg': baby['weight_kg'] ?? baby['weightKg'],
         'height_cm': baby['height_cm'] ?? baby['heightCm'],
+        'birth_weight_kg': baby['birth_weight_kg'] ?? baby['birthWeightKg'],
+        'birth_height_cm': baby['birth_height_cm'] ?? baby['birthHeightCm'],
         'photo_url': baby['photo_url'] ?? baby['photoUrl'],
       },
     );

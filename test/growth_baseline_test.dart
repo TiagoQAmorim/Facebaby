@@ -16,6 +16,20 @@ void main() {
     );
   });
 
+  test('birthHeightCm falls back to height_cm when birth_height_cm missing', () {
+    expect(
+      GrowthBaseline.birthHeightCm({
+        'birth_height_cm': 51.0,
+        'height_cm': 62.0,
+      }),
+      closeTo(51.0, 0.001),
+    );
+    expect(
+      GrowthBaseline.birthHeightCm({'height_cm': 50.0}),
+      closeTo(50.0, 0.001),
+    );
+  });
+
   test('maxValueByMeasuredAt picks newest row', () {
     final rows = [
       {
