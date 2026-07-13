@@ -3094,7 +3094,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusPaywallRenewalNoteIos':
         'A assinatura é renovada automaticamente pela App Store. Cancele em Ajustes › Apple ID › Subscrições.',
     'plusSheetHero':
-        'FaceBaby Plus: IA Babá 24h, fotos à vontade, backup completo, relatórios premium, livro do bebê e muito mais — a partir de R\$ 14,90/mês.',
+        'FaceBaby Plus: IA Babá 24h, fotos à vontade, backup completo, relatórios premium, livro do bebê e muito mais — a partir de R\$ 15,90/mês.',
     'plusSheetPriceLabel': 'Planos mensal e anual',
     'plusSheetBullets':
         '• IA Babá 24h\n• Upload de fotos à vontade\n• Backup completo na nuvem\n• Relatórios premium e livro do bebê\n• Crescimento avançado e horóscopo familiar IA\n• Conteúdos gerados por IA\n• Em breve: respostas por voz',
@@ -3138,7 +3138,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusMemoryLimitDialogSubscribe': 'Assinar Premium',
     'plusReportsLockedHint': 'Relatório FaceBaby Premium',
     'plusReportsPremiumTagline':
-        'Relatórios premium, IA Babá e backup — FaceBaby Plus a partir de R\$ 14,90/mês.',
+        'Relatórios premium, IA Babá e backup — FaceBaby Plus a partir de R\$ 15,90/mês.',
     'plusReportsPremiumCta': 'Ver FaceBaby Premium',
     'plusExportLockedHint': 'Exportação FaceBaby Premium',
     'plusLifetimePaymentBadge': 'Plano mensal',
@@ -3208,7 +3208,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusTrustSupport': 'Apoio em cada\nmomento',
     'settingsPlusCardTitle': 'FaceBaby Plus',
     'settingsPlusCardBodyFree':
-        'IA Babá, fotos ilimitadas, backup completo, relatórios premium e livro do bebê — mensal R\$ 14,90 ou anual R\$ 149,90.',
+        'IA Babá, fotos ilimitadas, backup completo, relatórios premium e livro do bebê — mensal R\$ 15,90 ou anual R\$ 129,00.',
     'settingsPlusCardBodyActive':
         'Seu FaceBaby Plus está ativo — obrigada por apoiar o projeto.',
     'settingsPlusUpgradeCta': 'Conhecer FaceBaby Plus',

@@ -249,10 +249,10 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen>
         );
         final annualPrice = svc.formattedLocalizedPriceAnnual.isNotEmpty
             ? svc.formattedLocalizedPriceAnnual
-            : '...';
+            : PremiumConstants.priceDisplayAnnualBr;
         final monthlyPrice = svc.formattedLocalizedPriceMonthly.isNotEmpty
             ? svc.formattedLocalizedPriceMonthly
-            : '...';
+            : PremiumConstants.priceDisplayMonthlyBr;
         final missingSkus = <String>[
           if (svc.monthlySkuMissingFromStore) PremiumConstants.productIdMonthly,
           if (svc.annualSkuMissingFromStore) PremiumConstants.productIdAnnual,

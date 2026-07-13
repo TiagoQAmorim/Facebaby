@@ -2,17 +2,17 @@
 abstract final class PremiumConstants {
   PremiumConstants._();
 
-  static const double monthlyPriceBr = 14.90;
-  static const double annualPriceBr = 149.90;
+  static const double monthlyPriceBr = 15.90;
+  static const double annualPriceBr = 129.00;
 
   /// Fallback mensal quando a loja ainda não devolveu [ProductDetails].
-  static const String priceDisplayMonthlyBr = 'R\$ 14,90/mês';
+  static const String priceDisplayMonthlyBr = 'R\$ 15,90/mês';
 
   /// Preço mensal da loja acima disso (BRL) costuma ser SKU errado (ex. anual no mensal).
   static const double monthlyStorePriceSanityMaxBr = 35.0;
 
   /// Fallback anual.
-  static const String priceDisplayAnnualBr = 'R\$ 149,90/ano';
+  static const String priceDisplayAnnualBr = 'R\$ 129,00/ano';
 
   /// Assinatura mensal — App Store Connect / Play Console.
   static const String productIdMonthly = 'facebaby_premium_monthly';
