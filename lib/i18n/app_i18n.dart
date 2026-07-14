@@ -310,7 +310,8 @@ class S {
       plusAnnualSavingsAmountLine(amount ?? '');
   String plusAnnualSavingsAmountLine(String amount) =>
       _t('plusAnnualSavingsAmountLine').replaceAll('{amount}', amount);
-  String get plusAnnualPerMonthHint => _t('plusAnnualPerMonthHint');
+  String plusAnnualPerMonthHintLine(String amount) =>
+      _t('plusAnnualPerMonthHint').replaceAll('{amount}', amount);
   String get plusCtaSubscribePlus => _t('plusCtaSubscribeMonthly');
   String get plusCtaSubscribeMonthly => _t('plusCtaSubscribeMonthly');
   String get plusCtaSubscribeAnnual => _t('plusCtaSubscribeAnnual');
@@ -3083,7 +3084,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusPlanMonthlySubtitle':
         'Tudo que você precisa para acompanhar seu bebê com carinho e inteligência.',
     'plusAnnualSavingsAmountLine': 'Economize R\$ {amount} por ano',
-    'plusAnnualPerMonthHint': 'Equivale a cerca de R\$ 12,49/mês',
+    'plusAnnualPerMonthHint': 'Equivale a cerca de R\$ {amount}/mês',
     'plusCtaSubscribeMonthly': 'Assinar plano mensal',
     'plusCtaSubscribeAnnual': 'Assinar plano anual',
     'plusCtaSubscribePlus': 'Assinar FaceBaby Plus',
@@ -5958,7 +5959,7 @@ const Map<AppLang, Map<String, String>> _strings = {
     'plusPlanMonthlySubtitle':
         'Everything you need to care for your baby with love and intelligence.',
     'plusAnnualSavingsAmountLine': 'Save \${amount} per year',
-    'plusAnnualPerMonthHint': 'About \$12.49/month',
+    'plusAnnualPerMonthHint': 'About \${amount}/month',
     'plusCtaSubscribeMonthly': 'Subscribe monthly',
     'plusCtaSubscribeAnnual': 'Subscribe annual',
     'plusCtaSubscribePlus': 'Subscribe to FaceBaby Plus',

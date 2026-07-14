@@ -91,7 +91,19 @@ class PremiumService extends ChangeNotifier {
 
   bool get annualProductReady => _annualProduct != null;
 
-  String get formattedLocalizedPriceMonthly => _formatStorePrice(_monthlyProduct);
+  /// Preço mensal para UI — rejeita valores de loja que parecem anuais.
+  String get formattedLocalizedPriceMonthly {
+    final amount = _productAmount(_monthlyProduct);
+    if (amount == null ||
+        amount > PremiumConstants.monthlyStorePriceSanityMaxBr) {
+      return '';
+    }
+    final annualAmt = _productAmount(_annualProduct);
+    if (annualAmt != null && (amount - annualAmt).abs() < 0.05) {
+      return '';
+    }
+    return _formatStorePrice(_monthlyProduct);
+  }
 
   PremiumBillingPlan get activeBillingPlan {
     if (!isPremium) return PremiumBillingPlan.free;
@@ -109,7 +121,16 @@ class PremiumService extends ChangeNotifier {
     return PremiumBillingPlan.plusUnknown;
   }
 
-  String get formattedLocalizedPriceAnnual => _formatStorePrice(_annualProduct);
+  /// Preço anual para UI — rejeita valores de loja que parecem mensais.
+  String get formattedLocalizedPriceAnnual {
+    final amount = _productAmount(_annualProduct);
+    if (amount == null) return '';
+    if (amount > 0 &&
+        amount <= PremiumConstants.monthlyStorePriceSanityMaxBr) {
+      return '';
+    }
+    return _formatStorePrice(_annualProduct);
+  }
 
   String get formattedLocalizedPrice => formattedLocalizedPriceMonthly;
 
@@ -122,12 +143,40 @@ class PremiumService extends ChangeNotifier {
     if (store.isNotEmpty) return store;
     if (p.rawPrice > 0 && p.currencyCode.isNotEmpty) {
       try {
-        return NumberFormat.simpleCurrency(name: p.currencyCode).format(p.rawPrice);
+        return NumberFormat.simpleCurrency(name: p.currencyCode)
+            .format(p.rawPrice);
       } catch (_) {
         return '';
       }
     }
     return '';
+  }
+
+  /// Valor numérico do produto (rawPrice ou parse da string localizada).
+  static double? _productAmount(ProductDetails? p) {
+    if (p == null) return null;
+    if (p.rawPrice > 0) return p.rawPrice;
+    return _parseLocalizedPriceAmount(p.price);
+  }
+
+  @visibleForTesting
+  static double? parseLocalizedPriceAmountForTest(String raw) =>
+      _parseLocalizedPriceAmount(raw);
+
+  static double? _parseLocalizedPriceAmount(String raw) {
+    final text = raw.trim();
+    if (text.isEmpty) return null;
+    // Mantém dígitos, vírgula e ponto (ex.: "R$ 129,00", "US$15.90").
+    final cleaned = text.replaceAll(RegExp(r'[^\d.,]'), '');
+    if (cleaned.isEmpty) return null;
+    if (cleaned.contains(',') && cleaned.contains('.')) {
+      // 1.234,56 → 1234.56
+      return double.tryParse(cleaned.replaceAll('.', '').replaceAll(',', '.'));
+    }
+    if (cleaned.contains(',')) {
+      return double.tryParse(cleaned.replaceAll(',', '.'));
+    }
+    return double.tryParse(cleaned);
   }
 
   static bool _isPremiumProductId(String? id) {
@@ -302,6 +351,54 @@ class PremiumService extends ChangeNotifier {
       } else if (p.id == PremiumConstants.productIdAnnual) {
         _annualProduct = p;
       }
+    }
+
+    // Se a loja devolveu preços invertidos (mensal > anual), troca a atribuição
+    // para a UI e a compra seguirem o preço esperado de cada plano.
+    final monthly = _monthlyProduct;
+    final annual = _annualProduct;
+    final monthlyAmt = _productAmount(monthly);
+    final annualAmt = _productAmount(annual);
+    if (monthly != null &&
+        annual != null &&
+        monthlyAmt != null &&
+        annualAmt != null &&
+        monthlyAmt > annualAmt) {
+      _log(
+        'price sanity swap: monthly amt=$monthlyAmt '
+        '(${monthly.id}) > annual amt=$annualAmt (${annual.id})',
+      );
+      _monthlyProduct = annual;
+      _annualProduct = monthly;
+    } else if (monthly != null &&
+        annual == null &&
+        monthlyAmt != null &&
+        monthlyAmt > PremiumConstants.monthlyStorePriceSanityMaxBr) {
+      // Só veio o SKU "mensal", mas o preço é de plano anual.
+      _log(
+        'price sanity: lone monthly looks annual-sized amt=$monthlyAmt '
+        '→ treat as annual product',
+      );
+      _annualProduct = monthly;
+      _monthlyProduct = null;
+    } else if (annual != null &&
+        monthly == null &&
+        annualAmt != null &&
+        annualAmt > 0 &&
+        annualAmt <= PremiumConstants.monthlyStorePriceSanityMaxBr) {
+      // Só veio o SKU "anual", mas o preço é de plano mensal.
+      _log(
+        'price sanity: lone annual looks monthly-sized amt=$annualAmt '
+        '→ treat as monthly product',
+      );
+      _monthlyProduct = annual;
+      _annualProduct = null;
+    } else if (monthlyAmt != null &&
+        monthlyAmt > PremiumConstants.monthlyStorePriceSanityMaxBr) {
+      _log(
+        'price sanity warn: monthly product price looks annual-sized '
+        'amt=$monthlyAmt id=${monthly?.id} — UI will use fallback R\$ 15,90',
+      );
     }
 
     if (_monthlyProduct == null) {

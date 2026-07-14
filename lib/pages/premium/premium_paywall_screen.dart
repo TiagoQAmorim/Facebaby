@@ -243,6 +243,10 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen>
         final svc = PremiumService.instance;
         final hasPlus = svc.isPremium;
         final activePlan = svc.activeBillingPlan;
+        final onAnnualOrHigher = activePlan == PremiumBillingPlan.annual ||
+            activePlan == PremiumBillingPlan.lifetime ||
+            (hasPlus && activePlan == PremiumBillingPlan.plusUnknown);
+        final onMonthly = activePlan == PremiumBillingPlan.monthly;
         final bottomInset = MediaQuery.paddingOf(context).bottom;
         final savingsLine = s.plusAnnualSavingsAmountLine(
           PremiumConstants.annualSavingsAmountBr,
@@ -253,10 +257,50 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen>
         final monthlyPrice = svc.formattedLocalizedPriceMonthly.isNotEmpty
             ? svc.formattedLocalizedPriceMonthly
             : PremiumConstants.priceDisplayMonthlyBr;
+        final annualPerMonthHint = s.plusAnnualPerMonthHintLine(
+          PremiumConstants.annualEquivalentMonthlyBr,
+        );
         final missingSkus = <String>[
           if (svc.monthlySkuMissingFromStore) PremiumConstants.productIdMonthly,
           if (svc.annualSkuMissingFromStore) PremiumConstants.productIdAnnual,
         ];
+
+        // Mensal: assinar se free; plano atual se mensal; bloqueado se já tem anual+.
+        final VoidCallback? monthlyAction;
+        final String monthlyCta;
+        final bool monthlyIsCurrent;
+        if (onMonthly) {
+          monthlyAction = null;
+          monthlyCta = s.plusPlanPremiumButtonActive;
+          monthlyIsCurrent = true;
+        } else if (onAnnualOrHigher) {
+          // Já no anual (ou superior): sem downgrade para mensal.
+          monthlyAction = null;
+          monthlyCta = s.plusCtaSubscribeMonthly;
+          monthlyIsCurrent = false;
+        } else {
+          monthlyAction = () => _purchase(annual: false);
+          monthlyCta = s.plusCtaSubscribeMonthly;
+          monthlyIsCurrent = false;
+        }
+
+        // Anual: assinar se free; upgrade se mensal; plano atual se anual+.
+        final VoidCallback? annualAction;
+        final String annualCta;
+        final bool annualIsCurrent;
+        if (onAnnualOrHigher) {
+          annualAction = null;
+          annualCta = s.plusPlanPremiumButtonActive;
+          annualIsCurrent = true;
+        } else if (onMonthly) {
+          annualAction = () => _purchase(annual: true);
+          annualCta = s.plusCtaSubscribeAnnual;
+          annualIsCurrent = false;
+        } else {
+          annualAction = () => _purchase(annual: true);
+          annualCta = s.plusCtaSubscribeAnnual;
+          annualIsCurrent = false;
+        }
 
         return Scaffold(
           backgroundColor: AppTheme.background,
@@ -345,24 +389,16 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen>
                               subtitle: s.plusPlanAnnualSubtitle,
                               price: annualPrice,
                               priceHighlight: savingsLine,
-                              priceHint: s.plusAnnualPerMonthHint,
+                              priceHint: annualPerMonthHint,
                               features: s.plusPlanAnnualFeatures,
                               accent: plusPink,
                               icon: Icons.favorite_rounded,
                               highlighted: true,
                               badge: s.plusPopularBadge,
-                              ctaLabel:
-                                  activePlan == PremiumBillingPlan.annual
-                                      ? s.plusPlanPremiumButtonActive
-                                      : s.plusCtaSubscribeAnnual,
-                              isCurrentPlan:
-                                  activePlan == PremiumBillingPlan.annual,
+                              ctaLabel: annualCta,
+                              isCurrentPlan: annualIsCurrent,
                               busy: _purchasing == _PurchasingPlan.annual,
-                              onPressed: activePlan == PremiumBillingPlan.annual ||
-                                      !svc.storeAvailable ||
-                                      !svc.annualProductReady
-                                  ? null
-                                  : () => _purchase(annual: true),
+                              onPressed: annualAction,
                             ),
                             const SizedBox(height: 12),
                             _PlanCard(
@@ -372,18 +408,10 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen>
                               features: s.plusPlanMonthlyFeatures,
                               accent: plusPurple,
                               icon: Icons.workspace_premium_rounded,
-                              ctaLabel:
-                                  activePlan == PremiumBillingPlan.monthly
-                                      ? s.plusPlanPremiumButtonActive
-                                      : s.plusCtaSubscribeMonthly,
-                              isCurrentPlan:
-                                  activePlan == PremiumBillingPlan.monthly,
+                              ctaLabel: monthlyCta,
+                              isCurrentPlan: monthlyIsCurrent,
                               busy: _purchasing == _PurchasingPlan.monthly,
-                              onPressed: activePlan == PremiumBillingPlan.monthly ||
-                                      !svc.storeAvailable ||
-                                      !svc.monthlyProductReady
-                                  ? null
-                                  : () => _purchase(annual: false),
+                              onPressed: monthlyAction,
                             ),
                             const SizedBox(height: 18),
                             const _TrustStrip(),
