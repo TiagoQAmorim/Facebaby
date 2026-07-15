@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../utils/login_platform.dart';
 import '../premium/premium_service.dart';
+import 'analytics_service.dart';
 import 'auth_registration_exception.dart';
 import 'auth_session_restore.dart';
 import 'email_verification_policy.dart';
@@ -274,6 +275,7 @@ class AuthService {
     }
     await _recordSignedIn(cred.user);
     await _ensureNewUserStartsFree(cred);
+    unawaited(AnalyticsService.instance.logSignUp(signUpMethod: 'email'));
     return cred;
   }
 
@@ -342,6 +344,9 @@ class AuthService {
       final cred = await _auth.signInWithCredential(credential);
       await _recordSignedIn(cred.user);
       await _ensureNewUserStartsFree(cred);
+      if (cred.additionalUserInfo?.isNewUser == true) {
+        unawaited(AnalyticsService.instance.logSignUp(signUpMethod: 'google'));
+      }
       return cred;
     } on FirebaseAuthException catch (e, st) {
       developer.log(
@@ -385,6 +390,9 @@ class AuthService {
       _debugLogApple('step=before_recordSignedIn uid=${cred.user?.uid}');
       await _recordSignedIn(cred.user);
       await _ensureNewUserStartsFree(cred);
+      if (cred.additionalUserInfo?.isNewUser == true) {
+        unawaited(AnalyticsService.instance.logSignUp(signUpMethod: 'apple'));
+      }
       _debugLogApple('step=after_recordSignedIn uid=${cred.user?.uid}');
       _debugLogApple('step=done uid=${cred.user?.uid}');
       return cred;

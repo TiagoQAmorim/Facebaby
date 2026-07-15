@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, debugPrint, visibleForTest
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/daily_summary.dart';
+import 'firebase/analytics_service.dart';
 import 'health_calendar_events.dart';
 import 'diaper_events.dart';
 import 'feeding_events.dart';
@@ -2575,8 +2576,9 @@ WHERE baby_id = ?
     List<String>? onboardingGoals,
     String? photoB64,
   }) async {
+    final isFirstBabyProfile = await _isFirstLocalBabyProfile();
     if (kIsWeb) {
-      return _webSerialized(() async {
+      final id = await _webSerialized(() async {
         final prefs = await _webPrefs();
         final babies = _webReadList(prefs, 'babies');
         final id = await _webNextId(prefs, 'babies');
@@ -2609,6 +2611,11 @@ WHERE baby_id = ?
         await _webWriteList(prefs, 'babies', babies);
         return id;
       });
+      unawaited(
+        AnalyticsService.instance
+            .logBabyProfileCreated(isFirstBaby: isFirstBabyProfile),
+      );
+      return id;
     }
     final db = await database;
     final createdAt = DateTime.now().toIso8601String();
@@ -2618,7 +2625,7 @@ WHERE baby_id = ?
     final pb = photoB64?.trim().isEmpty == true ? null : photoB64?.trim();
     final concernsJson = _encodeStringList(onboardingConcerns);
     final goalsJson = _encodeStringList(onboardingGoals);
-    return db.rawInsert(
+    final id = await db.rawInsert(
       '''
 INSERT INTO babies(
   mother_id, name, sex, birth_date, zodiac_sign, weight_kg, height_cm, birth_weight_kg, birth_height_cm, first_baby, onboarding_concerns_json, onboarding_goals_json, photo_b64, created_at
@@ -2641,6 +2648,20 @@ INSERT INTO babies(
         createdAt,
       ],
     );
+    unawaited(
+      AnalyticsService.instance
+          .logBabyProfileCreated(isFirstBaby: isFirstBabyProfile),
+    );
+    return id;
+  }
+
+  Future<bool> _isFirstLocalBabyProfile() async {
+    try {
+      final existing = await listBabies();
+      return existing.isEmpty;
+    } catch (_) {
+      return true;
+    }
   }
 
   Future<int> deleteBaby({required int babyId}) async {

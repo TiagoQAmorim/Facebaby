@@ -8,6 +8,7 @@ import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../firebase/analytics_service.dart';
 import '../firebase/firestore_user_repository.dart';
 import 'premium_constants.dart';
 import 'premium_platform.dart';
@@ -487,6 +488,15 @@ class PremiumService extends ChangeNotifier {
           _lastPurchaseErrorMessage = null;
           if (_isPremiumProductId(p.productID)) {
             await _persistEntitlement(true, pushRemote: true, productId: p.productID);
+            // Restauração em alguns dispositivos chega como `purchased`.
+            if (_userInitiatedRestore) {
+              unawaited(
+                AnalyticsService.instance
+                    .logPremiumRestored(productId: p.productID),
+              );
+            } else {
+              unawaited(_logPremiumPurchaseAnalytics(p));
+            }
           }
           break;
         case PurchaseStatus.restored:
@@ -495,6 +505,11 @@ class PremiumService extends ChangeNotifier {
           _lastPurchaseErrorMessage = null;
           if (_isPremiumProductId(p.productID) && _userInitiatedRestore) {
             await _persistEntitlement(true, pushRemote: true, productId: p.productID);
+            // Nunca registrar restauração como `purchase`.
+            unawaited(
+              AnalyticsService.instance
+                  .logPremiumRestored(productId: p.productID),
+            );
           }
           break;
         case PurchaseStatus.canceled:
@@ -659,6 +674,12 @@ class PremiumService extends ChangeNotifier {
       'purchase start sku=$sku storePrice=${details.price} '
       'method=buyNonConsumable',
     );
+    unawaited(
+      AnalyticsService.instance.logBeginCheckout(
+        product: details,
+        itemName: _planDisplayName(details),
+      ),
+    );
     _purchaseAwaitingStoreConfirmation = true;
     notifyListeners();
 
@@ -700,6 +721,7 @@ class PremiumService extends ChangeNotifier {
     _restoreUiPending = true;
     notifyListeners();
     if (await _tryGrantFromAndroidPastPurchases()) {
+      unawaited(_logPremiumRestoredFromOwnedSkus());
       _restoreUiPending = false;
       _userInitiatedRestore = false;
       notifyListeners();
@@ -708,11 +730,62 @@ class PremiumService extends ChangeNotifier {
     await _iap.restorePurchases();
     await Future<void>.delayed(const Duration(milliseconds: 2400));
     if (premiumOnAndroid()) {
-      await _tryGrantFromAndroidPastPurchases();
+      final granted = await _tryGrantFromAndroidPastPurchases();
+      if (granted) {
+        unawaited(_logPremiumRestoredFromOwnedSkus());
+      }
     }
     _restoreUiPending = false;
     _userInitiatedRestore = false;
     notifyListeners();
+  }
+
+  ProductDetails? _productDetailsFor(String productId) {
+    if (productId == PremiumConstants.productIdMonthly) return _monthlyProduct;
+    if (productId == PremiumConstants.productIdAnnual) return _annualProduct;
+    return null;
+  }
+
+  String _planDisplayName(ProductDetails product) {
+    final title = product.title.trim();
+    if (title.isNotEmpty) return title;
+    if (product.id == PremiumConstants.productIdMonthly) {
+      return 'FaceBaby Plus Mensal';
+    }
+    if (product.id == PremiumConstants.productIdAnnual) {
+      return 'FaceBaby Plus Anual';
+    }
+    if (product.id == PremiumConstants.productIdLifetimeLegacy) {
+      return 'FaceBaby Plus';
+    }
+    return product.id;
+  }
+
+  Future<void> _logPremiumPurchaseAnalytics(PurchaseDetails purchase) {
+    final product = _productDetailsFor(purchase.productID);
+    return AnalyticsService.instance.logPremiumPurchase(
+      purchase: purchase,
+      product: product,
+      itemName: product != null
+          ? _planDisplayName(product)
+          : purchase.productID,
+    );
+  }
+
+  Future<void> _logPremiumRestoredFromOwnedSkus() async {
+    final owned = await _ownedPremiumSkusFromStore();
+    String? productId;
+    if (owned.contains(PremiumConstants.productIdAnnual)) {
+      productId = PremiumConstants.productIdAnnual;
+    } else if (owned.contains(PremiumConstants.productIdMonthly)) {
+      productId = PremiumConstants.productIdMonthly;
+    } else if (owned.contains(PremiumConstants.productIdLifetimeLegacy)) {
+      productId = PremiumConstants.productIdLifetimeLegacy;
+    } else {
+      productId = _activeProductId;
+    }
+    if (productId == null || productId.isEmpty) return;
+    await AnalyticsService.instance.logPremiumRestored(productId: productId);
   }
 
   Future<void> setDebugPremiumForced(bool value) async {
