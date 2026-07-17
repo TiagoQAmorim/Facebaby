@@ -50,12 +50,24 @@ class AnalyticsService {
   }
 
   /// Cadastro concluído (`sign_up`). Métodos: `email`, `google`, `apple`.
-  Future<void> logSignUp({required String signUpMethod}) {
+  Future<void> logSignUp({required String signUpMethod}) async {
     final method = signUpMethod.trim().toLowerCase();
-    return _safe('sign_up', () async {
+    debugPrint('[FaceBaby Analytics] >>> sign_up');
+    debugPrint('[FaceBaby Analytics] >>> sign_up method=$method');
+    if (!_enabled) {
+      debugPrint(
+        '[FaceBaby Analytics] >>> sign_up SKIPPED reason=automated_test',
+      );
+      return;
+    }
+    try {
       await _analytics.logSignUp(signUpMethod: method);
+      debugPrint('[FaceBaby Analytics] >>> sign_up OK');
       _debug('sign_up method=$method');
-    });
+    } catch (e, s) {
+      debugPrint('[FaceBaby Analytics] sign_up ERROR: $e');
+      debugPrintStack(stackTrace: s);
+    }
   }
 
   /// Perfil de bebê criado com sucesso (`baby_profile_created`).

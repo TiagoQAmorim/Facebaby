@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -261,6 +262,19 @@ class AuthService {
       await cred.user?.updateDisplayName(name);
       await cred.user?.reload();
     }
+
+    // Disparar ANTES de sendEmailVerification: se o e-mail de verificação
+    // falhar e fizer rethrow, a conta já existe e o AuthGate já avança,
+    // mas sign_up nunca era alcançado (baby_profile_created sim, depois).
+    debugPrint('[FaceBaby Analytics] >>> sign_up');
+    try {
+      await AnalyticsService.instance.logSignUp(signUpMethod: 'email');
+      debugPrint('[FaceBaby Analytics] >>> sign_up OK');
+    } catch (e, s) {
+      debugPrint('[FaceBaby Analytics] sign_up ERROR: $e');
+      debugPrintStack(stackTrace: s);
+    }
+
     try {
       await cred.user?.sendEmailVerification(_emailActionCodeSettings);
       await _markVerificationEmailSent();
@@ -275,7 +289,6 @@ class AuthService {
     }
     await _recordSignedIn(cred.user);
     await _ensureNewUserStartsFree(cred);
-    unawaited(AnalyticsService.instance.logSignUp(signUpMethod: 'email'));
     return cred;
   }
 
@@ -344,8 +357,25 @@ class AuthService {
       final cred = await _auth.signInWithCredential(credential);
       await _recordSignedIn(cred.user);
       await _ensureNewUserStartsFree(cred);
-      if (cred.additionalUserInfo?.isNewUser == true) {
-        unawaited(AnalyticsService.instance.logSignUp(signUpMethod: 'google'));
+      final isNew = cred.additionalUserInfo?.isNewUser;
+      debugPrint(
+        '[FaceBaby Analytics] google isNewUser=$isNew '
+        'uid=${cred.user?.uid}',
+      );
+      if (isNew == true) {
+        debugPrint('[FaceBaby Analytics] >>> sign_up');
+        try {
+          await AnalyticsService.instance.logSignUp(signUpMethod: 'google');
+          debugPrint('[FaceBaby Analytics] >>> sign_up OK');
+        } catch (e, s) {
+          debugPrint('[FaceBaby Analytics] sign_up ERROR: $e');
+          debugPrintStack(stackTrace: s);
+        }
+      } else {
+        debugPrint(
+          '[FaceBaby Analytics] >>> sign_up SKIPPED google '
+          'reason=isNewUser_$isNew',
+        );
       }
       return cred;
     } on FirebaseAuthException catch (e, st) {
@@ -390,8 +420,25 @@ class AuthService {
       _debugLogApple('step=before_recordSignedIn uid=${cred.user?.uid}');
       await _recordSignedIn(cred.user);
       await _ensureNewUserStartsFree(cred);
-      if (cred.additionalUserInfo?.isNewUser == true) {
-        unawaited(AnalyticsService.instance.logSignUp(signUpMethod: 'apple'));
+      final isNew = cred.additionalUserInfo?.isNewUser;
+      debugPrint(
+        '[FaceBaby Analytics] apple isNewUser=$isNew '
+        'uid=${cred.user?.uid}',
+      );
+      if (isNew == true) {
+        debugPrint('[FaceBaby Analytics] >>> sign_up');
+        try {
+          await AnalyticsService.instance.logSignUp(signUpMethod: 'apple');
+          debugPrint('[FaceBaby Analytics] >>> sign_up OK');
+        } catch (e, s) {
+          debugPrint('[FaceBaby Analytics] sign_up ERROR: $e');
+          debugPrintStack(stackTrace: s);
+        }
+      } else {
+        debugPrint(
+          '[FaceBaby Analytics] >>> sign_up SKIPPED apple '
+          'reason=isNewUser_$isNew',
+        );
       }
       _debugLogApple('step=after_recordSignedIn uid=${cred.user?.uid}');
       _debugLogApple('step=done uid=${cred.user?.uid}');
