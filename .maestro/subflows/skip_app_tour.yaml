@@ -1,0 +1,17 @@
+appId: com.facebaby.app
+---
+- tapOn:
+    text: "Pular|Skip|Omitir|Passer|Überspringen|Salta"
+    optional: true
+- repeat:
+    times: 8
+    commands:
+      - tapOn:
+          text: "Pular|Skip|Omitir|Passer|Überspringen|Salta"
+          optional: true
+      - tapOn:
+          text: "Próximo|Next|Siguiente|Suivant|Weiter|Avanti"
+          optional: true
+      - tapOn:
+          text: "Concluir|Finish|Finalizar|Terminer|Fertig|Fine"
+          optional: true

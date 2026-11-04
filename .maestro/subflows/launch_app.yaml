@@ -1,0 +1,28 @@
+appId: com.facebaby.app
+---
+- launchApp:
+    clearState: false
+    permissions:
+      notifications: allow
+      camera: allow
+      photos: allow
+      location: allow
+- extendedWaitUntil:
+    visible:
+      id: maestro_onboarding_create_profile
+    timeout: 25000
+    optional: true
+- runFlow:
+    when:
+      notVisible:
+        id: maestro_onboarding_create_profile
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: maestro_nav_home
+          timeout: 90000
+      - extendedWaitUntil:
+          visible:
+            id: maestro_login_email
+          timeout: 90000
+          optional: true

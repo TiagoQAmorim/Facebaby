@@ -1,0 +1,8 @@
+appId: com.facebaby.app
+---
+- tapOn:
+    id: maestro_onboarding_existing_account
+- extendedWaitUntil:
+    visible:
+      id: maestro_login_email
+    timeout: 30000

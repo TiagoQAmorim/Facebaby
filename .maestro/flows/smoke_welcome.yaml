@@ -1,0 +1,8 @@
+appId: com.facebaby.app
+---
+- runFlow: ../subflows/launch_app_guest.yaml
+- runFlow: ../subflows/dismiss_overlays.yaml
+- assertVisible:
+    id: maestro_onboarding_create_profile
+- assertVisible:
+    id: maestro_onboarding_existing_account

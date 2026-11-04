@@ -1,0 +1,7 @@
+# Facebaby + Maestro (com.facebaby.app)
+# Build: ../ninho_flutter_page_objects (Flutter)
+appId: com.facebaby.app
+
+env:
+  MAESTRO_TEST_EMAIL: ""
+  MAESTRO_TEST_PASSWORD: ""

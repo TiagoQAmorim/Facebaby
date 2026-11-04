@@ -1,0 +1,30 @@
+appId: com.facebaby.app
+---
+- runFlow: ../subflows/launch_app_guest.yaml
+- runFlow: ../subflows/dismiss_overlays.yaml
+- runFlow:
+    when:
+      visible:
+        id: maestro_onboarding_existing_account
+    file: ../subflows/open_login_from_welcome.yaml
+- runFlow: ../subflows/login_email.yaml
+- runFlow: ../subflows/skip_app_tour.yaml
+- runFlow: ../subflows/dismiss_overlays.yaml
+- assertVisible:
+    id: maestro_nav_home
+- tapOn:
+    id: maestro_nav_records
+- assertVisible:
+    id: maestro_nav_records
+- tapOn:
+    id: maestro_nav_memories
+- assertVisible:
+    id: maestro_nav_memories
+- tapOn:
+    id: maestro_nav_more
+- assertVisible:
+    id: maestro_nav_more
+- tapOn:
+    id: maestro_nav_home
+- assertVisible:
+    id: maestro_nav_home

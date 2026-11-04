@@ -61,6 +61,7 @@ InputDecoration _modernInputDecoration({
 class _OnboardingAssets {
   static const logo = 'assets/onboarding/logo.png';
   static const welcomeLogo = 'assets/onboarding/logo_welcome.png';
+
   /// Mesmo fundo diurno do portal ([PortalTimeOfDay.backgroundDay]).
   static const registrationBackground = PortalTimeOfDay.backgroundDay;
   static const loginBackground = PortalTimeOfDay.backgroundLogin;
@@ -1372,7 +1373,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
           ),
         ),
         const SizedBox(height: 24),
-        FilledButton(
+        Semantics(
+          identifier: 'maestro_onboarding_create_profile',
+          button: true,
+          label: s.onb('CreateBabyProfile'),
+          child: FilledButton(
           onPressed: () => _setStage('questions'),
           style: FilledButton.styleFrom(
             backgroundColor: AppTheme.ctaPrimary,
@@ -1381,11 +1386,17 @@ class _OnboardingPageState extends State<OnboardingPage> {
           ),
           child: Text(s.onb('CreateBabyProfile')),
         ),
+        ),
         const SizedBox(height: 10),
-        TextButton(
+        Semantics(
+          identifier: 'maestro_onboarding_existing_account',
+          button: true,
+          label: s.onb('ExistingAccountLogin'),
+          child: TextButton(
           onPressed: _openExistingLogin,
           style: TextButton.styleFrom(foregroundColor: _onboardingDarkBlue),
           child: Text(s.onb('ExistingAccountLogin')),
+        ),
         ),
       ],
     );
@@ -1591,7 +1602,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                 'Entrar com Apple tapped (onboarding)',
                                 name: 'Apple Sign-In',
                               );
-                              _runAuth(() => AuthService.instance.signInWithApple());
+                              _runAuth(
+                                  () => AuthService.instance.signInWithApple());
                             },
                       icon: const Icon(Icons.apple),
                       label: Text(s.onb('SignInApple')),
@@ -2115,8 +2127,7 @@ class _EmailAccountSheetState extends State<_EmailAccountSheet> {
   bool _checking = false;
   String? _submitError;
 
-  bool get _hasPrefilledName =>
-      (widget.initialName ?? '').trim().length >= 2;
+  bool get _hasPrefilledName => (widget.initialName ?? '').trim().length >= 2;
 
   String get _resolvedName =>
       _hasPrefilledName ? widget.initialName!.trim() : _name.text.trim();
@@ -2211,7 +2222,8 @@ class _EmailAccountSheetState extends State<_EmailAccountSheet> {
                   icon: Icons.lock_outline_rounded,
                 ),
                 validator: (v) {
-                  if ((v ?? '').isEmpty) return s.onb('ValPasswordConfirmRequired');
+                  if ((v ?? '').isEmpty)
+                    return s.onb('ValPasswordConfirmRequired');
                   if (v != _password.text) return s.onb('ValPasswordMismatch');
                   return null;
                 },
@@ -2232,8 +2244,7 @@ class _EmailAccountSheetState extends State<_EmailAccountSheet> {
                 onPressed: _checking
                     ? null
                     : () async {
-                        if (!_hasPrefilledName &&
-                            _resolvedName.length < 2) {
+                        if (!_hasPrefilledName && _resolvedName.length < 2) {
                           setState(() {
                             _submitError = s.onb('ValYourName');
                           });

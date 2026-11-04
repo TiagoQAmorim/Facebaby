@@ -1,0 +1,17 @@
+appId: com.facebaby.app
+---
+- tapOn:
+    id: maestro_login_email
+- eraseText: 80
+- inputText: ${MAESTRO_TEST_EMAIL}
+- tapOn:
+    id: maestro_login_password
+- eraseText: 80
+- inputText: ${MAESTRO_TEST_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: maestro_login_submit_email
+- extendedWaitUntil:
+    visible:
+      id: maestro_nav_home
+    timeout: 120000

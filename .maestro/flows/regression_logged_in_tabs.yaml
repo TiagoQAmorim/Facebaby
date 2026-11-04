@@ -1,0 +1,20 @@
+# Conta já autenticada no dispositivo (não limpa estado no launch).
+appId: com.facebaby.app
+---
+- runFlow: ../subflows/launch_app.yaml
+- runFlow: ../subflows/dismiss_overlays.yaml
+- runFlow: ../subflows/skip_app_tour.yaml
+- extendedWaitUntil:
+    visible:
+      id: maestro_nav_home
+    timeout: 120000
+- tapOn:
+    id: maestro_nav_records
+- tapOn:
+    id: maestro_nav_memories
+- tapOn:
+    id: maestro_nav_more
+- tapOn:
+    id: maestro_nav_home
+- assertVisible:
+    id: maestro_nav_home

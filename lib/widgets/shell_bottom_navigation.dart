@@ -45,55 +45,60 @@ class ShellBottomNavigation extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-              _NavSlot(
-                selected: selectedIndex == 0,
-                hideIndicator: hideHomeActiveState && selectedIndex == 0,
-                icon: Icons.home_outlined,
-                selectedIcon: hideHomeActiveState ? Icons.home_outlined : Icons.home,
-                label: s.home,
-                onTap: () => onSelected(0),
-              ),
-              _NavSlot(
-                key: AppTourKeys.navRecords,
-                selected: selectedIndex == 1,
-                icon: Icons.edit_note_outlined,
-                selectedIcon: Icons.edit_note,
-                label: s.records,
-                onTap: () => onSelected(1),
-              ),
-              Expanded(
-                flex: 14,
-                child: GestureDetector(
-                  key: AppTourKeys.navAiNanny,
-                  onTap: onAiTap ?? () => onSelected(2),
-                  behavior: HitTestBehavior.opaque,
-                  child: Transform.translate(
-                    offset: Offset(0, aiLift),
-                    child: AiNannyNavButton(
-                      selected: !aiLocked && selectedIndex == 2,
-                      locked: aiLocked,
-                      label: s.aiNannyNavLabel,
-                      compact: compact,
+                _NavSlot(
+                  semanticsIdentifier: 'maestro_nav_home',
+                  selected: selectedIndex == 0,
+                  hideIndicator: hideHomeActiveState && selectedIndex == 0,
+                  icon: Icons.home_outlined,
+                  selectedIcon:
+                      hideHomeActiveState ? Icons.home_outlined : Icons.home,
+                  label: s.home,
+                  onTap: () => onSelected(0),
+                ),
+                _NavSlot(
+                  key: AppTourKeys.navRecords,
+                  semanticsIdentifier: 'maestro_nav_records',
+                  selected: selectedIndex == 1,
+                  icon: Icons.edit_note_outlined,
+                  selectedIcon: Icons.edit_note,
+                  label: s.records,
+                  onTap: () => onSelected(1),
+                ),
+                Expanded(
+                  flex: 14,
+                  child: GestureDetector(
+                    key: AppTourKeys.navAiNanny,
+                    onTap: onAiTap ?? () => onSelected(2),
+                    behavior: HitTestBehavior.opaque,
+                    child: Transform.translate(
+                      offset: Offset(0, aiLift),
+                      child: AiNannyNavButton(
+                        selected: !aiLocked && selectedIndex == 2,
+                        locked: aiLocked,
+                        label: s.aiNannyNavLabel,
+                        compact: compact,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              _NavSlot(
-                key: AppTourKeys.navMemories,
-                selected: selectedIndex == 3,
-                icon: Icons.favorite_border,
-                selectedIcon: Icons.favorite,
-                label: s.memories,
-                onTap: () => onSelected(3),
-              ),
-              _NavSlot(
-                selected: selectedIndex == 4,
-                icon: Icons.menu,
-                selectedIcon: Icons.menu,
-                label: s.more,
-                onTap: () => onSelected(4),
-              ),
-            ],
+                _NavSlot(
+                  key: AppTourKeys.navMemories,
+                  semanticsIdentifier: 'maestro_nav_memories',
+                  selected: selectedIndex == 3,
+                  icon: Icons.favorite_border,
+                  selectedIcon: Icons.favorite,
+                  label: s.memories,
+                  onTap: () => onSelected(3),
+                ),
+                _NavSlot(
+                  semanticsIdentifier: 'maestro_nav_more',
+                  selected: selectedIndex == 4,
+                  icon: Icons.menu,
+                  selectedIcon: Icons.menu,
+                  label: s.more,
+                  onTap: () => onSelected(4),
+                ),
+              ],
             ),
           ),
         ),
@@ -105,6 +110,7 @@ class ShellBottomNavigation extends StatelessWidget {
 class _NavSlot extends StatelessWidget {
   const _NavSlot({
     super.key,
+    this.semanticsIdentifier,
     required this.selected,
     required this.icon,
     required this.selectedIcon,
@@ -113,6 +119,7 @@ class _NavSlot extends StatelessWidget {
     this.hideIndicator = false,
   });
 
+  final String? semanticsIdentifier;
   final bool selected;
   final bool hideIndicator;
   final IconData icon;
@@ -125,7 +132,7 @@ class _NavSlot extends StatelessWidget {
     final color = selected && !hideIndicator
         ? AppTheme.primaryPink
         : Colors.black.withAlpha(140);
-    return Expanded(
+    final slot = Expanded(
       flex: 10,
       child: InkWell(
         onTap: onTap,
@@ -147,6 +154,13 @@ class _NavSlot extends StatelessWidget {
           ],
         ),
       ),
+    );
+    if (semanticsIdentifier == null) return slot;
+    return Semantics(
+      identifier: semanticsIdentifier,
+      button: true,
+      label: label,
+      child: slot,
     );
   }
 }

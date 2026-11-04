@@ -1,0 +1,11 @@
+appId: com.facebaby.app
+---
+- runFlow: ../subflows/launch_app_guest.yaml
+- runFlow: ../subflows/dismiss_overlays.yaml
+- runFlow: ../subflows/open_login_from_welcome.yaml
+- assertVisible:
+    id: maestro_login_email
+- assertVisible:
+    id: maestro_login_password
+- assertVisible:
+    id: maestro_login_submit_email

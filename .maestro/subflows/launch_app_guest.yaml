@@ -1,0 +1,13 @@
+appId: com.facebaby.app
+---
+- launchApp:
+    clearState: true
+    permissions:
+      notifications: allow
+      camera: allow
+      photos: allow
+      location: allow
+- extendedWaitUntil:
+    visible:
+      id: maestro_onboarding_create_profile
+    timeout: 90000

@@ -87,9 +87,11 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _handleAppleSignIn() async {
     developer.log('Entrar com Apple tapped', name: 'Apple Sign-In');
     await _run(() async {
-      developer.log('calling AuthService.signInWithApple', name: 'Apple Sign-In');
+      developer.log('calling AuthService.signInWithApple',
+          name: 'Apple Sign-In');
       await AuthService.instance.signInWithApple();
-      developer.log('AuthService.signInWithApple completed', name: 'Apple Sign-In');
+      developer.log('AuthService.signInWithApple completed',
+          name: 'Apple Sign-In');
       _closeAfterSuccessfulLogin();
     });
   }
@@ -202,15 +204,17 @@ class _LoginPageState extends State<LoginPage> {
               Image.asset(
                 'assets/onboarding/logo.png',
                 height: 28,
-                errorBuilder: (_, __, ___) =>
-                    const Icon(Icons.mark_email_read_outlined, color: Colors.white),
+                errorBuilder: (_, __, ___) => const Icon(
+                    Icons.mark_email_read_outlined,
+                    color: Colors.white),
               ),
               const SizedBox(width: 12),
               Expanded(child: Text(s.authResetEmailSentSnackbar)),
             ],
           ),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       );
     });
@@ -306,8 +310,7 @@ class _LoginPageState extends State<LoginPage> {
                                                   Icon(
                                                 Icons.child_care_rounded,
                                                 size: 50,
-                                                color: AppTheme
-                                                    .primaryPurple
+                                                color: AppTheme.primaryPurple
                                                     .withAlpha(180),
                                               ),
                                             ),
@@ -338,7 +341,11 @@ class _LoginPageState extends State<LoginPage> {
                                             ),
                                           ],
                                           const SizedBox(height: 8),
-                                          TextFormField(
+                                          Semantics(
+                                            identifier: 'maestro_login_email',
+                                            textField: true,
+                                            label: s.authEmailLabel,
+                                            child: TextFormField(
                                             initialValue: _email,
                                             decoration:
                                                 fieldDeco(s.authEmailLabel),
@@ -347,8 +354,7 @@ class _LoginPageState extends State<LoginPage> {
                                             autofillHints: const [
                                               AutofillHints.email
                                             ],
-                                            onChanged: (v) =>
-                                                _email = v.trim(),
+                                            onChanged: (v) => _email = v.trim(),
                                             validator: (v) {
                                               final t = (v ?? '').trim();
                                               if (t.isEmpty) {
@@ -360,10 +366,15 @@ class _LoginPageState extends State<LoginPage> {
                                               return null;
                                             },
                                           ),
+                                          ),
                                           const SizedBox(height: 6),
-                                          TextFormField(
-                                            decoration: fieldDeco(
-                                                s.authPasswordLabel),
+                                          Semantics(
+                                            identifier: 'maestro_login_password',
+                                            textField: true,
+                                            label: s.authPasswordLabel,
+                                            child: TextFormField(
+                                            decoration:
+                                                fieldDeco(s.authPasswordLabel),
                                             obscureText: true,
                                             autofillHints: const [
                                               AutofillHints.password
@@ -381,6 +392,7 @@ class _LoginPageState extends State<LoginPage> {
                                               return null;
                                             },
                                           ),
+                                          ),
                                           Align(
                                             alignment: Alignment.centerRight,
                                             child: TextButton(
@@ -394,11 +406,10 @@ class _LoginPageState extends State<LoginPage> {
                                           if (_error != null) ...[
                                             Text(
                                               _error!,
-                                              style: theme
-                                                  .textTheme.bodySmall
+                                              style: theme.textTheme.bodySmall
                                                   ?.copyWith(
-                                                      color: theme.colorScheme
-                                                          .error),
+                                                      color: theme
+                                                          .colorScheme.error),
                                             ),
                                             const SizedBox(height: 6),
                                           ],
@@ -413,8 +424,8 @@ class _LoginPageState extends State<LoginPage> {
                                                 children: [
                                                   Icon(Icons.apple,
                                                       size: 22,
-                                                      color: Colors
-                                                          .grey.shade900),
+                                                      color:
+                                                          Colors.grey.shade900),
                                                   const SizedBox(width: 10),
                                                   Text(s.authSignInApple),
                                                 ],
@@ -436,13 +447,12 @@ class _LoginPageState extends State<LoginPage> {
                                                   child: Image.asset(
                                                     googleLogoAsset,
                                                     fit: BoxFit.contain,
-                                                    errorBuilder: (_, __,
-                                                            ___) =>
-                                                        Icon(
+                                                    errorBuilder:
+                                                        (_, __, ___) => Icon(
                                                       Icons.login_rounded,
                                                       size: 20,
-                                                      color: Colors
-                                                          .grey.shade700,
+                                                      color:
+                                                          Colors.grey.shade700,
                                                     ),
                                                   ),
                                                 ),
@@ -452,7 +462,11 @@ class _LoginPageState extends State<LoginPage> {
                                             ),
                                           ),
                                           const SizedBox(height: 6),
-                                          FilledButton(
+                                          Semantics(
+                                            identifier: 'maestro_login_submit_email',
+                                            button: true,
+                                            label: s.authSignInEmail,
+                                            child: FilledButton(
                                             onPressed: _busy
                                                 ? null
                                                 : _handleEmailSignIn,
@@ -460,10 +474,12 @@ class _LoginPageState extends State<LoginPage> {
                                                 ? s.authSigningIn
                                                 : s.authSignInEmail),
                                           ),
+                                          ),
                                           const SizedBox(height: 6),
                                           TextButton(
-                                            onPressed:
-                                                _busy ? null : _openNewRegistration,
+                                            onPressed: _busy
+                                                ? null
+                                                : _openNewRegistration,
                                             child: Text(s.authCreateAccount),
                                           ),
                                         ],

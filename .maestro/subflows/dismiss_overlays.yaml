@@ -1,0 +1,16 @@
+appId: com.facebaby.app
+---
+# Consentimento de anúncios (UMP) — textos variam por região/idioma
+- tapOn:
+    text: "Accept|Aceitar|Aceptar|Accepter|Zustimmen|Accetta|同意|수락"
+    optional: true
+- tapOn:
+    text: "Consent|Consentir|Einwilligen"
+    optional: true
+# Banner de atualização
+- tapOn:
+    text: "Depois|Later|Más tarde|Plus tard|Später|Più tardi"
+    optional: true
+- tapOn:
+    id: ".*close.*|.*dismiss.*"
+    optional: true
